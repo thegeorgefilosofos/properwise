@@ -20,6 +20,7 @@
 // όλα στο lib/accounting/dossier.ts, δοκιμασμένα. Εδώ μόνο η εικόνα τους.
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { ACCOUNTANT_SEND_ID } from './accountantSend'
 import dynamic from 'next/dynamic'
 import { useState, useEffect, useMemo, useRef, useCallback, useId } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -412,7 +413,7 @@ export interface DossierExportSource {
 }
 
 export default function AccountantDossier({
-  state, year, properties, exportSource, actions, more = [], compact = false, yearData, userId, onEditProperty, canShareLink = true,
+  state, year, properties, exportSource, actions, more = [], send, compact = false, yearData, userId, onEditProperty, canShareLink = true,
 }: {
   /**
    * Το πακέτο επιτρέπει σύνδεσμο λογιστή (`e2_export`). Χωρίς αυτό, η πρόσκληση
@@ -444,6 +445,8 @@ export default function AccountantDossier({
    * φάκελος) και ένα «Περισσότερα» για όσα δεν είναι ο φάκελος.
    */
   more?: ActionMenuItem[]
+  /** Ο σύνδεσμος για τον λογιστή, ως ορατό κουμπί δίπλα στον φάκελο (accountantSend.ts). */
+  send?: { label: string; onClick: () => void; busy?: boolean; title?: string }
   /** Χωρίς καμία κίνηση στη χρονιά: μόνο η κάρτα, ο κατάλογος πίσω από ένα πάτημα. */
   compact?: boolean
   /** Τι κατέγραψε η χρήση: από αυτό κρίνονται οι γραμμές που βγάζει η εφαρμογή. */
@@ -594,6 +597,7 @@ export default function AccountantDossier({
           <Btn variant="primary" onClick={download} disabled={preparing}>
             <Download size={14} aria-hidden="true" />{preparing ? 'Ετοιμάζεται' : downloaded ? 'Κατέβηκε' : 'Φάκελος του ακινήτου'}
           </Btn>
+          {send && <span id={ACCOUNTANT_SEND_ID}><Btn variant="secondary" onClick={send.onClick} disabled={send.busy} title={send.title}>{send.busy ? 'Δημιουργία…' : send.label}</Btn></span>}
           {/* «⋯» ΚΑΙ ΟΧΙ ΛΕΞΗ: με λεκτικό τα δύο δεν χωρούσαν σε μία σειρά στα 375 και
               το «Περισσότερα» έπεφτε μόνο του από κάτω. Το όνομα το ακούει ο
               αναγνώστης οθόνης και το δείχνει το `title`. */}

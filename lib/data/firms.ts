@@ -476,6 +476,17 @@ export function filterClients<T extends { ownerId: string; assignees?: { userId:
   });
 }
 
+/*
+ * ΤΟ ΦΙΛΤΡΟ ΑΝΟΙΓΕΙ ΣΤΙΣ ΕΚΚΡΕΜΟΤΗΤΕΣ ΟΤΑΝ Η ΛΙΣΤΑ ΜΕΓΑΛΩΣΕΙ (17/11/2026).
+ * Με είκοσι πελάτες ο λογιστής κατέβαινε τη λίστα για να βρει τους τρεις που
+ * τον περιμένουν. Πάνω από πέντε, η πρώτη εικόνα είναι «Με εκκρεμότητες»· όχι
+ * όταν δεν εκκρεμεί κανένας, για να μην ανοίξει η οθόνη άδεια.
+ */
+export const STATUS_DEFAULT_FROM = 6;
+export function defaultStatusFilter(total: number, blocked: number): StatusFilter {
+  return total >= STATUS_DEFAULT_FROM && blocked > 0 ? 'blocked' : 'all';
+}
+
 /** Η ενέργεια του ιστορικού σε λέξη. */
 export const ACTION_LABEL: Record<string, string> = {
   open: 'Άνοιξε τον φάκελο',

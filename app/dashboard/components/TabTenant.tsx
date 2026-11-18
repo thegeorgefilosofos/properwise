@@ -69,6 +69,7 @@ import {
   notifyError,
 } from '@/components/Toast';
 import { saved } from '@/components/dbWrite';
+import { propertyStatus } from '@/lib/facts/status';
 import { confirmDialog } from '@/components/ConfirmDialog';
 import LeaseModal from './LeaseModal';
 import LeaseDeclaration from './LeaseDeclaration';
@@ -101,6 +102,10 @@ import {
   isFurnished,
   blank,
   hasMoreData,
+  tenantDefaults,
+  tenantFormProblem,
+  tenantFieldId,
+  type TenantFieldKey,
   type Tenant,
   type RentPayment,
   type TenantDamage,
@@ -219,6 +224,8 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
   // Η λήξη του ΠΕΑ του ακινήτου: κρίνει την ειδοποίηση «Χρειάζεται ΠΕΑ σε ισχύ» στη νέα μίσθωση.
   const [propPeaExpiry,setPropPeaExpiry]=useState<string|null>(null);
   const [propType,setPropType]=useState<string|null>(null);
+  // Ό,τι ξέρει ήδη το ακίνητο για τον επόμενο ενοικιαστή (tenantDefaults).
+  const [propDefaults,setPropDefaults]=useState<ReturnType<typeof tenantDefaults>>({});
   const [propertyCount,setPropertyCount]=useState(1);
   // Ο ΔΕΙΚΤΗΣ ΦΟΡΤΩΣΗΣ ΔΕΝ ΕΙΝΑΙ ΞΕΧΩΡΙΣΤΗ ΚΑΤΑΣΤΑΣΗ, ΕΙΝΑΙ ΕΡΩΤΗΣΗ. Ηταν
   // `setLoading(true)` στην πρώτη γραμμή της φόρτωσης: σύγχρονη γραφή μέσα σε
@@ -236,6 +243,20 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
   const saveLock=useRef(false);
   const [uploading,setUploading]=useState(false);
   const [error,setError]=useState<string|null>(null);
+  // ΤΟ ΣΦΑΛΜΑ ΤΟΥ ΠΕΔΙΟΥ ΖΕΙ ΔΙΠΛΑ ΣΤΟ ΠΕΔΙΟ (17/11/2026). Το γενικό μήνυμα
+  // έβγαινε στο τέλος της φόρμας εκτός οθόνης και το «Προσθήκη ενοικιαστή»
+  // έμοιαζε να μην κάνει τίποτα. Τώρα γράφεται κάτω από το πεδίο που φταίει και
+  // το πεδίο έρχεται στο κέντρο της οθόνης.
+  const [fieldErr,setFieldErr]=useState<{ field:TenantFieldKey; msg:string }|null>(null);
+  useEffect(()=>{
+    if(!fieldErr) return;
+    const el=document.getElementById(tenantFieldId(fieldErr.field));
+    el?.scrollIntoView({ block:'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth' });
+    el?.querySelector<HTMLElement>('input,[role="combobox"],[tabindex="0"]')?.focus({ preventScroll:true });
+  },[fieldErr]);
+  // Και το γενικό σφάλμα αποθήκευσης έρχεται στην οθόνη, για τον ίδιο λόγο.
+  const errorRef=useRef<HTMLDivElement>(null);
+  useEffect(()=>{ if(error) errorRef.current?.scrollIntoView({ block:'nearest', behavior:'smooth' }); },[error]);
   // Το in-flow banner επιτυχίας (state + helper + JSX) αφαιρέθηκε υπέρ του κοινού
   // toast: ήταν ΠΑΝΤΑ πράσινο, ακόμη και για ουδέτερα («Διαγράφηκε») ή για σφάλματα
   // επικύρωσης και έσπρωχνε το περιεχόμενο προς τα κάτω κάθε φορά που εμφανιζόταν.
@@ -252,7 +273,10 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
   // `sf('custom_lease_days','365')` έβαζε κείμενο σε αριθμητικό πεδίο. Τώρα το
   // κλειδί πρέπει να ανήκει στη φόρμα και η τιμή στον τύπο ΕΚΕΙΝΟΥ του πεδίου.
   type TenantForm=ReturnType<typeof blank>;
-  const sf=<K extends keyof TenantForm>(k:K,v:TenantForm[K])=>setForm(f=>({...f,[k]:v}));
+  const fieldNote=(k:TenantFieldKey)=>fieldErr?.field===k
+    ? <div role="alert" style={{ marginTop:6, color:'var(--negative)', fontSize:'var(--fs-base)', fontFamily:T.font.sans, fontWeight:500, lineHeight:1.45 }}>{fieldErr.msg}</div>
+    : null;
+  const sf=<K extends keyof TenantForm>(k:K,v:TenantForm[K])=>{ setForm(f=>({...f,[k]:v})); if(fieldErr?.field===k) setFieldErr(null); };
   // Έγγραφα που ανέβηκαν μέσα από τη φόρμα (property-files + property_documents).
   const [formDocs,setFormDocs]=useState<{id:string;file_name:string;tag:'id'|'lease'}[]>([]);
   const [docBusy,setDocBusy]=useState(false);
@@ -285,7 +309,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
       supabase.from('tenant_damages').select('*').eq('property_id',propertyId).eq('user_id',userId).order('occurred_on',{ascending:false}),
       supabase.from('rent_comparables').select('id,property_id,title,area,sqm,rent,rent_per_sqm,listing_type,source,url').eq('property_id',propertyId),
       supabase.from('maintenance_requests').select('*').eq('user_id',userId).eq('property_id',propertyId).order('created_at',{ascending:false}),
-      properties.one<{ sqm: number; pea_expiry: string | null; prop_type: string | null }>(supabase, propertyId, 'sqm,pea_expiry,prop_type', userId),
+      properties.one<{ sqm: number; pea_expiry: string | null; prop_type: string | null; status_detail: string | null; rental_mode: string | null; target_rent: number | null }>(supabase, propertyId, 'sqm,pea_expiry,prop_type,status_detail,rental_mode,target_rent', userId),
       // ΤΟ ΠΛΗΘΟΣ ΑΚΙΝΗΤΩΝ ΚΡΙΝΕΙ ΦΟΡΟΛΟΓΙΚΗ ΠΡΟΕΙΔΟΠΟΙΗΣΗ. Με τον ανύπαρκτο
       // πίνακα το count γύριζε null → propertyCount πάντα 1 → ο ιδιοκτήτης με
       // τρία ακίνητα ΔΕΝ έβλεπε ποτέ ότι ο φόρος είναι προοδευτικός στο
@@ -297,6 +321,10 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
     const sq=Number((own as {sqm?:number|null}|null)?.sqm);
     setPropPeaExpiry((own as {pea_expiry?:string|null}|null)?.pea_expiry ?? null);
     setPropType((own as {prop_type?:string|null}|null)?.prop_type ?? null);
+    {
+      const o=own as {prop_type?:string|null;status_detail?:string|null;rental_mode?:string|null;target_rent?:number|null}|null;
+      setPropDefaults(tenantDefaults(o?{ propType:o.prop_type, status:propertyStatus(o), targetRent:o.target_rent }:null));
+    }
     setPropSqm(Number.isFinite(sq)&&sq>0?sq:null);
     setPropertyCount(Math.max(1, pc||1));
     setLoadedFor(propertyId);
@@ -366,7 +394,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
   },[tenants,search,segment,overdueByTenant]);
 
   // ── Φόρμα ────────────────────────────────────────────────────────────────────
-  const openAdd=()=>{ setForm(blank()); setEditId(null); setFormDocs([]); setMoreOpen(false); setError(null); setIsForm(true); };
+  const openAdd=()=>{ setForm({ ...blank(), ...propDefaults }); setFieldErr(null); setEditId(null); setFormDocs([]); setMoreOpen(false); setError(null); setIsForm(true); };
   // Κλείσιμο φόρμας με προστασία από ακούσια απώλεια δεδομένων.
   // Έγινε async γιατί ο κοινός διάλογος επιστρέφει Promise. Μετά τη μετατροπή σε
   // κοινό Modal δένεται σε ΤΕΣΣΕΡΑ σημεία: κλικ στο φόντο, το «×» της κεφαλίδας,
@@ -386,7 +414,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
     if(saving) return;
     const dirty = !!(form.full_name.trim()||form.afm||form.phone||form.email||form.monthly_rent);
     if(dirty && !(await confirmDialog('Κλείσιμο χωρίς αποθήκευση; Τα στοιχεία που συμπλήρωσες θα χαθούν.'))) return;
-    setError(null); setIsForm(false);
+    setError(null); setFieldErr(null); setIsForm(false);
   };
 
   // ── ΚΛΕΙΣΙΜΟ ΝΤΟΣΙΕ ──────────────────────────────────────────────────────────
@@ -432,7 +460,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
       aade_lease_decl_ref:t.aade_lease_decl_ref||'',
     };
     // «Περισσότερα» ανοίγει μόνο αν ο χρήστης έχει όντως δεδομένα εκεί μέσα.
-    setForm(f); setFormDocs([]); setMoreOpen(hasMoreData(f));
+    setForm(f); setFieldErr(null); setFormDocs([]); setMoreOpen(hasMoreData(f));
     setEditId(t.id); setIsForm(true);
     // Επαναφόρτωση των εγγράφων που έχουν ήδη ανέβει για ΑΥΤΟΝ τον ενοικιαστή
     // (ταυτότητα, μισθωτήρια — και προηγούμενα με τον ίδιο ενοικιαστή).
@@ -471,8 +499,9 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
     try{ await saveUnlocked(); } finally { saveLock.current=false; }
   };
   const saveUnlocked=async()=>{
-    if(!form.full_name.trim()){setError('Το ονοματεπώνυμο είναι υποχρεωτικό');return;}
-    if(!form.lease_category){setError('Ο τύπος μίσθωσης (κατοικία ή επαγγελματική) είναι υποχρεωτικός');return;}
+    const problem=tenantFormProblem(form);
+    if(problem){ setError(null); setFieldErr(problem); return; }
+    setFieldErr(null);
     const declRef=cleanDigits(form.aade_lease_decl_ref);
     if(declRef.error){setError(`Αριθμός δήλωσης μίσθωσης: ${declRef.error}`);setMoreOpen(true);return;}
     // Νέος ενοικιαστής: πρώτα η σύμβαση επεξεργασίας (lib/legal/dpa.ts).
@@ -977,7 +1006,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
             {/* ── ΠΟΙΟΣ ΕΙΝΑΙ ────────────────────────────────────────────── */}
             <SectionTitle>Ποιος είναι ο ενοικιαστής</SectionTitle>
             <div className="form-row form-row-3">
-              {show('tenant.full_name')&&<TextInput label={`${labelOf('tenant.full_name')} *`} labelInfo={whyOf('tenant.full_name')} value={form.full_name} onChange={v=>sf('full_name',v)}/>}
+              {show('tenant.full_name')&&<div id={tenantFieldId('full_name')}><TextInput label={`${labelOf('tenant.full_name')} *`} labelInfo={whyOf('tenant.full_name')} value={form.full_name} onChange={v=>sf('full_name',v)}/>{fieldNote('full_name')}</div>}
               {show('tenant.afm')&&<TextInput label={labelOf('tenant.afm')} labelInfo={whyOf('tenant.afm')} value={form.afm} onChange={v=>sf('afm',v)}/>}
               {show('tenant.phone')&&<TextInput label={labelOf('tenant.phone')} labelInfo={whyOf('tenant.phone')} value={form.phone} onChange={v=>sf('phone',v)}/>}
             </div>
@@ -1029,9 +1058,12 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                   ίδιο ιδίωμα με τη «Διάρκεια» ακριβώς δίπλα της: δύο λίστες και
                   δύο ημερομηνίες, ίδιο ύψος, ίδιο πλάτος, μία γραμμή. */}
               {show('tenant.lease_category')&&(
+                <div id={tenantFieldId('lease_category')}>
                 <SelectField label={labelOf('tenant.lease_category')} labelInfo={whyOf('tenant.lease_category')}
                   value={form.lease_category} onChange={v=>sf('lease_category',v as LeaseCategory)} placeholder="Επιλογή…"
                   options={(Object.keys(LEASE_CATEGORY_LABELS) as LeaseCategory[]).map(lc=>({ value:lc, label:LEASE_CATEGORY_LABELS[lc] }))}/>
+                {fieldNote('lease_category')}
+                </div>
               )}
               {show('tenant.lease_type')&&(
                 <SelectField label={labelOf('tenant.lease_type')} labelInfo={whyOf('tenant.lease_type')}
@@ -1271,7 +1303,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
             {/* Σφάλμα αποθήκευσης — ΜΕΣΑ στη φόρμα, ώστε να είναι πάντα ορατό (η
                 φόρμα είναι overlay· ένα σφάλμα στο body από κάτω δεν θα φαινόταν). */}
             {error&&(
-              <div role="alert" style={{ marginTop:24, background:'var(--negative-dim)', border:'1px solid var(--negative-border)', borderLeft:'3px solid var(--negative)', borderRadius:T.radius.inner, padding:'12px 16px', color:'var(--negative)', fontSize: 'var(--fs-base)', fontFamily:T.font.sans, fontWeight:500, display:'flex', gap:12, alignItems:'flex-start', justifyContent:'space-between' }}>
+              <div ref={errorRef} role="alert" style={{ marginTop:24, background:'var(--negative-dim)', border:'1px solid var(--negative-border)', borderLeft:'3px solid var(--negative)', borderRadius:T.radius.inner, padding:'12px 16px', color:'var(--negative)', fontSize: 'var(--fs-base)', fontFamily:T.font.sans, fontWeight:500, display:'flex', gap:12, alignItems:'flex-start', justifyContent:'space-between' }}>
                 <span style={{ lineHeight:1.55, wordBreak:'break-word' as const }}>{error}</span>
                 <IconBtn label="Κλείσιμο μηνύματος σφάλματος" tone="danger" onClick={()=>setError(null)}><span style={{ fontSize:18, lineHeight:1 }}>×</span></IconBtn>
               </div>

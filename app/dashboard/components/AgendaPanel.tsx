@@ -42,7 +42,8 @@
 import type { ReactNode } from 'react';
 import { T, fe } from '@/components/Theme';
 import { ListChecks } from 'lucide-react';
-import { itemDue, overdueCount, type AgendaItem } from '@/lib/home/agenda';
+import { itemDue, overdueCount, ENFIA_IMPORT_TAB, type AgendaItem } from '@/lib/home/agenda';
+import { openMyaadeImport } from './myaadeOpen';
 
 export default function AgendaPanel({ items, total, onNavigate, incomplete = false, footer }: {
   items: AgendaItem[];
@@ -161,7 +162,7 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
                       </span>
                     )}
                     {it.action && !toCalendar && (
-                      <button type="button" className="agenda-go" onClick={() => onNavigate(it.action!.tab)}>
+                      <button type="button" className="agenda-go" onClick={() => it.action!.tab === ENFIA_IMPORT_TAB ? openMyaadeImport() : onNavigate(it.action!.tab)}>
                         {it.action.label}
                       </button>
                     )}

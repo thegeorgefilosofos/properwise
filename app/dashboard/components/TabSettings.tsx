@@ -5,6 +5,7 @@
 // ειδοποιήσεις, δεδομένα & απόρρητο). Στυλ fintech: κάρτες, SecHdr, tokens.
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { sendToAccountant, ACCOUNTANT_SEND_LABEL } from './accountantSend'
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useRef, useId, useCallback } from 'react';
 import { leaveDevice } from '@/lib/localPrivacy';
@@ -195,7 +196,14 @@ export function AccountantAccess({ userId }: { userId: string }) {
       desc="Ένας σύνδεσμος μόνο ανάγνωσης δίνει στον λογιστή σου την εικόνα εσόδων και δαπανών ανά χρήση. Χωρίς πελατολόγιο και χωρίς στοιχεία τρίτων.">
       {state && (
         <div style={{ ...TT.bodySm, color: 'var(--text-secondary)' }}>
-          {state}{!link?.live && ' Ο σύνδεσμος βγαίνει από τη Λογιστική, στον φάκελο για τον λογιστή.'}
+          {state}
+        </div>
+      )}
+      {/* ΔΡΟΜΟΣ, ΟΧΙ ΟΔΗΓΙΑ (17/11/2026). Η γραμμή έλεγε «ο σύνδεσμος βγαίνει από
+          τη Λογιστική» και ο χρήστης έψαχνε μόνος του πού. */}
+      {loaded && !link?.live && (
+        <div style={{ marginTop: T.sp.md }}>
+          <Btn variant="secondary" onClick={sendToAccountant}>{ACCOUNTANT_SEND_LABEL}</Btn>
         </div>
       )}
       {rotated && link?.live && (

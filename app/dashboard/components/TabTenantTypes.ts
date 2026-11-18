@@ -197,6 +197,43 @@ export const blank=()=>({
   aade_lease_decl_ref:'',
 });
 
+// ─── Νέος ενοικιαστής: όσα ξέρουμε ήδη από το ακίνητο ──────────────────────────
+// ΤΙ ΗΤΑΝ ΧΑΛΑΣΜΕΝΟ (17/11/2026). Η φόρμα ξεκινούσε άδεια ακόμη κι όταν το
+// ακίνητο έλεγε ήδη την απάντηση: διαμέρισμα σε μακροχρόνια μίσθωση με στόχο
+// ενοικίου 650€ και ο χρήστης διάλεγε ξανά «Κατοικία» και ξαναέγραφε 650. Το
+// «Τύπος μίσθωσης» είναι υποχρεωτικό, οπότε όποιος δεν το πρόσεχε πατούσε
+// «Προσθήκη ενοικιαστή» και έβλεπε σφάλμα.
+//
+// ΜΟΝΟ ΟΤΑΝ Η ΑΠΑΝΤΗΣΗ ΕΙΝΑΙ ΒΕΒΑΙΗ. «Κατοικία» μόνο για τύπο κατοικίας ΚΑΙ
+// μακροχρόνια μίσθωση: ένα διαμέρισμα σε βραχυχρόνια ή ένα γραφείο δεν μαντεύεται.
+// Το μίσθωμα μόνο από θετικό στόχο. Και τα δύο αλλάζουν ελεύθερα στη φόρμα.
+export const RESIDENTIAL_TYPES = ['apartment', 'house', 'maisonette', 'studio', 'villa'] as const;
+export function tenantDefaults(p: { propType?: string | null; status?: string | null; targetRent?: number | null } | null | undefined):
+  { lease_category?: LeaseCategory; monthly_rent?: string } {
+  if (!p) return {};
+  const out: { lease_category?: LeaseCategory; monthly_rent?: string } = {};
+  if (p.status === 'rent_long' && (RESIDENTIAL_TYPES as readonly string[]).includes(p.propType ?? '')) out.lease_category = 'residential';
+  const rent = Number(p.targetRent);
+  if (Number.isFinite(rent) && rent > 0) out.monthly_rent = String(rent);
+  return out;
+}
+
+// ─── Έλεγχος πριν την αποθήκευση: ποιο πεδίο και τι λείπει ─────────────────────
+// ΤΙ ΗΤΑΝ ΧΑΛΑΣΜΕΝΟ (17/11/2026). Το μήνυμα έβγαινε στο ΤΕΛΟΣ της φόρμας, κάτω
+// από όλα τα πεδία, ενώ το κουμπί ζει στο σταθερό υποσέλιδο του παραθύρου. Σε
+// οθόνη υπολογιστή το μήνυμα έμενε εκτός οθόνης και το «Προσθήκη ενοικιαστή»
+// έμοιαζε να μην κάνει τίποτα. Τώρα ο έλεγχος λέει ΠΟΙΟ πεδίο φταίει, ώστε η
+// φόρμα να γράψει το μήνυμα δίπλα του και να το φέρει στην οθόνη.
+export type TenantFieldKey = 'full_name' | 'lease_category';
+export function tenantFormProblem(form: { full_name: string; lease_category: string }): { field: TenantFieldKey; msg: string } | null {
+  if (!form.full_name.trim()) return { field: 'full_name', msg: 'Το ονοματεπώνυμο είναι υποχρεωτικό' };
+  if (!form.lease_category) return { field: 'lease_category', msg: 'Ο τύπος μίσθωσης (κατοικία ή επαγγελματική) είναι υποχρεωτικός' };
+  return null;
+}
+/** Το id του περιβλήματος κάθε πεδίου, για να το βρει το scrollIntoView. */
+export const tenantFieldId = (k: TenantFieldKey) => `tenant-field-${k}`;
+
+
 /**
  * Έχει ο ενοικιαστής συμπληρωμένα «σπάνια» πεδία;
  * Το «Περισσότερα» είναι κλειστό εξ ορισμού, αλλά δεν κρύβει δεδομένα που ΥΠΑΡΧΟΥΝ:

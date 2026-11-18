@@ -1,4 +1,5 @@
 'use client'
+import { ACCOUNTANT_SEND_LABEL } from './accountantSend'
 import { track, PRODUCT_EVENTS } from '@/lib/analytics/events';
 import { collectionModeReason } from '@/lib/tax/rentCollectionMode';
 import { T, Btn, IconBtn, ChipToggle, LinkBtn, Skeleton, SkeletonKPIs, InfoBanner, fn } from '@/components/Theme'
@@ -163,16 +164,8 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   const accountantMore: ActionMenuItem[] = [
     { key:'excel', label:'Μόνο το Excel', icon:<Download size={14}/>, onClick:exportBundle,
       description:'Κινήσεις και κατάσταση αποτελεσμάτων σε ένα αρχείο. Περιέχεται ήδη στον φάκελο.' },
-    // «Ζωντανή πύλη λογιστή» δεν έλεγε τι παίρνει ο λογιστής. Παίρνει έναν
-    // σύνδεσμο που ανοίγει χωρίς κωδικούς· αυτό λέει το λεκτικό. Το πακέτο
-    // ονομάζεται από το μητρώο, ποτέ γραμμένο με το χέρι.
-    { key:'link', label:acctLink?'Ο σύνδεσμος είναι έτοιμος':'Σύνδεσμος για τον λογιστή', onClick:shareWithAccountant, busy:acctBusy, busyLabel:'Δημιουργία…',
-      icon: canAccountantPortal
-        ? <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4M12 2v13"/></svg>
-        : lockIcon,
-      description: canAccountantPortal
-        ? 'Χωρίς κωδικούς και χωρίς email, μόνο για ανάγνωση. Καλύπτει όλα τα ακίνητά σου.'
-        : `Περιλαμβάνεται από το πακέτο «${PLANS[FEATURE_MIN_PLAN.e2_export].name}» και πάνω, όπως και η εξαγωγή Ε2.` },
+    // Ο ΣΥΝΔΕΣΜΟΣ ΒΓΗΚΕ ΑΠΟ ΤΟ «⋯» (17/11/2026): είναι πια το ορατό κουμπί
+    // «Στείλε στον λογιστή σου» δίπλα στον φάκελο (`accountantSend` πιο κάτω).
     // ΤΟ ΚΛΕΙΔΩΜΕΝΟ ΦΑΙΝΕΤΑΙ ΕΚΕΙ ΠΟΥ ΠΑΤΙΕΤΑΙ: το λουκέτο στη θέση του
     // εικονιδίου, το πάτημα πηγαίνει στα πακέτα. Μόνο σε όποιον κρατά
     // διπλογραφικά βιβλία, δηλαδή σε όποιον το ημερολόγιο άρθρων χρησιμεύει.
@@ -185,6 +178,10 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
         ? 'Πλήρες ημερολόγιο άρθρων και εξαγωγή CSV (SoftOne, Epsilon, QuickBooks, Xero).'
         : `Το ημερολόγιο άρθρων και το ισοζύγιο διπλογραφικής περιλαμβάνονται από το πακέτο «${journalPlanName}» και πάνω.` }] : []),
   ]
+  // Χωρίς πακέτο το πάτημα πηγαίνει στις Ρυθμίσεις (shareWithAccountant), όπως
+  // έκανε και η γραμμή του μενού που αντικαθιστά.
+  const accountantSend = { label: acctLink ? 'Ο σύνδεσμος είναι έτοιμος' : ACCOUNTANT_SEND_LABEL, onClick: shareWithAccountant, busy: acctBusy,
+    title: canAccountantPortal ? 'Σύνδεσμος χωρίς κωδικούς και χωρίς email, μόνο για ανάγνωση. Καλύπτει όλα τα ακίνητά σου.' : `Περιλαμβάνεται από το πακέτο «${PLANS[FEATURE_MIN_PLAN.e2_export].name}» και πάνω, όπως και η εξαγωγή Ε2.` }
   const accountantActions = acctLink ? (
     <>
       {acctLink && (
@@ -393,7 +390,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           ακόμη τίποτα έβλεπε πρώτα τι θα ζητήσει ο λογιστής και μετά πώς να
           ξεκινήσει. Τώρα ξεκινά από το «ξεκίνα» και ο κατάλογος ανοίγει με ένα
           πάτημα. */}
-      <AccountantDossier userId={userId} onEditProperty={onEditProperty} state={dossier} year={year} properties={dossierProps} exportSource={dossierExport} actions={accountantActions} more={accountantMore} canShareLink={canAccountantPortal}
+      <AccountantDossier userId={userId} onEditProperty={onEditProperty} state={dossier} year={year} properties={dossierProps} exportSource={dossierExport} actions={accountantActions} more={accountantMore} send={accountantSend} canShareLink={canAccountantPortal}
         compact={!hasActivity} yearData={yearData} />
 
       {/* ΤΟ ΚΑΘΕΣΤΩΣ ΠΡΙΝ ΑΠΟ ΤΟΝ ΑΡΙΘΜΟ. Με περισσότερα βραχυχρόνια από το όριο

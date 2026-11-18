@@ -19,6 +19,8 @@ import { WHO_LABEL } from '@/lib/accounting/dossier'
 import { downloadFile } from '@/lib/core/download'
 import { type CalEvent, CATEGORIES, TAX_META, fmt, daysUntil, pastStateOf } from './model'
 import { PAST_LABEL } from '@/lib/calendar/pastState'
+import { enfiaNeedsAmount, ENFIA_IMPORT_LABEL } from '@/lib/home/agenda'
+import { openMyaadeImport } from '../myaadeOpen'
 import { Tooltip, StatusDot } from './Bits'
 import { dueTextStart } from '@/lib/facts/deadlines'
 import { cssRect, cssViewW, cssViewH } from '@/lib/core/cssZoom'
@@ -177,6 +179,13 @@ export function EventCard({ event, onToggleStatus, onEdit, onDelete, selected, o
             <span style={{ fontSize: 'var(--fs-base)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', color:'var(--text-secondary)', fontWeight:500 }}>
               {feAuto(event.amount)}
             </span>
+          )}
+          {/* Η ΔΟΣΗ ΕΝΦΙΑ ΧΩΡΙΣ ΠΟΣΟ ΛΕΕΙ ΠΟΥ ΒΡΙΣΚΕΤΑΙ ΤΟ ΠΟΣΟ (17/11/2026):
+              στην πράξη προσδιορισμού. Το πάτημα ανοίγει την εισαγωγή της. */}
+          {!done&&enfiaNeedsAmount(event.source,event.amount)&&(
+            <button type="button" className="po-link" onClick={()=>openMyaadeImport()}>
+              {ENFIA_IMPORT_LABEL}
+            </button>
           )}
           {event.attachment_url&&(
             <a href={event.attachment_url} target="_blank" rel="noreferrer" style={{ fontSize:12, color:'var(--accent)', display:'flex', alignItems:'center', gap:2, fontFamily: T.font.sans }}>

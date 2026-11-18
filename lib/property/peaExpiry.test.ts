@@ -154,7 +154,7 @@ function ok(name: string, cond: boolean) { if (cond) pass++; else { fail++; cons
   const read = (p: string) => readFileSync(p, 'utf8');
   const tab = read('app/dashboard/components/TabTenant.tsx');
   ok('η φόρμα ενοικιαστή δείχνει την ειδοποίηση μόνο σε νέα μίσθωση', /!editId&&<div[^\n]*<PeaLeaseNotice peaExpiry=\{propPeaExpiry\} propType=\{propType\} leaseStart=\{form\.lease_start\}/.test(tab));
-  ok('και διαβάζει τη λήξη και τον τύπο του ακινήτου', tab.includes("'sqm,pea_expiry,prop_type'"));
+  ok('και διαβάζει τη λήξη και τον τύπο του ακινήτου', tab.includes("'sqm,pea_expiry,prop_type"));
   const decl = read('app/dashboard/components/LeaseDeclaration.tsx');
   ok('η δήλωση μίσθωσης δείχνει την ειδοποίηση', decl.includes('<PeaLeaseNotice peaExpiry={pea.expiry} propType={pea.propType} leaseStart={input.lease?.start} />'));
   ok('ο αριθμός ΠΕΑ μπαίνει στα πεδία της δήλωσης (αντιγραφή και φύλλο)', decl.includes('pea_number,pea_expiry') && decl.includes('fields: [...base.fields, peaField]') && !decl.includes('{row(peaField)}'));
