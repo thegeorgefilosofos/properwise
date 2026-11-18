@@ -29,8 +29,25 @@ const fails: string[] = [];
 const ok = (name: string, cond: boolean) => { if (cond) passed++; else { failed++; fails.push(name); } };
 
 const GREEK = /[\p{Script=Greek}]/u;
-// Τα σχόλια μέσα στα <style> (CSS του component) δεν είναι κείμενο της οθόνης.
-const strip = (h: string) => h.replace(/<style[\s\S]*?<\/style>/g, '').replace(/Ελληνικά/g, '').replace(/Σπίτι Κηφισιά/g, '');
+/**
+ * Τα σχόλια μέσα στα <style> (CSS του component) δεν είναι κείμενο της οθόνης.
+ * Σάρωση με θέσεις και όχι με regex, όπως το `noScripts` του app/thema/hubs.test.ts:
+ * ένα regex που κόβει ετικέτες αφήνει πάντα κάποια περίπτωση πίσω (CodeQL).
+ */
+const noStyles = (html: string) => {
+  let out = '', i = 0;
+  const low = html.toLowerCase();
+  for (;;) {
+    const a = low.indexOf('<style', i);
+    if (a < 0) return out + html.slice(i);
+    const b = low.indexOf('</style', a);
+    const c = b < 0 ? -1 : low.indexOf('>', b);
+    out += html.slice(i, a) + ' ';
+    if (c < 0) return out;
+    i = c + 1;
+  }
+};
+const strip = (h: string) => noStyles(h).split('Ελληνικά').join('').split('Σπίτι Κηφισιά').join('');
 
 async function main() {
   // ── Ο κανόνας της γλώσσας ──────────────────────────────────────────────
@@ -109,6 +126,12 @@ async function main() {
     ok(`${name}: τα αγγλικά χωρίς ελληνικό γράμμα`, !GREEK.test(strip(english)));
     ok(`${name}: τα αγγλικά διαφέρουν`, english !== greek);
   }
+  // ── Τα ποσά στα αγγλικά γράφονται όπως στα ελληνικά (απόφαση ιδιοκτήτη, lib/i18n/en/app/format.ts) ──
+  const enAgenda = renderToStaticMarkup(createElement(AppLocaleProvider, { locale: 'en' }, more[0][1]()));
+  ok('ποσό στα αγγλικά: «35,66€», όχι «€35.66»', enAgenda.includes('35,66€') && !enAgenda.includes('€35'));
+  const enCash = renderToStaticMarkup(createElement(AppLocaleProvider, { locale: 'en' }, more[2][1]()));
+  ok('ταμείο στα αγγλικά: «30,00€»', enCash.includes('30,00€'));
+  ok('παρατήρηση στα αγγλικά: ποσά με ελληνική γραφή', enIns.some(i => /\d,\d{2}€/.test(`${i.detail} ${i.metric ?? ''}`)) && !enIns.some(i => /€\d/.test(`${i.detail} ${i.metric ?? ''}`)));
   const lang = renderToStaticMarkup(createElement(AppLocaleProvider, { locale: 'en' }, createElement(LanguageSetting)));
   ok('ο επιλογέας λέει «Language»', lang.includes('Language'));
 

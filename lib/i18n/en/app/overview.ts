@@ -7,12 +7,12 @@
 //
 // ΚΑΝΕΝΑ ΨΗΦΙΟ ΓΡΑΜΜΕΝΟ ΜΕ ΤΟ ΧΕΡΙ. Κάθε ποσό, ποσοστό και ημερομηνία φτάνει
 // εδώ ως αριθμός από τον κώδικα που το υπολογίζει και γράφεται με το
-// `fmtFor('en')`. Οι τίτλοι των φορολογικών υποχρεώσεων βγαίνουν από το ΕΙΔΟΣ
+// `APP_FMT` (lib/i18n/en/app/format.ts). Οι τίτλοι των φορολογικών υποχρεώσεων βγαίνουν από το ΕΙΔΟΣ
 // τους (lib/i18n/en/deadlines.ts), όχι από το ελληνικό κείμενο.
 //
 // Φτάνει μόνο στα αγγλικά, με δυναμικό import() (lib/i18n/appEn.tsx).
 // ═══════════════════════════════════════════════════════════════════════════
-import { fmtFor } from '@/lib/core/format';
+import { APP_FMT } from '@/lib/i18n/en/app/format';
 import { athensParts, athensTime } from '@/lib/core/time';
 import { obligationTitleEn } from '@/lib/i18n/en/deadlines';
 import { categoryEn } from '@/lib/i18n/en/app/categories';
@@ -20,7 +20,8 @@ import { monthYearEn } from '@/lib/i18n/en/dates';
 import type { TaxDeadlineRow } from '@/lib/onboarding/firstTax';
 import type { TaxObligation } from '@/lib/tax/greekTaxCalendar';
 
-const f = fmtFor('en');
+// Ποσά «1.234,50€» και ημερομηνίες «02/11/2026», όπως στα ελληνικά (format.ts).
+const f = APP_FMT;
 const days = (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`;
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
 
@@ -101,7 +102,7 @@ export const OVERVIEW_EN = {
   insights: INSIGHTS_EN,
   obligations: OBLIGATIONS_EN,
   f,
-  /** «Wednesday 18 Nov 2026, 02:45 (Athens)»: ώρα Ελλάδας, όπως και στα ελληνικά. */
+  /** «Wednesday 18/11/2026, 02:45 (Athens time)»: ώρα Ελλάδας, όπως και στα ελληνικά. */
   athensNow: (now: Date = new Date()) => {
     const p = athensParts(now);
     const iso = `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;

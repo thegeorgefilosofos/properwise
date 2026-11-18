@@ -23,7 +23,7 @@ import { useAppEn } from '@/lib/i18n/appEn';
 
 export default function AthensNow({ style }: { style?: React.CSSProperties }) {
   const [label, setLabel] = useState<string | null>(null);
-  // Στα αγγλικά: «Wednesday 18 Nov 2026, 02:45 (Athens time)».
+  // Στα αγγλικά: «Wednesday 18/11/2026, 02:45 (Athens time)».
   const en = useAppEn('overview')?.athensNow;
 
   useEffect(() => {
