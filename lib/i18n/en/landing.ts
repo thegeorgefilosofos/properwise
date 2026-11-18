@@ -41,6 +41,28 @@ export const LANDING_EN = {
   appLanguage: 'The app is in Greek today. English is on the way.',
 };
 
+/** Η σύντομη ξενάγηση (app/en/TourVideo.tsx). Τα σημεία είναι η
+ *  περιγραφή του βίντεο σε κείμενο: ό,τι δείχνει η εικόνα, το διαβάζει και ο
+ *  αναγνώστης οθόνης. Η σημείωση γλώσσας λέει ότι οι οθόνες στο βίντεο είναι
+ *  αγγλική προεπισκόπηση: η εφαρμογή σήμερα είναι ελληνική. */
+export const TOUR_EN = {
+  over: 'Quick tour',
+  title: 'See it work, start to finish',
+  sub: 'From the notice that arrives in Greece to the file your accountant asks for.',
+  play: 'Play the tour',
+  videoTitle: 'PROPERWISE, a quick tour',
+  pointsLabel: 'What the video shows',
+  points: [
+    'A bill, an ENFIA notice or a tenant message arrives while you are abroad.',
+    'You snap the bill and it files itself under the right property.',
+    'Every deadline shows the days left, ENFIA instalments included.',
+    'Your rental tax, worked out from your own rent.',
+    'A complete file for your accountant in Greece.',
+    `${NOA} answers in Greek, from your own numbers.`,
+  ] as const,
+  note: 'The video shows an English preview of the app. The app is in Greek today and English is on the way.',
+};
+
 export const HOW_EN = {
   over: 'How it works',
   title: 'Three steps to a property in order',

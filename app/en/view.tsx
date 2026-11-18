@@ -11,18 +11,19 @@ import { FIRST_YEAR_NEW_BRACKETS } from '@/lib/billing/greekTax';
 import { fmtFor } from '@/lib/core/format';
 import { athensParts } from '@/lib/core/time';
 import { siteUrl } from '@/lib/core/site';
-import { appNode, organizationNode, websiteNode, WEBSITE_ID } from '@/lib/seo/organization';
+import { appNode, organizationNode, websiteNode, WEBSITE_ID, ORG_REF } from '@/lib/seo/organization';
 import { billingWordsEn, PRICES_VAT_EN, NO_COMMITMENT_EN } from '@/lib/legal/billingWords';
 import { createClient } from '@/lib/supabase/server';
 import { localHref } from '@/lib/i18n/paths';
 import { PLAN_COPY_EN } from '@/lib/i18n/en/plans';
 import {
   LANDING_EN, HOW_EN, featuresEn, FEATURES_HEAD_EN, WORKS_EN, CALC_HEAD_EN, SECURITY_EN,
-  PRICING_HEAD_EN, FAQ_HEAD_EN, FINAL_EN, FAQ_PRICE_Q_EN, faqEn, PARTS_EN,
+  PRICING_HEAD_EN, FAQ_HEAD_EN, FINAL_EN, FAQ_PRICE_Q_EN, faqEn, PARTS_EN, TOUR_EN,
 } from '@/lib/i18n/en/landing';
 import { statsEn } from '@/lib/i18n/en/landingStats';
 import LandingCalculator from '../LandingCalculator';
 import LandingCalcEn from './landingEn';
+import TourVideo from './TourVideo';
 import Spotlight from '../Spotlight';
 import FaqMore from '../FaqMore';
 import { FaqPlus } from '../FaqPlus';
@@ -54,6 +55,14 @@ import { LandingStyles } from '../LandingStyles';
 const PATH = '/en';
 // Η ΣΤΑΘΜΗ ΤΩΝ ΕΝΟΤΗΤΩΝ ΠΑΝΩ ΑΠΟ ΤΗΝ ΑΤΜΟΣΦΑΙΡΑ, γραμμένη μία φορά.
 const LAYER = { position: 'relative', zIndex: 1 } as const;
+// Η ΞΕΝΑΓΗΣΗ: ένα αρχείο, δύο αναγνώστες (το <video> και το VideoObject).
+// Η διάρκεια είναι του ίδιου του αρχείου (82″ σε ISO 8601).
+const TOUR = {
+  src: '/video/properwise-tour-en.mp4',
+  poster: '/video/properwise-tour-en-poster.webp',
+  duration: 'PT1M22S',
+  uploaded: '2026-11-17',
+} as const;
 export const metadata: Metadata = publicMetadata({
   title: `${LANDING_EN.title} · PROPERWISE`,
   description: LANDING_EN.description,
@@ -126,6 +135,21 @@ export default async function LandingEn() {
             {LANDING_EN.facts.map(f => <li key={f}>{f}</li>)}
           </ul>
           <p className="lp-rise-4" style={{ margin: '14px 0 0', fontSize: 13, color: FAINT }}>{LANDING_EN.appLanguage}</p>
+        </div>
+      </section>
+
+      <section id="tour" className="lp-reveal" aria-labelledby="tour-title" style={{ ...wrap, ...LAYER, paddingBottom: GAP, scrollMarginTop: 72 }}>
+        <div className="lp-tour">
+          <TourVideo src={TOUR.src} poster={TOUR.poster} label={TOUR_EN.play} title={TOUR_EN.videoTitle} />
+          <div>
+            <div className="lp-eyebrow">{TOUR_EN.over}</div>
+            <h2 id="tour-title" style={{ fontSize: 'clamp(25px, 3.4vw, 40px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.1, margin: 0, textWrap: 'balance' }}>{TOUR_EN.title}</h2>
+            <p style={{ fontSize: 'clamp(15px, 1.6vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '12px 0 0', textWrap: 'pretty' }}>{TOUR_EN.sub}</p>
+            <ul className="lp-tour-points" aria-label={TOUR_EN.pointsLabel}>
+              {TOUR_EN.points.map(t => <li key={t}>{t}</li>)}
+            </ul>
+            <p style={{ fontSize: 13, color: FAINT, lineHeight: 1.55, margin: '18px 0 0' }}>{TOUR_EN.note}</p>
+          </div>
         </div>
       </section>
 
@@ -322,6 +346,18 @@ export default async function LandingEn() {
           },
           websiteNode(),
           appNode(LANDING_EN.description),
+          {
+            '@type': 'VideoObject',
+            '@id': `${siteUrl(PATH)}#tour`,
+            name: TOUR_EN.videoTitle,
+            description: TOUR_EN.sub,
+            inLanguage: 'en',
+            thumbnailUrl: siteUrl(TOUR.poster),
+            contentUrl: siteUrl(TOUR.src),
+            uploadDate: TOUR.uploaded,
+            duration: TOUR.duration,
+            publisher: ORG_REF,
+          },
           {
             '@type': 'FAQPage',
             inLanguage: 'en',
