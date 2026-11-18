@@ -24,6 +24,7 @@ import {
   compareMonth, history, lastCompleteMonth, monthPhrase,
   type Basis, type Comparison, type MonthPoint, type Spend,
 } from '@/lib/expenses/compare';
+import { useAppEn } from '@/lib/i18n/appEn';
 
 interface Props {
   spends: readonly Spend[];
@@ -72,6 +73,7 @@ function BasisSwitch({ value, onChange, enabled, labels }: {
   enabled: Record<Basis, boolean>; labels: Record<Basis, string>;
 }) {
   const opts: Basis[] = ['previous_month', 'same_month_last_year'];
+  const C = useAppEn('expenses')?.compare;
   return (
     // ΤΥΛΙΓΕΤΑΙ ΑΝΤΙ ΝΑ ΒΓΕΙ ΕΞΩ. Με «Πολύ μεγάλο» κείμενο στα 320 οι δύο
     // επιλογές θέλουν περισσότερο πλάτος από όσο μένει και η δεύτερη κοβόταν
@@ -82,7 +84,7 @@ function BasisSwitch({ value, onChange, enabled, labels }: {
       {opts.map(id => (
         <ChipToggle key={id} on={value === id} disabled={!enabled[id]} shape="seg"
           onClick={() => onChange(id)}
-          title={enabled[id] ? undefined : 'Δεν υπάρχουν καταχωρημένες δαπάνες σε αυτή την περίοδο.'}>
+          title={enabled[id] ? undefined : C ? C.noData : 'Δεν υπάρχουν καταχωρημένες δαπάνες σε αυτή την περίοδο.'}>
           {labels[id]}
         </ChipToggle>
       ))}
@@ -112,11 +114,15 @@ const UP = 'var(--negative)';
 const DOWN = 'var(--positive)';
 
 function Drivers({ c }: { c: Comparison }) {
+  const EX = useAppEn('expenses');
+  const C = EX?.compare;
   // ΟΙ ΓΡΑΜΜΕΣ ΑΘΡΟΙΖΟΥΝ ΣΤΟΝ ΤΙΤΛΟ. Ό,τι δεν εξηγούν οι κατηγορίες που
   // δείχνονται μπαίνει σε μία τελευταία γραμμή, με το ίδιο σχήμα.
-  const rows = Math.abs(c.rest) >= 0.005
+  const rows = (Math.abs(c.rest) >= 0.005
     ? [...c.drivers, { slug: '__rest', label: 'Λοιπά', diff: c.rest, current: 0, base: 0, isNew: false, vanished: false }]
-    : c.drivers;
+    : c.drivers)
+    // Στα αγγλικά η ετικέτα από το slug της ταξινομίας· τα «Λοιπά» είναι το «Other».
+    .map(d => (EX && C ? { ...d, label: d.slug === '__rest' ? C.rest : EX.categories[d.slug] ?? d.label } : d));
   const max = Math.max(...rows.map(d => Math.abs(d.diff)), 1);
   const anyFlag = c.drivers.some(d => d.isNew || d.vanished);
   const flag: React.CSSProperties = { fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, fontWeight: 400, whiteSpace: 'nowrap' };
@@ -134,8 +140,8 @@ function Drivers({ c }: { c: Comparison }) {
           τη στήλη των ποσών, ώστε οι δύο ετικέτες να χωρούν και στα 320. */}
       <span aria-hidden />
       <span aria-hidden style={{ gridColumn: anyFlag ? '2 / 5' : '2 / 4', display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: -4 }}>
-        <span style={{ ...side, color: DOWN }}>− λιγότερα</span>
-        <span style={{ ...side, color: UP }}>+ περισσότερα</span>
+        <span style={{ ...side, color: DOWN }}>{C ? C.less : '− λιγότερα'}</span>
+        <span style={{ ...side, color: UP }}>{C ? C.more : '+ περισσότερα'}</span>
       </span>
       {rows.map(d => {
         const ratio = Math.min(Math.abs(d.diff) / max, 1);
@@ -159,7 +165,7 @@ function Drivers({ c }: { c: Comparison }) {
             <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', justifySelf: 'end' }}>
               <Eur value={d.diff} sign />
             </span>
-            {anyFlag && <span style={flag}>{d.isNew ? 'νέο' : d.vanished ? 'σταμάτησε' : ''}</span>}
+            {anyFlag && <span style={flag}>{d.isNew ? (C ? C.isNew : 'νέο') : d.vanished ? (C ? C.stopped : 'σταμάτησε') : ''}</span>}
           </Fragment>
         );
       })}
@@ -200,6 +206,9 @@ const HEAD_ROOM = 2 * LABEL_H + 4;
 
 function HistoryBars({ points, currentKey }: { points: MonthPoint[]; currentKey: string }) {
   const [hover, setHover] = useState<string | null>(null);
+  const C = useAppEn('expenses')?.compare;
+  // Στα αγγλικά η ετικέτα του μήνα από το κλειδί του («November 2026»).
+  const labelOf = (p: MonthPoint) => (C ? C.monthOf(p.key, -1) : p.label);
   const sel = points.find(p => p.key === hover) ?? null;
   const months = points.filter(p => p.total > 0).length;
   const avg = months > 0 ? points.reduce((s, p) => s + p.total, 0) / months : 0;
@@ -243,15 +252,15 @@ function HistoryBars({ points, currentKey }: { points: MonthPoint[]; currentKey:
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, minWidth: 0 }}>
           {sel ? (
             <>
-              <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', fontFamily: T.font.sans, whiteSpace: 'nowrap' }}>{sel.label}</span>
+              <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', fontFamily: T.font.sans, whiteSpace: 'nowrap' }}>{labelOf(sel)}</span>
               <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}><Eur value={sel.total} /></span>
               {sel.yoy !== null && Math.abs(sel.yoy) >= 1 && (
                 <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>
-                  <Eur value={sel.yoy} sign /> από πέρσι
+                  <Eur value={sel.yoy} sign /> {C ? C.fromLastYear : 'από πέρσι'}
                 </span>
               )}
             </>
-          ) : <span style={TT.label}>Δώδεκα μήνες</span>}
+          ) : <span style={TT.label}>{C ? C.twelve : 'Δώδεκα μήνες'}</span>}
         </div>
         {/* ΤΟ ΥΠΟΜΝΗΜΑ ΤΗΣ ΔΙΑΚΕΚΟΜΜΕΝΗΣ. Ο μέσος όρος διαιρεί με τους μήνες
             που ΕΧΟΥΝ δαπάνες, όχι με τους δώδεκα: οι μήνες πριν από την πρώτη
@@ -263,7 +272,7 @@ function HistoryBars({ points, currentKey }: { points: MonthPoint[]; currentKey:
           // έξω από την κάρτα. Η γραμμούλα μένει ενωμένη με την πρώτη λέξη.
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>
             <span aria-hidden style={{ width: 16, flex: 'none', borderTop: '1px dashed var(--text-tertiary)' }} />
-            <span>μέσος όρος{!gutter && <> <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--text-secondary)' }}>{fe(avg)}</span></>}{months < n ? ` σε ${months} μήνες με δαπάνες` : ''}</span>
+            <span>{C ? C.average : 'μέσος όρος'}{!gutter && <> <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--text-secondary)' }}>{fe(avg)}</span></>}{months < n ? (C ? C.overMonths(months) : ` σε ${months} μήνες με δαπάνες`) : ''}</span>
           </span>
         )}
       </div>
@@ -286,7 +295,7 @@ function HistoryBars({ points, currentKey }: { points: MonthPoint[]; currentKey:
               <div key={p.key}
                 onMouseEnter={() => setHover(p.key)} onMouseLeave={() => setHover(null)}
                 onFocus={() => setHover(p.key)} onBlur={() => setHover(null)}
-                tabIndex={0} aria-label={`${p.label}: ${fe(p.total)}`}
+                tabIndex={0} aria-label={`${labelOf(p)}: ${fe(p.total)}`}
                 className="exp-bar" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'default', minWidth: 0 }}>
                 <span style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', width: '100%', height: PLOT_H + HEAD_ROOM, borderBottom: '1px solid var(--series-axis)' }}>
                   {labelled.has(i) && (
@@ -308,7 +317,7 @@ function HistoryBars({ points, currentKey }: { points: MonthPoint[]; currentKey:
                   marginTop: 6, textAlign: 'center', fontSize: 'var(--fs-xs)', fontFamily: T.font.sans,
                   fontWeight: isSel || isCur ? 700 : 400,
                   color: isSel || isCur ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                }}>{MONTHS_SHORT[m]}</span>
+                }}>{C ? C.short(m) : MONTHS_SHORT[m]}</span>
               </div>
             );
           })}
@@ -350,7 +359,12 @@ export default function ExpenseCompare({ spends, today }: Props) {
 
   // Αιτιατική, γιατί συνεχίζουν την επικεφαλίδα «Τον Αύγουστο σε σχέση με…».
   // Ο χρόνος μπαίνει μόνο όταν διαφέρει από τον τρέχοντα, όπως παντού αλλού.
-  const basisLabels: Record<Basis, string> = {
+  const EX = useAppEn('expenses');
+  const C = EX?.compare;
+  const basisLabels: Record<Basis, string> = C ? {
+    previous_month: C.monthOf(prev.baseKey, Number(currentKey.slice(0, 4))),
+    same_month_last_year: C.monthOf(year.baseKey, Number(currentKey.slice(0, 4))),
+  } : {
     previous_month: `τον ${monthPhrase(prev.baseKey, Number(currentKey.slice(0, 4)))}`,
     same_month_last_year: `τον ${monthPhrase(year.baseKey, Number(currentKey.slice(0, 4)))}`,
   };
@@ -377,7 +391,7 @@ export default function ExpenseCompare({ spends, today }: Props) {
               εικονοστοιχεία δεξιά, σαν άλλη σειρά. Κολλημένα δίπλα της
               διαβάζονται ως συνέχεια της φράσης. */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
-            <span style={TT.label}>Τον {monthPhrase(currentKey)} σε σχέση με</span>
+            <span style={TT.label}>{C ? C.vs(currentKey) : <>Τον {monthPhrase(currentKey)} σε σχέση με</>}</span>
             <BasisSwitch value={active} onChange={setBasis} enabled={enabled} labels={basisLabels} />
           </div>
 
@@ -434,7 +448,7 @@ export default function ExpenseCompare({ spends, today }: Props) {
               φτάνει χωρίς κάρτα, χωρίς ράβδους και χωρίς επικεφαλίδα. */}
           {c.drivers.length === 0 && (
             <p style={{ fontSize: 'var(--fs-base)', lineHeight: 1.55, color: 'var(--text-secondary)', fontFamily: T.font.sans, margin: '0 0 12px' }}>
-              {c.flat
+              {C ? (c.flat ? C.flat : C.spread) : c.flat
                 ? 'Χωρίς ουσιαστική αλλαγή.'
                 : 'Η διαφορά είναι μοιρασμένη: καμία κατηγορία δεν ξεχωρίζει.'}
             </p>
@@ -445,7 +459,7 @@ export default function ExpenseCompare({ spends, today }: Props) {
               {c.caveats.map((t, i) => (
                 <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                   <span aria-hidden style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--text-tertiary)', flexShrink: 0, marginTop: 8 }} />
-                  <span style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>{t}</span>
+                  <span style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>{C && c.oneOff ? C.oneOff(c.oneOff.dir, c.oneOff.title || (EX ? EX.categoryEn(c.oneOff.category) : ''), c.baseKey) : t}</span>
                 </div>
               ))}
             </div>
@@ -453,7 +467,7 @@ export default function ExpenseCompare({ spends, today }: Props) {
 
           {c.drivers.length > 0 && (
             <div style={{ marginTop: 14 }}>
-              <div style={{ ...TT.label, marginBottom: 10 }}>Πού πήγε η διαφορά</div>
+              <div style={{ ...TT.label, marginBottom: 10 }}>{C ? C.where : 'Πού πήγε η διαφορά'}</div>
               <Drivers c={c} />
             </div>
           )}
