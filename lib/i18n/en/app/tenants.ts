@@ -20,7 +20,7 @@
 // ημερομηνίες έναρξης μέτρων από τις σταθερές τους, ποτέ με το χέρι.
 // ═══════════════════════════════════════════════════════════════════════════
 import { APP_FMT } from '@/lib/i18n/en/app/format';
-import { MONTHS_EN, longDateEn } from '@/lib/i18n/en/dates';
+import { MONTHS_EN, longDateEn, monthYearEn } from '@/lib/i18n/en/dates';
 import { lawEn, firstArticleEn } from '@/lib/i18n/en/guides/cite';
 import { FIRST_MONTH_BANK_RECEIPT, FIRST_YEAR_BANK_RECEIPT } from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
@@ -98,6 +98,20 @@ export const TENANTS_EN = {
   days,
   ask,
   closeError: 'Close error message',
+  /** Οι κάρτες ΑΑΔΕ (components/AadeLink.tsx): η διαδρομή στο myAADE μένει ελληνική. */
+  aade: {
+    labels: { lease: 'Lease declaration', income: 'Income tax return' } as Record<string, string>,
+    path: 'On myAADE, AADE’s online portal (menus in Greek): ',
+    login: 'needs your TAXISnet credentials',
+  },
+  /** «2026-01-15» → «28 February 2026»: η τελευταία ημέρα του επόμενου μήνα (προθεσμία δήλωσης μίσθωσης). */
+  lastDayNextMonth: (iso: string) => {
+    const m = /^(\d{4})-(\d{2})/.exec(iso);
+    if (!m) return '';
+    const y = Number(m[1]), mo = Number(m[2]);
+    const last = new Date(Date.UTC(y, mo + 1, 0));
+    return `${last.getUTCDate()} ${MONTHS_EN[last.getUTCMonth()]} ${last.getUTCFullYear()}`;
+  },
   /** «Τι δεν έγινε» για τα σφάλματα της βάσης· ο λόγος από το `errors` (lib/i18n/en/app/errors.ts). */
   err: {
     commNotRead: 'The communication history didn’t load',
@@ -577,6 +591,82 @@ export const TENANTS_EN = {
     history: 'Property history',
     count: (n: number) => count(n, 'request', 'requests'),
     greekNote: 'Messages to the contractor are in Greek.',
+  },
+
+  // ── Αναπροσαρμογή (RentAdjustView) και ανανέωση (RenewalView) ───────────
+  adjust: {
+    source: (date: string) => `ELSTAT, consumer price index change · last updated ${date}`,
+    monthYear: monthYearEn,
+    period: (ym: string) => {
+      const [y, m] = ym.split('-').map(Number);
+      const endM = m === 1 ? 12 : m - 1, endY = m === 1 ? y - 1 : y;
+      return `${MONTHS_EN[m - 1]} ${y - 1} to ${MONTHS_EN[endM - 1]} ${endY}`;
+    },
+    /** «the 3% cap of Article 59, Law 5255/2025 for 2026». */
+    capPhrase: (rate: string, law: string, year: string) => `the ${rate} cap of ${firstArticleEn(law)}, ${lawEn(law)} for ${year}`,
+    capLine: (basis: string, pct: string, phrase: string) => `${basis} ${pct}: ${phrase} applies`,
+    basis: { custom: 'Lease percentage', cpi75: '75% of CPI', cpi: 'CPI' } as Record<string, string>,
+    capNote: (commercial: boolean, phrase: string) => ` ${commercial ? 'For this existing commercial lease' : 'For an existing commercial lease'}, ${phrase} also applies.`,
+    whatTitle: 'What the consumer price index (CPI) is',
+    what: ['The ', 'consumer price index (CPI)', ' is the official index ELSTAT, Greece’s statistics authority, uses to measure the yearly change in the cost of living. The rent is increased however and whenever the lease’s rent increase clause says, which sets the percentage or the index and how often.'] as readonly string[],
+    facts: [['Legal basis', 'Lease clause'], ['How often', 'As the lease says'], ['Latest index', '']] as readonly (readonly [string, string])[],
+    check: 'Check at the source',
+    expired: (date: string) => `The lease ended on ${date}. Renew it before any rent increase.`,
+    expiring: (d: number, date: string) => `The lease ends ${d === 0 ? 'today' : d === 1 ? 'tomorrow' : `in ${days(d)}`} (${date}).`,
+    calc: 'Rent increase calculator',
+    current: 'Current monthly rent',
+    ends: (date: string) => `Ends: ${date}`,
+    month: 'Effective month',
+    monthOpt: (month: string, idx: string | null) => (idx === null ? `${month}, no index` : `${month}, CPI ${idx}`),
+    noIndex: (month: string, latest: string) => `For ${month} we have no published index yet. The latest we have is for ${latest}. Enter the percentage your lease sets. The notice will state it as a percentage you set, not as ELSTAT data.`,
+    custom: 'Lease percentage',
+    share75: '75% of the change (commercial lease)',
+    pct: 'Increase percentage (%)',
+    pctAria: 'Increase percentage',
+    pctHint: 'As the lease states it, for example three and a half.',
+    historyTitle: 'CPI: consumer price index, the basis for rent increases',
+    history: 'CPI history',
+    currentShort: 'Current rent',
+    newRent: 'New rent',
+    rowPct: (custom: boolean, idx: string, share75: boolean) => (custom ? 'Lease percentage' : `CPI ${idx}${share75 ? ' (75%)' : ''}`),
+    applied: 'Applied (legal cap)',
+    perMonth: 'Change per month',
+    perYear: 'Change per year',
+    customNote: 'A percentage you set based on the lease. The notice will state it as such.',
+    capped: (line: string, rent: string, uncapped: string) => `${line}. The new rent is ${rent} instead of ${uncapped}. The notice says the same.`,
+    needsType: (home: string, line: string, commercial: string) => `The lease isn’t marked as residential or commercial. For a residential lease the new rent is ${home}. If it is an existing commercial lease, ${line} and the new rent is ${commercial}. Set the lease type in the tenant’s details to print the notice.`,
+    setTypeFirst: 'Set the lease type first',
+    print: 'Print the rent increase notice (in Greek)',
+    pctFirst: 'Enter the increase percentage first',
+    noOrigin: 'The notice goes to another person and stays in their records. We don’t print it with a figure that has no source. Enter the lease percentage or choose an effective month with a published index.',
+    links: 'Obligations and links',
+  },
+  renewal: {
+    basisMarket: (perSqm: string, sqm: string) => `based on the average price of ${perSqm}/m² in the area times the property’s ${sqm} m²`,
+    cpiTitle: 'Based on CPI',
+    current: 'Current rent',
+    withCpi: (month: string, pct: string) => `With CPI ${month} (${pct})`,
+    cpiLabel: 'With CPI',
+    noIndex: 'no confirmed index',
+    cpiNote: ['Yearly increase based on CPI, ', 'if the lease provides for it', '. It isn’t a cap: for 2026 there is no general state limit on residential rents. '] as readonly string[],
+    marketTitle: 'Based on the market / area',
+    avg: (n: number) => `Average price per m² (${count(n, 'comparable', 'comparables')})`,
+    mine: (sqm: string) => `× your ${sqm} m²`,
+    gap: 'Current rent difference',
+    below: 'The current rent is below the area estimate for your size. Any increase in an active residential lease only happens through a rent increase clause or a new agreement.',
+    above: 'The current rent is at or above the area estimate for your size.',
+    noComps: (tab: string) => `No comparable rents are recorded for the area, so we don’t suggest an amount. You can see what your area fetches in the “${tab}” tab.`,
+    noSqm: (n: number) => `There ${n === 1 ? 'is 1 comparable' : `are ${n} comparables`}, but the property has no floor area recorded. Without your m², the area average says nothing about your property, so we don’t suggest an amount.`,
+    compsNoSqm: (n: number) => `The ${count(n, 'comparable has', 'comparables have')} no floor area, so there is no price per m². Without it, a raw average would compare unlike properties.`,
+    untilThen: ' Until then, use the proposal based on the law (CPI).',
+    proposal: 'Renewal proposal to send',
+    noBasis: 'There is no basis for a proposed amount: no price per m² from comparables and no confirmed CPI. Enter a percentage in the calculator below to draft a notice.',
+    greekNote: 'The proposal text is in Greek, as the tenant will read it.',
+    copy: 'Copy',
+    email: 'Email',
+    variance: (range: string | null, mine: string | null) => `Careful with the comparison: ${[range, mine].filter(Boolean).join(' and ')}. Price per m² isn’t linear in size; check the listings before you send a proposal.`,
+    range: (min: number, max: number) => `the comparables range from ${min} to ${max} m²`,
+    mineVs: (mine: number, avg: number) => `your property is ${mine} m² while their average is ${avg} m²`,
   },
 
   // ── «Είσπραξη ενοικίου» από την Επισκόπηση (RentReceived) ────────────────

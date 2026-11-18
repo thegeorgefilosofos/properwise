@@ -254,7 +254,14 @@ export const hasMoreData = (f:ReturnType<typeof blank>):boolean => !!(
  * σχήμα ακινήτου, όχι αγγελίας. Ίδιο κατώφλι 1,6× και ίδια λογική «προειδοποιούμε
  * αντί να κρύβουμε». Αν το `varianceWarning` γίνει export, αυτή η συνάρτηση φεύγει.
  */
-export function compsVarianceWarning(sqms:number[], mySqm:number|null):string|null {
+import type { TenantsEn } from '@/lib/i18n/en/app/tenants';
+export function compsVarianceWarning(sqms:number[], mySqm:number|null, en?:TenantsEn['renewal']):string|null {
+  if(en){
+    let range:string|null=null, mine:string|null=null;
+    if(sqms.length>=2){ const min=Math.min(...sqms), max=Math.max(...sqms); if(max/min>=1.6) range=en.range(Math.round(min),Math.round(max)); }
+    if(mySqm&&sqms.length){ const avg=sqms.reduce((a,n)=>a+n,0)/sqms.length; if(Math.max(avg/mySqm, mySqm/avg)>=1.6) mine=en.mineVs(Math.round(mySqm),Math.round(avg)); }
+    return range||mine?en.variance(range,mine):null;
+  }
   const reasons:string[]=[];
   if(sqms.length>=2){
     const min=Math.min(...sqms), max=Math.max(...sqms);

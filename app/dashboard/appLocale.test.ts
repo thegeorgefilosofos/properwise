@@ -34,7 +34,9 @@ import type { StartPanelState } from '@/lib/home/start';
 import { useAppEn } from '@/lib/i18n/appEn';
 import { TenantSummary } from './components/TabTenant';
 import { PaymentsView, DepositView } from './components/TabTenantMoney';
-import { DashboardView } from './components/TabTenantCare';
+import { DashboardView, CommView, LegalTaxView, DamagesView, MaintenanceView } from './components/TabTenantCare';
+import { RenewalView } from './components/TabTenantMoney';
+import type { PropertyRentTax } from '@/lib/facts/rentTax';
 import { PaymentBars, MissingCriticalBar, FilePickRow, leaseAlerts } from './components/TabTenantParts';
 import { ServicesEditor } from './components/TabTenantHelpers';
 import { PeaLeaseNotice } from './components/PeaLeaseNotice';
@@ -71,8 +73,21 @@ const noStyles = (html: string) => {
     i = c + 1;
   }
 };
+/** Ό,τι σημειώνεται `lang="el"` είναι ελληνικό επίτηδες (μενού του myAADE, κείμενο προς τον ενοικιαστή). */
+const noGreekMarked = (h: string) => {
+  let out = '', i = 0;
+  for (;;) {
+    const a = h.indexOf(' lang="el"', i);
+    if (a < 0) return out + h.slice(i);
+    const open = h.lastIndexOf('<', a), tag = /^<(\w+)/.exec(h.slice(open))?.[1] ?? 'span';
+    const gt = h.indexOf('>', a), end = h.indexOf(`</${tag}>`, gt);
+    out += h.slice(i, gt + 1);
+    if (end < 0) return out;
+    i = end;
+  }
+};
 // Ό,τι έγραψε ο χρήστης (όνομα ακινήτου, ενοικιαστή, σημείωση) μένει όπως το έγραψε.
-const strip = (h: string) => noStyles(h).split('Ελληνικά').join('').split('Σπίτι Κηφισιά').join('').split('Μαρία Παπαδοπούλου').join('');
+const strip = (h: string) => noGreekMarked(noStyles(h)).split('Ελληνικά').join('').split('Σπίτι Κηφισιά').join('').split('Μαρία Παπαδοπούλου').join('');
 
 async function main() {
   // ── Ο κανόνας της γλώσσας ──────────────────────────────────────────────
@@ -212,6 +227,14 @@ async function main() {
     ['επισκόπηση ενοικιαστή', () => createElement(DashboardView, { tenant: tenantRow, payments, propertyCount: 1 })],
     ['είσπραξη ενοικίων', () => createElement(PaymentsView, { tenant: tenantRow, propertyId: 'p1', userId: 'u1', payments, onRefresh: nav, plan: 'agency' })],
     ['είσπραξη χωρίς δόσεις', () => createElement(PaymentsView, { tenant: tenantRow, propertyId: 'p1', userId: 'u1', payments: [], onRefresh: nav })],
+    ['επικοινωνία', () => createElement(CommView, { tenant: tenantRow, propertyId: 'p1', userId: 'u1' })],
+    ['νομικά και φόρος', () => createElement(LegalTaxView, { tenant: tenantRow, propertyCount: 2, rentTax: { income: { annual: 7800, estimated: true }, tax: 900, consolidated: { count: 2, totalTaxable: 12000 } } as unknown as PropertyRentTax })],
+    ['νομικά, επαγγελματική με μετρητά', () => createElement(LegalTaxView, { tenant: { ...tenantRow, lease_category: 'commercial', e_payment: false } as Tenant, propertyCount: 1, rentTax: { income: { annual: 7800, estimated: false }, tax: 900, consolidated: null } as unknown as PropertyRentTax })],
+    ['φθορές', () => createElement(DamagesView, { tenant: tenantRow, propertyId: 'p1', userId: 'u1', damages: [{ id: 'd1', tenant_id: 't1', property_id: 'p1', user_id: 'u1', occurred_on: '2026-03-01', description: 'Μαρία Παπαδοπούλου', cost: 80, charged_to_tenant: true, repaired: true, repaired_on: '2026-03-05', notes: null, created_at: '2026-03-01' }], onRefresh: nav })],
+    ['άδειες φθορές', () => createElement(DamagesView, { tenant: tenantRow, propertyId: 'p1', userId: 'u1', damages: [], onRefresh: nav })],
+    ['αιτήματα βλάβης', () => createElement(MaintenanceView, { tenant: tenantRow, propertyId: 'p1', userId: 'u1', requests: [{ id: 'm1', property_id: 'p1', user_id: 'u1', tenant_id: 't1', title: 'Μαρία Παπαδοπούλου', description: null, contact: null, category: null, status: 'in_progress', resolved_at: null, photos: null, assignee_name: null, assignee_contact: null, created_at: '2026-10-01' }], others: [{ id: 'm2', property_id: 'p1', user_id: 'u1', tenant_id: 't0', title: 'Μαρία Παπαδοπούλου', description: null, contact: null, category: null, status: 'done', resolved_at: '2026-02-01', photos: null, assignee_name: null, assignee_contact: null, created_at: '2026-01-01' }], onRefresh: nav })],
+    ['ανανέωση και αναπροσαρμογή', () => createElement(RenewalView, { tenant: { ...tenantRow, lease_end: '2026-11-30' } as Tenant, userId: 'u1', comps: [], sqm: null })],
+    ['ανανέωση, επαγγελματική με συγκρίσιμα', () => createElement(RenewalView, { tenant: { ...tenantRow, lease_category: 'commercial', lease_start: '2020-01-01' } as Tenant, userId: 'u1', comps: [{ id: 'c1', property_id: 'p1', title: 'x', area: null, sqm: 50, rent: 600, rent_per_sqm: null, listing_type: 'rent', source: null, url: null }, { id: 'c2', property_id: 'p1', title: 'y', area: null, sqm: 120, rent: 1100, rent_per_sqm: null, listing_type: 'rent', source: null, url: null }], sqm: 60 })],
     ['εγγύηση', () => createElement(DepositView, { tenant: tenantRow, payments, damages: [], onReturned: nav })],
     ['είσπραξη από την Επισκόπηση', () => createElement(RentReceived, { onClose: nav, lines: rentLines, supabase: supa, propertyId: 'p1', tenantId: 't1', leaseViaBank: false, today: '2026-10-15', onSaved: nav })],
     ['μία δόση από την Επισκόπηση', () => createElement(RentReceived, { onClose: nav, lines: rentLines.slice(0, 1), supabase: supa, propertyId: 'p1', tenantId: 't1', leaseViaBank: true, today: '2026-10-15', onSaved: nav })],

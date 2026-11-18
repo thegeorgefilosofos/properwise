@@ -544,7 +544,7 @@ export function LegalTaxView({ tenant, propertyCount, rentTax }:{ tenant:Tenant;
                 σε δικό μας φορέα κειμένου μέσα στο InfoBlock — το InfoBlock το
                 μοιράζονται κι άλλες καρτέλες. Ο συλλαβισμός πάει μαζί του:
                 χωρίς αυτόν εννιά γραμμές κλείνουν τεντώνοντας τα κενά. */}
-            <div className="po-just">{W?W.decl(tenant.lease_start?fmtD(tenant.lease_start):null,tenant.lease_start?lastDayNextMonth(tenant.lease_start):null):hy(<>Κάθε νέα μίσθωση, καθώς και κάθε τροποποίηση ή λύση, δηλώνεται ηλεκτρονικά στην ΑΑΔΕ έως το τέλος του επόμενου μήνα από την έναρξη ή τη μεταβολή.{tenant.lease_start?` Για έναρξη ${fmtD(tenant.lease_start)}, προθεσμία δήλωσης έως ${lastDayNextMonth(tenant.lease_start)}.`:''} Χωρίς τη δήλωση δεν αναγνωρίζεται φορολογικά η μίσθωση. Μετά την υποβολή, ο μισθωτής (και τυχόν συνιδιοκτήτες) ειδοποιείται μέσω myAADE/email και έχει 30 ημέρες να την αποδεχθεί ή να την απορρίψει — αλλιώς θεωρείται σιωπηρά αποδεκτή (ισχύς από 02/06/2025)· ενημέρωσέ τον εγκαίρως. Επιβεβαίωσε την ακριβή προθεσμία στην ΑΑΔΕ (σύνδεσμος πιο κάτω).</>)}</div>
+            <div className="po-just">{W?W.decl(tenant.lease_start?fmtD(tenant.lease_start):null,tenant.lease_start&&E?E.lastDayNextMonth(tenant.lease_start):null):hy(<>Κάθε νέα μίσθωση, καθώς και κάθε τροποποίηση ή λύση, δηλώνεται ηλεκτρονικά στην ΑΑΔΕ έως το τέλος του επόμενου μήνα από την έναρξη ή τη μεταβολή.{tenant.lease_start?` Για έναρξη ${fmtD(tenant.lease_start)}, προθεσμία δήλωσης έως ${lastDayNextMonth(tenant.lease_start)}.`:''} Χωρίς τη δήλωση δεν αναγνωρίζεται φορολογικά η μίσθωση. Μετά την υποβολή, ο μισθωτής (και τυχόν συνιδιοκτήτες) ειδοποιείται μέσω myAADE/email και έχει 30 ημέρες να την αποδεχθεί ή να την απορρίψει — αλλιώς θεωρείται σιωπηρά αποδεκτή (ισχύς από 02/06/2025)· ενημέρωσέ τον εγκαίρως. Επιβεβαίωσε την ακριβή προθεσμία στην ΑΑΔΕ (σύνδεσμος πιο κάτω).</>)}</div>
           </InfoBlock>
           <InfoBlock title={W?W.bankTitle:'Είσπραξη μέσω τράπεζας'} tone={viaBank?'var(--positive)':'var(--negative)'}>
             {/* Ο αρνητικός κλάδος είναι 264 χαρακτήρες σε κουτί 398, τέσσερις
@@ -610,7 +610,7 @@ export function LegalTaxView({ tenant, propertyCount, rentTax }:{ tenant:Tenant;
               :'Μίσθωση κατοικίας: δεν οφείλεται Ψηφιακό Τέλος Συναλλαγής.')}</div>
           </InfoBlock>
           <div style={{ marginTop:16 }}>
-            <AadeLinks actions={['lease','income']}/>
+            <AadeLinks actions={['lease','income']} en={E?.aade}/>
           </div>
         </div>
       </div>
