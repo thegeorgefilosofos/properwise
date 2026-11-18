@@ -51,6 +51,7 @@ import { useAppEn } from '@/lib/i18n/appEn';
 import { useLocale } from '@/lib/i18n/useLocale';
 import { useAccountLocale } from './components/shell/useAccountLocale';
 import { MYAADE_OPEN_EVENT, type MyaadeOpenDetail, type BulkFromScan } from './components/myaadeOpen';
+import { ACCOUNTANT_SEND_EVENT, focusAccountantSend } from './components/accountantSend';
 import { useAppointmentReminders } from './components/useAppointmentReminders';
 import FeatureLock, { LockBadge } from './components/FeatureLock';
 import { PLANS } from '@/lib/billing/plans';
@@ -137,6 +138,13 @@ export default function Dashboard() {
     window.addEventListener(MYAADE_OPEN_EVENT, open);
     return () => window.removeEventListener(MYAADE_OPEN_EVENT, open);
   }, []);
+  // «Στείλε στον λογιστή σου» από την κάρτα της Επισκόπησης ή τις Ρυθμίσεις:
+  // ανοίγει η Λογιστική και το κουμπί έρχεται στην οθόνη (accountantSend.ts).
+  useEffect(() => {
+    const go = () => { setNav('accounting'); focusAccountantSend(); };
+    window.addEventListener(ACCOUNTANT_SEND_EVENT, go);
+    return () => window.removeEventListener(ACCOUNTANT_SEND_EVENT, go);
+  }, [setNav]);
 
   // «ΔΕΚΑ ΛΕΠΤΑ ΠΡΙΝ ΑΠΟ ΚΑΘΕ ΡΑΝΤΕΒΟΥ»: σε κάθε καρτέλα, για όλα τα ακίνητα.
   useAppointmentReminders(user?.id);
@@ -738,7 +746,7 @@ export default function Dashboard() {
                   onNavigate={(t)=> t==='scan' ? setQuickAddOpen(true) : t==='add' ? tryAddProperty() : t==='edit-basics' ? (setEditFocus('basics'), setEditProperty(selected)) : setNav(t)}
                   onPreview={()=>setShowPreview(true)}
                   onTour={!tourDone ? ()=>setTourOpen(true) : undefined} />} agendaExclude={agendaCoveredByStart(startState)} properties={properties} userId={user.id} onNavigate={(t)=> t==='scan' ? setQuickAddOpen(true) : t==='edit' ? setEditProperty(selected) : t==='edit-rent' ? (setEditFocus('rent'), setEditProperty(selected)) : t==='edit-enfia' ? (setEditFocus('enfia'), setEditProperty(selected)) : setNav(t)} tabVisible={navVisible} profileType={effProfileType} legalForm={taxForm}/>}
-              {nav==='finances'  && <TabFinances key={selected.id} propertyId={selected.id} userId={user.id} propertyName={selected.name} properties={financeProperties} profileType={effProfileType} legalForm={taxForm} onScan={()=>setQuickAddOpen(true)} openAddNonce={manualExpense} handledAddNonce={handledExpense} onAddHandled={setHandledExpense} />}
+              {nav==='finances'  && <TabFinances key={selected.id} propertyId={selected.id} userId={user.id} propertyName={selected.name} properties={financeProperties} profileType={effProfileType} legalForm={taxForm} onScan={()=>setQuickAddOpen(true)} onNewExpense={()=>setManualExpense(n=>n+1)} openAddNonce={manualExpense} handledAddNonce={handledExpense} onAddHandled={setHandledExpense} />}
               {nav==='calendar'  && <TabCalendar key={selected.id} propertyId={selected.id} userId={user.id} openTasks={checklistAlerts} onOpenTasks={()=>setNav('checklist')}/>}
               {/* ═══ Η ΒΡΑΧΥΧΡΟΝΙΑ ΣΤΕΚΕΤΑΙ ΜΟΝΗ ΤΗΣ ═══════════════════════════
                   Ζούσε μέσα στην καρτέλα «Πελάτης», που απαιτεί πακέτο

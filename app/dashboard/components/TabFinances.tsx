@@ -54,6 +54,14 @@ interface Props {
   // ζει στο entitlements, όχι σε παράμετρο που κανείς δεν κοιτάζει.
   /** Ανοίγει το παράθυρο σάρωσης της εφαρμογής. */
   onScan?: () => void;
+  /**
+   * Ανοίγει ΚΑΤΕΥΘΕΙΑΝ τη φόρμα της δαπάνης (17/11/2026). Το «Νέα δαπάνη»
+   * άνοιγε πρώτα τον επιλογέα «φωτογραφία, αρχείο ή χειροκίνητα» και μετά τη
+   * φόρμα, η οποία όμως έχει ήδη στην κορυφή της τη ζώνη «Φωτογράφισε ή ανέβασε
+   * αρχείο». Ένα παράθυρο και ένα πάτημα λιγότερα: 6 → 5 κλικ ως την
+   * αποθήκευση.
+   */
+  onNewExpense?: () => void;
   openAddNonce?: number;
   /** Το τελευταίο αίτημα που άνοιξε ήδη φόρμα. Δες το ExpenseLedger. */
   handledAddNonce?: number;
@@ -83,7 +91,7 @@ const writeView = (v: View) => {
 
 export default function TabFinances({
   propertyId, userId, propertyName, properties,
-  profileType = 'individual', legalForm = 'individual', onScan, openAddNonce, handledAddNonce, onAddHandled,
+  profileType = 'individual', legalForm = 'individual', onScan, onNewExpense, openAddNonce, handledAddNonce, onAddHandled,
 }: Props) {
   const [view, setViewState] = useState<View>(readView);
   // Τα αγγλικά των Δαπανών και το όνομα της καρτέλας, ή `null` στα ελληνικά.
@@ -183,7 +191,7 @@ export default function TabFinances({
         // οθόνης. Στο `right` της κεφαλίδας κάθεται όπως σε κάθε άλλη καρτέλα:
         // δεξιά του τίτλου στον υπολογιστή, κάτω από αυτόν στο κινητό.
         <PageTitle title={tabName} sub={E ? E.sub : 'Ό,τι πλήρωσες και ό,τι περιμένει πληρωμή, για αυτό το ακίνητο.'}
-          right={onScan ? <Btn variant="primary" size="lg" onClick={onScan}>{E ? E.newExpense : 'Νέα δαπάνη'}</Btn> : undefined} />
+          right={(onNewExpense ?? onScan) ? <Btn variant="primary" size="lg" onClick={onNewExpense ?? onScan}>{E ? E.newExpense : 'Νέα δαπάνη'}</Btn> : undefined} />
       )}
       {contracts
         ? <TabBills propertyId={propertyId} userId={userId} legalForm={legalForm} />
@@ -202,8 +210,10 @@ export default function TabFinances({
                   onFiled={() => setLedgerKey(k => k + 1)} />
                 <BankLinkRow />
               </>} />
-          // Η «Νέα δαπάνη» και στον Προϋπολογισμό: ίδιος επιλογέας, ίδια θέση.
-          : <BillsBudget propertyId={propertyId} userId={userId} profileType={profileType} onScan={onScan}
+          // Η «Νέα δαπάνη» και στον Προϋπολογισμό: ίδια φόρμα, ίδια θέση. Η
+          // φόρμα ζει στις Δαπάνες, οπότε η όψη αλλάζει πρώτα.
+          : <BillsBudget propertyId={propertyId} userId={userId} profileType={profileType}
+              onScan={onNewExpense ? () => { setView('expenses'); onNewExpense(); } : onScan}
               onOpenLedger={f => { setLedgerFilter(f); setView('expenses'); if (typeof window !== 'undefined') window.scrollTo({ top: 0 }); }} />}
     </div>
   );

@@ -27,7 +27,7 @@ import { TextInput, CustomSelect } from '@/app/dashboard/components/UIComponents
 import { ActionMenu } from '@/components/ActionMenu';
 import {
   myFirm, myFirmInvites, answerInvite, acceptFirmTerms, termsGap, clientLevels, assign, dropFirmClient, saveFirm,
-  filterClients, entryKinds, canAct, canManage, reasonText, ENTRY_LABEL, ROLE_LABEL,
+  filterClients, defaultStatusFilter, entryKinds, canAct, canManage, reasonText, ENTRY_LABEL, ROLE_LABEL,
   type Firm, type FirmInvite, type ClientLevel, type Scope, type StatusFilter, type FirmKind,
 } from '@/lib/data/firms';
 import FirmEntry, { type EntryKind } from './FirmEntry';
@@ -409,6 +409,14 @@ export default function AccountantWorkspace() {
     const keyed = shown.map(x => ({ ...x, ownerId: x.c.ownerId, assignees: x.c.assignees, blocking: x.ready.blocking > 0, complete: x.gaps.length === 0 }));
     return filterClients(keyed, levels, { scope, assignee, status });
   }, [team, shown, levels, scope, assignee, status]);
+  // Η ΠΡΩΤΗ ΕΙΚΟΝΑ ΜΕ ΠΟΛΛΟΥΣ ΠΕΛΑΤΕΣ: ΟΙ ΕΚΚΡΕΜΟΤΗΤΕΣ (defaultStatusFilter).
+  // Μία φορά, όταν φορτωθεί η λίστα· μετά το φίλτρο είναι του χρήστη. Ρύθμιση
+  // στην απόδοση, όχι σε εφέ, όπως και τα υπόλοιπα της σελίδας.
+  const [statusInit, setStatusInit] = useState(false);
+  if (!statusInit && team && rows && shown.length > 0) {
+    setStatusInit(true);
+    setStatus(defaultStatusFilter(shown.length, shown.filter(x => x.ready.blocking > 0).length));
+  }
   const activeMembers = firm?.members.filter(m => m.status === 'active' && m.userId) ?? [];
   // ΤΑ ΦΙΛΤΡΑ: ΟΛΑ ΣΤΗ ΣΕΙΡΑ Ή ΕΝΑ ΑΝΑ ΣΕΙΡΑ, ΠΟΤΕ ΔΥΟ ΚΑΙ ΕΝΑ ΜΟΝΟ ΤΟΥ.
 
@@ -659,13 +667,18 @@ export default function AccountantWorkspace() {
       {/* Η ΜΑΖΙΚΗ ΑΝΑΘΕΣΗ. Εμφανίζεται μόλις επιλεγεί πελάτης, στη θέση της, όχι
           σε δεύτερη οθόνη. */}
       {team && manager && picked.size > 0 && (
-        <Card gap={false} className="po-noprint">
+        <Card gap={false} className="po-noprint bulk-sticky">
+          {/* ΚΟΛΛΑΕΙ ΣΤΗΝ ΚΟΡΥΦΗ ΤΗΣ ΟΘΟΝΗΣ (17/11/2026). Η μπάρα καθόταν πάνω από
+              τη λίστα και μόλις ο λογιστής κατέβαινε να διαλέξει τον έβδομο πελάτη
+              χανόταν: για να πατήσει «Ανάθεση» ανέβαινε ξανά. Τώρα μένει ορατή
+              όσο κυλά η λίστα. */}
           {/* ΜΙΑ ΟΜΑΔΑ ΚΙΝΗΣΕΩΝ, ΟΧΙ ΤΡΙΑ ΣΧΗΜΑΤΑ. Ηταν «Ανάθεση» με περίγραμμα,
               «Αφαίρεση ανάθεσης» σβηστό κείμενο και «Ακύρωση επιλογής» έντονο
               κείμενο. Τώρα: κύριο (ανοίγει μόλις διαλεχτεί μέλος), δευτερεύον,
               ήσυχο στο τέλος, ίδιο ύψος με τον επιλογέα. Στο τηλέφωνο πλήθος και
               επιλογέας σε μία σειρά, οι κινήσεις από κάτω σε όλο το πλάτος. */}
-          <style>{`.bulk-bar{display:flex;flex-wrap:wrap;align-items:center;gap:${T.sp.xs}px ${T.sp.lg}px}
+          <style>{`.bulk-sticky{position:sticky;top:${T.sp.sm}px;z-index:2}
+.bulk-bar{display:flex;flex-wrap:wrap;align-items:center;gap:${T.sp.xs}px ${T.sp.lg}px}
 .bulk-pick{display:flex;align-items:center;gap:${T.sp.md}px;flex:1 1 320px;min-width:0}
 .bulk-acts{display:flex;align-items:center;gap:${T.sp.sm}px;margin-left:auto}
 @media (max-width:560px){.bulk-acts{width:100%;margin-left:0}.bulk-acts>*{flex:1 1 auto}}`}</style>

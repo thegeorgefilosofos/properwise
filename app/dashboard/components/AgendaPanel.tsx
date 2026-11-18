@@ -42,7 +42,8 @@
 import type { ReactNode } from 'react';
 import { T, fe } from '@/components/Theme';
 import { ListChecks } from 'lucide-react';
-import { itemDue, overdueCount, type AgendaItem, type DueParts } from '@/lib/home/agenda';
+import { itemDue, overdueCount, ENFIA_IMPORT_TAB, type AgendaItem, type DueParts } from '@/lib/home/agenda';
+import { openMyaadeImport } from './myaadeOpen';
 import { useAppEn } from '@/lib/i18n/appEn';
 
 /** Ο τίτλος της λίστας. Σταθερά, γιατί τον αναφέρουν οδηγίες άλλων οθονών (guard-dangling-refs). */
@@ -178,7 +179,7 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
                       </span>
                     )}
                     {it.action && !toCalendar && (
-                      <button type="button" className="agenda-go" onClick={() => onNavigate(it.action!.tab)}>
+                      <button type="button" className="agenda-go" onClick={() => it.action!.tab === ENFIA_IMPORT_TAB ? openMyaadeImport() : onNavigate(it.action!.tab)}>
                         {actionLabel(it)}
                       </button>
                     )}

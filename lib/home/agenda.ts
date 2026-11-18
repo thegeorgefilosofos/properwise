@@ -361,11 +361,24 @@ export interface AmountLine { kind: string; date: string | null; amount: number;
  */
 export function attachAmounts(items: AgendaItem[], lines: readonly AmountLine[]): AgendaItem[] {
   return items.map(it => {
-    if (it.amount || !it.due || !/^tax:enfia-(first|instalment|last)-/.test(it.key)) return it;
+    if (it.amount || !it.due || !ENFIA_PAYMENT_ROW.test(it.key)) return it;
     const l = lines.find(x => x.kind === 'enfia' && x.date === it.due && x.amount > 0);
-    return l ? { ...it, amount: { value: l.amount, estimate: l.certainty !== 'actual' } } : it;
+    // ΧΩΡΙΣ ΠΟΣΟ, Η ΓΡΑΜΜΗ ΛΕΕΙ ΠΩΣ ΒΓΑΙΝΕΙ (17/11/2026). Η «ΕΝΦΙΑ, 8η δόση»
+    // έμενε με αριθμό ημερών και ένα βέλος προς το Ημερολόγιο, όπου το ποσό
+    // έλειπε ξανά. Τώρα η ενέργεια ανοίγει την εισαγωγή της πράξης ΕΝΦΙΑ.
+    return l ? { ...it, amount: { value: l.amount, estimate: l.certainty !== 'actual' } } : { ...it, action: ENFIA_IMPORT_ACTION };
   });
 }
+
+/** Η γραμμή πληρωμής ΕΝΦΙΑ, ίδιο κλειδί στην ατζέντα και στο Ημερολόγιο (`tax:enfia-instalment-2026-9`). */
+export const ENFIA_PAYMENT_ROW = /^tax:enfia-(first|instalment|last)-/;
+/** Ο προορισμός «ανέβασε την πράξη ΕΝΦΙΑ»: όχι καρτέλα, η εισαγωγή του myAADE. */
+export const ENFIA_IMPORT_TAB = 'enfia-import';
+export const ENFIA_IMPORT_LABEL = 'Ποσό; Ανέβασε την πράξη';
+export const ENFIA_IMPORT_ACTION = { label: ENFIA_IMPORT_LABEL, tab: ENFIA_IMPORT_TAB } as const;
+/** Γραμμή ΕΝΦΙΑ χωρίς ποσό, ανοιχτή: εκεί η ενέργεια είναι η πράξη, όχι το ημερολόγιο. */
+export const enfiaNeedsAmount = (source: string | null | undefined, amount: number | null | undefined): boolean =>
+  !!source && ENFIA_PAYMENT_ROW.test(source) && !(Number(amount) > 0);
 
 /** Πόσα από τη λίστα είναι ήδη ληξιπρόθεσμα — ο αριθμός δίπλα στην κεφαλίδα. */
 export function overdueCount(items: AgendaItem[]): number {

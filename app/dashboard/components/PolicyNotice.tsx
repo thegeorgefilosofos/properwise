@@ -16,6 +16,8 @@
 // εμφανίζεται μετά η γενική γραμμή της τρέχουσας έκδοσης.
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { sendToAccountant, ACCOUNTANT_SEND_LABEL } from './accountantSend'
+import { useAppEn } from '@/lib/i18n/appEn'
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { T, IconBtn, LinkBtn, Card, Btn } from '@/components/Theme';
@@ -26,6 +28,8 @@ import {
 } from '@/lib/legal/policyNotice';
 
 export default function PolicyNotice() {
+  // Το κουμπί της κάρτας στα αγγλικά όταν η εφαρμογή είναι στα αγγλικά (overview.ts).
+  const O = useAppEn('overview');
   const supabase = createClient();
   const [show, setShow] = useState(false);
   const [firm, setFirm] = useState(false);
@@ -87,6 +91,10 @@ export default function PolicyNotice() {
           {FIRM_NOTICE_BODY}
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: T.sp.sm, marginTop: T.sp.md }}>
+          {/* Η ΕΝΕΡΓΕΙΑ ΠΡΩΤΗ (17/11/2026). Η κάρτα ανήγγελλε την πρόσβαση
+              λογιστή και το μόνο κουμπί πέρα από το «Εντάξει» άνοιγε την
+              Πολιτική απορρήτου. Τώρα οδηγεί και εκεί όπου δίνεται η πρόσβαση. */}
+          <Btn variant="primary" onClick={() => { dismissFirm(); sendToAccountant(); }}>{O ? O.accountantSend : ACCOUNTANT_SEND_LABEL}</Btn>
           <Btn variant="secondary" onClick={dismissFirm}>Εντάξει</Btn>
           <Btn variant="ghost" href={FIRM_NOTICE_HREF} newTab>Δες τι άλλαξε</Btn>
         </div>
