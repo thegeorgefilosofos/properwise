@@ -14,7 +14,34 @@ import { MONTHS_EN, monthYearEn } from '@/lib/i18n/en/dates';
 const f = APP_FMT;
 const days = (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`;
 
+/** Ο μήνας ενός κλειδιού «2026-11»: «November», ή «November 2025» όταν η χρονιά διαφέρει. */
+const monthOf = (key: string, refYear?: number) => {
+  const y = Number(key.slice(0, 4)), m = Number(key.slice(5, 7)) - 1;
+  const name = MONTHS_EN[m] ?? key;
+  return refYear !== undefined && y !== refYear ? `${name} ${y}` : name;
+};
+
 export const EXPENSES_EN = {
+  /** Η σύγκριση μηνών (ExpenseCompare). */
+  compare: {
+    monthOf,
+    short: (m0: number) => (MONTHS_EN[m0] ?? '').slice(0, 3),
+    vs: (key: string) => `${monthOf(key)} compared with`,
+    flat: 'No real change.',
+    spread: 'The difference is spread out: no category stands out.',
+    where: 'Where the difference went',
+    less: '− less', more: '+ more',
+    isNew: 'new', stopped: 'stopped',
+    rest: 'Other',
+    noData: 'No expenses recorded in this period.',
+    fromLastYear: 'from last year',
+    twelve: 'Twelve months',
+    average: 'average',
+    overMonths: (n: number) => ` over ${n} months with expenses`,
+    oneOff: (dir: 'up' | 'down', name: string, baseKey: string) => (dir === 'up'
+      ? `The increase is mostly a one-off expense: ${name}.`
+      : `The decrease is mostly a one-off expense in ${monthOf(baseKey)}: ${name}.`),
+  },
   f,
   categoryEn,
   categories: CATEGORY_EN,
