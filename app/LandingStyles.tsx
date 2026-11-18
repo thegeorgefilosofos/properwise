@@ -414,10 +414,13 @@ export function LandingStyles() {
           .lp-final-band > h2 { grid-column: 1; margin: 0 0 12px !important; max-width: none !important; }
           .lp-final-band > p { grid-column: 1; margin: 0 !important; max-width: none !important; text-align: left; }
           .lp-final-band > a { grid-column: 2; grid-row: 1 / span 2; }
-          .lp-band { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); column-gap: clamp(32px, 4vw, 64px); align-items: start; }
-          .lp-band > .lp-band-head { position: sticky; top: 96px; }
-          .lp-band > .lp-band-head > div { margin-bottom: 0 !important; }
         }
+        ${/* ΟΙ ΣΥΧΝΕΣ ΕΡΩΤΗΣΕΙΣ ΠΕΡΑ ΠΕΡΑ (18/11/2026). Η ζώνη δύο στηλών έσπαγε
+           τον τίτλο σε τρεις γραμμές αριστερά και άφηνε άδειο χώρο κάτω του.
+           Απόφαση ιδιοκτήτη: ο τίτλος σε μία γραμμή σε όλο το πλάτος και η
+           λίστα από κάτω, επίσης σε όλο το πλάτος. */''}
+        .lp-band > .lp-band-head h2 { text-wrap: nowrap; }
+        @media (max-width: 1023px) { .lp-band > .lp-band-head h2 { text-wrap: balance; } }
         .lp-sec > .lp-sec-grid:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
         .lp-sec-item { display: grid; grid-template-columns: 34px 1fr; column-gap: 13px; align-items: start; }
         .lp-sec-ico {
