@@ -59,7 +59,7 @@ function TabWait() {
 // να ξέρει τι να αφήσει έξω από το πακέτο του διακομιστή και μια μεταβλητή
 // δεν διαβάζεται στη μεταγλώττιση. Το αντίγραφο είναι απαίτηση του εργαλείου.
 
-export const TabFinances = dynamic(() => import('./TabFinances'), { loading: TabWait, ssr: false });
+export const TabFinances = dynamic(withAppEn(['expenses'], () => import('./TabFinances')), { loading: TabWait, ssr: false });
 export const TabCalendar = dynamic(() => import('./TabCalendar'), { loading: TabWait, ssr: false });
 export const TabRentROI = dynamic(() => import('./TabRentROI'), { loading: TabWait, ssr: false });
 export const TabPricing = dynamic(() => import('./TabPricing'), { loading: TabWait, ssr: false });
