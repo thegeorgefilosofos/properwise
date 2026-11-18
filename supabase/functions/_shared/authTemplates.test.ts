@@ -52,7 +52,7 @@ for (const f of TEMPLATE_FILES) {
   ok(`${f}: τα ελληνικά ίδια ως το byte`, sha(el) === EL_SHA[f])
   ok(`${f}: το αρχείο είναι η επιλογή και τα δύο έγγραφα`, readFileSync(`supabase/auth-templates/${f}`, 'utf8') === bilingual(en, el) + '\n')
   ok(`${f}: αγγλικά χωρίς ελληνικό γράμμα`, !GREEK.test(visible(en).replace(/\{\{[^}]*\}\}/g, '')))
-  ok(`${f}: <html lang="en">`, en.includes('<html lang="en"'))
+  ok(`${f}: lang="en"`, en.includes('lang="en" dir="ltr"'))
   ok(`${f}: ίδιες μεταβλητές της Supabase`, vars(en) === vars(el) && vars(el).length > 0)
   const s = subjectsOf(f)
   ok(`${f}: αγγλικό θέμα χωρίς ελληνικό γράμμα`, !!s.en && !GREEK.test(s.en))
