@@ -10,8 +10,8 @@ import { EMAIL_LIGHT as C } from './emailPalette.ts'
 import { APP_URL } from './site.ts'
 import { eur, grDate } from './format.ts'
 // Η εισαγωγή είναι μόνο τύπων: σβήνεται στη μεταγλώττιση και δεν φτάνει στο Deno.
-// Ο αγγλικός τίτλος της φορολογικής προθεσμίας βγαίνει από το είδος της (καμία εισαγωγή μέσα του).
-import { taxEventTitleEn } from '../../../lib/i18n/en/taxTitle.ts'
+// Ο αγγλικός τίτλος της φορολογικής προθεσμίας βγαίνει από το είδος της (lib/i18n/taxTitleEn.ts, καμία εισαγωγή μέσα του).
+import { taxEventTitleEn } from '../../../lib/i18n/taxTitleEn.ts'
 import type { CalendarEventsRow, RentPaymentsRow, TenantsRow, UserPropertiesRow } from '../../../lib/supabase/tables.ts'
 
 export type TenantName   = Pick<TenantsRow, 'id' | 'full_name'>

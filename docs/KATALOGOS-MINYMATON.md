@@ -98,7 +98,7 @@ npm run katalogos
 |---|---|---|
 | `black_friday` | Black Friday: ${o.pct}% στο PROPERWISE | `supabase/functions/_shared/emailTemplates.ts`, `supabase/functions/send-lifecycle-email/index.ts` (+6) |
 | `cyber_monday` | Cyber Monday: ${o.pct}% στο PROPERWISE | `supabase/functions/_shared/emailTemplates.ts`, `supabase/functions/send-lifecycle-email/index.ts` |
-| `christmas` | Κλείσε τη χρονιά με τα ακίνητά σου σε τάξη | `supabase/functions/_shared/emailTemplates.ts`, `supabase/functions/send-lifecycle-email/index.ts` (+6) |
+| `christmas` | Κλείσε τη χρονιά με τα ακίνητά σου σε τάξη | `supabase/functions/_shared/emailTemplates.ts`, `supabase/functions/_shared/messageFixtures.ts` (+7) |
 | `new_year` | Νέα χρονιά, καθαρά βιβλία | `supabase/functions/_shared/emailTemplates.ts`, `supabase/functions/send-lifecycle-email/index.ts` |
 | `tax_season` | Μπες στη φορολογική σεζόν χωρίς άγχος | `supabase/migrations/20260723091000_lifecycle_enqueue.sql`, `supabase/migrations/20260723092000_email_activation_fixes.sql` (+4) |
 | `summer_str` | Η σεζόν των βραχυχρόνιων ξεκινά | `supabase/functions/send-lifecycle-email/index.ts`, `supabase/migrations/20260723091000_lifecycle_enqueue.sql` (+5) |

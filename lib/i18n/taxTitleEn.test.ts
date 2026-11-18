@@ -1,9 +1,9 @@
-// npx tsx lib/i18n/en/taxTitle.test.ts
+// npx tsx lib/i18n/taxTitleEn.test.ts
 // Ο αγγλικός τίτλος από τη γραμμή του ημερολογίου (`source = tax:<id>`) πρέπει
 // να είναι ΙΔΙΟΣ με αυτόν που δείχνει η εφαρμογή για την ίδια υποχρέωση.
 import { greekPropertyTaxObligations, taxEventSource } from '@/lib/tax/greekTaxCalendar';
-import { obligationTitleEn } from './deadlines';
-import { taxEventTitleEn } from './taxTitle';
+import { obligationTitleEn } from './en/deadlines';
+import { taxEventTitleEn } from './taxTitleEn';
 
 let p = 0, f = 0;
 const ok = (c: boolean, m: string) => { if (c) p++; else { f++; console.error('✗', m); } };

@@ -6,6 +6,7 @@
 // ώστε ο έλεγχος «κανένα ελληνικό γράμμα στα αγγλικά» να πιάνει μόνο το δικό
 // μας κείμενο.
 // ═══════════════════════════════════════════════════════════════════════════
+import { APP_URL } from './site.ts'
 import type { CalendarEventsRow, RentPaymentsRow } from '../../../lib/supabase/tables.ts'
 import { buildEmail, buildDunningEmail, noticeLabelOf } from './reminderEmail.ts'
 import {
@@ -26,7 +27,7 @@ const EVENTS = [
   ev('00000000-0000-4000-8000-000000000002', 'Boiler service', 'maintenance', '2026-11-30', 0),
   ev('00000000-0000-4000-8000-000000000003', 'Water bill', 'bills', '2026-12-01', 1234.5),
 ]
-const PAY = new Map([['00000000-0000-4000-8000-000000000001', 'https://properwise.gr/plirosa/abc']])
+const PAY = new Map([['00000000-0000-4000-8000-000000000001', `${APP_URL}/plirosa/abc`]])
 
 const rent = (id: string, tenant: string | null, prop: string | null, due: string, amount: number, m: number | null) =>
   ({ id, tenant_id: tenant, property_id: prop, due_date: due, amount, period_month: m, period_year: m ? 2026 : null }) as unknown as RentPaymentsRow
@@ -41,8 +42,8 @@ const TODAY = new Date('2026-11-18T00:00:00Z')
 export const FIXTURES: Fixture[] = [
   // ── Κέλυφος ───────────────────────────────────────────────────────────
   { name: 'shell-default', el: () => emailShell({ bodyHtml: p('x') }) },
-  { name: 'shell-unsub', el: () => emailShell({ bodyHtml: p('x'), preheader: 'pre', unsubUrl: 'https://properwise.gr/unsubscribe/t' }),
-    en: () => emailShell({ bodyHtml: p('x'), preheader: 'pre', unsubUrl: 'https://properwise.gr/unsubscribe/t', lang: 'en' }) },
+  { name: 'shell-unsub', el: () => emailShell({ bodyHtml: p('x'), preheader: 'pre', unsubUrl: `${APP_URL}/unsubscribe/t` }),
+    en: () => emailShell({ bodyHtml: p('x'), preheader: 'pre', unsubUrl: `${APP_URL}/unsubscribe/t`, lang: 'en' }) },
   { name: 'shell-footer', el: () => emailShell({ bodyHtml: p('x'), footerNote: 'note', width: 480 }) },
   // ── Υπενθυμίσεις προθεσμιών ───────────────────────────────────────────
   ...(['7days', '3days', '1day', 'today', 'overdue'] as const).flatMap(t => [
@@ -71,6 +72,6 @@ export const FIXTURES: Fixture[] = [
   { name: 'upsell-disc', el: () => out(upsellEmail({ name: 'Maria', toPlan: 'agency', discountPct: 20, discountCode: 'BF20', seasonLabel: 'Black Friday' })) },
   { name: 'legislation', el: () => out(legislationUpdateEmail({ name: 'Maria', headline: 'Law 5000/2026', summaryHtml: 'Summary.' })) },
   { name: 'seasonal', el: () => out(seasonalCampaignEmail({ name: 'Maria', season: 'christmas', discountPct: 10, discountCode: 'XMAS' })) },
-  { name: 'client-message', el: () => clientMessageEmail({ text: 'Hello {{name}},\n\nSee https://properwise.gr.', senderEmail: 'agent@example.com' }) },
+  { name: 'client-message', el: () => clientMessageEmail({ text: `Hello {{name}},\n\nSee ${APP_URL}.`, senderEmail: 'agent@example.com' }) },
   { name: 'client-message-anon', el: () => clientMessageEmail({ text: 'Hello' }) },
 ]

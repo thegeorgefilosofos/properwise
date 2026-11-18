@@ -9,7 +9,7 @@
 import type { MonthDeadline } from '@/lib/seo/prothesmies';
 import type { TaxObligation } from '@/lib/tax/greekTaxCalendar';
 import { parseMonthKey } from '@/lib/seo/prothesmies';
-import { taxTitleEn } from './taxTitle';
+import { taxTitleEn } from '../taxTitleEn';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] as const;
 

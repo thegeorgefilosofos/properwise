@@ -29,7 +29,7 @@ import { fe } from '@/lib/core/format';
 import { isClosedStatus, taskNoteOf } from '@/lib/facts/deadlines';
 import type { FeedItem } from './feed';
 import { oneTaxCopy } from './taxOnce';
-import { taxEventTitleEn } from '@/lib/i18n/en/taxTitle';
+import { taxEventTitleEn } from '@/lib/i18n/taxTitleEn';
 
 export interface DeadlineProperty { id: string; name?: string | null }
 
