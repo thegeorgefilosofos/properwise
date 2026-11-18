@@ -7,12 +7,12 @@
 // αγγλικές του lib/legal/billingWords.ts (το Deno δεν φτάνει εκεί· τις
 // συγκρίνει ο έλεγχος emailCopyEn.test.ts). Η Νόα λέγεται με το όνομά της.
 // ═══════════════════════════════════════════════════════════════════════════
-import { emailShell, greeting, p, type Personal } from '../../emailTemplates.ts'
+import { emailShell, greeting, p } from '../../emailTemplates.ts'
 
 /** Το κέλυφος, στα αγγλικά. */
 export const shell = (o: Parameters<typeof emailShell>[0]): string => emailShell({ ...o, lang: 'en' })
 /** «Hi Maria,» */
-export const hi = (c: Personal): string => greeting(c.name, 'en')
+export const hi = (c: { name?: string }): string => greeting(c.name, 'en')
 /** «1 property», «3 properties». Αριθμός με ελληνική γραφή, όπως παντού. */
 export const plural = (n: number, one: string, many: string) => `${n.toLocaleString('el-GR')} ${n === 1 ? one : many}`
 

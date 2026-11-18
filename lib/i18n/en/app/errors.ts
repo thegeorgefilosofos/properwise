@@ -72,3 +72,6 @@ export const SAY_EN = {
   aiQuotaSpent: 'Your plan’s questions are used up; they renew automatically.',
   scanQuotaSpent: 'You’ve used this month’s scans. They renew on the 1st of next month.',
 } as const;
+
+/** Το λεξικό της οθόνης (lib/i18n/appEn.tsx, κλειδί `errors`). */
+export const ERRORS_EN = { failed: failedEn, reason: dbReasonEn, say: SAY_EN, planRequired: PLAN_REQUIRED_EN, retry: RETRY_EN };

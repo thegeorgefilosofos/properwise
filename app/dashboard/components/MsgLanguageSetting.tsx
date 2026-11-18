@@ -9,9 +9,11 @@
 // ξαναφόρτωμα. Οσο ο χρήστης δεν έχει διαλέξει, η τιμή που δείχνει είναι αυτή
 // που ισχύει ήδη: η γλώσσα της εφαρμογής, αλλιώς ελληνικά (msgLocale).
 //
-// Η ΡΥΘΜΙΣΗ ΥΠΑΡΧΕΙ ΓΙΑΤΙ ΚΑΤΙ ΤΗΝ ΑΚΟΥΕΙ. Οι υπενθυμίσεις προθεσμιών με email
-// (send-reminders) και οι ειδοποιήσεις συσκευής (app/api/push, public/sw.js)
-// τη διαβάζουν πριν γράψουν. Η περιγραφή λέει μόνο ό,τι ισχύει.
+// Η ΡΥΘΜΙΣΗ ΥΠΑΡΧΕΙ ΓΙΑΤΙ ΚΑΤΙ ΤΗΝ ΑΚΟΥΕΙ. Τη διαβάζουν πριν γράψουν όλοι οι
+// αποστολείς των συναρτήσεων άκρης (υπενθυμίσεις, κατάλογος, μηνιαία
+// κατάσταση, επιτόκια, προσκλήσεις, δοκιμή) και οι ειδοποιήσεις συσκευής
+// (app/api/push, public/sw.js). Η περιγραφή λέει μόνο ό,τι ισχύει: τα email
+// της σύνδεσης (Supabase) ακολουθούν όταν μπουν τα νέα πρότυπα στον πίνακα.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -27,6 +29,8 @@ const ORDER: Locale[] = ['el', 'en'];
 
 export default function MsgLanguageSetting() {
   const E = useAppEn('settings')?.msgLanguage;
+  // Το σφάλμα στα αγγλικά με τον λόγο του (lib/i18n/en/app/errors.ts), όπως το `failed` στα ελληνικά.
+  const X = useAppEn('errors');
   const appLang = useLocale();
   // Πριν διαβαστεί ο λογαριασμός, η γλώσσα της εφαρμογής: αυτή ισχύει και για
   // τα μηνύματα όσο ο χρήστης δεν έχει διαλέξει άλλη.
@@ -48,7 +52,7 @@ export default function MsgLanguageSetting() {
     const { error } = await createClient().auth.updateUser({ data: { [MSG_LOCALE_META_KEY]: next } });
     setBusy(false);
     if (error) {
-      notifyError(E ? E.failed : failed('Η γλώσσα των μηνυμάτων δεν άλλαξε', error));
+      notifyError(X ? X.failed('The language for emails and notifications didn’t change', error) : E ? E.failed : failed('Η γλώσσα των μηνυμάτων δεν άλλαξε', error));
       return;
     }
     setValue(next);
@@ -57,7 +61,7 @@ export default function MsgLanguageSetting() {
   return (
     <SetRow
       title={E ? E.title : 'Γλώσσα μηνυμάτων και email'}
-      desc={E ? E.desc : 'Οι υπενθυμίσεις προθεσμιών με email και οι ειδοποιήσεις στις συσκευές σου. Τα έγγραφα για την ΑΑΔΕ και τον λογιστή μένουν στα ελληνικά.'}
+      desc={E ? E.desc : 'Τα email του PROPERWISE (υπενθυμίσεις, καταστάσεις, ενημερώσεις) και οι ειδοποιήσεις στις συσκευές σου. Τα έγγραφα για την ΑΑΔΕ και τον λογιστή μένουν στα ελληνικά.'}
       control={<div style={{ width: 200 }}>
         <CustomSelect ariaLabel={E ? E.title : 'Γλώσσα μηνυμάτων και email'} value={value} disabled={busy}
           onChange={v => { void choose(v === 'en' ? 'en' : 'el'); }}

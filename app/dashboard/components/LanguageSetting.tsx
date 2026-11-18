@@ -32,6 +32,8 @@ const ORDER: Locale[] = ['el', 'en'];
 
 export default function LanguageSetting() {
   const E = useAppEn('settings')?.language;
+  // Το σφάλμα στα αγγλικά με τον λόγο του (lib/i18n/en/app/errors.ts), όπως το `failed` στα ελληνικά.
+  const X = useAppEn('errors');
   const current = useLocale();
   const [busy, setBusy] = useState(false);
 
@@ -41,7 +43,7 @@ export default function LanguageSetting() {
     const { error } = await createClient().auth.updateUser({ data: { [LOCALE_META_KEY]: next } });
     if (error) {
       setBusy(false);
-      notifyError(E ? E.failed : failed('Η γλώσσα δεν άλλαξε', error));
+      notifyError(X ? X.failed('The language didn’t change', error) : E ? E.failed : failed('Η γλώσσα δεν άλλαξε', error));
       return;
     }
     rememberAppLocale(next);
