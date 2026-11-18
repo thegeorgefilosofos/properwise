@@ -4,7 +4,7 @@ import { sessionNeedsSecondStep } from "@/lib/auth/mfa";
 import { loginSearch } from "@/lib/auth/continuation";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/supabase/env";
 import { resilientFetch } from "@/lib/supabase/resilientFetch";
-import { LOCALE_COOKIE, LOCALE_HEADER, SUGGEST_HEADER, localeOfPath, isRecipientPath, recipientLocale } from "@/lib/i18n/locale";
+import { LOCALE_COOKIE, LOCALE_HEADER, SUGGEST_HEADER, localeOfPath, isRecipientPath, recipientLocale, isAppPath, appLocale } from "@/lib/i18n/locale";
 import { enPathFor, elPathFor } from "@/lib/i18n/paths";
 
 const isProd = process.env.NODE_ENV === "production";
@@ -89,9 +89,11 @@ export async function proxy(request: NextRequest) {
   // Οι σελίδες παραλήπτη (πύλη ενοικιαστή, «Πλήρωσα», επαλήθευση…) κρατούν
   // τη διεύθυνσή τους και παίρνουν τη γλώσσα από τον επισκέπτη
   // (lib/i18n/locale.ts). Δεν έχουν ζεύγος, οπότε καμία ανακατεύθυνση.
+  // Η εφαρμογή (/dashboard) κρατά κι αυτή τη διεύθυνσή της και παίρνει τη
+  // γλώσσα ΜΟΝΟ από τη ρητή επιλογή του χρήστη (lib/i18n/locale.ts, appLocale).
   const pageLocale = isRecipientPath(pagePath)
     ? recipientLocale(chosen, request.headers.get("accept-language"))
-    : localeOfPath(pagePath);
+    : isAppPath(pagePath) ? appLocale(chosen) : localeOfPath(pagePath);
   if (request.method === "GET" && (chosen === "en" || chosen === "el") && chosen !== pageLocale) {
     const target = chosen === "en" ? enPathFor(pagePath) : elPathFor(pagePath);
     if (target) {

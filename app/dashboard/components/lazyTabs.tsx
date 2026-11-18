@@ -33,6 +33,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import dynamic from 'next/dynamic';
 import { T } from '@/components/tokens';
+import { withAppEn } from '@/lib/i18n/appEn';
 
 /**
  * Ο χώρος που κρατά η καρτέλα όσο κατεβαίνει.
@@ -62,7 +63,9 @@ export const TabFinances = dynamic(() => import('./TabFinances'), { loading: Tab
 export const TabCalendar = dynamic(() => import('./TabCalendar'), { loading: TabWait, ssr: false });
 export const TabRentROI = dynamic(() => import('./TabRentROI'), { loading: TabWait, ssr: false });
 export const TabPricing = dynamic(() => import('./TabPricing'), { loading: TabWait, ssr: false });
-export const TabSettings = dynamic(() => import('./TabSettings'), { loading: TabWait, ssr: false });
+// Στα αγγλικά η καρτέλα περιμένει και το λεξικό της (lib/i18n/appEn.tsx): ούτε
+// ένα καρέ ελληνικά. Στα ελληνικά ο φορτωτής είναι ο ίδιος, χωρίς αναμονή.
+export const TabSettings = dynamic(withAppEn(['settings'], () => import('./TabSettings')), { loading: TabWait, ssr: false });
 export const TabReferral = dynamic(() => import('./TabReferral'), { loading: TabWait, ssr: false });
 export const TabTenant = dynamic(() => import('./TabTenant'), { loading: TabWait, ssr: false });
 export const TabLoan = dynamic(() => import('./TabLoan'), { loading: TabWait, ssr: false });

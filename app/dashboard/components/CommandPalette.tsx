@@ -12,6 +12,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { T } from '@/components/Theme';
+import { useAppEn } from '@/lib/i18n/appEn';
 import { Dictation } from '@/components/dictation/MicButton';
 
 export interface CommandItem {
@@ -44,6 +45,7 @@ function pushRecent(id: string) {
 }
 
 export function CommandPalette({ open, onClose, items }: { open: boolean; onClose: () => void; items: CommandItem[] }) {
+  const E = useAppEn('shell');
   const [q, setQ] = useState('');
   const [active, setActive] = useState(0);
   const [recentIds, setRecentIds] = useState<string[]>([]);
@@ -61,10 +63,10 @@ export function CommandPalette({ open, onClose, items }: { open: boolean; onClos
     const seen = new Set(recent.map(it => it.id));
     const suggested = items.filter(it => !seen.has(it.id)).slice(0, SUGGEST_MAX);
     const gs: { label: string; items: CommandItem[] }[] = [];
-    if (recent.length) gs.push({ label: 'Πρόσφατα', items: recent });
-    if (suggested.length) gs.push({ label: recent.length ? 'Προτεινόμενα' : 'Γρήγορη μετάβαση', items: suggested });
+    if (recent.length) gs.push({ label: E ? E.cmdk.recent : 'Πρόσφατα', items: recent });
+    if (suggested.length) gs.push({ label: E ? (recent.length ? E.cmdk.suggested : E.cmdk.quick) : recent.length ? 'Προτεινόμενα' : 'Γρήγορη μετάβαση', items: suggested });
     return { rows: [...recent, ...suggested], groups: gs };
-  }, [q, items, recentIds]);
+  }, [q, items, recentIds, E]);
 
   // ΤΟ ΑΝΟΙΓΜΑ ΚΑΘΑΡΙΖΕΙ ΤΗΝ ΠΑΛΕΤΑ ΚΑΤΑ ΤΗΝ ΑΠΟΔΟΣΗ. Ηταν effect: η παλέτα
   // ζωγραφιζόταν ΜΙΑ φορά με το ερώτημα της προηγούμενης φοράς και μετά άδεια.
@@ -113,20 +115,20 @@ export function CommandPalette({ open, onClose, items }: { open: boolean; onClos
     <div className="cmdk-scrim" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       {/* Ο ΔΙΑΛΟΓΟΣ ΕΙΧΕ ΡΟΛΟ ΧΩΡΙΣ ΟΝΟΜΑ: ο αναγνώστης οθόνης ανακοίνωνε σκέτο
           «διάλογος» και ο χρήστης δεν ήξερε τι άνοιξε. */}
-      <div className="cmdk" role="dialog" aria-modal="true" aria-label="Αναζήτηση και μετάβαση">
+      <div className="cmdk" role="dialog" aria-modal="true" aria-label={E ? E.cmdk.dialog : 'Αναζήτηση και μετάβαση'}>
         <Dictation value={q} onChange={setQ}>
           <input
             ref={inputRef}
-            aria-label="Αναζήτηση ή μετάβαση"
+            aria-label={E ? E.cmdk.input : 'Αναζήτηση ή μετάβαση'}
             className="cmdk-input"
-            placeholder="Αναζήτηση ή μετάβαση… (ακίνητο, καρτέλα, ενέργεια)"
+            placeholder={E ? E.cmdk.placeholder : 'Αναζήτηση ή μετάβαση… (ακίνητο, καρτέλα, ενέργεια)'}
             value={q}
             onChange={e => setQ(e.target.value)}
           />
         </Dictation>
         <div className="cmdk-list" ref={listRef}>
           {rows.length === 0 ? (
-            <div className="cmdk-empty">Κανένα αποτέλεσμα για «{q}»</div>
+            <div className="cmdk-empty">{E ? E.cmdk.none(q) : <>Κανένα αποτέλεσμα για «{q}»</>}</div>
           ) : (
             groups.map((g, gi) => (
               <div key={gi}>

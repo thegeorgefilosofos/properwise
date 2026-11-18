@@ -92,7 +92,10 @@ const src = new Map(files.map(f => [f, noComments(readFileSync(f, 'utf8'))]));
 // εξαγωγές δεν έχουν καταναλωτή στο αποθετήριο ούτως ή άλλως — τις καλεί το
 // Deno.serve την ώρα του χρονοδιαγράμματος.
 // ═══════════════════════════════════════════════════════════════════════════
-const edge = globSync(['supabase/functions/**/*.ts'])
+// ΚΑΙ ΤΟ proxy.ts ΣΤΗ ΡΙΖΑ (17.11.2026). Είναι ο διαμεσολαβητής του Next και
+// καλεί τους κανόνες γλώσσας του lib/i18n/locale.ts (recipientLocale,
+// isAppPath, appLocale)· έξω από το glob, ο φύλακας τους έβλεπε «μόνο με τεστ».
+const edge = globSync(['supabase/functions/**/*.ts', 'proxy.ts'])
   .filter(f => !f.includes('node_modules'))
   .map(f => noComments(readFileSync(f, 'utf8')))
   .join('\n');

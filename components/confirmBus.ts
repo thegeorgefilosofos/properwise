@@ -142,10 +142,15 @@ export function confirmDialog(a?: string | ConfirmOptions, b?: ConfirmOptions): 
  * Enter ή Escape να κρατά ό,τι γράφτηκε.
  */
 export const DISCARD_TITLE = 'Να φύγουν οι αλλαγές;';
-export function confirmDiscard(message = 'Ό,τι έγραψες εδώ δεν έχει αποθηκευτεί.'): Promise<boolean> {
+export function confirmDiscard(
+  message = 'Ό,τι έγραψες εδώ δεν έχει αποθηκευτεί.',
+  /** Οι λέξεις του διαλόγου σε άλλη γλώσσα (η εφαρμογή στα αγγλικά, lib/i18n/appEn.tsx). */
+  words?: { title: string; confirmLabel: string; cancelLabel: string },
+): Promise<boolean> {
   return confirmDialog({
     title: DISCARD_TITLE, message, tone: 'negative',
     confirmLabel: 'Κλείσιμο χωρίς αποθήκευση', cancelLabel: 'Συνέχεια',
+    ...words,
   });
 }
 

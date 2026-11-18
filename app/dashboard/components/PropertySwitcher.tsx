@@ -32,6 +32,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { T } from '@/components/Theme';
+import { useAppEn } from '@/lib/i18n/appEn';
 
 export interface SwitchItem {
   id: string;
@@ -58,6 +59,7 @@ export default function PropertySwitcher({ items, activeId, onSelect, onAdd, can
   onAdd: () => void;
   canAdd?: boolean;
 }) {
+  const E = useAppEn('shell');
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const [cursor, setCursor] = useState(0);
@@ -153,14 +155,14 @@ export default function PropertySwitcher({ items, activeId, onSelect, onAdd, can
           εμφανίζεται ΠΟΤΕ σε κινητό — ακριβώς εκεί που δεν υπάρχει πλαϊνή
           μπάρα και η εναλλαγή γίνεται μόνο από εδώ. */}
       {items.length <= 1 && !canAdd ? (
-        <span className="topbar-switch-name po-elide" style={{ display: 'block' }}>{active?.name || 'Κανένα ακίνητο ακόμη'}</span>
+        <span className="topbar-switch-name po-elide" style={{ display: 'block' }}>{active?.name || (E ? E.noPropertyYet : 'Κανένα ακίνητο ακόμη')}</span>
       ) : (
       <button ref={btnRef} type="button" className="topbar-switch"
         onClick={() => (open ? closePanel(false) : openPanel())}
         aria-haspopup="listbox" aria-expanded={open}
-        title={items.length > 1 ? 'Αλλαγή ακινήτου' : 'Ακίνητα'}>
+        title={E ? (items.length > 1 ? E.switcher.change : E.switcher.properties) : items.length > 1 ? 'Αλλαγή ακινήτου' : 'Ακίνητα'}>
         <span className="topbar-switch-face">
-          <span className="topbar-switch-name po-elide">{active?.name || 'Κανένα ακίνητο ακόμη'}</span>
+          <span className="topbar-switch-name po-elide">{active?.name || (E ? E.noPropertyYet : 'Κανένα ακίνητο ακόμη')}</span>
           <svg className="topbar-switch-caret" width={14} height={14} viewBox="0 0 24 24" fill="none"
             stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="m6 9 6 6 6-6" />
@@ -174,8 +176,8 @@ export default function PropertySwitcher({ items, activeId, onSelect, onAdd, can
           {searchable && (
             <div style={{ padding: 8, borderBottom: '1px solid var(--border-subtle)' }}>
               <input ref={inputRef} value={q} onChange={e => { setQ(e.target.value); setCursor(0); }}
-                placeholder="Όνομα ή διεύθυνση"
-                aria-label="Αναζήτηση ακινήτου"
+                placeholder={E ? E.switcher.filter : 'Όνομα ή διεύθυνση'}
+                aria-label={E ? E.switcher.filterLabel : 'Αναζήτηση ακινήτου'}
                 aria-controls={listId} aria-activedescendant={activeOptionId}
                 style={{
                   width: '100%', height: T.h.md, padding: '0 10px', borderRadius: T.radius.chip,
@@ -185,13 +187,13 @@ export default function PropertySwitcher({ items, activeId, onSelect, onAdd, can
             </div>
           )}
 
-          <div ref={listRef} id={listId} role="listbox" aria-label="Ακίνητα"
+          <div ref={listRef} id={listId} role="listbox" aria-label={E ? E.switcher.properties : 'Ακίνητα'}
             tabIndex={searchable ? -1 : 0}
             aria-activedescendant={searchable ? undefined : activeOptionId}
             style={{ maxHeight: 'min(340px, calc(calc(100vh / var(--zoom, 1)) - 180px))', overflowY: 'auto', overscrollBehavior: 'contain', padding: 4, outline: 'none' }}>
             {shown.length === 0 ? (
               <p style={{ margin: 0, padding: '14px 12px', fontFamily: T.font.sans, fontSize: 'var(--fs-base)', color: 'var(--text-tertiary)' }}>
-                Κανένα ακίνητο δεν ταιριάζει.
+                {E ? E.switcher.noMatch : 'Κανένα ακίνητο δεν ταιριάζει.'}
               </p>
             ) : shown.map((it, k) => {
               const isActive = it.id === activeId;
@@ -229,7 +231,7 @@ export default function PropertySwitcher({ items, activeId, onSelect, onAdd, can
               <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
                 <path d="M12 5v14M5 12h14" />
               </svg>
-              Προσθήκη ακινήτου
+              {E ? E.switcher.add : 'Προσθήκη ακινήτου'}
             </button>
           )}
         </div>
