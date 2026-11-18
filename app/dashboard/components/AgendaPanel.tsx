@@ -42,8 +42,12 @@
 import type { ReactNode } from 'react';
 import { T, fe } from '@/components/Theme';
 import { ListChecks } from 'lucide-react';
-import { itemDue, overdueCount, ENFIA_IMPORT_TAB, type AgendaItem } from '@/lib/home/agenda';
+import { itemDue, overdueCount, ENFIA_IMPORT_TAB, type AgendaItem, type DueParts } from '@/lib/home/agenda';
 import { openMyaadeImport } from './myaadeOpen';
+import { useAppEn } from '@/lib/i18n/appEn';
+
+/** Ο τίτλος της λίστας. Σταθερά, γιατί τον αναφέρουν οδηγίες άλλων οθονών (guard-dangling-refs). */
+const AGENDA_LABEL = 'Τι χρειάζεται τώρα';
 
 export default function AgendaPanel({ items, total, onNavigate, incomplete = false, footer }: {
   items: AgendaItem[];
@@ -62,6 +66,19 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
    */
   footer?: ReactNode;
 }) {
+  // Τα αγγλικά της λίστας και τα ονόματα των καρτελών, ή `null` στα ελληνικά.
+  const E = useAppEn('overview');
+  const S = useAppEn('shell');
+  const A = E?.agenda;
+  const fmt = E ? E.f.fe : fe;
+  /** Η στήλη του χρόνου στα αγγλικά: ίδιος αριθμός, αγγλικές λέξεις. */
+  const due = (d: DueParts): DueParts => (!A ? d : {
+    ...d,
+    unit: d.value != null ? A.unit(d.value, d.overdue) : d.unit,
+    word: d.word == null ? null : d.overdue && d.value == null ? A.now : d.word === 'αύριο' ? A.tomorrow : A.today,
+  });
+  /** Το όνομα της ενέργειας: η καρτέλα όπως τη λέει το μενού. */
+  const actionLabel = (it: AgendaItem) => (S && A && it.action ? (S.nav[it.action.tab] ?? A.actions[it.action.tab] ?? it.action.label) : it.action?.label ?? '');
   const late = overdueCount(items);
   // «Σε σειρά προθεσμίας» μόνο όταν υπάρχουν προθεσμίες· αλλιώς το πλήθος.
   const dated = items.some(i => i.daysLeft != null);
@@ -72,10 +89,10 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
           πάνω, κάρτα από κάτω) έσπαγαν τη συνοχή και πρόσθεταν 26px κενό. */}
       <div className="agenda-head">
         {/* Τίτλος ενότητας για τον αναγνώστη οθόνης· η εμφάνιση μένει ίδια. */}
-        <h2 className="agenda-title"><ListChecks size={15} aria-hidden="true" className="section-ico" />Τι χρειάζεται τώρα</h2>
+        <h2 className="agenda-title"><ListChecks size={15} aria-hidden="true" className="section-ico" />{A ? A.title : AGENDA_LABEL}</h2>
         {items.length > 0 && (
           <span className="agenda-count">
-            {late > 0
+            {A ? (late > 0 ? A.late(late) : dated ? A.byPriority(items.length) : A.items(items.length)) : late > 0
               ? `${late} ${late === 1 ? 'ληξιπρόθεσμο' : 'ληξιπρόθεσμα'}`
               : dated
                 ? `${items.length} κατά προτεραιότητα`
@@ -94,12 +111,12 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
           Ο τίτλος μόνος του είναι η πληροφορία. Μία γραμμή, στη ροή της κάρτας. */}
       {items.length === 0 ? (
         <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-tertiary)', margin: '4px 0 8px' }}>
-          {incomplete ? 'Δεν φορτώθηκαν όλες οι εκκρεμότητες.' : 'Δεν εκκρεμεί τίποτα.'}
+          {A ? (incomplete ? A.noneIncomplete : A.none) : incomplete ? 'Δεν φορτώθηκαν όλες οι εκκρεμότητες.' : 'Δεν εκκρεμεί τίποτα.'}
         </p>
       ) : (
         <ul className="agenda-list">
           {items.map(it => {
-            const d = itemDue(it);
+            const d = due(itemDue(it));
             // ΟΛΗ Η ΓΡΑΜΜΗ ΕΙΝΑΙ Ο ΣΥΝΔΕΣΜΟΣ ΟΤΑΝ Ο ΜΟΝΟΣ ΔΡΟΜΟΣ ΕΙΝΑΙ ΤΟ ΗΜΕΡΟΛΟΓΙΟ
             // (κριτική σχεδίασης r3). Πέντε ίδια κουμπιά «Ημερολόγιο» γέμιζαν
             // μία στήλη και στα 1280×800 το δεύτερο καθόταν κάτω από το κουμπί
@@ -110,7 +127,7 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
             return (
               <li key={it.key} className={`agenda-row${d.overdue ? ' is-late' : ''}${toCalendar ? ' agenda-row--link' : ''}`}>
                 {toCalendar && (
-                  <button type="button" className="agenda-cover" aria-label={`${it.title}: ${it.action!.label}`} onClick={() => onNavigate('calendar')} />
+                  <button type="button" className="agenda-cover" aria-label={`${it.title}: ${actionLabel(it)}`} onClick={() => onNavigate('calendar')} />
                 )}
                 {/* Η ΣΤΗΛΗ ΤΟΥ ΧΡΟΝΟΥ. Σταθερό πλάτος ώστε οι αριθμοί όλων των
                     γραμμών να πέφτουν στον ίδιο άξονα, δεξιά στοιχισμένοι. */}
@@ -126,7 +143,7 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
                     // ΚΑΘΕ ΓΡΑΜΜΗ ΓΕΜΙΖΕΙ ΤΗ ΣΤΗΛΗ. Σε λίστα με μία προθεσμία οι
                     // υπόλοιπες γραμμές άφηναν κενό αριστερά και η πρώτη έμοιαζε
                     // με άλλο είδος γραμμής. Χωρίς ημερομηνία, το λέει.
-                    <span className="agenda-word agenda-word--quiet">εκκρεμεί</span>
+                    <span className="agenda-word agenda-word--quiet">{A ? A.pending : 'εκκρεμεί'}</span>
                   )}
                 </div>
 
@@ -157,13 +174,13 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
                     )}
                     {it.amount && (
                       <span className="agenda-amt">
-                        {fe(it.amount.value)}
-                        {it.amount.estimate && <span className="agenda-amt-note">εκτίμηση</span>}
+                        {fmt(it.amount.value)}
+                        {it.amount.estimate && <span className="agenda-amt-note">{A ? A.estimate : 'εκτίμηση'}</span>}
                       </span>
                     )}
                     {it.action && !toCalendar && (
                       <button type="button" className="agenda-go" onClick={() => it.action!.tab === ENFIA_IMPORT_TAB ? openMyaadeImport() : onNavigate(it.action!.tab)}>
-                        {it.action.label}
+                        {actionLabel(it)}
                       </button>
                     )}
                   </div>
@@ -174,7 +191,7 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
         </ul>
       )}
       {incomplete && items.length > 0 && (
-        <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '4px 0 8px' }}>Η λίστα μπορεί να μην είναι πλήρης.</p>
+        <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '4px 0 8px' }}>{A ? A.incomplete : 'Η λίστα μπορεί να μην είναι πλήρης.'}</p>
       )}
 
       {/* Το υπόλοιπο της λίστας ΔΕΝ ξαναγράφεται εδώ: ζει στις «Εκκρεμότητες»,
@@ -195,7 +212,7 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
           Νόας: ένα πάτημα εκεί άνοιγε τη Νόα αντί για τις εκκρεμότητες. */}
       <div className="agenda-foot">
         <button type="button" className="agenda-more" onClick={() => onNavigate('checklist')}>
-          {total > items.length ? 'Δες λοιπές εκκρεμότητες' : 'Όλες οι εκκρεμότητες'}
+          {A ? (total > items.length ? A.more : A.all) : total > items.length ? 'Δες λοιπές εκκρεμότητες' : 'Όλες οι εκκρεμότητες'}
         </button>
       </div>
       {footer}

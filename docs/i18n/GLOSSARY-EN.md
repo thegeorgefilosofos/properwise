@@ -82,6 +82,12 @@ the Greek tax system. Every Greek term is explained once, then used plainly.
 
 Always through `fmtFor('en')` (`lib/core/format.ts`). Never format by hand.
 
+**Exception: the logged-in app.** By the owner's decision (18 Nov 2026), the
+English UI of the app (`lib/i18n/en/app/**`) writes amounts, numbers and dates
+exactly like the Greek one: `1.234,50€`, `12,00%`, `02/11/2026`, through
+`APP_FMT` (`lib/i18n/en/app/format.ts`). The public `/en` pages keep the table
+below.
+
 | What | Function | Output |
 |---|---|---|
 | Money, two decimals | `f.fe(n)` | €1,234.50 |

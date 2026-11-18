@@ -152,6 +152,7 @@ function CollapsibleSection({ title, hint, icon, defaultOpen = false, children }
 // να βλέπει κανείς. Μέχρι σήμερα η πύλη δεν έκλεινε ποτέ, μόνο άλλαζε κλειδαριά.
 // ═══════════════════════════════════════════════════════════════════════════
 export function AccountantAccess({ userId }: { userId: string }) {
+  const O = useAppEn('overview');
   const supabase = createClient();
   const [link, setLink] = useState<accountantLink.AccountantLink | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -203,7 +204,7 @@ export function AccountantAccess({ userId }: { userId: string }) {
           τη Λογιστική» και ο χρήστης έψαχνε μόνος του πού. */}
       {loaded && !link?.live && (
         <div style={{ marginTop: T.sp.md }}>
-          <Btn variant="secondary" onClick={sendToAccountant}>{ACCOUNTANT_SEND_LABEL}</Btn>
+          <Btn variant="secondary" onClick={sendToAccountant}>{O ? O.accountantSend : ACCOUNTANT_SEND_LABEL}</Btn>
         </div>
       )}
       {rotated && link?.live && (

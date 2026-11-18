@@ -24,17 +24,20 @@ import { LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE, type Locale } from './locale';
 import { LocaleOverrideContext } from './useLocale';
 import type { SHELL_EN } from './en/app/shell';
 import type { SETTINGS_EN } from './en/app/settings';
+import type { OVERVIEW_EN } from './en/app/overview';
 
 /** Ενα κλειδί ανά οθόνη ή ομάδα οθονών. */
 export type AppEn = {
   shell: typeof SHELL_EN;
   settings: typeof SETTINGS_EN;
+  overview: typeof OVERVIEW_EN;
 };
 export type AppEnKey = keyof AppEn;
 
 const LOADERS: { [K in AppEnKey]: () => Promise<AppEn[K]> } = {
   shell: () => import('./en/app/shell').then(m => m.SHELL_EN),
   settings: () => import('./en/app/settings').then(m => m.SETTINGS_EN),
+  overview: () => import('./en/app/overview').then(m => m.OVERVIEW_EN),
 };
 
 const cache: Partial<AppEn> = {};

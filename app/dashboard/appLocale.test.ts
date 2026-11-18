@@ -14,13 +14,40 @@ import { signupData } from '@/lib/auth/signupConsent';
 import PropertySwitcher from './components/PropertySwitcher';
 import { CommandPalette } from './components/CommandPalette';
 import LanguageSetting from './components/LanguageSetting';
+import AgendaPanel from './components/AgendaPanel';
+import CashHero from './components/CashHero';
+import StartPanel from './components/StartPanel';
+import { computeInsights, type InsightInput } from '@/lib/insights/engine';
+import { computeObligations } from './components/obligations';
+import { INSIGHTS_EN, OBLIGATIONS_EN } from '@/lib/i18n/en/app/overview';
+import type { AgendaItem } from '@/lib/home/agenda';
+import type { CashPosition } from '@/lib/home/cash';
+import type { StartPanelState } from '@/lib/home/start';
 
 let passed = 0, failed = 0;
 const fails: string[] = [];
 const ok = (name: string, cond: boolean) => { if (cond) passed++; else { failed++; fails.push(name); } };
 
 const GREEK = /[\p{Script=Greek}]/u;
-const strip = (h: string) => h.replace(/Ελληνικά/g, '').replace(/Σπίτι Κηφισιά/g, '');
+/**
+ * Τα σχόλια μέσα στα <style> (CSS του component) δεν είναι κείμενο της οθόνης.
+ * Σάρωση με θέσεις και όχι με regex, όπως το `noScripts` του app/thema/hubs.test.ts:
+ * ένα regex που κόβει ετικέτες αφήνει πάντα κάποια περίπτωση πίσω (CodeQL).
+ */
+const noStyles = (html: string) => {
+  let out = '', i = 0;
+  const low = html.toLowerCase();
+  for (;;) {
+    const a = low.indexOf('<style', i);
+    if (a < 0) return out + html.slice(i);
+    const b = low.indexOf('</style', a);
+    const c = b < 0 ? -1 : low.indexOf('>', b);
+    out += html.slice(i, a) + ' ';
+    if (c < 0) return out;
+    i = c + 1;
+  }
+};
+const strip = (h: string) => noStyles(h).split('Ελληνικά').join('').split('Σπίτι Κηφισιά').join('');
 
 async function main() {
   // ── Ο κανόνας της γλώσσας ──────────────────────────────────────────────
@@ -33,6 +60,54 @@ async function main() {
 
   await loadAppEn('shell');
   await loadAppEn('settings');
+  await loadAppEn('overview');
+
+  // ── Οι παρατηρήσεις: ίδιοι κανόνες, ίδιο πλήθος, αγγλικό κείμενο ────────
+  const NOW = new Date('2026-07-06T10:00:00').getTime();
+  const inDays = (n: number) => new Date(NOW + n * 86400000).toISOString().slice(0, 10);
+  const inp: InsightInput = {
+    now: NOW,
+    property: { status_detail: 'vacant', insurance_expiry: inDays(-3) },
+    tenant: null, rent: 700, propValue: 200000, grossYield: 4, netYield: 2, expensesYTD: 3000,
+    expenses: [], loanPayment: 900,
+    bills: [{ category: 'electricity', amount: 900, paid: false, due_date: inDays(-4) }],
+    tasks: [{ due_date: inDays(-2) }], checklist: [{ due_date: inDays(-2), status: 'open' }],
+    inventory: [{ warranty_expiry: inDays(10), name: 'Boiler' }],
+  };
+  const elIns = computeInsights(inp), enIns = computeInsights(inp, INSIGHTS_EN);
+  ok('παρατηρήσεις: ίδια σειρά και ίδια αναγνωριστικά', elIns.map(i => i.id).join() === enIns.map(i => i.id).join() && elIns.length >= 8);
+  ok('παρατηρήσεις: τα ελληνικά δεν άλλαξαν', JSON.stringify(computeInsights(inp, undefined)) === JSON.stringify(elIns));
+  for (const i of enIns) ok(`παρατήρηση ${i.id}: χωρίς ελληνικό γράμμα`, !GREEK.test(`${i.title} ${i.detail} ${i.metric ?? ''}`));
+
+  // ── Οι υποχρεώσεις: αγγλικοί τίτλοι, ίδιες ημερομηνίες ────────────────
+  const prop = { id: 'p', status_detail: 'rented', rental_mode: 'long', insurance_expiry: '2026-12-01', enfia: 300 };
+  const ten = { id: 't', lease_start: '2026-11-01', lease_end: '2027-10-31' };
+  const now = new Date('2026-11-17T10:00:00Z');
+  const elObl = computeObligations(prop as never, ten as never, [{ task: 'Boiler service', next_due: '2026-12-10' }], now, 'long_term');
+  const enObl = computeObligations(prop as never, ten as never, [{ task: 'Boiler service', next_due: '2026-12-10' }], now, 'long_term', {}, [], OBLIGATIONS_EN);
+  ok('υποχρεώσεις: ίδιες ημερομηνίες', elObl.map(o => `${o.id}@${o.date}`).join() === enObl.map(o => `${o.id}@${o.date}`).join() && elObl.length > 3);
+  for (const o of enObl) ok(`υποχρέωση ${o.id}: χωρίς ελληνικό γράμμα`, !GREEK.test(`${o.title} ${o.note}`));
+
+  // ── Η λίστα, το Ταμείο και το «Από πού ξεκινάς» ──────────────────────
+  const agenda: AgendaItem[] = [
+    { key: 'a', title: 'X', note: '', due: '2026-11-20', daysLeft: 3, action: { label: 'Δάνειο', tab: 'loan' }, origin: 'insight', weight: 5, amount: { value: 35.66, estimate: true } } as AgendaItem,
+    { key: 'b', title: 'Y', note: '', due: null, daysLeft: -2, action: null, origin: 'obligation', weight: 5 } as AgendaItem,
+  ];
+  const sideOf = (n: number) => ({ total: n * 10, count: n, overdue: n * 5, overdueCount: n ? 1 : 0, lines: n ? [{ daysLeft: -4 }] : [] });
+  const cash = { owedToMe: sideOf(2), owedByMe: sideOf(3) } as unknown as CashPosition;
+  const start = { visible: true, open: 2, daysLeft: 12, hasProperty: false, steps: [
+    { key: 'property', title: 'Τ', hint: 'Η', nav: 'add', cta: 'Κ', done: true },
+    { key: 'document', title: 'Τ', hint: 'Η', nav: 'scan', cta: 'Κ', done: false },
+  ] } as unknown as StartPanelState;
+  const nav = () => {};
+  const more: [string, () => ReactElement][] = [
+    ['λίστα', () => createElement(AgendaPanel, { items: agenda, total: 4, onNavigate: nav })],
+    ['άδεια λίστα', () => createElement(AgendaPanel, { items: [], total: 0, onNavigate: nav, incomplete: true })],
+    ['ταμείο', () => createElement(CashHero, { cash, showIncome: true, onNavigate: nav, onRecordRent: nav })],
+    ['ήσυχο ταμείο', () => createElement(CashHero, { cash: { owedToMe: sideOf(0), owedByMe: sideOf(0) } as unknown as CashPosition, showIncome: false, onNavigate: nav, onRecordRent: null })],
+    ['από πού ξεκινάς', () => createElement(StartPanel, { state: start, collapsed: false, onToggle: nav, onNavigate: nav, onPreview: nav })],
+    ['από πού ξεκινάς, κλειστό', () => createElement(StartPanel, { state: start, collapsed: true, onToggle: nav, onNavigate: nav, onPreview: nav })],
+  ];
 
   const items = [{ id: 'p1', name: 'Σπίτι Κηφισιά', status: '', address: null }];
   const screens: [string, () => ReactElement][] = [
@@ -40,6 +115,7 @@ async function main() {
     ['κενός επιλογέας', () => createElement(PropertySwitcher, { items: [], activeId: null as unknown as string, onSelect: () => {}, onAdd: () => {} })],
     ['αναζήτηση', () => createElement(CommandPalette, { open: true, onClose: () => {}, items: [{ id: 'a', label: 'x', action: () => {} }] })],
     ['γλώσσα', () => createElement(LanguageSetting)],
+    ...more,
   ];
   for (const [name, el] of screens) {
     const before = renderToStaticMarkup(el());
@@ -50,6 +126,12 @@ async function main() {
     ok(`${name}: τα αγγλικά χωρίς ελληνικό γράμμα`, !GREEK.test(strip(english)));
     ok(`${name}: τα αγγλικά διαφέρουν`, english !== greek);
   }
+  // ── Τα ποσά στα αγγλικά γράφονται όπως στα ελληνικά (απόφαση ιδιοκτήτη, lib/i18n/en/app/format.ts) ──
+  const enAgenda = renderToStaticMarkup(createElement(AppLocaleProvider, { locale: 'en' }, more[0][1]()));
+  ok('ποσό στα αγγλικά: «35,66€», όχι «€35.66»', enAgenda.includes('35,66€') && !enAgenda.includes('€35'));
+  const enCash = renderToStaticMarkup(createElement(AppLocaleProvider, { locale: 'en' }, more[2][1]()));
+  ok('ταμείο στα αγγλικά: «30,00€»', enCash.includes('30,00€'));
+  ok('παρατήρηση στα αγγλικά: ποσά με ελληνική γραφή', enIns.some(i => /\d,\d{2}€/.test(`${i.detail} ${i.metric ?? ''}`)) && !enIns.some(i => /€\d/.test(`${i.detail} ${i.metric ?? ''}`)));
   const lang = renderToStaticMarkup(createElement(AppLocaleProvider, { locale: 'en' }, createElement(LanguageSetting)));
   ok('ο επιλογέας λέει «Language»', lang.includes('Language'));
 

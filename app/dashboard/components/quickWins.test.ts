@@ -42,8 +42,8 @@ const src = (p: string) => readFileSync(join(process.cwd(), p), 'utf8')
   ok('ο φάκελος δείχνει κουμπί αποστολής δίπλα στον φάκελο', dossier.includes('{send && <span id={ACCOUNTANT_SEND_ID}><Btn variant="secondary"'))
   ok('η Λογιστική περνά το κουμπί', acc.includes('send={accountantSend}') && acc.includes('onClick: shareWithAccountant'))
   ok('ο σύνδεσμος δεν ζει πια στο «⋯»', !/key:'link'/.test(acc))
-  ok('η κάρτα της Επισκόπησης έχει την ενέργεια', notice.includes('sendToAccountant(); }}>{ACCOUNTANT_SEND_LABEL}</Btn>'))
-  ok('οι Ρυθμίσεις έχουν την ενέργεια', settings.includes('onClick={sendToAccountant}>{ACCOUNTANT_SEND_LABEL}</Btn>'))
+  ok('η κάρτα της Επισκόπησης έχει την ενέργεια', notice.includes('sendToAccountant(); }}>{O ? O.accountantSend : ACCOUNTANT_SEND_LABEL}</Btn>'))
+  ok('οι Ρυθμίσεις έχουν την ενέργεια', settings.includes('onClick={sendToAccountant}>{O ? O.accountantSend : ACCOUNTANT_SEND_LABEL}</Btn>'))
   ok('η σελίδα ανοίγει τη Λογιστική με το γεγονός', page.includes("const go = () => { setNav('accounting'); focusAccountantSend(); };") && page.includes('ACCOUNTANT_SEND_EVENT, go'))
   ok('το λεκτικό', ACCOUNTANT_SEND_LABEL === 'Στείλε στον λογιστή σου')
   const seen: string[] = []
@@ -73,6 +73,13 @@ const src = (p: string) => readFileSync(join(process.cwd(), p), 'utf8')
   ok('η ατζέντα ανοίγει την εισαγωγή', agenda.includes('it.action!.tab === ENFIA_IMPORT_TAB ? openMyaadeImport()'))
   const card = src('app/dashboard/components/calendar/EventCard.tsx')
   ok('η κάρτα του ημερολογίου ανοίγει την εισαγωγή', card.includes('enfiaNeedsAmount(event.source,event.amount)') && card.includes('onClick={()=>openMyaadeImport()}'))
+}
+
+// ── Τα αγγλικά της εφαρμογής (lib/i18n/en/app/overview.ts) ─────────────────
+{
+  const en = src('lib/i18n/en/app/overview.ts')
+  ok('η δόση ΕΝΦΙΑ χωρίς ποσό έχει αγγλικό λεκτικό', en.includes("'enfia-import': 'Amount? Upload the assessment'"))
+  ok('το «Στείλε στον λογιστή σου» έχει αγγλικό λεκτικό', en.includes("accountantSend: 'Send to your accountant'"))
 }
 
 // ── 5. Ο χώρος του γραφείου ──────────────────────────────────────────────

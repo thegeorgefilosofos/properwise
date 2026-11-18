@@ -39,7 +39,9 @@ let pending: Promise<ClientBillingWords | null> | null = null;
 
 function load(): Promise<ClientBillingWords | null> {
   if (!pending) {
-    pending = fetch('/api/billing/words')
+    // Η εφαρμογή στα αγγλικά ζητά τα αγγλικά δίδυμα εκεί που υπάρχουν (lib/legal/billingWords.ts).
+    const en = typeof document !== 'undefined' && document.documentElement.lang === 'en'
+    pending = fetch(en ? '/api/billing/words?lang=en' : '/api/billing/words')
       .then(r => (r.ok ? (r.json() as Promise<ClientBillingWords>) : null))
       .catch(() => null)
       .then(w => {
