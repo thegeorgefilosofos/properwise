@@ -18,6 +18,7 @@ import { saved } from '@/components/dbWrite';
 // ─── Re-exports for TabTenant ─────────────────────────────────────────────────
 export { Toggle, NumberInput, TextInput, Textarea, FREQ_OPTIONS };
 export { CustomSelect as SelectField };
+import type { TenantsEn } from '@/lib/i18n/en/app/tenants';
 export { UIDatePicker as DatePicker };
 export { UIServiceBySelect as ServiceBySelect };
 export { SegmentControl };
@@ -202,7 +203,9 @@ export const s = {
  * Ο επεξεργαστής των γραμμών. Τρεις στήλες: περιγραφή, κόστος, ποιος.
  * Χωρίς προκαθορισμένες συσκευές, χωρίς προεπιλεγμένες τιμές, χωρίς «κέρδος».
  */
-export function ServicesEditor({ value, onChange }: { value: ServiceLine[] | null; onChange: (v: ServiceLine[]) => void }) {
+export function ServicesEditor({ value, onChange, en: W }: { value: ServiceLine[] | null; onChange: (v: ServiceLine[]) => void;
+  /** Τα αγγλικά του επεξεργαστή, ή τίποτα στα ελληνικά. */
+  en?: TenantsEn['services'] & { payer: Record<string, string> } }) {
   const lines = value || [];
   const upd = (i: number, patch: Partial<ServiceLine>) => onChange(lines.map((l, idx) => idx === i ? { ...l, ...patch } : l));
   const add = () => onChange([...lines, { name: '', cost: 0, payer: 'owner' }]);
@@ -214,9 +217,9 @@ export function ServicesEditor({ value, onChange }: { value: ServiceLine[] | nul
     <div>
       {lines.length === 0 && (
         <div style={{ fontSize:'12px', color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.6, marginBottom:'12px' }}>
-          Μία γραμμή για κάθε πάγιο που συμφωνήσατε: καθαρισμός, συντήρηση καυστήρα,
+          {W ? W.intro : <>Μία γραμμή για κάθε πάγιο που συμφωνήσατε: καθαρισμός, συντήρηση καυστήρα,
           συνδρομή τηλεόρασης, internet. Ό,τι χρεώνεται στον ενοικιαστή προστίθεται
-          αυτόματα στη μηνιαία δόση.
+          αυτόματα στη μηνιαία δόση.</>}
         </div>
       )}
       <div style={{ display:'flex', flexDirection:'column', gap:'8px', marginBottom:'12px' }}>
@@ -226,25 +229,25 @@ export function ServicesEditor({ value, onChange }: { value: ServiceLine[] | nul
             alignItems:'end', gap:'12px', padding:'12px 14px',
             background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:'10px',
           }}>
-            <TextInput dictation label="Περιγραφή" value={l.name} onChange={v => upd(i, { name: v })} placeholder="Συντήρηση καυστήρα" />
-            <NumberInput label="Κόστος τον μήνα" value={l.cost ? String(l.cost) : ''} onChange={v => upd(i, { cost: parseFloat(v) || 0 })} suffix="€" />
-            <UIServiceBySelect label="Ποιος πληρώνει" value={l.payer} onChange={v => upd(i, { payer: v })} />
+            <TextInput dictation label={W ? W.desc : 'Περιγραφή'} value={l.name} onChange={v => upd(i, { name: v })} placeholder={W ? W.descHint : 'Συντήρηση καυστήρα'} />
+            <NumberInput label={W ? W.cost : 'Κόστος τον μήνα'} value={l.cost ? String(l.cost) : ''} onChange={v => upd(i, { cost: parseFloat(v) || 0 })} suffix="€" />
+            <UIServiceBySelect label={W ? W.who : 'Ποιος πληρώνει'} value={l.payer} onChange={v => upd(i, { payer: v })} labels={W?.payer} />
             {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ. Το `s.btnDng` είναι γεωμετρικά δευτερεύον κουμπί
                 αλλά το μελάνι του είναι ο κίνδυνος: το `Btn` έχει τρεις ρόλους
                 και κανένας τους δεν είναι ο κόκκινος, οπότε η μετατροπή θα έσβηνε
                 τη μόνη ένδειξη ότι η γραμμή χάνεται. Το ύψος T.h.lg είναι εδώ για
                 να ζυγίσει με τα πεδία του πλέγματος δίπλα του. */}
-            <button type="button" onClick={() => del(i)} title="Αφαίρεση γραμμής"
-              style={{ ...s.btnDng, height:T.h.lg, whiteSpace:'nowrap' as const }}>Αφαίρεση</button>
+            <button type="button" onClick={() => del(i)} title={W ? W.removeTitle : 'Αφαίρεση γραμμής'}
+              style={{ ...s.btnDng, height:T.h.lg, whiteSpace:'nowrap' as const }}>{W ? W.remove : 'Αφαίρεση'}</button>
           </div>
         ))}
       </div>
-      <Btn variant="secondary" onClick={add}>Προσθήκη γραμμής</Btn>
+      <Btn variant="secondary" onClick={add}>{W ? W.add : 'Προσθήκη γραμμής'}</Btn>
       {lines.length > 0 && (
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap:'8px', marginTop:'14px', padding:'12px', background:'var(--bg-elevated)', borderRadius:'10px', border:'1px solid var(--border-subtle)' }}>
           {[
-            { label:'Πληρώνεις εσύ / μήνα', val:fmt(owner) },
-            { label:'Πληρώνει ο ενοικιαστής / μήνα', val:fmt(tenant) },
+            { label:W ? W.you : 'Πληρώνεις εσύ / μήνα', val:fmt(owner) },
+            { label:W ? W.tenant : 'Πληρώνει ο ενοικιαστής / μήνα', val:fmt(tenant) },
           ].map(({ label, val }) => (
             <div key={label}>
               <div style={{ fontSize:'15px', fontWeight:700, color:'var(--text-primary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{val}</div>

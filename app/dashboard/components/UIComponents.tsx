@@ -1,6 +1,12 @@
 'use client';
 
-import { useState, useRef, useEffect, useId, useCallback, ReactNode, Fragment, type KeyboardEvent } from 'react';
+import { useState, useRef, useEffect, useId, useCallback, useContext, ReactNode, Fragment, type KeyboardEvent } from 'react';
+import { LocaleOverrideContext } from '@/lib/i18n/useLocale';
+
+// ΣΤΗΝ ΑΓΓΛΙΚΗ ΕΦΑΡΜΟΓΗ ΟΙ ΠΡΟΕΠΙΛΟΓΕΣ ΤΩΝ ΚΟΙΝΩΝ ΠΕΔΙΩΝ ΕΙΝΑΙ ΑΓΓΛΙΚΕΣ. Μόνο ο
+// πάροχος της εφαρμογής (lib/i18n/appEn.tsx) λέει «en»· χωρίς αυτόν όλα μένουν
+// ελληνικά, ίδια ως το byte.
+const useAppIsEn = () => useContext(LocaleOverrideContext) === 'en';
 import { createPortal } from 'react-dom';
 import { Btn, IconBtn, ChipToggle } from '@/components/ThemeCore';
 import { T, localDay } from '@/components/tokens';
@@ -202,6 +208,7 @@ export const INFO_TOOLTIP_STYLE: React.CSSProperties = {
  * εξηγείται· με αυτό ακούει «Τι σημαίνει: Αντικειμενική αξία».
  */
 export function InfoDot({ text, label }: { text: string; label?: string }) {
+  const en = useAppIsEn();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLButtonElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number; up: boolean }>({ top: 0, left: 0, up: false });
@@ -229,7 +236,7 @@ export function InfoDot({ text, label }: { text: string; label?: string }) {
           φαινόταν ποτέ. Το ίδιο είχε μετρηθεί και διορθωθεί στο InfoHint· εδώ
           η ίδια λύση: αιώρηση μόνο για ποντίκι, εστίαση μόνο από πληκτρολόγιο
           (`:focus-visible`), το πάτημα ανοίγει και κλείνει για όλους. */}
-      <button ref={ref} type="button" aria-label={label ? `Τι σημαίνει: ${label}` : 'Επεξήγηση'}
+      <button ref={ref} type="button" aria-label={en ? (label ? `What this means: ${label}` : 'Explanation') : label ? `Τι σημαίνει: ${label}` : 'Επεξήγηση'}
         onPointerEnter={(e) => { if (e.pointerType === 'mouse') show() }}
         onPointerLeave={(e) => { if (e.pointerType === 'mouse') hide() }}
         onFocus={(e) => { if (e.target.matches(':focus-visible')) show() }} onBlur={hide}
@@ -720,8 +727,10 @@ type CustomSelectProps = SelectNaming & {
 }
 
 export function CustomSelect({
-  label, ariaLabel, labelInfo, value, onChange, options, placeholder = 'Επιλογή…', disabled, variant,
+  label, ariaLabel, labelInfo, value, onChange, options, placeholder: givenPlaceholder, disabled, variant,
 }: CustomSelectProps) {
+  const appEn = useAppIsEn();
+  const placeholder = givenPlaceholder ?? (appEn ? 'Choose…' : 'Επιλογή…');
   const tool = variant === 'tool';
   const [open, setOpen] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -1041,7 +1050,9 @@ interface DatePickerProps {
 // ακριβώς νόημα και στην ίδια σειρά κάθονται και τα δύο. Μία διατύπωση για μία
 // κατάσταση. Και δεν μπαίνει μορφότυπος («ηη/μμ/εεεε»): εδώ δεν πληκτρολογείς,
 // ανοίγει ημερολόγιο, οπότε θα υποσχόταν κάτι που δεν γίνεται.
-export function DatePicker({ label, labelInfo, ariaLabel, value, onChange, disabled, placeholder = 'Επιλογή…' }: DatePickerProps) {
+export function DatePicker({ label, labelInfo, ariaLabel, value, onChange, disabled, placeholder: givenPlaceholder }: DatePickerProps) {
+  const appEn = useAppIsEn();
+  const placeholder = givenPlaceholder ?? (appEn ? 'Choose…' : 'Επιλογή…');
   const [open, setOpen] = useState(false);
   const [focused, setFocused] = useState(false);
   // ΤΟ ΗΜΕΡΟΛΟΓΙΟ ΑΝΟΙΓΕ ΣΕ ΛΑΘΟΣ ΜΗΝΑ. Εδώ γραφόταν `new Date(value).getMonth()`:
@@ -1714,7 +1725,9 @@ type ServiceBy = 'owner' | 'tenant' | 'split';
 const SB_LABELS: Record<ServiceBy, string> = { owner: 'Ιδιοκτήτης', tenant: 'Ενοικιαστής', split: 'Μισά-μισά' };
 const SB_COLORS: Record<ServiceBy, string> = { owner: 'var(--warning)', tenant: 'var(--positive)', split: 'var(--accent)' };
 
-export function ServiceBySelect({ label, value, onChange }: { label: string; value: ServiceBy; onChange: (v: ServiceBy) => void }) {
+export function ServiceBySelect({ label, value, onChange, labels }: { label: string; value: ServiceBy; onChange: (v: ServiceBy) => void;
+  /** Τα ονόματα των τριών επιλογών σε άλλη γλώσσα· χωρίς αυτά, τα ελληνικά. */
+  labels?: Record<string, string> }) {
   return (
     <div>
       <label style={fieldLabelStyle}>{label}</label>
@@ -1738,7 +1751,7 @@ export function ServiceBySelect({ label, value, onChange }: { label: string; val
               transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s',
             }}
           >
-            {SB_LABELS[v]}
+            {labels?.[v] ?? SB_LABELS[v]}
           </button>
         ))}
       </div>

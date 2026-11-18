@@ -141,6 +141,8 @@ import { ActionMenu } from '@/components/ActionMenu';
 import { avatar } from './clients/Bits';
 import { navLabel } from '@/lib/nav/labels';
 import { cleanDigits } from '@/lib/property/powerSupply';
+import { useAppEn } from '@/lib/i18n/appEn';
+import type { TenantsEn } from '@/lib/i18n/en/app/tenants';
 
 // ─── Design tokens, shared source of truth (components/Theme) ────────────────
 
@@ -174,11 +176,11 @@ export async function purgeTenant(io: {
   deleteRows: () => PromiseLike<{ data: unknown; error: DbErr }>;
   /** Σβήσιμο από το `lease-documents`. Καλείται ΜΟΝΟ μετά την επιτυχία. */
   removeFiles: (paths: string[]) => PromiseLike<{ error: DbErr }>;
-}): Promise<TenantPurge> {
+}, /** Τα μηνύματα άρνησης· στα αγγλικά από το λεξικό. */ refused: Record<string, string> = PURGE_REFUSED): Promise<TenantPurge> {
   const { data, error } = await io.deleteRows();
   if (error) {
     const known = Object.keys(PURGE_REFUSED).find(k => error.message?.includes(k));
-    return { ok: false, error: known ? PURGE_REFUSED[known] : `${failed('Ο ενοικιαστής δεν διαγράφηκε', error)} Δεν διαγράφηκε τίποτα.` };
+    return { ok: false, error: known ? (refused[known] ?? PURGE_REFUSED[known]) : `${failed('Ο ενοικιαστής δεν διαγράφηκε', error)} Δεν διαγράφηκε τίποτα.` };
   }
   const r = (data && typeof data === 'object' ? data : {}) as { paths?: unknown; payments?: unknown; damages?: unknown };
   const paths = Array.isArray(r.paths) ? r.paths.filter((p): p is string => typeof p === 'string' && p.length > 0) : [];
@@ -199,6 +201,14 @@ type DossierTab='overview'|'lease'|'condition'|'legal'|'comm'|'docs';
 
 export default function TabTenant({ propertyId, userId, onStartHandover, plan='free', profileType }:TabTenantProps) {
   const supabase=createClient();
+  // Τα αγγλικά της καρτέλας και του κελύφους, ή `null` στα ελληνικά.
+  const E=useAppEn('tenants');
+  const S=useAppEn('shell');
+  /** Ημερομηνία πίνακα· η απουσία της στα αγγλικά. */
+  const fD=(d:string|null)=>E&&!d?E.noDate:fmtD(d);
+  /** Ονομα και «γιατί» ενός πεδίου του μητρώου. */
+  const lab=(id:string)=>E?.fields[id]?.[0]??labelOf(id);
+  const why=(id:string)=>(E?E.fields[id]?.[1]:undefined)??whyOf(id);
   // Ο φόρος του ακινήτου για το «Νομικά και Φόρος», με την ίδια βάση και την
   // ίδια ενοποίηση με την Επισκόπηση (lib/facts/rentTax.ts).
   const rentTax=usePropertyRentTax(propertyId,userId,profileType);
@@ -413,7 +423,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
   const closeForm=async()=>{
     if(saving) return;
     const dirty = !!(form.full_name.trim()||form.afm||form.phone||form.email||form.monthly_rent);
-    if(dirty && !(await confirmDialog('Κλείσιμο χωρίς αποθήκευση; Τα στοιχεία που συμπλήρωσες θα χαθούν.'))) return;
+    if(dirty && !(await (E?confirmDialog(E.ask(E.toast.closeUnsaved)):confirmDialog('Κλείσιμο χωρίς αποθήκευση; Τα στοιχεία που συμπλήρωσες θα χαθούν.')))) return;
     setError(null); setFieldErr(null); setIsForm(false);
   };
 
@@ -473,7 +483,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
   const uploadFormDoc=async(file:File,tag:'id'|'lease')=>{
     // Νέος ενοικιαστής: η ταυτότητα ανέβαινε πριν ζητηθεί η σύμβαση στο save()
     // και έμενε στο Αρχείο ακόμη κι αν ο χρήστης έλεγε «Όχι τώρα».
-    if(!editId && !(await ensureDpa(supabase))){setError('Το έγγραφο δεν ανέβηκε: χρειάζεται αποδοχή της σύμβασης επεξεργασίας.');return;}
+    if(!editId && !(await ensureDpa(supabase))){setError(E?E.toast.docNeedsDpa:'Το έγγραφο δεν ανέβηκε: χρειάζεται αποδοχή της σύμβασης επεξεργασίας.');return;}
     setDocBusy(true); setError(null);
     try{
       const safe=file.name.replace(/[^\w.\-]+/g,'_');
@@ -485,8 +495,8 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
       const ins=await documents.add(supabase,propertyId,userId,{kind:'document',category:'tenant',supplier:editId?('tenant:'+editId):null,title,doc_date:todayISO(),file_path:path,file_name:file.name,mime:file.type||null,size_bytes:file.size});
       if(ins.error){ setError(failed('Το έγγραφο δεν καταχωρήθηκε', ins.error)); setDocBusy(false); return; }
       if(ins.id) setFormDocs(prev=>[...prev,{id:ins.id as string,file_name:file.name,tag}]);
-      notifyOk('Το έγγραφο ανέβηκε');
-    }catch{ setError('Το έγγραφο δεν ανέβηκε. Δοκίμασε ξανά.'); }
+      notifyOk(E?E.toast.docUploaded:'Το έγγραφο ανέβηκε');
+    }catch{ setError(E?E.toast.docFailed:'Το έγγραφο δεν ανέβηκε. Δοκίμασε ξανά.'); }
     setDocBusy(false);
   };
 
@@ -500,12 +510,12 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
   };
   const saveUnlocked=async()=>{
     const problem=tenantFormProblem(form);
-    if(problem){ setError(null); setFieldErr(problem); return; }
+    if(problem){ setError(null); setFieldErr(E?{ ...problem, msg:E.form.errors[problem.field]??problem.msg }:problem); return; }
     setFieldErr(null);
     const declRef=cleanDigits(form.aade_lease_decl_ref);
-    if(declRef.error){setError(`Αριθμός δήλωσης μίσθωσης: ${declRef.error}`);setMoreOpen(true);return;}
+    if(declRef.error){setError(E?E.toast.declRef(declRef.error):`Αριθμός δήλωσης μίσθωσης: ${declRef.error}`);setMoreOpen(true);return;}
     // Νέος ενοικιαστής: πρώτα η σύμβαση επεξεργασίας (lib/legal/dpa.ts).
-    if(!editId && !(await ensureDpa(supabase))){setError('Τα στοιχεία δεν αποθηκεύτηκαν: χρειάζεται αποδοχή της σύμβασης επεξεργασίας.');return;}
+    if(!editId && !(await ensureDpa(supabase))){setError(E?E.toast.saveNeedsDpa:'Τα στοιχεία δεν αποθηκεύτηκαν: χρειάζεται αποδοχή της σύμβασης επεξεργασίας.');return;}
     setSaving(true);setError(null);
     const n=(v:string)=>v?Math.max(0,parseFloat(v)):null;
     const dueDay=Math.min(Math.max(1,parseInt(form.rent_due_day)||1),28);
@@ -538,7 +548,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
       ?tenantStore.updateReturning(supabase,editId,payload)
       :tenantStore.addReturning(supabase,propertyId,userId,payload));
     if(err){
-      const msg=err.message||'Άγνωστο σφάλμα';
+      const msg=err.message||(E?E.toast.unknown:'Άγνωστο σφάλμα');
       // Μετάφραση των συχνών αιτιών σε σαφές ελληνικό μήνυμα.
       //
       // ΤΟ ΜΗΝΥΜΑ ΤΟ ΔΙΑΒΑΖΕΙ ΙΔΙΟΚΤΗΤΗΣ ΑΚΙΝΗΤΟΥ, ΟΧΙ ΠΡΟΓΡΑΜΜΑΤΙΣΤΗΣ.
@@ -551,7 +561,9 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
       // Ενα σφάλμα σχήματος ή δικαιωμάτων είναι ΔΙΚΟ ΜΑΣ λάθος. Το λέμε, λέμε
       // ότι τα στοιχεία του δεν χάθηκαν και κρατάμε την τεχνική λεπτομέρεια για
       // όποιον μπορεί να κάνει κάτι μ’ αυτήν.
-      const friendly=/column|schema cache|does not exist/i.test(msg)
+      const friendly=E
+        ? (/column|schema cache|does not exist/i.test(msg) ? E.toast.ourSchema(msg) : /row-level security|violates row-level/i.test(msg) ? E.toast.ourRls(msg) : E.toast.saveFailed(msg))
+        : /column|schema cache|does not exist/i.test(msg)
         ? `Η αποθήκευση απέτυχε από δικό μας σφάλμα, όχι από κάτι που έκανες. Τα στοιχεία που έγραψες μένουν στην οθόνη. Τεχνική λεπτομέρεια: ${msg}`
         : /row-level security|violates row-level/i.test(msg)
         ? `Η αποθήκευση απέτυχε λόγω δικαιωμάτων, από δικό μας σφάλμα. Τα στοιχεία που έγραψες μένουν στην οθόνη. Τεχνική λεπτομέρεια: ${msg}`
@@ -578,31 +590,31 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
       // ΤΟ ΣΦΑΛΜΑ ΛΕΓΕΤΑΙ, ΑΛΛΑ ΔΕΝ ΑΚΥΡΩΝΕΙ ΤΗΝ ΑΠΟΘΗΚΕΥΣΗ: ο ενοικιαστής
       // έχει ήδη γραφτεί και μια σιωπηλή αποτυχία εδώ είναι ακριβώς το
       // μηδενικό που δεν εξηγείται.
-      if(instErr) notifyError(`Ο ενοικιαστής αποθηκεύτηκε, αλλά οι δόσεις ενοικίου δεν δημιουργήθηκαν. ${instErr}`);
+      if(instErr) notifyError(E?E.toast.noInstallments(instErr):`Ο ενοικιαστής αποθηκεύτηκε, αλλά οι δόσεις ενοικίου δεν δημιουργήθηκαν. ${instErr}`);
     }
     setSaving(false);setIsForm(false);
-    notifyOk(editId?'Αποθηκεύτηκε':'Ο ενοικιαστής προστέθηκε');
+    notifyOk(E?(editId?E.toast.saved:E.toast.added):editId?'Αποθηκεύτηκε':'Ο ενοικιαστής προστέθηκε');
     await refresh();
   };
 
   const markMovedOut=async(t:Tenant)=>{
-    if(!(await confirmDialog(`Σήμανση αποχώρησης για «${t.full_name}»; Θα μεταφερθεί στους προηγούμενους ενοικιαστές.`))) return;
+    if(!(await (E?confirmDialog(E.ask(E.toast.moveOut(t.full_name))):confirmDialog(`Σήμανση αποχώρησης για «${t.full_name}»; Θα μεταφερθεί στους προηγούμενους ενοικιαστές.`)))) return;
     if(!await saved('Η αποχώρηση δεν καταχωρήθηκε', tenantStore.markPast(supabase,t.id,todayISO()))) return;
-    notify('Ο ενοικιαστής μεταφέρθηκε στο ιστορικό'); void refresh();
+    notify(E?E.toast.movedOut:'Ο ενοικιαστής μεταφέρθηκε στο ιστορικό'); void refresh();
   };
   const delTenant=async(t:Tenant)=>{
-    if(!(await confirmDialog(`Οριστική διαγραφή «${t.full_name}»; Διαγράφονται μαζί οι πληρωμές του, που μετρούν στα έσοδα, οι φθορές και το μισθωτήριο που ανέβηκε.`,{tone:'negative',confirmLabel:'Οριστική διαγραφή'}))) return;
+    if(!(await (E?confirmDialog(E.ask(E.toast.del(t.full_name),E.toast.delLabel,true)):confirmDialog(`Οριστική διαγραφή «${t.full_name}»; Διαγράφονται μαζί οι πληρωμές του, που μετρούν στα έσοδα, οι φθορές και το μισθωτήριο που ανέβηκε.`,{tone:'negative',confirmLabel:'Οριστική διαγραφή'})))) return;
     // ΟΛΑ Ή ΤΙΠΟΤΑ ΚΑΙ ΤΟ ΑΜΕΤΑΚΛΗΤΟ ΤΕΛΕΥΤΑΙΟ (βλ. `purgeTenant`). Οι γραμμές
     // φεύγουν σε μία συναλλαγή· το PDF του μισθωτηρίου, με όνομα, ΑΦΜ και
     // διεύθυνση, σβήνεται μόνο αφού εκείνη πετύχει.
     const res=await purgeTenant({
       deleteRows:()=>supabase.rpc('delete_tenant',{p_tenant_id:t.id}),
       removeFiles:paths=>supabase.storage.from('lease-documents').remove(paths),
-    });
+    }, E?.toast.purge);
     if(!res.ok){notifyError(res.error);return;}
     if(openId===t.id) setOpenId(null);
     if(res.filesError) notifyError(res.filesError);
-    else notify('Ο ενοικιαστής διαγράφηκε');
+    else notify(E?E.toast.deleted:'Ο ενοικιαστής διαγράφηκε');
     void refresh();
   };
 
@@ -624,13 +636,13 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
     // Το προηγούμενο PDF δεν το δείχνει πια καμία γραμμή. Πριν το έσβηνε το
     // `upsert` (ίδιο όνομα, ίδιο κλειδί)· τώρα κάθε ανέβασμα έχει δικό του.
     if(prev && prev!==path) await supabase.storage.from('lease-documents').remove([prev]);
-    setUploading(false);notifyOk('Το PDF ανέβηκε');void refresh();
+    setUploading(false);notifyOk(E?E.toast.pdfUploaded:'Το PDF ανέβηκε');void refresh();
   };
   const openLeaseDoc=async(t:Tenant)=>{
     const path=leaseDocPath(userId,t);
     if(!path) return;
     const{data,error:e}=await supabase.storage.from('lease-documents').createSignedUrl(path,60*60);
-    if(e||!data?.signedUrl){setError('Το PDF δεν άνοιξε. Δοκίμασε ξανά.');return;}
+    if(e||!data?.signedUrl){setError(E?E.toast.pdfNotOpened:'Το PDF δεν άνοιξε. Δοκίμασε ξανά.');return;}
     window.open(data.signedUrl,'_blank','noopener,noreferrer');
   };
 
@@ -670,11 +682,11 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
   const rentHistory=[...tenants].filter(t=>t.monthly_rent).sort((a,b)=>(a.lease_start||'').localeCompare(b.lease_start||''));
 
   const statusBadge=(t:Tenant)=>{
-    if(overdueByTenant.has(t.id)) return <Badge tone="negative">Ληξιπρόθεσμο</Badge>;
-    if(isPastTenant(t)) return <Badge tone="neutral">Προηγούμενος</Badge>;
+    if(overdueByTenant.has(t.id)) return <Badge tone="negative">{E?E.badge.overdue:'Ληξιπρόθεσμο'}</Badge>;
+    if(isPastTenant(t)) return <Badge tone="neutral">{E?E.badge.past:'Προηγούμενος'}</Badge>;
     const d=daysLeft(t.lease_end);
-    if(d!=null&&d<0) return <Badge tone="warning">Έληξε</Badge>;
-    return <Badge tone="positive">Τρέχων</Badge>;
+    if(d!=null&&d<0) return <Badge tone="warning">{E?E.badge.ended:'Έληξε'}</Badge>;
+    return <Badge tone="positive">{E?E.badge.current:'Τρέχων'}</Badge>;
   };
 
   const DTABS:{id:DossierTab;label:string;badge?:number}[]=dc?[
@@ -684,7 +696,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
     {id:'legal',label:'Νομικά και φόρος'},
     {id:'comm',label:'Επικοινωνία'},
     {id:'docs',label:'Έγγραφα'},
-  ]:[];
+  ].map(tb=>E?{ ...tb, label:E.dossier.tabs[tb.id] }:tb) as {id:DossierTab;label:string;badge?:number}[]:[];
 
   // ── ΠΟΙΑ ΠΕΔΙΑ ΒΛΕΠΕΙ Η ΦΟΡΜΑ, ΤΩΡΑ ────────────────────────────────────────
   // Μία κλήση στο μητρώο, τρία επίπεδα: `core` φαίνεται, `more` πίσω από κουμπί,
@@ -706,26 +718,26 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
     <div style={{ fontFamily:T.font.sans, color:'var(--text-primary)' }}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
 
-      {error&&<div style={{ background:'var(--negative-dim)', border:'1px solid var(--negative-border)', borderLeft:'3px solid var(--negative)', borderRadius:T.radius.inner, padding:'11px 18px', marginBottom:14, color:'var(--negative)', fontSize: 'var(--fs-base)', fontFamily:T.font.sans, fontWeight:500, display:'flex', justifyContent:'space-between', alignItems:'center' }}><span>{error}</span><IconBtn label="Κλείσιμο μηνύματος σφάλματος" tone="danger" onClick={()=>setError(null)}><span style={{ fontSize:18, lineHeight:1 }}>×</span></IconBtn></div>}
+      {error&&<div style={{ background:'var(--negative-dim)', border:'1px solid var(--negative-border)', borderLeft:'3px solid var(--negative)', borderRadius:T.radius.inner, padding:'11px 18px', marginBottom:14, color:'var(--negative)', fontSize: 'var(--fs-base)', fontFamily:T.font.sans, fontWeight:500, display:'flex', justifyContent:'space-between', alignItems:'center' }}><span>{error}</span><IconBtn label={E?E.closeError:'Κλείσιμο μηνύματος σφάλματος'} tone="danger" onClick={()=>setError(null)}><span style={{ fontSize:18, lineHeight:1 }}>×</span></IconBtn></div>}
 
       {/* Ο ΤΙΤΛΟΣ ΕΙΝΑΙ ΤΟ ΟΝΟΜΑ ΤΟΥ ΜΕΝΟΥ. Ηταν «Ενοικιαστής» με το χέρι, πάνω
           από λίστα με φίλτρα «Όλοι», «Τρέχοντες», «Προηγούμενοι». */}
-      <PageTitle title={navLabel('tenant')} sub="Τρέχουσες και παλαιότερες μισθώσεις, με τον φάκελο κάθε ενοικιαστή"
+      <PageTitle title={S?S.nav.tenant:navLabel('tenant')} sub={E?E.sub:'Τρέχουσες και παλαιότερες μισθώσεις, με τον φάκελο κάθε ενοικιαστή'}
         right={tenants.length>0?<div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
           {/* ΜΙΑ ΚΥΡΙΑ ΕΝΕΡΓΕΙΑ ΚΑΙ ΕΝΑ ΜΕΝΟΥ, ΟΠΩΣ ΣΤΙΣ ΕΠΑΦΕΣ. Τέσσερα ισοβαρή
               κουμπιά έβγαιναν πλέγμα 2×2 στο κινητό, με το «Σύνταξη μισθωτηρίου»
               σε δύο σειρές δίπλα σε κουμπί μίας. Η ίδια ενέργεια λεγόταν κάποτε
               «Μισθωτήριο» εδώ και «Σύνταξη μισθωτηρίου» στην κενή κατάσταση: το
               όνομα μένει ένα. */}
-          <ActionMenu label="Περισσότερα" items={[
+          <ActionMenu label={E?E.more:'Περισσότερα'} items={[
             { key:'lease', label:'Σύνταξη μισθωτηρίου', description:'Ιδιωτικό συμφωνητικό, με υπογραφή και των δύο μερών.', onClick:()=>setLeaseOpen(true) },
             { key:'decl', label:'Δήλωση μίσθωσης', description:'Τα πεδία της δήλωσης στην ΑΑΔΕ, ελεγμένα και έτοιμα για αντιγραφή.', onClick:()=>setDeclOpen(true) },
             { key:'xlsx', label:'Εξαγωγή Excel', description:'Όλοι οι ενοικιαστές σε υπολογιστικό φύλλο.', onClick:exportRoster },
-          ]}/>
-          <Btn variant="primary" onClick={openAdd}>Νέος ενοικιαστής</Btn>
+          ].map(it=>E?{ ...it, label:E.menu[it.key][0], description:E.menu[it.key][1] }:it)}/>
+          <Btn variant="primary" onClick={openAdd}>{E?E.newTenant:'Νέος ενοικιαστής'}</Btn>
         </div>:undefined}/>
 
-      {tenants.length>0&&<TenantSummary {...summary}/>}
+      {tenants.length>0&&<TenantSummary {...summary} en={E?.summary}/>}
 
       {/* ═══ ΑΝΑΖΗΤΗΣΗ ΚΑΙ ΦΙΛΤΡΟ, ΟΠΩΣ ΣΤΟ ΑΡΧΕΙΟ (16.11.2026) ═══════════════
           Ηταν πεδίο χωρίς εικονίδιο με γωνίες 10 και, δίπλα, τρία ανεξάρτητα
@@ -740,23 +752,23 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
         <div className="po-search">
           <Search size={15} aria-hidden="true" className="po-search-icon"/>
           <input value={search} onChange={e=>setSearch(e.target.value)} type="search"
-            className="po-search-input" aria-label="Αναζήτηση ενοικιαστή" placeholder="Όνομα, ΑΦΜ ή τηλέφωνο"/>
+            className="po-search-input" aria-label={E?E.searchLabel:'Αναζήτηση ενοικιαστή'} placeholder={E?E.searchHint:'Όνομα, ΑΦΜ ή τηλέφωνο'}/>
         </div>
         {/* «Όλοι», «Τρέχοντες», «Προηγούμενοι»: πληθυντικοί, γιατί φιλτράρουν
             ΛΙΣΤΑ. Το «Τρέχων» μένει στη σήμανση ΕΝΟΣ ενοικιαστή. */}
-        <div role="group" aria-label="Ποιοι ενοικιαστές φαίνονται" className="po-rail">
+        <div role="group" aria-label={E?E.segLabel:'Ποιοι ενοικιαστές φαίνονται'} className="po-rail">
           {([['all','Όλοι'],['current','Τρέχοντες'],['past','Προηγούμενοι']] as [typeof segment,string][]).map(([v,l])=>(
-            <ChipToggle key={v} shape="seg" on={segment===v} onClick={()=>setSegment(v)}>{l}</ChipToggle>
+            <ChipToggle key={v} shape="seg" on={segment===v} onClick={()=>setSegment(v)}>{E?E.segs[v]:l}</ChipToggle>
           ))}
         </div>
       </div>}
 
       {tenants.length===0?(
-        <EmptyState icon={<Users size={20}/>} title="Κανένας ενοικιαστής ακόμη" hint="Πρόσθεσε τον ενοικιαστή του ακινήτου για πλήρη παρακολούθηση μίσθωσης, ενοικίων, εγγύησης, φθορών και ανανέωσης." action={<div className="act-center" style={{ display:'flex', gap:8, flexWrap:'wrap' as const, justifyContent:'center' }}><Btn variant="primary" onClick={openAdd}>Νέος ενοικιαστής</Btn><Btn variant="secondary" onClick={()=>setLeaseOpen(true)}>Σύνταξη μισθωτηρίου</Btn></div>}/>
+        <EmptyState icon={<Users size={20}/>} title={E?E.empty[0]:'Κανένας ενοικιαστής ακόμη'} hint={E?E.empty[1]:'Πρόσθεσε τον ενοικιαστή του ακινήτου για πλήρη παρακολούθηση μίσθωσης, ενοικίων, εγγύησης, φθορών και ανανέωσης.'} action={<div className="act-center" style={{ display:'flex', gap:8, flexWrap:'wrap' as const, justifyContent:'center' }}><Btn variant="primary" onClick={openAdd}>{E?E.newTenant:'Νέος ενοικιαστής'}</Btn><Btn variant="secondary" onClick={()=>setLeaseOpen(true)}>{E?E.menu.lease[0]:'Σύνταξη μισθωτηρίου'}</Btn></div>}/>
       ):(
         <>
           {filtered.length===0?(
-            <EmptyState icon={<SearchX size={20}/>} title="Δεν βρέθηκαν ενοικιαστές" hint="Άλλαξε φίλτρο ή αναζήτηση."/>
+            <EmptyState icon={<SearchX size={20}/>} title={E?E.noMatch[0]:'Δεν βρέθηκαν ενοικιαστές'} hint={E?E.noMatch[1]:'Άλλαξε φίλτρο ή αναζήτηση.'}/>
           ):(
             // `auto-fill`, ΟΧΙ `auto-fit`: με έναν ενοικιαστή η κάρτα τεντωνόταν σε
             // όλα τα 1.392 της σειράς και τα τρία ποσά της λωρίδας απείχαν 450
@@ -768,17 +780,17 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                 const d=daysLeft(t.lease_end);
                 return (
                   <RecordCard key={t.id} onOpen={()=>{setOpenId(t.id);setDossierTab('overview');}}
-                    openLabel={`Άνοιγμα καρτέλας: ${t.full_name}`}
+                    openLabel={E?E.openCard(t.full_name):`Άνοιγμα καρτέλας: ${t.full_name}`}
                     lead={avatar(t.full_name, 42)}
                     tone={od?'negative':undefined}
                     title={t.full_name}
                     sub={<>
-                      <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans }}>{t.lease_start||t.lease_end?`${fmtD(t.lease_start)} έως ${fmtD(t.lease_end)}`:'χωρίς περίοδο μίσθωσης'}</span>
-                      {t.afm&&<span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>ΑΦΜ {t.afm}</span>}
+                      <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans }}>{E?(t.lease_start||t.lease_end?E.period(fD(t.lease_start),fD(t.lease_end)):E.noPeriod):t.lease_start||t.lease_end?`${fmtD(t.lease_start)} έως ${fmtD(t.lease_end)}`:'χωρίς περίοδο μίσθωσης'}</span>
+                      {t.afm&&<span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{E?E.afm(t.afm):<>ΑΦΜ {t.afm}</>}</span>}
                     </>}
                     badges={<>
                       {statusBadge(t)}
-                      {(declaredByTenant.get(t.id)||0)>0&&<Badge tone="accent">Δηλωμένη πληρωμή</Badge>}
+                      {(declaredByTenant.get(t.id)||0)>0&&<Badge tone="accent">{E?E.badge.declared:'Δηλωμένη πληρωμή'}</Badge>}
                     </>}
                     actions={
                       // ΤΟ ΦΡΕΝΟ ΤΗΣ ΑΝΑΔΥΣΗΣ ΜΕΝΕΙ ΣΤΟ ΔΟΧΕΙΟ. Ολη η κάρτα είναι κουμπί
@@ -792,8 +804,8 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                             σπάνιες ενέργειες ζουν σε ήσυχο μενού· η διαγραφή μένει
                             κόκκινη ΜΕΣΑ του με κάδο και με το όνομα στο λεκτικό
                             και ζητά επιβεβαίωση όπως πριν. */}
-                        <ActionMenu iconOnly label={`Ενέργειες για ${t.full_name}`} items={[
-                          { key:'del', label:`Διαγραφή ενοικιαστή`, description:t.full_name, danger:true, icon:<Trash2 size={15} aria-hidden="true"/>, onClick:()=>delTenant(t) },
+                        <ActionMenu iconOnly label={E?E.actionsFor(t.full_name):`Ενέργειες για ${t.full_name}`} items={[
+                          { key:'del', label:E?E.deleteTenant:`Διαγραφή ενοικιαστή`, description:t.full_name, danger:true, icon:<Trash2 size={15} aria-hidden="true"/>, onClick:()=>delTenant(t) },
                         ]}/>
                       </div>
                     }>
@@ -803,16 +815,16 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                         ύψη. Το «μηνιαίο» το λέει ήδη ο δείκτης στην κορυφή· το
                         «Ληξιπρόθεσμα» είναι η λέξη της καρτέλας Πληρωμών. */}
                     <StatStrip items={[
-                      { label:'Ενοίκιο', value:fmt(t.monthly_rent), strong:true },
-                      { label:'Εγγύηση', value:fmt(t.deposit_amount) },
-                      { label:'Ληξιπρόθεσμα', value:fmt(od?od.amount:0), tone:od?'negative':undefined },
+                      { label:E?E.strip.rent:'Ενοίκιο', value:fmt(t.monthly_rent), strong:true },
+                      { label:E?E.strip.deposit:'Εγγύηση', value:fmt(t.deposit_amount) },
+                      { label:E?E.strip.overdue:'Ληξιπρόθεσμα', value:fmt(od?od.amount:0), tone:od?'negative':undefined },
                     ]} />
                     {/* ΤΟ ΡΑΝΤΕΒΟΥ ΤΗΣ ΑΝΑΠΡΟΣΑΡΜΟΓΗΣ ΛΕΓΕΤΑΙ. Το «Μηνιαίο ενοίκιο» από
                         πάνω δείχνει το ποσό που ΙΣΧΥΕΙ σήμερα· χωρίς αυτή τη γραμμή, η
                         υπογεγραμμένη ειδοποίηση θα ζούσε μόνο σε ένα PDF και η αλλαγή
                         θα εμφανιζόταν μια νύχτα χωρίς εξήγηση. */}
-                    {!isPastTenant(t)&&t.pending_rent!=null&&t.pending_rent_from&&<div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-secondary)', fontFamily:T.font.sans }}>Αναπροσαρμογή σε {fmt(t.pending_rent)} από {fmtD(t.pending_rent_from)}</div>}
-                    {!isPastTenant(t)&&d!=null&&d>=0&&d<=60&&<div style={{ fontSize: 'var(--fs-xs)', color:'var(--warning)', fontFamily:T.font.sans }}>Λήξη μίσθωσης σε {fn(d)} ημέρες</div>}
+                    {!isPastTenant(t)&&t.pending_rent!=null&&t.pending_rent_from&&<div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-secondary)', fontFamily:T.font.sans }}>{E?E.pendingRent(fmt(t.pending_rent),fD(t.pending_rent_from)):<>Αναπροσαρμογή σε {fmt(t.pending_rent)} από {fmtD(t.pending_rent_from)}</>}</div>}
+                    {!isPastTenant(t)&&d!=null&&d>=0&&d<=60&&<div style={{ fontSize: 'var(--fs-xs)', color:'var(--warning)', fontFamily:T.font.sans }}>{E?E.endsIn(d):<>Λήξη μίσθωσης σε {fn(d)} ημέρες</>}</div>}
                   </RecordCard>
                 );
               })}
@@ -822,7 +834,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
           {/* Ιστορικό ενοικιαστών: πορεία ενοικίου ανά μίσθωση */}
           {(segment==='past'||segment==='all')&&rentHistory.length>=2&&(
             <div style={{ marginTop:24 }}>
-              <SecHdr label="Ιστορικό ενοικιαστών" sub="Πορεία μηνιαίου ενοικίου ανά μίσθωση"/>
+              <SecHdr label={E?E.history[0]:'Ιστορικό ενοικιαστών'} sub={E?E.history[1]:'Πορεία μηνιαίου ενοικίου ανά μίσθωση'}/>
               <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                 {rentHistory.map((t,i)=>{
                   const prev=i>0?rentHistory[i-1].monthly_rent||0:0;
@@ -832,7 +844,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                     <div key={t.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:'10px 14px', flexWrap:'wrap' as const }}>
                       <div style={{ minWidth:0 }}>
                         <div style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-primary)', fontFamily:T.font.sans }}>{t.full_name}</div>
-                        <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans }}>{fmtD(t.lease_start)} έως {fmtD(t.move_out_date||t.lease_end)}</div>
+                        <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans }}>{E?E.period(fD(t.lease_start),fD(t.move_out_date||t.lease_end)):<>{fmtD(t.lease_start)} έως {fmtD(t.move_out_date||t.lease_end)}</>}</div>
                       </div>
                       <div style={{ textAlign:'right' as const }}>
                         <span style={{ fontSize:14, fontWeight:700, fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', color:'var(--text-primary)' }}>{fmt(cur)}</span>
@@ -871,7 +883,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
           ντοσιέ. */}
       {dc&&(
         <SideSheet open onClose={closeDossier} size="xl"
-          ariaLabel={`Ντοσιέ ενοικιαστή: ${dc.full_name}`}
+          ariaLabel={E?E.dossier.aria(dc.full_name):`Ντοσιέ ενοικιαστή: ${dc.full_name}`}
           header={<>
             <div style={{ display:'flex', alignItems:'flex-start', gap:14, flexWrap:'wrap' as const }}>
               <div style={{ minWidth:0, flex:1 }}>
@@ -886,9 +898,9 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                 </div>
               </div>
               <div style={{ display:'flex', gap:8, flexShrink:0, flexWrap:'wrap' as const, justifyContent:'flex-end' }}>
-                <Btn variant="secondary" onClick={()=>openEditForm(dc)}>Επεξεργασία</Btn>
-                {onStartHandover&&<Btn variant="secondary" onClick={()=>onStartHandover(dc.full_name||'', dc.phone||'', isPastTenant(dc)?'check_out':'check_in')}>Πρωτόκολλο παράδοσης</Btn>}
-                {!isPastTenant(dc)&&<Btn variant="secondary" onClick={()=>markMovedOut(dc)}>Αποχώρησε</Btn>}
+                <Btn variant="secondary" onClick={()=>openEditForm(dc)}>{E?E.dossier.edit:'Επεξεργασία'}</Btn>
+                {onStartHandover&&<Btn variant="secondary" onClick={()=>onStartHandover(dc.full_name||'', dc.phone||'', isPastTenant(dc)?'check_out':'check_in')}>{E?E.dossier.handover:'Πρωτόκολλο παράδοσης'}</Btn>}
+                {!isPastTenant(dc)&&<Btn variant="secondary" onClick={()=>markMovedOut(dc)}>{E?E.dossier.movedOut:'Αποχώρησε'}</Btn>}
               </div>
             </div>
 
@@ -904,14 +916,15 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
           </>}>
           {dossierTab==='overview'&&(
             <>
-              {isPastTenant(dc)&&<InfoBanner tone="neutral">Προηγούμενος ενοικιαστής{dc.move_out_date?`: αποχώρηση ${fmtD(dc.move_out_date)}`:''}. Ο φάκελος διατηρείται για το ιστορικό του ακινήτου.</InfoBanner>}
+              {isPastTenant(dc)&&<InfoBanner tone="neutral">{E?E.dossier.pastNote(dc.move_out_date?fD(dc.move_out_date):null):<>Προηγούμενος ενοικιαστής{dc.move_out_date?`: αποχώρηση ${fmtD(dc.move_out_date)}`:''}. Ο φάκελος διατηρείται για το ιστορικό του ακινήτου.</>}</InfoBanner>}
               <DashboardView tenant={dc} payments={dcPayments} propertyCount={propertyCount}/>
             </>
           )}
           {dossierTab==='lease'&&(
             <div style={{ display:'flex', flexDirection:'column' }}>
               <div>
-                <InfoBanner tone="info">Περιμένεις το ενοίκιο κάθε μήνα την <strong>{fn(Math.min(Math.max(1,dc.rent_due_day||1),28))}η</strong> ημέρα. Οι μηνιαίες δόσεις δημιουργούνται αυτόματα από την έναρξη της μίσθωσης.</InfoBanner>
+                {E?(()=>{ const w=E.dossier.dueDay(Math.min(Math.max(1,dc.rent_due_day||1),28)); return <InfoBanner tone="info">{w[0]}<strong>{w[1]}</strong>{w[2]}</InfoBanner>; })()
+                :<InfoBanner tone="info">Περιμένεις το ενοίκιο κάθε μήνα την <strong>{fn(Math.min(Math.max(1,dc.rent_due_day||1),28))}η</strong> ημέρα. Οι μηνιαίες δόσεις δημιουργούνται αυτόματα από την έναρξη της μίσθωσης.</InfoBanner>}
                 <PaymentsView tenant={dc} propertyId={propertyId} userId={userId} payments={dcPayments} onRefresh={refresh} plan={plan}/>
               </div>
               <div style={{ borderTop:'1px solid var(--border-subtle)', marginTop:28, paddingTop:28 }}><DepositView tenant={dc} payments={dcPayments} damages={dcDamages} onReturned={refresh}/></div>
@@ -929,44 +942,44 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
           {dossierTab==='docs'&&(
             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap:16 }}>
               <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
-                <SectionTitle>Μισθωτήριο (PDF)</SectionTitle>
+                <SectionTitle>{E?E.dossier.leasePdf:'Μισθωτήριο (PDF)'}</SectionTitle>
                 {dc.lease_doc_name?(
                   <div style={{ background:'var(--bg-elevated)', border:'1px solid var(--border-accent)', borderRadius:T.radius.inner, padding:20 }}>
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, gap:10 }}>
                       <div style={{ minWidth:0 }}>
                         <div style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-primary)', fontFamily:T.font.sans, overflow:'hidden', textOverflow:'ellipsis' }}>{dc.lease_doc_name}</div>
-                        <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans }}>Ανεβασμένο συμβόλαιο</div>
+                        <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans }}>{E?E.dossier.uploaded:'Ανεβασμένο συμβόλαιο'}</div>
                       </div>
-                      <button style={s.btnDng} onClick={async()=>{const docPath=leaseDocPath(userId,dc);if(!docPath)return;await supabase.storage.from('lease-documents').remove([docPath]);if(!await saved('Το συμβόλαιο δεν αποσυνδέθηκε',tenantStore.update(supabase,dc.id,{lease_doc_url:null,lease_doc_name:null})))return;notify('PDF διαγράφηκε');void refresh();}}>Διαγραφή</button>
+                      <button style={s.btnDng} onClick={async()=>{const docPath=leaseDocPath(userId,dc);if(!docPath)return;await supabase.storage.from('lease-documents').remove([docPath]);if(!await saved('Το συμβόλαιο δεν αποσυνδέθηκε',tenantStore.update(supabase,dc.id,{lease_doc_url:null,lease_doc_name:null})))return;notify(E?E.toast.pdfDeleted:'PDF διαγράφηκε');void refresh();}}>{E?E.dossier.remove:'Διαγραφή'}</button>
                     </div>
                     {/* Το κάτω περιθώριο είναι θέση μέσα στη στήλη, όχι όψη του κουμπιού. */}
-                    <div style={{ marginBottom:10 }}><Btn variant="primary" onClick={()=>openLeaseDoc(dc)}>Άνοιγμα PDF</Btn></div>
+                    <div style={{ marginBottom:10 }}><Btn variant="primary" onClick={()=>openLeaseDoc(dc)}>{E?E.dossier.openPdf:'Άνοιγμα PDF'}</Btn></div>
                     <div style={{ marginTop:10 }}>
                       <label style={{ ...s.btnSm, cursor:'pointer', display:'inline-block' }}>
-                        {uploading?'Ανέβασμα…':'Αντικατάσταση PDF'}
+                        {E?(uploading?E.dossier.uploading:E.dossier.replacePdf):uploading?'Ανέβασμα…':'Αντικατάσταση PDF'}
                         <input type="file" accept=".pdf" style={{ display:'none' }} onChange={e=>{const f=e.target.files?.[0];if(f)uploadPDF(dc,f);}} disabled={uploading}/>
                       </label>
                     </div>
                   </div>
                 ):(
                   <div style={{ border:'2px dashed var(--border-default)', borderRadius:T.radius.inner, padding:'40px 28px', textAlign:'center' as const }}>
-                    <div style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily:T.font.sans, marginBottom:T.sp.lg }}>Ανέβασε το μισθωτήριο σε μορφή PDF</div>
+                    <div style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily:T.font.sans, marginBottom:T.sp.lg }}>{E?E.dossier.uploadHint:'Ανέβασε το μισθωτήριο σε μορφή PDF'}</div>
                     <label style={{ ...s.btnGold, cursor:'pointer', display:'inline-block', padding:'11px 28px' }}>
-                      {uploading?'Ανέβασμα…':'Επιλογή PDF'}
+                      {E?(uploading?E.dossier.uploading:E.dossier.pickPdf):uploading?'Ανέβασμα…':'Επιλογή PDF'}
                       <input type="file" accept=".pdf" style={{ display:'none' }} onChange={e=>{const f=e.target.files?.[0];if(f)uploadPDF(dc,f);}} disabled={uploading}/>
                     </label>
                   </div>
                 )}
               </div>
               <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
-                <SectionTitle>Εξωτερικός σύνδεσμος</SectionTitle>
+                <SectionTitle>{E?E.dossier.external:'Εξωτερικός σύνδεσμος'}</SectionTitle>
                 {dc.lease_doc_external_url?(
                   <div>
                     <div style={{ fontSize:12, color:'var(--text-secondary)', fontFamily:T.font.sans, marginBottom:14, wordBreak:'break-all' as const, lineHeight:1.6 }}>{dc.lease_doc_external_url}</div>
-                    <a href={dc.lease_doc_external_url} target="_blank" rel="noopener noreferrer" style={{ ...s.btnGold, display:'inline-block', textDecoration:'none' }}>Άνοιγμα συνδέσμου</a>
+                    <a href={dc.lease_doc_external_url} target="_blank" rel="noopener noreferrer" style={{ ...s.btnGold, display:'inline-block', textDecoration:'none' }}>{E?E.dossier.openLink:'Άνοιγμα συνδέσμου'}</a>
                   </div>
                 ):(
-                  <div style={{ fontSize: 'var(--fs-base)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.7 }}>Δεν έχει οριστεί εξωτερικός σύνδεσμος. Πρόσθεσέ τον από την «Επεξεργασία», στα «Έγγραφα» (Google Drive, Dropbox κ.ά.).</div>
+                  <div style={{ fontSize: 'var(--fs-base)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.7 }}>{E?E.dossier.noExternal:'Δεν έχει οριστεί εξωτερικός σύνδεσμος. Πρόσθεσέ τον από την «Επεξεργασία», στα «Έγγραφα» (Google Drive, Dropbox κ.ά.).'}</div>
                 )}
               </div>
             </div>
@@ -986,14 +999,14 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
           ίδια προστασία από ακούσια απώλεια δεδομένων). */}
       {isForm&&(
         <Modal open onClose={closeForm} size="lg"
-          title={editId?'Επεξεργασία ενοικιαστή':'Νέος ενοικιαστής'}
-          subtitle="Ζητάμε μόνο ό,τι έχει νόημα για αυτή τη μίσθωση. Κάθε πεδίο λέει γιατί."
+          title={E?(editId?E.form.edit:E.form.add):editId?'Επεξεργασία ενοικιαστή':'Νέος ενοικιαστής'}
+          subtitle={E?E.form.sub:'Ζητάμε μόνο ό,τι έχει νόημα για αυτή τη μίσθωση. Κάθε πεδίο λέει γιατί.'}
           footer={<>
             {/* Και τα δύο κουμπιά κλειδώνουν όσο γράφει: το «Ακύρωση» δεν
                 επιτρέπεται να εξαφανίσει τη φόρμα στη μέση της αποθήκευσης
                 (ίδιος φρουρός με το closeForm, ώστε να μη μοιάζει ενεργό). */}
-            <Btn variant="secondary" onClick={closeForm} disabled={saving}>Ακύρωση</Btn>
-            <Btn variant="primary" onClick={save} disabled={saving}>{saving?'Αποθήκευση…':editId?'Αποθήκευση αλλαγών':'Προσθήκη ενοικιαστή'}</Btn>
+            <Btn variant="secondary" onClick={closeForm} disabled={saving}>{E?E.form.cancel:'Ακύρωση'}</Btn>
+            <Btn variant="primary" onClick={save} disabled={saving}>{E?(saving?E.form.saving:editId?E.form.saveChanges:E.form.addTenant):saving?'Αποθήκευση…':editId?'Αποθήκευση αλλαγών':'Προσθήκη ενοικιαστή'}</Btn>
           </>}>
           {/* ΕΝΑ παιδί, όχι τριάντα. Το σώμα του Modal είναι flex column με
               gap 20· η φόρμα έχει ~30 αδέλφια πρώτου επιπέδου με δικά τους,
@@ -1001,14 +1014,14 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
               πρόσθετε ~600px κενού και θα διέλυε τον ρυθμό των ενοτήτων. */}
           <div>
             {/* ── ΤΙ ΛΕΙΠΕΙ ΓΙΑ ΤΗ ΔΗΛΩΣΗ ─────────────────────────────────── */}
-            <MissingCriticalBar missing={formMissing}/>
+            <MissingCriticalBar missing={formMissing} en={E?{ head:E.missing, fields:E.fields }:undefined}/>
 
             {/* ── ΠΟΙΟΣ ΕΙΝΑΙ ────────────────────────────────────────────── */}
-            <SectionTitle>Ποιος είναι ο ενοικιαστής</SectionTitle>
+            <SectionTitle>{E?E.form.who:'Ποιος είναι ο ενοικιαστής'}</SectionTitle>
             <div className="form-row form-row-3">
-              {show('tenant.full_name')&&<div id={tenantFieldId('full_name')}><TextInput label={`${labelOf('tenant.full_name')} *`} labelInfo={whyOf('tenant.full_name')} value={form.full_name} onChange={v=>sf('full_name',v)}/>{fieldNote('full_name')}</div>}
-              {show('tenant.afm')&&<TextInput label={labelOf('tenant.afm')} labelInfo={whyOf('tenant.afm')} value={form.afm} onChange={v=>sf('afm',v)}/>}
-              {show('tenant.phone')&&<TextInput label={labelOf('tenant.phone')} labelInfo={whyOf('tenant.phone')} value={form.phone} onChange={v=>sf('phone',v)}/>}
+              {show('tenant.full_name')&&<div id={tenantFieldId('full_name')}><TextInput label={`${lab('tenant.full_name')} *`} labelInfo={why('tenant.full_name')} value={form.full_name} onChange={v=>sf('full_name',v)}/>{fieldNote('full_name')}</div>}
+              {show('tenant.afm')&&<TextInput label={lab('tenant.afm')} labelInfo={why('tenant.afm')} value={form.afm} onChange={v=>sf('afm',v)}/>}
+              {show('tenant.phone')&&<TextInput label={lab('tenant.phone')} labelInfo={why('tenant.phone')} value={form.phone} onChange={v=>sf('phone',v)}/>}
             </div>
 
             <div style={s.divider}/>
@@ -1019,7 +1032,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                 ονομάζει ήδη ένα προς ένα, με τη διατύπωση του μητρώου: το ίδιο
                 μήνυμα δύο φορές, η μία χωρίς περιεχόμενο. Το χρώμα ήταν και
                 παράβαση του κανόνα: κόκκινο σημαίνει σφάλμα, όχι «συμπλήρωσέ το». */}
-            <SectionTitle>Η μίσθωση</SectionTitle>
+            <SectionTitle>{E?E.form.lease:'Η μίσθωση'}</SectionTitle>
             {/* ══ ΕΙΔΟΣ ΚΑΙ ΔΙΑΡΚΕΙΑ ΣΤΗΝ ΙΔΙΑ ΕΥΘΕΙΑ ══════════════════════════
                 Ηταν δύο σειρές κουμπιών, η μία κάτω από την άλλη, με εννιά κουμπιά
                 συνολικά και δύο ολόκληρα πλάτη οθόνης. Οι επτά διάρκειες ειδικά
@@ -1059,40 +1072,40 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                   δύο ημερομηνίες, ίδιο ύψος, ίδιο πλάτος, μία γραμμή. */}
               {show('tenant.lease_category')&&(
                 <div id={tenantFieldId('lease_category')}>
-                <SelectField label={labelOf('tenant.lease_category')} labelInfo={whyOf('tenant.lease_category')}
-                  value={form.lease_category} onChange={v=>sf('lease_category',v as LeaseCategory)} placeholder="Επιλογή…"
-                  options={(Object.keys(LEASE_CATEGORY_LABELS) as LeaseCategory[]).map(lc=>({ value:lc, label:LEASE_CATEGORY_LABELS[lc] }))}/>
+                <SelectField label={lab('tenant.lease_category')} labelInfo={why('tenant.lease_category')}
+                  value={form.lease_category} onChange={v=>sf('lease_category',v as LeaseCategory)} placeholder={E?E.choose:'Επιλογή…'}
+                  options={(Object.keys(LEASE_CATEGORY_LABELS) as LeaseCategory[]).map(lc=>({ value:lc, label:E?.leaseCategories[lc]??LEASE_CATEGORY_LABELS[lc] }))}/>
                 {fieldNote('lease_category')}
                 </div>
               )}
               {show('tenant.lease_type')&&(
-                <SelectField label={labelOf('tenant.lease_type')} labelInfo={whyOf('tenant.lease_type')}
+                <SelectField label={lab('tenant.lease_type')} labelInfo={why('tenant.lease_type')}
                   value={form.lease_type} onChange={v=>sf('lease_type',v as LeaseType)}
-                  options={(Object.keys(LEASE_LABELS) as LeaseType[]).map(lt=>({ value:lt, label:LEASE_LABELS[lt] }))}/>
+                  options={(Object.keys(LEASE_LABELS) as LeaseType[]).map(lt=>({ value:lt, label:E?.leaseTypes[lt]??LEASE_LABELS[lt] }))}/>
               )}
-              {show('tenant.lease_start')&&<DatePicker label={labelOf('tenant.lease_start')} labelInfo={whyOf('tenant.lease_start')} value={form.lease_start} onChange={v=>sf('lease_start',v)}/>}
+              {show('tenant.lease_start')&&<DatePicker label={lab('tenant.lease_start')} labelInfo={why('tenant.lease_start')} value={form.lease_start} onChange={v=>sf('lease_start',v)}/>}
               {/* Η ΛΗΞΗ ΕΙΧΕ ΤΟ «ΓΙΑΤΙ» ΤΗΣ ΕΝΑΡΞΗΣ. Δύο πεδία δίπλα δίπλα, το
                   ίδιο κείμενο πίσω από τα δύο κυκλάκια· το ένα από τα δύο
                   έλεγε πράγμα που δεν αφορούσε το πεδίο του. */}
-              {show('tenant.lease_end')&&<DatePicker label={labelOf('tenant.lease_end')} labelInfo={whyOf('tenant.lease_end')} value={form.lease_end} onChange={v=>sf('lease_end',v)}/>}
+              {show('tenant.lease_end')&&<DatePicker label={lab('tenant.lease_end')} labelInfo={why('tenant.lease_end')} value={form.lease_end} onChange={v=>sf('lease_end',v)}/>}
               {/* Η ΣΥΝΤΟΜΟΓΡΑΦΙΑ ΔΕΝ ΕΙΝΑΙ ΕΛΛΗΝΙΚΑ. Το «ημ.» απέφευγε την ερώτηση «ένα ή
                    πολλά;» και διαβαζόταν ως σύμβολο. Και η ετικέτα έλεγε ήδη «Ημέρες»,
                    δηλαδή η ίδια λέξη δύο φορές στο ίδιο πεδίο. */}
-              {form.lease_type==='custom'&&<NumberInput label="Διάρκεια" value={String(form.custom_lease_days)} onChange={v=>sf('custom_lease_days',parseInt(v)||0)} suffix={plural(form.custom_lease_days,'ημέρα','ημέρες')}/>}
+              {form.lease_type==='custom'&&<NumberInput label={E?E.form.duration:'Διάρκεια'} value={String(form.custom_lease_days)} onChange={v=>sf('custom_lease_days',parseInt(v)||0)} suffix={E?E.form.dayUnit(form.custom_lease_days):plural(form.custom_lease_days,'ημέρα','ημέρες')}/>}
             </div>
             {/* Ο ΝΕΟΣ ΕΝΟΙΚΙΑΣΤΗΣ ΘΕΛΕΙ ΠΕΑ ΣΕ ΙΣΧΥ (ν. 4122/2013, άρθρο 12). Μόνο στη
                 νέα μίσθωση: η επεξεργασία παλιάς δεν είναι η στιγμή να το θυμίσουμε. */}
-            {!editId&&<div style={{ marginTop:14 }}><PeaLeaseNotice peaExpiry={propPeaExpiry} propType={propType} leaseStart={form.lease_start}/></div>}
+            {!editId&&<div style={{ marginTop:14 }}><PeaLeaseNotice peaExpiry={propPeaExpiry} propType={propType} leaseStart={form.lease_start} en={E?.pea}/></div>}
 
             <div style={s.divider}/>
             {/* ── ΤΟ ΕΝΟΙΚΙΟ ───────────────────────────────────────────────── */}
-            <SectionTitle>Το ενοίκιο</SectionTitle>
+            <SectionTitle>{E?E.form.rentTitle:'Το ενοίκιο'}</SectionTitle>
             {/* Τεσσερα πεδία που απαντιούνται μαζί: πόσο, πότε, πώς και πού. Το
                 IBAN καθόταν σε δική του σειρά από κάτω, δηλαδή η ίδια ερώτηση
                 σπασμένη σε δύο γραμμές με μια τρύπα δίπλα της. */}
             <div className="form-row form-row-4">
-              {show('tenant.rent')&&<NumberInput label={labelOf('tenant.rent')} labelInfo={whyOf('tenant.rent')} value={form.monthly_rent} onChange={v=>sf('monthly_rent',v)} suffix="€"/>}
-              {show('tenant.rent_due_day')&&<SelectField label={labelOf('tenant.rent_due_day')} labelInfo={whyOf('tenant.rent_due_day')} value={form.rent_due_day} onChange={v=>sf('rent_due_day',v)} options={Array.from({length:28},(_,i)=>({value:String(i+1),label:`${i+1}η`}))}/>}
+              {show('tenant.rent')&&<NumberInput label={lab('tenant.rent')} labelInfo={why('tenant.rent')} value={form.monthly_rent} onChange={v=>sf('monthly_rent',v)} suffix="€"/>}
+              {show('tenant.rent_due_day')&&<SelectField label={lab('tenant.rent_due_day')} labelInfo={why('tenant.rent_due_day')} value={form.rent_due_day} onChange={v=>sf('rent_due_day',v)} options={Array.from({length:28},(_,i)=>({value:String(i+1),label:E?E.form.dueDay(i+1):`${i+1}η`}))}/>}
               {/* Ο ΔΙΑΚΟΠΤΗΣ ΗΤΑΝ ΑΛΛΟΥ ΚΑΙ ΜΕ ΑΛΛΗ ΕΤΙΚΕΤΑ. Καθόταν δίπλα στο
                   IBAN με ΚΕΦΑΛΑΙΑ ετικέτα, στημένος με το χέρι, ανάμεσα σε πεδία
                   με πεζή. Εδώ είναι το τρίτο πεδίο της σειράς του ενοικίου, με
@@ -1103,18 +1116,18 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                   ρωτούσε «πώς;» πριν υπάρχει το «πού;» — και ο διακόπτης, που
                   είναι το πιο μικρό χειριστήριο της σειράς, καθόταν ανάμεσα σε
                   δύο πεδία κόβοντας τη ροή τους. Τελευταίος, κλείνει τη σειρά. */}
-              {show('tenant.rent_iban')&&<TextInput label={labelOf('tenant.rent_iban')} value={form.rent_iban} onChange={v=>sf('rent_iban',v)} placeholder="GR..."/>}
-              {show('tenant.rent_iban')&&<ToggleField label="Μέσω τράπεζας" labelInfo={whyOf('tenant.rent_iban')} on={form.e_payment} onChange={v=>sf('e_payment',v)}/>}
+              {show('tenant.rent_iban')&&<TextInput label={lab('tenant.rent_iban')} value={form.rent_iban} onChange={v=>sf('rent_iban',v)} placeholder="GR..."/>}
+              {show('tenant.rent_iban')&&<ToggleField label={E?E.form.viaBank:'Μέσω τράπεζας'} labelInfo={why('tenant.rent_iban')} on={form.e_payment} onChange={v=>sf('e_payment',v)}/>}
             </div>
             {/* Ο,τι θα συμβεί μόνο του, λέγεται πριν συμβεί — και μαζί τι το ακυρώνει. */}
             {editRow?.pending_rent!=null&&editRow.pending_rent_from&&(
               <div style={{ fontSize:12, color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.55, marginBottom:6 }}>
-                Εκκρεμεί αναπροσαρμογή σε {fmt(editRow.pending_rent)} από {fmtD(editRow.pending_rent_from)}, από υπογεγραμμένη ειδοποίηση. Αλλαγή του ενοικίου εδώ την ακυρώνει.
+                {E?E.form.pending(fmt(editRow.pending_rent),fD(editRow.pending_rent_from)):<>Εκκρεμεί αναπροσαρμογή σε {fmt(editRow.pending_rent)} από {fmtD(editRow.pending_rent_from)}, από υπογεγραμμένη ειδοποίηση. Αλλαγή του ενοικίου εδώ την ακυρώνει.</>}
               </div>
             )}
             {show('tenant.rent_iban')&&!form.e_payment&&(
               <div style={{ marginTop:12 }}>
-                <AlertBar level="warning" text={`Με είσπραξη σε μετρητά χάνεται η τεκμαρτή έκπτωση ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} και ο φόρος υπολογίζεται στο 100% των ακαθάριστων.`}/>
+                <AlertBar level="warning" text={E?E.form.cash(fp((PRESUMPTIVE_DEDUCTION_RATE*100))):`Με είσπραξη σε μετρητά χάνεται η τεκμαρτή έκπτωση ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} και ο φόρος υπολογίζεται στο 100% των ακαθάριστων.`}/>
               </div>
             )}
 
@@ -1131,7 +1144,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                 ανάμεσά τους είναι η λεπτή κάθετη γραμμή της `cl-split`. */}
             <div {...fixedCols(2, 20, 'end', 'cl-split')}>
               {show('tenant.deposit')&&(
-                <NumberInput label={labelOf('tenant.deposit')} labelInfo={whyOf('tenant.deposit')} value={form.deposit_amount} onChange={v=>sf('deposit_amount',v)} suffix="€"/>
+                <NumberInput label={lab('tenant.deposit')} labelInfo={why('tenant.deposit')} value={form.deposit_amount} onChange={v=>sf('deposit_amount',v)} suffix="€"/>
               )}
               {/* ══ ΤΡΙΑ ΚΟΥΜΠΑΚΙΑ ΓΙΑ ΜΙΑ ΕΠΙΛΟΓΗ ΕΓΙΝΑΝ ΛΙΣΤΑ ══════════════════
                   Το «Turn Key (όλα μέσα)» θέλει διπλάσιο πλάτος από τα άλλα δύο,
@@ -1141,33 +1154,33 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                   είναι δύο και κοντές («Κατοικία» ή «Επαγγελματική») και τις
                   βλέπεις χωρίς να ανοίξεις τίποτα· στις τρεις με μακρύ όνομα
                   κοστίζουν πλάτος χωρίς να κερδίζουν πάτημα. */}
-              <SelectField label={labelOf('tenant.furnishing')} labelInfo={whyOf('tenant.furnishing')}
-                value={form.furnishing} onChange={v=>sf('furnishing',v as Furnishing)} placeholder="Επιλογή…"
-                options={(Object.keys(FURNISHING_LABELS) as Furnishing[]).map(fv=>({ value:fv, label:FURNISHING_LABELS[fv] }))}/>
+              <SelectField label={lab('tenant.furnishing')} labelInfo={why('tenant.furnishing')}
+                value={form.furnishing} onChange={v=>sf('furnishing',v as Furnishing)} placeholder={E?E.choose:'Επιλογή…'}
+                options={(Object.keys(FURNISHING_LABELS) as Furnishing[]).map(fv=>({ value:fv, label:E?.furnishing[fv]??FURNISHING_LABELS[fv] }))}/>
             </div>
 
             {/* Οι παρεχόμενες υπηρεσίες υπάρχουν ΜΟΝΟ σε επιπλωμένο — το λέει το μητρώο */}
             {show('tenant.services')&&(
               <div style={{ marginTop:T.sp.lg }}>
-                <SectionTitle info={whyOf('tenant.services')}>Τι πληρώνεις εσύ, τι ο ενοικιαστής</SectionTitle>
-                <ServicesEditor value={form.services} onChange={v=>sf('services',v)}/>
+                <SectionTitle info={why('tenant.services')}>{E?lab('tenant.services'):'Τι πληρώνεις εσύ, τι ο ενοικιαστής'}</SectionTitle>
+                <ServicesEditor value={form.services} onChange={v=>sf('services',v)} en={E?{ ...E.services, payer:E.payer }:undefined}/>
               </div>
             )}
             {!isFurnished(form.furnishing)&&(form.services||[]).length>0&&(
               <div style={{ marginTop:14 }}>
-                <AlertBar level="info" text={`Έχεις ${(form.services||[]).length} καταχωρημένες γραμμές υπηρεσιών από προηγούμενη ρύθμιση. Δεν εμφανίζονται σε γυμνό διαμέρισμα, αλλά διατηρούνται· άλλαξε την επίπλωση σε «Επιπλωμένο» για να τις δεις.`}/>
+                <AlertBar level="info" text={E?E.form.oldServices((form.services||[]).length):`Έχεις ${(form.services||[]).length} καταχωρημένες γραμμές υπηρεσιών από προηγούμενη ρύθμιση. Δεν εμφανίζονται σε γυμνό διαμέρισμα, αλλά διατηρούνται· άλλαξε την επίπλωση σε «Επιπλωμένο» για να τις δεις.`}/>
               </div>
             )}
 
             <div style={s.divider}/>
             {/* ── ΧΑΡΤΙΑ ───────────────────────────────────────────────────── */}
-            <SectionTitle info={whyOf('tenant.lease_doc')}>{labelOf('tenant.lease_doc')}</SectionTitle>
+            <SectionTitle info={why('tenant.lease_doc')}>{lab('tenant.lease_doc')}</SectionTitle>
             <div className="form-row form-row-3" style={{ marginBottom:14 }}>
               <div className="form-span-2">
-                <TextInput label="Εξωτερικός σύνδεσμος" value={form.lease_doc_external_url} onChange={v=>sf('lease_doc_external_url',v)} placeholder="drive.google.com/…"/>
+                <TextInput label={E?E.form.externalLink:'Εξωτερικός σύνδεσμος'} value={form.lease_doc_external_url} onChange={v=>sf('lease_doc_external_url',v)} placeholder="drive.google.com/…"/>
               </div>
             </div>
-            <FilePickRow label="Υπογεγραμμένο μισθωτήριο" hint="PDF ή εικόνα, αποθηκεύεται στον χώρο εγγράφων του ακινήτου"
+            <FilePickRow en={E?.file} label={E?E.form.signedLease:'Υπογεγραμμένο μισθωτήριο'} hint={E?E.form.signedLeaseHint:'PDF ή εικόνα, αποθηκεύεται στον χώρο εγγράφων του ακινήτου'}
               busy={docBusy} onPick={f=>uploadFormDoc(f,'lease')} docs={formDocs.filter(d=>d.tag==='lease')}/>
 
             {/* ── ΠΕΡΙΣΣΟΤΕΡΑ: σπάνια αλλά υπαρκτά, κλειστά εξ ορισμού ─────── */}
@@ -1181,7 +1194,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                     είναι μέσα, μόνιμα ορατή μόλις άνοιγε. Πλέον είναι η ΙΔΙΑ
                     γραμμή που ανοίγει με παντού: ετικέτα, μέτρημα, βελάκι — και
                     η εξήγηση στο κυκλάκι της. */}
-                <button type="button" onClick={()=>setMoreOpen(o=>!o)} aria-expanded={moreOpen} aria-label="Περισσότερα πεδία"
+                <button type="button" onClick={()=>setMoreOpen(o=>!o)} aria-expanded={moreOpen} aria-label={E?E.form.moreFields:'Περισσότερα πεδία'}
                   className="acc-toggle acc-row" style={{ minHeight: 44 }}>
                   {/* ΚΟΥΜΠΙ ΜΕΣΑ ΣΕ ΚΟΥΜΠΙ. Η κουκκίδα επεξήγησης είναι `<button>` και
                       καθόταν μέσα σε αυτό το `<button>`: άκυρη HTML, δύο στόχοι στο
@@ -1189,9 +1202,9 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                       σε άλλο. Το μόνο που έλεγε ήταν «δεν είναι υποχρεωτικά»· το λέει
                       πλέον η ίδια η μέτρηση, «3 προαιρετικά πεδία». */}
                   <span style={{ ...TT.label, fontSize: 'var(--fs-xs)', color:'var(--text-secondary)', flex:1, minWidth:0, display:'flex', alignItems:'center' }}>
-                    Περισσότερα
+                    {E?E.form.moreLabel:'Περισσότερα'}
                   </span>
-                  <span style={{ ...TT.caption, color:'var(--text-tertiary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fn(moreFields.length)} {moreFields.length===1?'προαιρετικό πεδίο':'προαιρετικά πεδία'}</span>
+                  <span style={{ ...TT.caption, color:'var(--text-tertiary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fn(moreFields.length)} {E?E.form.optional(moreFields.length):moreFields.length===1?'προαιρετικό πεδίο':'προαιρετικά πεδία'}</span>
                   <ChevronRight aria-hidden size={15} style={{ flexShrink:0, color:'var(--text-tertiary)', transform:moreOpen?'rotate(90deg)':'none', transition:'transform .18s' }}/>
                 </button>
                 {moreOpen&&(
@@ -1213,27 +1226,27 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                         τρεις στήλες. Οι σειρές γράφονται πλέον ΓΕΜΑΤΕΣ: τρία και
                         τρία, το ίδιο σχήμα δύο φορές. */}
                     <div className="form-row form-row-3" style={{ marginBottom:14 }}>
-                      {more('tenant.email')&&<TextInput label={labelOf('tenant.email')} labelInfo={whyOf('tenant.email')} value={form.email} onChange={v=>sf('email',v)} type="email"/>}
-                      {more('tenant.profession')&&<TextInput label={labelOf('tenant.profession')} labelInfo={whyOf('tenant.profession')} value={form.profession} onChange={v=>sf('profession',v)} placeholder="Μηχανικός"/>}
-                      {more('tenant.iban')&&<TextInput label={labelOf('tenant.iban')} labelInfo={whyOf('tenant.iban')} value={form.iban} onChange={v=>sf('iban',v)} placeholder="GR00 0000 0000…"/>}
+                      {more('tenant.email')&&<TextInput label={lab('tenant.email')} labelInfo={why('tenant.email')} value={form.email} onChange={v=>sf('email',v)} type="email"/>}
+                      {more('tenant.profession')&&<TextInput label={lab('tenant.profession')} labelInfo={why('tenant.profession')} value={form.profession} onChange={v=>sf('profession',v)} placeholder={E?E.form.professionHint:'Μηχανικός'}/>}
+                      {more('tenant.iban')&&<TextInput label={lab('tenant.iban')} labelInfo={why('tenant.iban')} value={form.iban} onChange={v=>sf('iban',v)} placeholder="GR00 0000 0000…"/>}
                     </div>
 
                     <div className="form-row form-row-3" style={{ marginBottom:14 }}>
-                      {more('tenant.payment_frequency')&&<SelectField label={labelOf('tenant.payment_frequency')} labelInfo={whyOf('tenant.payment_frequency')} value={form.payment_frequency} onChange={v=>{ if(isPaymentFreq(v)) sf('payment_frequency',v); }} options={(Object.keys(PAYMENT_FREQ_LABELS) as PaymentFreq[]).map(k=>({value:k,label:PAYMENT_FREQ_LABELS[k]}))}/>}
-                      {more('tenant.id_doc')&&<SelectField label="Τύπος εγγράφου" labelInfo={whyOf('tenant.id_doc')} value={form.id_doc_type} onChange={v=>{ if(isIdDocType(v)) sf('id_doc_type',v); }} options={ID_DOCS.map(d=>({value:d,label:d}))} placeholder="Επιλογή…"/>}
-                      {more('tenant.id_doc')&&<TextInput label="Αριθμός εγγράφου" value={form.id_doc_number} onChange={v=>sf('id_doc_number',v)}/>}
+                      {more('tenant.payment_frequency')&&<SelectField label={lab('tenant.payment_frequency')} labelInfo={why('tenant.payment_frequency')} value={form.payment_frequency} onChange={v=>{ if(isPaymentFreq(v)) sf('payment_frequency',v); }} options={(Object.keys(PAYMENT_FREQ_LABELS) as PaymentFreq[]).map(k=>({value:k,label:E?.frequencies[k]??PAYMENT_FREQ_LABELS[k]}))}/>}
+                      {more('tenant.id_doc')&&<SelectField label={E?E.form.idDocType:'Τύπος εγγράφου'} labelInfo={why('tenant.id_doc')} value={form.id_doc_type} onChange={v=>{ if(isIdDocType(v)) sf('id_doc_type',v); }} options={ID_DOCS.map((d,i)=>({value:d,label:E?.idDocs[i]??d}))} placeholder={E?E.choose:'Επιλογή…'}/>}
+                      {more('tenant.id_doc')&&<TextInput label={E?E.form.idDocNumber:'Αριθμός εγγράφου'} value={form.id_doc_number} onChange={v=>sf('id_doc_number',v)}/>}
                     </div>
 
                     {/* Ε2 στήλη 19. Ψηφία μόνο· τον γράφει και η Δήλωση μίσθωσης
                         όταν σημειωθεί ότι υποβλήθηκε. */}
                     {more('tenant.aade_lease_decl_ref')&&(
                       <div className="form-row form-row-3" style={{ marginBottom:14 }}>
-                        <TextInput label={labelOf('tenant.aade_lease_decl_ref')} labelInfo={whyOf('tenant.aade_lease_decl_ref')} value={form.aade_lease_decl_ref} onChange={v=>sf('aade_lease_decl_ref',v)}/>
+                        <TextInput label={lab('tenant.aade_lease_decl_ref')} labelInfo={why('tenant.aade_lease_decl_ref')} value={form.aade_lease_decl_ref} onChange={v=>sf('aade_lease_decl_ref',v)}/>
                       </div>
                     )}
 
                     {more('tenant.id_doc')&&(
-                      <FilePickRow label="Σαρωμένη ταυτότητα ή διαβατήριο" hint="PDF ή εικόνα" busy={docBusy} onPick={f=>uploadFormDoc(f,'id')} docs={formDocs.filter(d=>d.tag==='id')}/>
+                      <FilePickRow en={E?.file} label={E?E.form.idScan:'Σαρωμένη ταυτότητα ή διαβατήριο'} hint={E?E.form.idScanHint:'PDF ή εικόνα'} busy={docBusy} onPick={f=>uploadFormDoc(f,'id')} docs={formDocs.filter(d=>d.tag==='id')}/>
                     )}
 
                     {/* Η ΕΠΙΣΤΡΟΦΗ ΕΙΝΑΙ ΤΕΤΑΡΤΟ ΠΕΔΙΟ ΚΑΙ ΓΙ᾽ ΑΥΤΟ ΠΑΙΡΝΕΙ ΔΙΚΗ
@@ -1241,13 +1254,13 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                         άναβε ο διακόπτης: μία ημερομηνία μόνη της κάτω από τρία
                         πεδία, με δύο τρύπες δεξιά της. */}
                     <div className="form-row form-row-3" style={{ marginBottom:14 }}>
-                      {more('tenant.deposit_method')&&<SelectField label={labelOf('tenant.deposit_method')} labelInfo={whyOf('tenant.deposit_method')} value={form.deposit_method} onChange={v=>sf('deposit_method',v)} options={DEPOSIT_METHODS.map(m=>({value:m,label:m}))} placeholder="Επιλογή…"/>}
-                      {more('tenant.deposit_paid_on')&&<DatePicker label={labelOf('tenant.deposit_paid_on')} labelInfo={whyOf('tenant.deposit_paid_on')} value={form.deposit_paid_on} onChange={v=>sf('deposit_paid_on',v)}/>}
-                      {more('tenant.deposit_returned')&&<ToggleField label={labelOf('tenant.deposit_returned')} labelInfo={whyOf('tenant.deposit_returned')} on={form.deposit_returned} onChange={v=>sf('deposit_returned',v)}/>}
+                      {more('tenant.deposit_method')&&<SelectField label={lab('tenant.deposit_method')} labelInfo={why('tenant.deposit_method')} value={form.deposit_method} onChange={v=>sf('deposit_method',v)} options={DEPOSIT_METHODS.map((m,i)=>({value:m,label:E?.payMethods[i]??m}))} placeholder={E?E.choose:'Επιλογή…'}/>}
+                      {more('tenant.deposit_paid_on')&&<DatePicker label={lab('tenant.deposit_paid_on')} labelInfo={why('tenant.deposit_paid_on')} value={form.deposit_paid_on} onChange={v=>sf('deposit_paid_on',v)}/>}
+                      {more('tenant.deposit_returned')&&<ToggleField label={lab('tenant.deposit_returned')} labelInfo={why('tenant.deposit_returned')} on={form.deposit_returned} onChange={v=>sf('deposit_returned',v)}/>}
                     </div>
                     {more('tenant.deposit_returned')&&form.deposit_returned&&(
                       <div className="form-row form-row-3" style={{ marginBottom:14 }}>
-                        <DatePicker label="Ημερομηνία επιστροφής" value={form.deposit_return_date} onChange={v=>sf('deposit_return_date',v)}/>
+                        <DatePicker label={E?E.form.returnDate:'Ημερομηνία επιστροφής'} placeholder={E?E.choose:undefined} value={form.deposit_return_date} onChange={v=>sf('deposit_return_date',v)}/>
                       </div>
                     )}
 
@@ -1269,11 +1282,11 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                         ετικέτα μπαίνει στη σειρά, δίπλα στα κουμπάκια. */}
                     {more('tenant.parking')&&(
                       <div className="form-row form-row-2" style={{ marginBottom:14 }}>
-                        <ChipRow flush label={labelOf('tenant.parking')} info={whyOf('tenant.parking')}>
-                          <Chip on={form.parking_included} onClick={()=>{ const on=!form.parking_included; sf('parking_included',on); if(on) sf('parking_extra',false); }}>Στο ενοίκιο</Chip>
-                          <Chip on={form.parking_extra} onClick={()=>{ const on=!form.parking_extra; sf('parking_extra',on); if(on) sf('parking_included',false); }}>Χρεώνεται ξεχωριστά</Chip>
+                        <ChipRow flush label={lab('tenant.parking')} info={why('tenant.parking')}>
+                          <Chip on={form.parking_included} onClick={()=>{ const on=!form.parking_included; sf('parking_included',on); if(on) sf('parking_extra',false); }}>{E?E.form.parkingIncluded:'Στο ενοίκιο'}</Chip>
+                          <Chip on={form.parking_extra} onClick={()=>{ const on=!form.parking_extra; sf('parking_extra',on); if(on) sf('parking_included',false); }}>{E?E.form.parkingExtra:'Χρεώνεται ξεχωριστά'}</Chip>
                         </ChipRow>
-                        {form.parking_extra&&<NumberInput label="Μηνιαία τιμή" value={form.parking_extra_price} onChange={v=>sf('parking_extra_price',v)} suffix="€"/>}
+                        {form.parking_extra&&<NumberInput label={E?E.form.parkingPrice:'Μηνιαία τιμή'} value={form.parking_extra_price} onChange={v=>sf('parking_extra_price',v)} suffix="€"/>}
                       </div>
                     )}
 
@@ -1290,10 +1303,10 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                           σπάνια ξεπερνά μία πρόταση («Αποθήκη, κήπος»). Ο χρήστης
                           που γράφει περισσότερα το τραβά από τη γωνία του. */}
                       {more('tenant.extra_perks')&&(
-                        <Textarea dictation rows={2} label={labelOf('tenant.extra_perks')} labelInfo={whyOf('tenant.extra_perks')} value={form.extra_perks} onChange={v=>sf('extra_perks',v)} placeholder="Αποθήκη, κήπος…"/>
+                        <Textarea dictation rows={2} label={lab('tenant.extra_perks')} labelInfo={why('tenant.extra_perks')} value={form.extra_perks} onChange={v=>sf('extra_perks',v)} placeholder={E?E.form.perksHint:'Αποθήκη, κήπος…'}/>
                       )}
                       {more('tenant.notes')&&(
-                        <Textarea dictation rows={2} label={labelOf('tenant.notes')} labelInfo={whyOf('tenant.notes')} value={form.notes} onChange={v=>sf('notes',v)}/>
+                        <Textarea dictation rows={2} label={lab('tenant.notes')} labelInfo={why('tenant.notes')} value={form.notes} onChange={v=>sf('notes',v)}/>
                       )}
                     </div>
                   </div>
@@ -1305,7 +1318,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
             {error&&(
               <div ref={errorRef} role="alert" style={{ marginTop:24, background:'var(--negative-dim)', border:'1px solid var(--negative-border)', borderLeft:'3px solid var(--negative)', borderRadius:T.radius.inner, padding:'12px 16px', color:'var(--negative)', fontSize: 'var(--fs-base)', fontFamily:T.font.sans, fontWeight:500, display:'flex', gap:12, alignItems:'flex-start', justifyContent:'space-between' }}>
                 <span style={{ lineHeight:1.55, wordBreak:'break-word' as const }}>{error}</span>
-                <IconBtn label="Κλείσιμο μηνύματος σφάλματος" tone="danger" onClick={()=>setError(null)}><span style={{ fontSize:18, lineHeight:1 }}>×</span></IconBtn>
+                <IconBtn label={E?E.closeError:'Κλείσιμο μηνύματος σφάλματος'} tone="danger" onClick={()=>setError(null)}><span style={{ fontSize:18, lineHeight:1 }}>×</span></IconBtn>
               </div>
             )}
             {/* ΜΙΑ φόρμα, χωρίς βήματα: όσα πεδία έμειναν χωρούν σε μία οθόνη και
@@ -1337,31 +1350,33 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
 // υπάρχουν: ένα μηδέν εκεί δεν απαντά σε καμία ερώτηση. Ολα τα χρώματα είναι
 // τα tokens του θέματος (globals.css, `.tn-sum`), σε φωτεινό και σκούρο.
 // ═══════════════════════════════════════════════════════════════════════════
-function TenantSummary({ rent, leases, arrears, arrearsCount, deposits, past }: {
+export function TenantSummary({ rent, leases, arrears, arrearsCount, deposits, past, en: W }: {
   rent:number; leases:number; arrears:number; arrearsCount:number; deposits:number; past:number;
+  /** Τα αγγλικά της σύνοψης, ή τίποτα στα ελληνικά. */
+  en?: TenantsEn['summary'];
 }) {
   return (
-    <section className="tn-sum" aria-label="Σύνοψη μισθώσεων">
+    <section className="tn-sum" aria-label={W?W.aria:'Σύνοψη μισθώσεων'}>
       <div className="tn-sum-hero">
-        <div className="tn-sum-label"><Wallet size={15} aria-hidden="true"/>Μηνιαίο ενοίκιο</div>
+        <div className="tn-sum-label"><Wallet size={15} aria-hidden="true"/>{W?W.rent:'Μηνιαίο ενοίκιο'}</div>
         <div className="tn-sum-big">{fe(rent)}</div>
-        <div className="tn-sum-sub">{fn(leases)} {leases===1?'ενεργή μίσθωση':'ενεργές μισθώσεις'}</div>
+        <div className="tn-sum-sub">{W?W.leases(leases):<>{fn(leases)} {leases===1?'ενεργή μίσθωση':'ενεργές μισθώσεις'}</>}</div>
       </div>
       <div className="tn-sum-rows">
         <div className="tn-sum-row" data-tone={arrears>0?'negative':undefined}>
           <span className="tn-sum-ico"><AlertTriangle size={15} aria-hidden="true"/></span>
-          <span className="tn-sum-name">Ληξιπρόθεσμα<small>{arrearsCount>0?`${fn(arrearsCount)} ${arrearsCount===1?'δόση':'δόσεις'}`:'καμία οφειλή'}</small></span>
+          <span className="tn-sum-name">{W?W.overdue:'Ληξιπρόθεσμα'}<small>{W?(arrearsCount>0?W.installments(arrearsCount):W.nothingOwed):arrearsCount>0?`${fn(arrearsCount)} ${arrearsCount===1?'δόση':'δόσεις'}`:'καμία οφειλή'}</small></span>
           <span className="tn-sum-val">{fe(arrears)}</span>
         </div>
         <div className="tn-sum-row">
           <span className="tn-sum-ico"><ShieldCheck size={15} aria-hidden="true"/></span>
-          <span className="tn-sum-name">Εγγυήσεις σε κατοχή</span>
+          <span className="tn-sum-name">{W?W.deposits:'Εγγυήσεις σε κατοχή'}</span>
           <span className="tn-sum-val">{fe(deposits)}</span>
         </div>
         {past>0&&(
           <div className="tn-sum-row">
             <span className="tn-sum-ico"><History size={15} aria-hidden="true"/></span>
-            <span className="tn-sum-name">Προηγούμενοι ενοικιαστές</span>
+            <span className="tn-sum-name">{W?W.past:'Προηγούμενοι ενοικιαστές'}</span>
             <span className="tn-sum-val">{fn(past)}</span>
           </div>
         )}
