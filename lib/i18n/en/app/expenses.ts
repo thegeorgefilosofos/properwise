@@ -21,7 +21,47 @@ const monthOf = (key: string, refYear?: number) => {
   return refYear !== undefined && y !== refYear ? `${name} ${y}` : name;
 };
 
+/** Η σάρωση εγγράφου (DocumentScan): η πρώτη οθόνη, τα μηνύματα και η επιτυχία. */
+const SCAN_EN = {
+  intro: 'Take a photo of a bill, receipt, lease, title deed, insurance policy or ENFIA notice (Greece’s annual property tax), or upload it. We suggest where it goes and you confirm.',
+  introBulk: 'You don’t have a property yet to file a document under. From form E9 or the ENFIA assessment on myAADE, all your properties come in at once.',
+  photo: ['Take a photo', 'With the device camera'],
+  upload: ['Upload a file', 'JPG · PNG · PDF'],
+  manual: ['Type it in', 'Without a receipt'],
+  bank: ['Bank transactions', 'CSV or Excel'],
+  bulk: ['Many properties from E9 or ENFIA', 'All at once, from myAADE'],
+  privacyBulk: 'The myAADE PDF is read on your device; a photo is read with AI',
+  privacy: 'Reading is done with AI. A myAADE PDF is checked on your device first: if it is recognized as form E9 or an ENFIA assessment, it is not sent to the AI provider',
+  privacyTail: ['. The ', 'privacy policy', ' applies; the AI provider is bound by contract not to train models on your documents.'],
+  tooBig: (size: string, max: number) => `The file is too large (${size}). The limit is ${max} MB.`,
+  errors: {
+    unreadable: ['I couldn’t read the document clearly', ['Take the photo in good light, straight, with the whole document in frame', 'If you have a PDF from the provider, upload it: it reads better']],
+    quota: ['This month’s scans are used up', ['Fill in the fields by hand and save as usual']],
+    key_missing: ['Automatic reading isn’t active yet', ['Fill in the fields by hand and save as usual', 'We switch automatic reading on; you don’t need to set anything']],
+    save: ['Something went wrong while saving', ['Try again, your details are kept']],
+    format: ['This file type can’t be read', ['Photos and PDF files can be read', 'Fill in the fields by hand and save as usual']],
+    big: ['The file is too large to read', ['Upload a photo of the document or a smaller PDF', 'Fill in the fields by hand']],
+    other: ['The reading service isn’t available right now', ['Try again in a moment', 'Fill in the fields by hand']],
+  } as Record<string, readonly [string, readonly string[]]>,
+  noKind: 'No document details were found in this image. Choose a type to file it or upload another file.',
+  unsure: 'The scan isn’t sure about the type. Check it.',
+  saved: 'Filed',
+  savedSub: 'The related tabs were updated automatically.',
+  scanNew: 'Scan a new document',
+  bulkAll: 'File all the properties',
+  openIn: (tab: string) => `Open in ${tab}`,
+  otherFile: 'Another file',
+  file: 'Document',
+  openDoc: 'Open the document',
+  doc: 'The document',
+  chooseType: 'Choose a type',
+  filing: 'Filing…',
+  fileIt: 'File it',
+  formNote: 'The form below follows the Greek document, as it was issued.',
+};
+
 export const EXPENSES_EN = {
+  scan: SCAN_EN,
   /** Η σύγκριση μηνών (ExpenseCompare). */
   compare: {
     monthOf,
