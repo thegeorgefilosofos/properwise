@@ -12,7 +12,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { handleReplyAck } from './replyAck';
+import { handleReplyAck, ackLangOf } from './replyAck';
 import type { AckInput, AckResult } from './sendAck';
 
 let p = 0, f = 0;
@@ -151,14 +151,14 @@ async function main() {
 
   ok(/import \{ supportRecipientKind(, [\w, ]+)? \} from '@\/lib\/inbound\/support'/.test(ROUTE),
     'η διαδρομή εισάγει το supportRecipientKind');
-  ok(/import \{ handleReplyAck \} from '@\/lib\/inbound\/replyAck'/.test(ROUTE),
+  ok(/import \{ handleReplyAck, ackLangOf \} from '@\/lib\/inbound\/replyAck'/.test(ROUTE),
     'η διαδρομή εισάγει το handleReplyAck');
   ok(/import \{ MAIL_DOMAIN \} from '@\/lib\/legal\/identity'/.test(ROUTE),
     'η διαδρομή εισάγει το MAIL_DOMAIN');
   ok(/supportRecipientKind\(\s*event\.recipients,\s*\[INBOUND_DOMAIN, MAIL_DOMAIN\]\.filter\(Boolean\)\s*\)/.test(ROUTE),
     'το είδος υπολογίζεται και στους δύο τομείς');
-  ok(/handleReplyAck\(db, event\.from, process\.env\[KEY_ENV\], \{ kind \}\)/.test(ROUTE),
-    'η αυτόματη επιβεβαίωση καλείται με τον πελάτη υπηρεσίας, το κλειδί και το είδος του παραλήπτη');
+  ok(/handleReplyAck\(db, event\.from, process\.env\[KEY_ENV\], \{ kind, lang: ackLangOf\(event\.subject\) \}\)/.test(ROUTE),
+    'η αυτόματη επιβεβαίωση καλείται με τον πελάτη υπηρεσίας, το κλειδί, το είδος του παραλήπτη και τη γλώσσα του θέματος');
 
   // Ο πελάτης υπηρεσίας επικυρώνεται ΠΡΙΝ τη διακλάδωση, δηλαδή και για τους δύο δρόμους.
   const iService = ROUTE.indexOf('const missing = serviceClientError(process.env)');
@@ -170,6 +170,11 @@ async function main() {
     'η διαδρομή επιστρέφει ό,τι αποφασίζει το handleReplyAck');
   ok(iCoupon > 0, 'ο δρόμος του κουπονιού μένει ανέπαφος');
 }
+
+// ── Η γλώσσα της επιβεβαίωσης: αυτή του θέματος ─────────────────────────
+ok(ackLangOf('Question about my account') === 'en', 'αγγλικό θέμα → αγγλικά');
+ok(ackLangOf('Ερώτηση για τον λογαριασμό') === 'el' && ackLangOf('Re: Ερώτηση') === 'el', 'ελληνικό θέμα → ελληνικά');
+ok(ackLangOf('') === 'el' && ackLangOf(null) === 'el' && ackLangOf('123 !!') === 'el', 'κενό ή χωρίς γράμματα → ελληνικά');
 
 void main().then(() => {
   console.log(`\ninbound/replyAck.ts — ${p} passed, ${f} failed`);

@@ -28,6 +28,7 @@ import { NO_RESEND_KEY } from '../_shared/resendKey.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2.119.0'
 import { senderFrom } from '../_shared/sender.mjs'
 import { clientMessageEmail, fillClientHtml } from '../_shared/emailTemplates.ts'
+import { msgLangOfMeta } from '../_shared/msgLang.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
@@ -106,7 +107,8 @@ Deno.serve(async (req) => {
   const replyTo = user.email || undefined
   // Ο αποστολέας ονομάζεται στο υποσέλιδο με τη ΔΙΕΥΘΥΝΣΗ του λογαριασμού, όχι
   // με όνομα που γράφει ο ίδιος: «Εθνική Τράπεζα» ως όνομα προφίλ δεν περνά.
-  const bodyHtml = clientMessageEmail({ text: bodyText, senderEmail: user.email })
+  // Το υποσέλιδο στη γλώσσα των μηνυμάτων του αποστολέα· το σώμα το γράφει ο ίδιος.
+  const bodyHtml = clientMessageEmail({ text: bodyText, senderEmail: user.email, lang: msgLangOfMeta(user.user_metadata) })
 
   // ── Anti-relay: recipients MUST be the caller's own CRM clients ──────────────
   // Without this, any authenticated account could send arbitrary HTML to an

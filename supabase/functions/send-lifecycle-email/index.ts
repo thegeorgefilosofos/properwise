@@ -22,6 +22,11 @@ import {
   type Plan, type PackageId, type Season, type Ctx, type Personal,
 } from '../_shared/emailTemplates.ts'
 import { CATALOG, DIGESTS } from '../_shared/emailCopy.ts'
+// Τα αγγλικά δίδυμα, με τα ίδια αναγνωριστικά (emailCopy/en). Η γλώσσα είναι
+// η «Γλώσσα μηνυμάτων και email» του παραλήπτη (lib/i18n/locale.ts, msgLocale).
+import { CATALOG_EN, DIGESTS_EN } from '../_shared/emailCopy/en/index.ts'
+import * as EN from '../_shared/emailCopy/en/templates.ts'
+import { msgLangByEmail } from '../_shared/msgLang.ts'
 import { guessGender } from '../_shared/gender.ts'
 import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'
@@ -108,8 +113,9 @@ async function marketingPrefs(email: string): Promise<LifecyclePrefs | null> {
 // Οι παράμετροι έρχονται από τη βάση ως jsonb: το σχήμα τους δεν ζει στον
 // τύπο. `unknown` αντί για `any` — κάθε ανάγνωση περνά ήδη από ρητή μετατροπή
 // («as Plan», «String(...)»), οπότε τίποτα δεν χάνεται και ο έλεγχος μένει.
-function render(event: string, ctx: Ctx, params: Record<string, unknown>): { subject: string; html: string } | null {
+function render(event: string, ctx: Ctx, params: Record<string, unknown>, lang: 'el' | 'en' = 'el'): { subject: string; html: string } | null {
   const plan = (params.plan as Plan | PackageId) || 'free'
+  if (lang === 'en') return renderEn(event, ctx, params, plan)
   switch (event) {
     case 'welcome':          return welcomeEmail({ ...ctx, plan: plan as Plan })
     case 'plan_upgraded':    return planUpgradedEmail({ ...ctx, plan })
@@ -123,6 +129,37 @@ function render(event: string, ctx: Ctx, params: Record<string, unknown>): { sub
     case 'seasonal':         return seasonalCampaignEmail({ ...ctx, season: params.season as Season, toPlan: params.toPlan as Plan | PackageId, discountPct: Number(params.discountPct) || undefined, discountCode: params.discountCode == null ? undefined : String(params.discountCode) })
     default:                 return null
   }
+}
+
+/** Τα ίδια πρότυπα στα αγγλικά, με τις ίδιες παραμέτρους. */
+function renderEn(event: string, ctx: Ctx, params: Record<string, unknown>, plan: Plan | PackageId): { subject: string; html: string } | null {
+  switch (event) {
+    case 'welcome':          return EN.welcomeEmail({ ...ctx, plan: plan as Plan })
+    case 'plan_upgraded':    return EN.planUpgradedEmail({ ...ctx, plan })
+    case 'plan_downgraded':  return EN.planDowngradedEmail({ ...ctx, plan })
+    case 'new_property':     return EN.newPropertyEmail({ ...ctx, propertyName: String(params.propertyName || 'Property') })
+    case 'feedback':         return EN.feedbackRequestEmail(ctx)
+    case 'mobile_launch':    return EN.mobileLaunchEmail(ctx)
+    case 'referral_invite':  return EN.referralInviteEmail(ctx)
+    case 'upsell':           return EN.upsellEmail({ ...ctx, toPlan: params.toPlan as Plan | PackageId, discountPct: Number(params.discountPct) || 0, discountCode: params.discountCode == null ? undefined : String(params.discountCode), seasonLabel: params.seasonLabel == null ? undefined : String(params.seasonLabel) })
+    case 'legislation':      return EN.legislationUpdateEmail({ ...ctx, headline: String(params.headline || ''), summaryHtml: String(params.summaryHtml || '') })
+    case 'seasonal':         return EN.seasonalCampaignEmail({ ...ctx, season: params.season as Season, toPlan: params.toPlan as Plan | PackageId, discountPct: Number(params.discountPct) || undefined, discountCode: params.discountCode == null ? undefined : String(params.discountCode) })
+    default:                 return null
+  }
+}
+
+/**
+ * Οι τίτλοι μιας σύνοψης ξαναγράφονται στα αγγλικά από το αναγνωριστικό κάθε
+ * μηνύματος, όταν ο προγραμματιστής της ουράς το κράτησε (schedule-email-outbox).
+ */
+function digestItemsEn(items: Personal['digestItems']): Personal['digestItems'] {
+  if (!items) return items
+  return items.map(it => {
+    const fn = it.copyId ? { ...CATALOG_EN, ...DIGESTS_EN }[it.copyId] : undefined
+    let title = it.title
+    try { title = (fn && fn({ appUrl: APP_URL })?.subject) || it.title } catch { /* ο τίτλος όπως ήρθε */ }
+    return { ...it, title }
+  })
 }
 
 Deno.serve(async (req) => {
@@ -182,9 +219,16 @@ Deno.serve(async (req) => {
 
   // Προτεραιότητα στο επιμελημένο catalog (copyId), μετά τα ενοποιημένα (DIGESTS),
   // αλλιώς τα lifecycle templates (event).
-  const byCopyId = { ...CATALOG, ...DIGESTS }
+  // Η ΓΛΩΣΣΑ ΤΟΥ ΠΑΡΑΛΗΠΤΗ: ο λογαριασμός με αυτή τη διεύθυνση. Η πρόσκληση
+  // λογιστή πηγαίνει σε κάποιον που ίσως δεν έχει λογαριασμό· τότε ακολουθεί
+  // τη γλώσσα του λογαριασμού που την έστειλε. Αλλιώς, ελληνικά.
+  const lang = (await msgLangByEmail(SUPABASE_URL, SERVICE_KEY, email))
+    ?? (copyId === 'accountant_invite' && typeof params.accountantEmail === 'string' ? await msgLangByEmail(SUPABASE_URL, SERVICE_KEY, params.accountantEmail) : null)
+    ?? 'el'
+  if (lang === 'en') personal.digestItems = digestItemsEn(personal.digestItems)
+  const byCopyId = lang === 'en' ? { ...CATALOG_EN, ...DIGESTS_EN } : { ...CATALOG, ...DIGESTS }
   const fromCatalog = !!(copyId && byCopyId[copyId])
-  const tpl = fromCatalog ? byCopyId[copyId](personal) : render(event, personal, params)
+  const tpl = fromCatalog ? byCopyId[copyId](personal) : render(event, personal, params, lang)
   // Ο ΚΑΤΑΛΟΓΟΣ ΜΠΟΡΕΙ ΝΑ ΑΡΝΗΘΕΙ. Μια προσφορά χωρίς ποσοστό και κωδικό δεν
   // έχει τίποτα να προσφέρει και δεν στέλνεται· δεν είναι σφάλμα.
   if (!tpl && fromCatalog) return json({ skipped: 'no_offer', event, copyId }, 200)

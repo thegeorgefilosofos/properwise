@@ -44,6 +44,19 @@ export interface AckDeps {
   kind?: AckKind | null;
   /** Ο αποστολέας ως όρισμα, ώστε ο έλεγχος να μη χτυπά δίκτυο. */
   send?: (input: AckInput) => Promise<AckResult>;
+  /** Η γλώσσα της επιβεβαίωσης (βλ. `ackLangOf`); λείπει σημαίνει ελληνικά. */
+  lang?: 'el' | 'en';
+}
+
+/**
+ * ΣΤΗ ΓΛΩΣΣΑ ΠΟΥ ΜΑΣ ΕΓΡΑΨΕ. Ο αποστολέας μπορεί να μην έχει λογαριασμό, άρα
+ * ούτε «Γλώσσα μηνυμάτων και email». Θέμα με γράμματα και κανένα ελληνικό
+ * σημαίνει ότι έγραψε σε άλλη γλώσσα: η επιβεβαίωση φεύγει στα αγγλικά. Κενό
+ * θέμα ή θέμα με ελληνικά: ελληνικά, όπως πάντα.
+ */
+export function ackLangOf(subject: string | null | undefined): 'el' | 'en' {
+  const s = String(subject ?? '');
+  return /\p{L}/u.test(s) && !/\p{Script=Greek}/u.test(s) ? 'en' : 'el';
 }
 
 /**
@@ -84,7 +97,7 @@ export async function handleReplyAck(
   if (nm.error) logs.push(`το όνομα δεν διαβάστηκε, συνεχίζω χωρίς: ${nm.error.message}`);
   const name = nm.error ? '' : nm.name;
 
-  const res = await send({ to: sender, name, apiKey, kind });
+  const res = await send({ to: sender, name, apiKey, kind, ...(deps.lang === 'en' ? { lang: 'en' as const } : {}) });
   if (!res.ok) {
     // 502: ο πάροχος δεν δέχτηκε το μήνυμα· να ξαναδοκιμάσει.
     logs.push(`η επιβεβαίωση δεν στάλθηκε: ${res.reason}`);

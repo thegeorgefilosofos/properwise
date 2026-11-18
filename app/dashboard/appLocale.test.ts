@@ -11,6 +11,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { AppLocaleProvider, loadAppEn } from '@/lib/i18n/appEn';
 import { appLocale, isAppPath, metaLocale, msgLocale, LOCALE_META_KEY, MSG_LOCALE_META_KEY } from '@/lib/i18n/locale';
 import { signupData } from '@/lib/auth/signupConsent';
+import { SAY, dbReason, failed as failedEl } from '@/lib/core/dbError';
+import { BY_CODE_EN, SAY_EN, failedEn } from '@/lib/i18n/en/app/errors';
 import PropertySwitcher from './components/PropertySwitcher';
 import { CommandPalette } from './components/CommandPalette';
 import LanguageSetting from './components/LanguageSetting';
@@ -84,6 +86,16 @@ async function main() {
   ok('μηνύματα: η ρητή επιλογή κερδίζει', msgLocale({ [MSG_LOCALE_META_KEY]: 'el', [LOCALE_META_KEY]: 'en' }) === 'el' && msgLocale({ [MSG_LOCALE_META_KEY]: 'en' }) === 'en');
   ok('μηνύματα: χωρίς επιλογή, η γλώσσα της εφαρμογής', msgLocale({ [LOCALE_META_KEY]: 'en' }) === 'en');
   ok('μηνύματα: χωρίς τίποτα, ελληνικά', msgLocale({}) === 'el' && msgLocale(null) === 'el' && msgLocale({ [MSG_LOCALE_META_KEY]: 'fr', locale: 'en' }) === 'el');
+
+  // ── Τα σφάλματα: ίδια αναγνώριση, αγγλική εξήγηση ─────────────────────
+  ok('σφάλματα: ίδια πλήρη μηνύματα', Object.keys(SAY).sort().join() === Object.keys(SAY_EN).sort().join());
+  for (const code of Object.keys(BY_CODE_EN)) ok(`σφάλμα ${code}: γνωστό και στα ελληνικά`, dbReason({ code }) !== null);
+  for (const e of [{ code: '23505' }, { message: 'Failed to fetch' }, { message: 'new row violates row-level security' }, { message: 'plan_required' }, {}]) {
+    const en = failedEn('The change didn’t save', e);
+    ok(`σφάλμα στα αγγλικά χωρίς ελληνικό γράμμα: ${JSON.stringify(e)}`, !GREEK.test(en) && en.startsWith('The change didn’t save. '));
+    ok(`σφάλμα: ο ίδιος λόγος αναγνωρίζεται και στις δύο γλώσσες: ${JSON.stringify(e)}`, (failedEl('x', e) === 'x. Δοκίμασε ξανά.') === en.endsWith(' Try again.') || 'code' in e);
+  }
+  for (const v of Object.values(SAY_EN)) ok(`πλήρες μήνυμα χωρίς ελληνικό γράμμα: ${v}`, !GREEK.test(v));
 
   await loadAppEn('shell');
   await loadAppEn('settings');

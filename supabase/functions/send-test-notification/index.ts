@@ -12,11 +12,12 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 import { NO_RESEND_KEY } from '../_shared/resendKey.ts'
-import { emailShell, eyebrow, h, p, button, note } from '../_shared/emailTemplates.ts';
+// Τα δύο μηνύματα ζουν στο _shared/noticeEmails.ts, στη γλώσσα του κατόχου του λογαριασμού.
+import { testEmailHtml, confirmEmailHtml } from '../_shared/noticeEmails.ts'
+import { msgLangOfMeta } from '../_shared/msgLang.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2.119.0'
 import { APP_URL } from '../_shared/site.ts'
 import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'
-import { EMAIL_LIGHT as C } from '../_shared/emailPalette.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
@@ -30,41 +31,6 @@ const CORS = {
 }
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } })
-
-function testEmailHtml(): { subject: string; html: string } {
-  const subject = 'Δοκιμαστική ειδοποίηση από το PROPERWISE'
-  const html = emailShell({
-    preheader: 'Η διεύθυνσή σου δουλεύει.',
-    footerNote: 'Δοκιμαστικό μήνυμα που ζήτησες από τις ρυθμίσεις. · properwise.gr',
-    bodyHtml: eyebrow('Δοκιμή')
-      + h('Οι ειδοποιήσεις σου δουλεύουν')
-      + p('Αυτό είναι ένα δοκιμαστικό email. Αν το βλέπεις, η διεύθυνσή σου είναι σωστή και θα λαμβάνεις κανονικά τις υπενθυμίσεις για ενοίκια, λογαριασμούς και γεγονότα του ημερολογίου σου.'),
-  })
-  return { subject, html }
-}
-
-/**
- * ΤΟ ΜΗΝΥΜΑ ΕΠΙΒΕΒΑΙΩΣΗΣ, ΟΤΑΝ Η ΔΙΕΥΘΥΝΣΗ ΔΕΝ ΕΙΝΑΙ Η ΔΙΚΗ ΣΟΥ.
- *
- * Ο παραλήπτης μπορεί να μην έχει ιδέα ποιοι είμαστε: το μήνυμα λέει ΠΟΙΟΣ το
- * ζήτησε, ΤΙ θα λαμβάνει και ότι αν δεν το περίμενε, δεν χρειάζεται να κάνει
- * τίποτα. Ένα «αγνόησέ το» είναι πιο σεβαστικό από ένα κουμπί απόρριψης, γιατί
- * χωρίς το πάτημα δεν στέλνεται ούτως ή άλλως τίποτα.
- */
-function confirmEmailHtml(link: string, owner: string): { subject: string; html: string } {
-  const subject = 'Επιβεβαίωση διεύθυνσης για υπενθυμίσεις PROPERWISE'
-  const html = emailShell({
-    preheader: 'Επιβεβαίωσε αυτή τη διεύθυνση για τις υπενθυμίσεις.',
-    footerNote: 'Το μήνυμα στάλθηκε επειδή ζητήθηκε επιβεβαίωση αυτής της διεύθυνσης. · properwise.gr',
-    bodyHtml: eyebrow('Επιβεβαίωση')
-      + h('Να στέλνουμε τις υπενθυμίσεις εδώ;')
-      + p(`Ο κάτοχος του λογαριασμού ${owner} όρισε αυτή τη διεύθυνση για τις υπενθυμίσεις του PROPERWISE: λογαριασμοί, ενοίκια και γεγονότα ημερολογίου.`)
-      + p(`Αν το περιμένεις, επιβεβαίωσέ το. <strong class="ink" style="color:${C.ink};">Αν όχι, αγνόησε αυτό το μήνυμα</strong>: χωρίς επιβεβαίωση δεν στέλνεται τίποτα άλλο σε αυτή τη διεύθυνση.`)
-      + button('Επιβεβαίωση διεύθυνσης', link)
-      + note('Ο σύνδεσμος λήγει σε 48 ώρες.'),
-  })
-  return { subject, html }
-}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
@@ -140,8 +106,8 @@ Deno.serve(async (req) => {
   }
 
   const { subject, html } = needsConfirm
-    ? confirmEmailHtml(`${APP_URL}/epivevaiosi-email/${row?.token}`, accountEmail)
-    : testEmailHtml()
+    ? confirmEmailHtml(`${APP_URL}/epivevaiosi-email/${row?.token}`, accountEmail, msgLangOfMeta(userData.user.user_metadata))
+    : testEmailHtml(msgLangOfMeta(userData.user.user_metadata))
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
