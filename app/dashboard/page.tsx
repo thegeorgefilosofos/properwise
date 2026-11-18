@@ -147,11 +147,13 @@ export default function Dashboard() {
   // αγγλικά η σελίδα περιμένει το λεξικό μαζί με τα δεδομένα, ώστε να μη δείξει
   // ούτε ένα καρέ ελληνικά.
   const E = useAppEn('shell');
+  // Η Επισκόπηση είναι η πρώτη οθόνη: το λεξικό της κατεβαίνει μαζί με του κελύφους.
+  const EO = useAppEn('overview');
   const locale = useLocale();
   useAccountLocale(user, locale);
   const tabName = (id: string) => (E ? E.nav[id] ?? id : navLabel(id));
 
-  if (loading || !user || (locale === 'en' && !E)) return (
+  if (loading || !user || (locale === 'en' && (!E || !EO))) return (
     <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'calc(100vh / var(--zoom, 1))',background:'var(--bg-base)'}}>
       <Spinner size={48} label={E ? E.loading : 'Φόρτωση…'} />
     </div>

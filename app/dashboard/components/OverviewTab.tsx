@@ -60,6 +60,7 @@ import {
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive'
 import { FIRST_MONTH_BANK_RECEIPT, FIRST_YEAR_BANK_RECEIPT } from '@/lib/billing/greekTax'
 import { fpRate, grDateOf } from '@/lib/core/format'
+import { useAppEn } from '@/lib/i18n/appEn'
 import AthensNow from './AthensNow'
 import CashHero from './CashHero'
 import { SpeakAmount } from '@/components/SpeakAmount'
@@ -160,6 +161,10 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   /** Οδηγεί κάπου αυτό το βήμα; Βήμα που δείχνει σε καρτέλα η οποία δεν αφορά τον
    *  χρήστη είναι νεκρός σύνδεσμος: το πάτημα θα τον γύριζε στην Επισκόπηση. */
   tabVisible: (id: string) => boolean }) {
+  // Το αγγλικό λεξικό της Επισκόπησης και του κελύφους, ή `null` στα ελληνικά
+  // (lib/i18n/appEn.tsx). Στα ελληνικά τίποτα παρακάτω δεν αλλάζει.
+  const EO = useAppEn('overview');
+  const ES = useAppEn('shell');
   const supabase = createClient();
   const branding = useReportBranding(userId);
   const { prefs } = useAppPreferences(prop.id);
@@ -765,7 +770,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
     // πιο πάνω και το δείχνει ήδη η ίδια οθόνη· ο σύμβουλος όμως έπαιρνε μηδέν
     // και μιλούσε για αποδόσεις σε ιδιοκτήτη που πληρώνει δόση.
     loanPayment: monthlyDebt,
-  });
+  }, EO?.insights);
 
   // ── ΤΑ ΒΗΜΑΤΑ ΡΥΘΜΙΣΗΣ ────────────────────────────────────────────────────
   // Η ΒΑΡΥΤΗΤΑ ΔΕΝ ΕΙΝΑΙ ΓΝΩΜΗ: είναι πόσα ΑΛΛΑ ξεκλειδώνει το βήμα. Χωρίς αξία
@@ -798,7 +803,8 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
     // ΚΑΙ ΒΗΜΑ ΠΟΥ ΔΕΝ ΞΕΡΟΥΜΕ ΑΝ ΕΓΙΝΕ. Το «δεν έγινε» βγαίνει από άδεια λίστα·
     // αν η λίστα είναι άδεια επειδή η ανάγνωση έπεσε, το βήμα είναι ψέμα
     // (lib/home/readFailures.ts).
-  ] as SetupStep[]).filter(s => tabVisible(s.nav) && stepFitsProperty(s.key, prop) && trustedStep(s.key, failedReads));
+  ] as SetupStep[]).filter(s => tabVisible(s.nav) && stepFitsProperty(s.key, prop) && trustedStep(s.key, failedReads))
+    .map(s => (EO && EO.setup[s.key] ? { ...s, label: EO.setup[s.key][0], hint: EO.setup[s.key][1] } : s));
 
   // ── ΜΙΑ ΛΙΣΤΑ, ΟΧΙ ΤΕΣΣΕΡΙΣ ──────────────────────────────────────────────
   // Πριν, αυτή η οθόνη σέρβιρε τέσσερις ανεξάρτητες μηχανές συμβουλής τη μία
@@ -817,6 +823,13 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // άλλον πίνακα, με δική της ταξινόμηση, χωρίς να ξέρει η μία για την άλλη.
   // Ο χρήστης έπρεπε να διαβάσει δύο λίστες και να τις συγχωνεύσει στο μυαλό
   // του για να καταλάβει τι είναι πρώτο. Τώρα τις συγχωνεύει η μηχανή.
+  // ΤΑ ΑΓΓΛΙΚΑ ΜΟΝΟ ΣΤΗΝ ΟΘΟΝΗ. Οι υποχρεώσεις που γράφονται στο ημερολόγιο
+  // (`obligations`, πιο πάνω) μένουν ελληνικές· η λίστα «Τι χρειάζεται τώρα»
+  // διαβάζει το ίδιο αποτέλεσμα με αγγλικούς τίτλους.
+  // Χωρίς useMemo: τρέχει μόνο στα αγγλικά και κοστίζει όσο ένας πίνακας λίγων γραμμών.
+  const agendaObligations = EO
+    ? computeObligations(prop, tenantFull, maint, now, taxProfileOf(prop), { leaseDeclaredAt: leaseDecl?.at ?? null, leaseDeclTenantId: leaseDecl?.tenantId, leaseDeclLeaseStart: leaseDecl?.leaseStart, closedTaxRefs: closedTax }, leavers, EO.obligations)
+    : obligations;
   const taskObligations = useMemo(
     () => tasks.filter(t => t.title).map(t => ({
       id: `task:${t.id}`,
@@ -839,7 +852,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
     // Ό,τι στηρίζεται σε περιοχή που δεν διαβάστηκε δεν μπαίνει: η πληρωμένη
     // δόση ΕΝΦΙΑ δεν ξαναγίνεται οφειλή επειδή έπεσε μια ανάγνωση.
     buildAgenda({ insights: insights.filter(i => trustedInsight(i.id, failedReads)),
-                  obligations: [...obligations.filter(o => trustedObligation(o, failedReads)), ...taskObligations],
+                  obligations: [...agendaObligations.filter(o => trustedObligation(o, failedReads)), ...taskObligations],
                   setup: setupSteps, today: todayIso,
                   horizonDays: prefs.agendaHorizonDays })
       // ── ΔΥΟ ΚΑΝΟΝΕΣ ΓΙΑ ΤΗΝ ΙΔΙΑ ΛΙΣΤΑ ────────────────────────────────
@@ -878,7 +891,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       // «ΕΝΦΙΑ, 9η δόση σε 14 ημέρες».
       .filter(it => !(enfiaHero && enfiaOutsidePlan(it.key, enfiaNext)))
       // Η δόση του φόρου εισοδήματος λέει σε ποιον αφορά, με τη φράση του ημερολογίου (r7).
-      .map(it => withCondition(it, obligations));
+      .map(it => withCondition(it, obligations))
+      // Η προϋπόθεση βγαίνει από την ελληνική σημείωση του ημερολογίου· στα αγγλικά η ίδια, μεταφρασμένη.
+      .map(it => (EO && it.condition ? { ...it, condition: EO.agenda.incomeCondition } : it));
   // Πέντε στην αρχική. Η πλήρης λίστα ζει στις «Εκκρεμότητες» — και η οθόνη το λέει.
   // Το ποσό της δόσης ΕΝΦΙΑ από τις ίδιες γραμμές με την κάρτα των 12 μηνών.
   const agenda = attachAmounts(agendaAll.slice(0, 5), forecast.months.flatMap(m => m.lines));
@@ -906,8 +921,8 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           `lib/nav/labels.ts`, την ίδια πηγή με το μενού και τη Νόα.
           Κρυφό ΟΠΤΙΚΑ, όχι από τον αναγνώστη: η μπάρα από πάνω δείχνει ήδη το
           ακίνητο και η οθόνη δεν αλλάζει ούτε ένα εικονοστοιχείο. */}
-      <h1 className="sr-only" ref={headingRef} tabIndex={-1}>{navLabel('overview')}</h1>
-      <p role="status" className="sr-only">{retryNote}</p>
+      <h1 className="sr-only" ref={headingRef} tabIndex={-1}>{ES ? ES.nav.overview : navLabel('overview')}</h1>
+      <p role="status" className="sr-only">{EO && retryNote ? (retryNote === 'Φορτώθηκαν όλα.' ? EO.failed.allLoaded : EO.failed.notAll) : retryNote}</p>
 
       {/* ═══ Η ΚΕΦΑΛΙΔΑ ΠΟΥ ΕΛΕΙΠΕ ══════════════════════════════════════════
           Η οθόνη άνοιγε με ένα μοναχικό κουμπί «Αναφορά (PDF)» στοιχισμένο
@@ -918,14 +933,16 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           κατάσταση, η ώρα Ελλάδας και η ενέργεια στη σειρά της. */}
       <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',gap:16,flexWrap:'wrap',marginBottom:20}}>
         <div style={{minWidth:0}}>
-          <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-note)',color:'var(--text-secondary)'}}>{taxHero ? `Φόρος ενοικίων ${year}` : enfiaHero || enfiaMissing ? `ΕΝΦΙΑ ${enfiaNext?.year ?? year}` : heroIsNet ? `Καθαρό ${year}, με ό,τι ξέρουμε σήμερα` : `Δαπάνες ${year}`}</div>
+          <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-note)',color:'var(--text-secondary)'}}>{EO
+            ? (taxHero ? EO.hero.tax(year) : enfiaHero || enfiaMissing ? EO.hero.enfia(enfiaNext?.year ?? year) : heroIsNet ? EO.hero.net(year) : EO.hero.expenses(year))
+            : taxHero ? `Φόρος ενοικίων ${year}` : enfiaHero || enfiaMissing ? `ΕΝΦΙΑ ${enfiaNext?.year ?? year}` : heroIsNet ? `Καθαρό ${year}, με ό,τι ξέρουμε σήμερα` : `Δαπάνες ${year}`}</div>
           {enfiaMissing
             ? <div style={{marginTop:4}}>
                 {/* ΕΝΕΡΓΕΙΑ ΣΤΗ ΘΕΣΗ ΤΟΥ ΠΟΣΟΥ, ΟΧΙ ΣΥΝΔΕΣΜΟΣ ΜΕΣΑ ΣΕ ΠΡΟΤΑΣΗ (κριτική σχεδίασης r6):
                     χρώμα τόνου χωρίς υπογράμμιση, όπως το «Όλοι οι τύποι» του οδηγού, με
                     βέλος που λέει «πατιέται» χωρίς το χρώμα και στόχο 44. */}
                 <LinkBtn className="ov-hero-action" onClick={()=>onNavigate('edit-enfia')}>
-                  <span>Γράψε τον ΕΝΦΙΑ του εκκαθαριστικού</span>
+                  <span>{EO ? EO.hero.enfiaMissing : 'Γράψε τον ΕΝΦΙΑ του εκκαθαριστικού'}</span>
                   <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
                 </LinkBtn>
               </div>
@@ -933,18 +950,18 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
             // ΜΙΣΘΩΣΗ ΧΩΡΙΣ ΠΟΣΟ ΔΕΝ ΔΕΙΧΝΕΙ ΜΗΔΕΝ ΣΑΝ ΝΑ ΗΤΑΝ ΦΟΡΟΣ: λέει τι λείπει
             // και ανοίγει την επεξεργασία στο μίσθωμα. Η αποθήκευση γυρίζει εδώ.
             ? <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap',marginTop:4}}>
-                <span style={{fontFamily:T.font.sans,fontSize:'var(--fs-md)',fontWeight:600,color:'var(--text-primary)'}}>Λείπει το μίσθωμα</span>
-                <Btn variant="secondary" onClick={()=>onNavigate('edit-rent')}>Πρόσθεσε μίσθωμα</Btn>
+                <span style={{fontFamily:T.font.sans,fontSize:'var(--fs-md)',fontWeight:600,color:'var(--text-primary)'}}>{EO ? EO.hero.rentMissing : 'Λείπει το μίσθωμα'}</span>
+                <Btn variant="secondary" onClick={()=>onNavigate('edit-rent')}>{EO ? EO.hero.addRent : 'Πρόσθεσε μίσθωμα'}</Btn>
               </div>
             : enfiaUnissued
             // ΕΤΟΣ ΠΟΥ ΔΕΝ ΕΧΕΙ ΕΚΔΟΘΕΙ ΣΤΟ ΗΜΕΡΟΛΟΓΙΟ (κριτική σχεδίασης r7): κανένα ποσό,
             // ούτε το περσινό που γράφτηκε· μόνο ο μήνας, «ΕΝΦΙΑ 2027 / Μάρτιος 2027».
-            ? <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-md)',fontWeight:600,color:'var(--text-primary)',marginTop:4}}>{enfiaNext!.next!.date}</div>
+            ? <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-md)',fontWeight:600,color:'var(--text-primary)',marginTop:4}}>{EO && enfiaNext!.next!.ob ? EO.enfiaRow(enfiaNext!.next!, { head: enfiaNext!.year, monthOnly: true }).split(' · ')[1] : enfiaNext!.next!.date}</div>
             : <div style={{fontFamily:T.font.num,fontSize:enfiaPaidOff ? TT.kpi.fontSize : 'clamp(28px,calc(7vw / var(--zoom, 1)),40px)',fontWeight:700,letterSpacing:'-0.02em',color:'var(--text-primary)',fontVariantNumeric:'tabular-nums',lineHeight:1.15}}>{moneyGap
-            ? <span style={{fontFamily:T.font.sans,fontSize:'var(--fs-md)',fontWeight:600,color:'var(--text-secondary)',letterSpacing:0}}>Δεν φορτώθηκε</span>
-            : fmtEur(taxHero ? estTax : enfiaHero ? enfiaPaid : heroValue)}</div>}
+            ? <span style={{fontFamily:T.font.sans,fontSize:'var(--fs-md)',fontWeight:600,color:'var(--text-secondary)',letterSpacing:0}}>{EO ? EO.hero.notLoaded : 'Δεν φορτώθηκε'}</span>
+            : (EO ? EO.f.fe : fmtEur)(taxHero ? estTax : enfiaHero ? enfiaPaid : heroValue)}</div>}
           {taxHero && !rentMissing && !moneyGap && (
-            <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:'var(--text-secondary)',marginTop:4,fontVariantNumeric:'tabular-nums'}}>{`Καθαρό ${year} · ${fmtEur(heroValue)}`}</div>
+            <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:'var(--text-secondary)',marginTop:4,fontVariantNumeric:'tabular-nums'}}>{EO ? EO.hero.netLine(year, EO.f.fe(heroValue)) : `Καθαρό ${year} · ${fmtEur(heroValue)}`}</div>
           )}
           {/* Η ΩΡΑ ΕΛΛΑΔΑΣ ΚΑΤΩ ΑΠΟ ΤΟ ΠΟΣΟ, ΟΧΙ ΠΑΝΩ (κριτική σχεδίασης r2). Ηταν η
               πρώτη γραμμή της οθόνης, σε έντονο βάρος· έσπρωχνε το ποσό κάτω.
@@ -955,12 +972,12 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           {enfiaHero && enfiaNext?.row && !moneyGap && (
             // «9η δόση 26,66€ · 30/11/2026»: η δόση και το ποσό της, χωρίς δεύτερο «ΕΝΦΙΑ».
             // Εξοφλημένο (r7, r8): σβηστή, αμέσως κάτω από το ποσό του ίδιου έτους.
-            <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:enfiaPaidOff ? 'var(--text-tertiary)' : 'var(--text-secondary)',marginTop:4,fontVariantNumeric:'tabular-nums'}}>{`${enfiaNext.row.title} · ${enfiaNext.row.date}`}</div>
+            <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:enfiaPaidOff ? 'var(--text-tertiary)' : 'var(--text-secondary)',marginTop:4,fontVariantNumeric:'tabular-nums'}}>{EO && enfiaNext.row.ob ? EO.enfiaRow(enfiaNext.row, { paidOff: enfiaPaidOff, single: enfiaNext.count === 1 }) : `${enfiaNext.row.title} · ${enfiaNext.row.date}`}</div>
           )}
           {/* ΤΟ ΕΠΟΜΕΝΟ ΕΚΚΑΘΑΡΙΣΤΙΚΟ ΣΤΟ ΤΕΛΟΣ, ΧΩΡΙΣ ΠΟΣΟ (κριτική σχεδίασης r8):
               «ΕΝΦΙΑ 2027 · Μάρτιος 2027». Η σειρά δεν πηγαινοέρχεται ανάμεσα σε δύο έτη. */}
           {enfiaPaidOff && !moneyGap && (
-            <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:'var(--text-secondary)',marginTop:2,fontVariantNumeric:'tabular-nums'}}>{`${enfiaNext!.next!.title} · ${enfiaNext!.next!.date}`}</div>
+            <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:'var(--text-secondary)',marginTop:2,fontVariantNumeric:'tabular-nums'}}>{EO && enfiaNext!.next!.ob ? EO.enfiaRow(enfiaNext!.next!, { head: enfiaNext!.year + 1 }) : `${enfiaNext!.next!.title} · ${enfiaNext!.next!.date}`}</div>
           )}
           {!firstHero && <AthensNow style={{fontFamily:T.font.sans,fontSize:'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:4,minHeight:15}}/>}
           {/* Η ΤΑΥΤΟΤΗΤΑ ΤΟΥ ΑΚΙΝΗΤΟΥ ΛΕΓΕΤΑΙ ΜΙΑ ΦΟΡΑ ΚΑΙ ΤΗ ΛΕΕΙ Η ΜΠΑΡΑ.
@@ -986,9 +1003,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
             της πλαϊνής μπάρας, όχι πλαίσιο σάρωσης εδώ και μηχανή εκεί. */}
         <Btn variant="primary" className="tour-scan ov-scan-hero" onClick={()=>onNavigate('scan')}>
           <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-          Σάρωσε έγγραφο
+          {EO ? EO.hero.scan : 'Σάρωσε έγγραφο'}
         </Btn>
-        <Btn disabled={moneyGap} title={moneyGap ? 'Η αναφορά περιμένει να φορτωθούν όλα τα ποσά' : undefined} onClick={()=>printPropertyStatement({
+        <Btn disabled={moneyGap} title={EO ? (moneyGap ? EO.hero.pdfWaiting : EO.hero.pdfTitle) : moneyGap ? 'Η αναφορά περιμένει να φορτωθούν όλα τα ποσά' : undefined} onClick={()=>printPropertyStatement({
           propName: prop.name, address: prop.address||undefined, postalCode: prop.postal_code||undefined,
           propType: propertyTypeLabel(prop.prop_type)||'Ακίνητο',
           status: statusLabelOf(prop), year, propValue: propValue||undefined,
@@ -1006,7 +1023,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           taxShare: { tax: estTax, ofPortfolio: portfolioTax.count > 1 },
         })}>
           <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>
-          Αναφορά σε PDF
+          {EO ? EO.hero.pdf : 'Αναφορά σε PDF'}
         </Btn>
         </div>
       </div>
@@ -1033,8 +1050,8 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           <InfoBanner tone="negative">
             <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
               <span style={{flex:1,minWidth:220}}>
-                {failedSentence(failedReads)}{' '}
-                {moneyGap ? 'Ώσπου να διαβαστούν, δεν δείχνουμε σύνολα: θα ήταν μισά.' : 'Ό,τι βλέπεις από κάτω μπορεί να μην είναι πλήρες.'}
+                {EO ? EO.failed.sentence(new Set(failedReads).size) : failedSentence(failedReads)}{' '}
+                {EO ? (moneyGap ? EO.failed.money : EO.failed.partial) : moneyGap ? 'Ώσπου να διαβαστούν, δεν δείχνουμε σύνολα: θα ήταν μισά.' : 'Ό,τι βλέπεις από κάτω μπορεί να μην είναι πλήρες.'}
               </span>
               {/* Σβηστό, όχι `disabled`: το `disabled` βγάζει την εστίαση από το
                   κουμπί τη στιγμή που πατήθηκε (κανόνας του `dimmed`, Theme.tsx). */}
@@ -1044,7 +1061,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
                 setRetryNote('');
                 retryAsked.current = true;
                 void reload({ immediate: true }).finally(() => setRetrying(false));
-              }}>{retrying ? 'Φορτώνω…' : 'Δοκίμασε ξανά'}</Btn>
+              }}>{EO ? (retrying ? EO.failed.retrying : EO.failed.retry) : retrying ? 'Φορτώνω…' : 'Δοκίμασε ξανά'}</Btn>
             </div>
           </InfoBanner>
         </div>

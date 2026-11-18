@@ -25,6 +25,7 @@ import { T, fe, Btn } from '@/components/Theme';
 import { cashSideNote, type CashPosition, type CashSide } from '@/lib/home/cash';
 import { navLabel } from '@/lib/nav/labels';
 import { ArrowDownLeft, ArrowUpRight, Wallet } from 'lucide-react';
+import { useAppEn } from '@/lib/i18n/appEn';
 
 function Side({ label, side, kind, onOpen, actionLabel, action, compact }: {
   label: string; side: CashSide; kind: 'in' | 'out';
@@ -42,7 +43,12 @@ function Side({ label, side, kind, onOpen, actionLabel, action, compact }: {
    */
   action?: ReactNode;
 }) {
-  const note = cashSideNote(side, kind);
+  const O = useAppEn('overview');
+  const C = O?.cash;
+  const fmt = O?.f.fe ?? fe;
+  const note = C
+    ? (side.count === 0 ? (kind === 'in' ? C.nothingLate : C.nothingUnpaid) : C.note(kind, side.count, side.lines[0]?.daysLeft, side.overdueCount, side.overdue))
+    : cashSideNote(side, kind);
   // ΤΟ ΜΗΔΕΝ ΓΡΑΦΕΤΑΙ ΣΤΟ ΙΔΙΟ ΜΕΓΕΘΟΣ, ΣΕ ΣΒΗΣΤΟ ΤΟΝΟ (20.10.2026). Ως τώρα
   // λεγόταν μόνο με λέξεις, για να μη διεκδικεί ένα «0,00€» στα σαράντα την
   // ίδια προσοχή με το ποσό απέναντι. Το τίμημα ήταν η ζύγιση: η μία πλευρά
@@ -101,7 +107,7 @@ function Side({ label, side, kind, onOpen, actionLabel, action, compact }: {
           fontFamily: T.font.num, fontWeight: 700, color: empty ? 'var(--text-tertiary)' : 'var(--text-primary)',
           fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', lineHeight: 1.05,
           maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}>{fe(side.total)}</span>
+        }}>{fmt(side.total)}</span>
       )}
       {/* Ο ΤΟΝΟΣ ΠΡΟΣΟΧΗΣ ΜΟΝΟ ΣΤΗ ΣΗΜΕΙΩΣΗ ΚΑΙ ΜΟΝΟ ΟΤΑΝ ΚΑΤΙ ΕΧΕΙ ΛΗΞΕΙ. Το
           ποσό δεν βάφεται (βλ. πάνω)· η ληξιπρόθεσμη γραμμή είναι κατάσταση. */}
@@ -145,12 +151,15 @@ export default function CashHero({ cash, showIncome, onNavigate, onRecordRent }:
   // — μένει ο δρόμος προς τις Δαπάνες, στο ίδιο σημείο που τον έμαθε ο χρήστης —
   // αλλά συρρικνώνεται σε μία σειρά. Μόλις υπάρξει έστω μία εκκρεμότητα, ο
   // αριθμός ξαναπαίρνει το μέγεθος που του αξίζει.
+  const C = useAppEn('overview')?.cash;
+  const S = useAppEn('shell');
+  const openIn = (tab: string, el: string) => (C && S ? C.openIn(S.nav[tab]) : el);
   const quiet = cash.owedByMe.count === 0 && (!showIncome || cash.owedToMe.count === 0);
   if (quiet) {
     return (
       <div className="card cash-hero" style={{ padding: 0, marginBottom: 20 }}>
-        <Side compact label="Ταμείο" side={cash.owedByMe} kind="out"
-              actionLabel={`Άνοιγμα στις ${navLabel('finances')}`} onOpen={() => onNavigate('finances')} />
+        <Side compact label={C ? C.calm : 'Ταμείο'} side={cash.owedByMe} kind="out"
+              actionLabel={openIn('finances', `Άνοιγμα στις ${navLabel('finances')}`)} onOpen={() => onNavigate('finances')} />
       </div>
     );
   }
@@ -176,15 +185,15 @@ export default function CashHero({ cash, showIncome, onNavigate, onRecordRent }:
       <div className="cash-sides" data-pair={showIncome ? '' : undefined}>
         {showIncome && (
           <>
-            <Side label="Σου οφείλουν" side={cash.owedToMe} kind="in"
-                  actionLabel={`Άνοιγμα στους ${navLabel('tenant')}`} onOpen={() => onNavigate('tenant')}
-                  action={onRecordRent && <Btn onClick={onRecordRent}>Μπήκε το ενοίκιο</Btn>} />
+            <Side label={C ? C.owedToMe : 'Σου οφείλουν'} side={cash.owedToMe} kind="in"
+                  actionLabel={openIn('tenant', `Άνοιγμα στους ${navLabel('tenant')}`)} onOpen={() => onNavigate('tenant')}
+                  action={onRecordRent && <Btn onClick={onRecordRent}>{C ? C.rentIn : 'Μπήκε το ενοίκιο'}</Btn>} />
             {/* Ο διαχωριστής είναι η δήλωση ότι τα δύο ΔΕΝ αθροίζονται. */}
             <div aria-hidden className="cash-divider" />
           </>
         )}
-        <Side label="Οφείλεις" side={cash.owedByMe} kind="out"
-              actionLabel={`Άνοιγμα στις ${navLabel('finances')}`} onOpen={() => onNavigate('finances')} />
+        <Side label={C ? C.owedByMe : 'Οφείλεις'} side={cash.owedByMe} kind="out"
+              actionLabel={openIn('finances', `Άνοιγμα στις ${navLabel('finances')}`)} onOpen={() => onNavigate('finances')} />
       </div>
     </div>
   );

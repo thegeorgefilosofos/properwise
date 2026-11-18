@@ -98,7 +98,16 @@ export function incomeTaxDeadline(status: PropertyStatus, incomeYear: number): T
 }
 
 /** Η μία γραμμή κάτω από το ποσό: σύντομος τίτλος και ημερομηνία στην ακρίβεια που ξέρουμε. */
-export interface TaxDeadlineRow { id: string; title: string; date: string }
+export interface TaxDeadlineRow {
+  id: string; title: string; date: string
+  /**
+   * Η υποχρέωση από την οποία βγήκε η γραμμή και το ποσό της δόσης, ώστε η
+   * εφαρμογή στα αγγλικά να γράψει τίτλο και ημερομηνία από τα ίδια δεδομένα
+   * (lib/i18n/en/app/overview.ts) και όχι από το ελληνικό κείμενο.
+   */
+  ob?: Pick<TaxObligation, 'id' | 'kind' | 'date' | 'confidence'>
+  amount?: number
+}
 
 /**
  * ΣΥΝΤΟΜΟΙ ΤΙΤΛΟΙ ΓΙΑ ΤΙΣ ΜΙΚΡΕΣ ΚΑΡΤΕΣ (κριτική σχεδίασης r4). Ο τίτλος του
@@ -123,7 +132,7 @@ export function deadlineDate(o: Pick<TaxObligation, 'date' | 'confidence'>): str
 
 /** Μία προθεσμία του ημερολογίου ως γραμμή της κάρτας. */
 export function deadlineRowOf(o: TaxObligation): TaxDeadlineRow {
-  return { id: o.id, title: SHORT_TITLE[o.kind] ?? o.title, date: deadlineDate(o) };
+  return { id: o.id, title: SHORT_TITLE[o.kind] ?? o.title, date: deadlineDate(o), ob: o };
 }
 
 /**
@@ -266,7 +275,7 @@ export function enfiaDeadline(status: PropertyStatus, today: string, annual?: nu
     const shown = year < y && (firstOf(year)?.date ?? today) < today ? year + 1 : year;
     const first = firstOf(shown);
     // Μόνο ο μήνας: το εκκαθαριστικό που ξέρει ο χρήστης δεν είναι αυτό.
-    const next = first ? { id: first.id, title: `ΕΝΦΙΑ ${shown}`, date: monthYearLabel(first.date.slice(0, 7)) } : null;
+    const next = first ? { id: first.id, title: `ΕΝΦΙΑ ${shown}`, date: monthYearLabel(first.date.slice(0, 7)), ob: first } : null;
     return { year: shown, row: null, paidOff: false, next, count: 0, each: 0, last: 0, ids: [], issued: false };
   }
   if (!count) return { year, row: null, paidOff: false, next: null, count: 0, each: 0, last: 0, ids: [], issued: true };
@@ -280,9 +289,9 @@ export function enfiaDeadline(status: PropertyStatus, today: string, annual?: nu
   // ΕΞΟΦΛΗΜΕΝΟ: η περασμένη δόση χωρίς ποσό, ως ημερομηνία που πέρασε (r7). Ο
   // τίτλος της μίας δόσης είναι του ημερολογίου, ποτέ «1η δόση».
   const row = !o || !inst ? null
-    : paidOff ? { id: o.id, title: plan.length === 1 ? enfiaShort(o.title) : 'Τελευταία δόση', date: deadlineDate(o) }
-    : { id: o.id, title: `${enfiaShort(o.title)} ${fe(inst.amount)}`, date: deadlineDate(o) };
+    : paidOff ? { id: o.id, title: plan.length === 1 ? enfiaShort(o.title) : 'Τελευταία δόση', date: deadlineDate(o), ob: o }
+    : { id: o.id, title: `${enfiaShort(o.title)} ${fe(inst.amount)}`, date: deadlineDate(o), ob: o, amount: inst.amount };
   const nextFirst = paidOff ? greekPropertyTaxObligations(year + 1, profile).find(x => x.kind === 'enfia-first') : undefined;
-  const next = nextFirst ? { id: nextFirst.id, title: `ΕΝΦΙΑ ${year + 1}`, date: deadlineDate(nextFirst) } : null;
+  const next = nextFirst ? { id: nextFirst.id, title: `ΕΝΦΙΑ ${year + 1}`, date: deadlineDate(nextFirst), ob: nextFirst } : null;
   return { year, row, paidOff, next, count: plan.length, each, last, ids: due.map(x => x.id), issued: true };
 }

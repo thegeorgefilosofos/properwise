@@ -731,3 +731,5 @@ export function billingWordsEn(
  * γραμμένες με το χέρι.
  */
 export const TRIAL_LINE = { one: 'Δοκιμή · {n} ημέρα', many: 'Δοκιμή · {n} ημέρες' } as const;
+/** Η ίδια γραμμή στα αγγλικά, για την εφαρμογή στα αγγλικά (lib/i18n/appEn.tsx). */
+export const TRIAL_LINE_EN = { one: 'Trial · {n} day', many: 'Trial · {n} days' } as const;
