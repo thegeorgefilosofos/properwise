@@ -112,6 +112,11 @@ export interface Comparison {
   /** Ό,τι πρέπει να ξέρει ο αναγνώστης για να μην παρερμηνεύσει. */
   caveats: string[];
   /**
+   * Η έκτακτη δαπάνη που εξηγεί τη μετακίνηση, ως δεδομένα: η εφαρμογή στα
+   * αγγλικά γράφει την ίδια επιφύλαξη από αυτά (lib/i18n/en/app/expenses.ts).
+   */
+  oneOff?: { dir: 'up' | 'down'; title: string | null; category: string | null };
+  /**
    * Η διαφορά είναι μέσα στον θόρυβο: υπάρχει σύγκριση, δεν υπάρχει αλλαγή.
    *
    * Η οθόνη το χρειάζεται για να ξέρει ΤΙ να γράψει κάτω από τον αριθμό. Χωρίς
@@ -318,12 +323,13 @@ export function compareMonth(
   const nameOf = (x: Spend): string =>
     x.title?.trim() || categoryLabel(x.category) || 'μια δαπάνη';
 
+  let oneOff: Comparison['oneOff'];
   if (diff > 0) {
     const big = bigOneOff(cur);
-    if (big) caveats.push(`Η αύξηση οφείλεται κυρίως σε έκτακτη δαπάνη: ${nameOf(big)}.`);
+    if (big) { caveats.push(`Η αύξηση οφείλεται κυρίως σε έκτακτη δαπάνη: ${nameOf(big)}.`); oneOff = { dir: 'up', title: big.title?.trim() || null, category: big.category ?? null }; }
   } else if (diff < 0) {
     const big = bigOneOff(bas);
-    if (big) caveats.push(`Η μείωση οφείλεται κυρίως σε έκτακτη δαπάνη του ${monthGenitive(baseKey)}: ${nameOf(big)}.`);
+    if (big) { caveats.push(`Η μείωση οφείλεται κυρίως σε έκτακτη δαπάνη του ${monthGenitive(baseKey)}: ${nameOf(big)}.`); oneOff = { dir: 'down', title: big.title?.trim() || null, category: big.category ?? null }; }
   }
 
   const pct = bas.total > 0 ? (diff / bas.total) * 100 : null;
@@ -335,6 +341,7 @@ export function compareMonth(
     drivers: shown,
     rest: diff - shown.reduce((sum, d) => sum + d.diff, 0),
     caveats,
+    ...(oneOff ? { oneOff } : {}),
     meaningful: true,
     flat: Math.abs(diff) < NOISE,
     sentence: buildSentence(diff, drivers, baseKey, yearRef, basis),

@@ -26,6 +26,7 @@ import { navLabel } from '@/lib/nav/labels';
 import { useState } from 'react';
 import { T, Btn, ChipToggle, PageTitle } from '@/components/Theme';
 import ExpenseLedger from './ExpenseLedger';
+import { useAppEn } from '@/lib/i18n/appEn';
 import InboundInbox from './InboundInbox';
 import { BankLinkRow } from './BankLink';
 import TabBills from './TabBills';
@@ -93,6 +94,10 @@ export default function TabFinances({
   profileType = 'individual', legalForm = 'individual', onScan, onNewExpense, openAddNonce, handledAddNonce, onAddHandled,
 }: Props) {
   const [view, setViewState] = useState<View>(readView);
+  // Τα αγγλικά των Δαπανών και το όνομα της καρτέλας, ή `null` στα ελληνικά.
+  const E = useAppEn('expenses');
+  const S = useAppEn('shell');
+  const tabName = S ? S.nav.finances : navLabel('finances');
   const setView = (v: View) => { setViewState(v); writeView(v); };
   // Το φίλτρο με το οποίο ανοίγουν οι Δαπάνες από ένα τσιπ του Προϋπολογισμού.
   const [ledgerFilter, setLedgerFilter] = useState<LedgerFilter | null>(null);
@@ -103,8 +108,8 @@ export default function TabFinances({
   const [ledgerKey, setLedgerKey] = useState(0);
 
   const segs: { k: View; label: string }[] = [
-    { k: 'expenses', label: navLabel('finances') },
-    { k: 'budget', label: 'Προϋπολογισμός' },
+    { k: 'expenses', label: tabName },
+    { k: 'budget', label: E ? E.tabs.budget : 'Προϋπολογισμός' },
   ];
 
   // ── ΕΝΑ ΣΤΟΙΧΕΙΟ ΕΛΕΓΧΟΥ, ΟΧΙ ΤΡΙΑ ─────────────────────────────────────────
@@ -120,7 +125,7 @@ export default function TabFinances({
   // πάντα πού να πάει. Δύο μπλε σημεία στην ίδια οθόνη είναι κανένα.
   const tabs: { k: View | 'contracts'; label: string }[] = [
     ...segs.map(s => ({ k: s.k as View | 'contracts', label: s.label })),
-    { k: 'contracts', label: 'Συμβόλαια' },
+    { k: 'contracts', label: E ? E.tabs.contracts : 'Συμβόλαια' },
   ];
   const active: View | 'contracts' = contracts ? 'contracts' : view;
 
@@ -185,8 +190,8 @@ export default function TabFinances({
         // ΠΑΝΩ από τον τίτλο «Δαπάνες», δηλαδή η ενέργεια πριν από το όνομα της
         // οθόνης. Στο `right` της κεφαλίδας κάθεται όπως σε κάθε άλλη καρτέλα:
         // δεξιά του τίτλου στον υπολογιστή, κάτω από αυτόν στο κινητό.
-        <PageTitle title={navLabel('finances')} sub="Ό,τι πλήρωσες και ό,τι περιμένει πληρωμή, για αυτό το ακίνητο."
-          right={(onNewExpense ?? onScan) ? <Btn variant="primary" size="lg" onClick={onNewExpense ?? onScan}>Νέα δαπάνη</Btn> : undefined} />
+        <PageTitle title={tabName} sub={E ? E.sub : 'Ό,τι πλήρωσες και ό,τι περιμένει πληρωμή, για αυτό το ακίνητο.'}
+          right={(onNewExpense ?? onScan) ? <Btn variant="primary" size="lg" onClick={onNewExpense ?? onScan}>{E ? E.newExpense : 'Νέα δαπάνη'}</Btn> : undefined} />
       )}
       {contracts
         ? <TabBills propertyId={propertyId} userId={userId} legalForm={legalForm} />
