@@ -300,6 +300,40 @@ export function LandingStyles() {
            στενές στήλες κάτω από τις κάρτες. Απόφαση ιδιοκτήτη: το κείμενο πάει
            πέρα πέρα, στο ίδιο πλάτος με τις κάρτες, όπως κάθε άλλο μπλοκ της
            σελίδας. Το δικαίωμα υπαναχώρησης ξεκινά δική του παράγραφο. */''}
+        ${/* Η ΞΕΝΑΓΗΣΗ ΤΟΥ ΕΝΟΣ ΛΕΠΤΟΥ (/en). Από 900 και πάνω δύο στήλες: το
+           κάθετο βίντεο σε πλαίσιο τηλεφώνου αριστερά, το κείμενο δεξιά. Στο
+           κινητό στοιβάζονται, με το βίντεο πρώτο. Το πλαίσιο κρατά λόγο 9:16
+           πριν φορτώσει οτιδήποτε, ώστε η σελίδα να μη μετακινείται. */''}
+        .lp-tour { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(24px, 4vw, 56px); align-items: center; }
+        @media (min-width: 900px) { .lp-tour { grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); } }
+        .lp-tour-frame {
+          position: relative; width: 100%; max-width: 340px; margin: 0 auto; aspect-ratio: 9 / 16;
+          border-radius: 28px; overflow: hidden; background: var(--bg-base);
+          border: 1px solid var(--border-strong);
+          box-shadow: 0 40px 80px -40px color-mix(in srgb, var(--shadow-ink) 70%, transparent), 0 0 0 6px color-mix(in srgb, var(--accent) 8%, transparent);
+        }
+        .lp-tour-video { display: block; width: 100%; height: 100%; object-fit: cover; }
+        .lp-tour-play {
+          position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+          gap: 12px; padding: 0 16px 28px; border: 0; cursor: pointer; color: var(--text-primary); font: inherit;
+          background: linear-gradient(to top, color-mix(in srgb, var(--bg-base) 72%, transparent) 0%, transparent 42%);
+        }
+        .lp-tour-play-dot {
+          display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%;
+          background: var(--accent); color: var(--accent-text); padding-left: 3px;
+          box-shadow: 0 12px 30px -10px color-mix(in srgb, var(--accent) 70%, transparent);
+          transition: transform .18s ease;
+        }
+        .lp-tour-play:hover .lp-tour-play-dot { transform: scale(1.06); }
+        .lp-tour-play:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; border-radius: 28px; }
+        .lp-tour-play-label { font-size: 14px; font-weight: 700; letter-spacing: -0.01em; }
+        .lp-tour-points { margin: 18px 0 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+        .lp-tour-points li { position: relative; padding-left: 26px; font-size: 15px; line-height: 1.55; color: var(--text-secondary); }
+        .lp-tour-points li::before {
+          content: ''; position: absolute; left: 4px; top: .62em; width: 8px; height: 8px; border-radius: 50%;
+          background: color-mix(in srgb, var(--accent) 80%, transparent);
+        }
+        @media (prefers-reduced-motion: reduce) { .lp-tour-play-dot { transition: none; } }
         .lp-root .fineprint { max-width: none; columns: 1; }
         .lp-root .fineprint-col2 { display: block; margin-top: .6em; }
 
