@@ -203,6 +203,12 @@ export function DashboardView({ tenant, payments, propertyCount }:{ tenant:Tenan
 
 export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propertyId:string; userId:string }) {
   const supabase=createClient();
+  const E=useAppEn('tenants');
+  const X=useAppEn('errors');
+  /** Γραφή στη βάση με το σφάλμα στη γλώσσα της οθόνης. */
+  const sv=(el:string,k:string,q:Parameters<typeof saved>[1])=>saved(el,q,X&&E?(e:unknown)=>X.failed(E.err[k]??el,e):undefined);
+  const fail=(el:string,k:string,e:unknown)=>X&&E?X.failed(E.err[k]??el,e):failed(el,e);
+  const W=E?.comm;
   const [logs,setLogs]=useState<CommLog[]>([]);
   const [loadedFor,setLoadedFor]=useState<string|null>(null);
   // ΤΟ ΑΔΕΙΟ ΗΜΕΡΟΛΟΓΙΟ ΔΕΝ ΕΙΝΑΙ ΑΠΟΔΕΙΞΗ ΣΙΩΠΗΣ. Οταν η ανάγνωση αποτύγχανε
@@ -224,8 +230,8 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
   // `tenant_comm_log_type_check` (baseline.sql:2788) δέχεται ΜΟΝΟ
   // call/email/sms/meeting/note, οπότε η καταχώρηση αποτύγχανε κάθε φορά.
   // Με `Record<CommLog['type'],string>` καμία από τις δύο δεν είναι πια δυνατή.
-  const TYPE_LABELS:Record<CommLog['type'],string>={call:'Τηλεφωνική κλήση',email:'Ηλεκτρονικό ταχυδρομείο',sms:'Μήνυμα',meeting:'Συνάντηση',note:'Σημείωση'};
-  const TYPE_SHORT:Record<CommLog['type'],string>={call:'Κλήση',email:'Ηλεκτρονικό ταχυδρομείο',sms:'Μήνυμα',meeting:'Συνάντηση',note:'Σημείωση'};
+  const TYPE_LABELS:Record<CommLog['type'],string>=W?W.types as Record<CommLog['type'],string>:{call:'Τηλεφωνική κλήση',email:'Ηλεκτρονικό ταχυδρομείο',sms:'Μήνυμα',meeting:'Συνάντηση',note:'Σημείωση'};
+  const TYPE_SHORT:Record<CommLog['type'],string>=W?W.short as Record<CommLog['type'],string>:{call:'Κλήση',email:'Ηλεκτρονικό ταχυδρομείο',sms:'Μήνυμα',meeting:'Συνάντηση',note:'Σημείωση'};
   // Ο SelectField επιστρέφει `string`· το `v as any` έσβηνε τη στένωση σε ένωση.
   // Εδώ ΔΕΝ κατέληγε αυθαίρετο κείμενο στη βάση — το CHECK της στήλης το κόβει
   // και το `saved()` δείχνει σφάλμα. Ο φύλακας μεταφέρει την αποτυχία από τη
@@ -238,17 +244,18 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
   // ενοικιαστή φαινόταν κάτω από το όνομα του άλλου.
   const loadLogs=useCallback(async()=>{
     const{data,error}=await supabase.from('tenant_comm_log').select('*').eq('tenant_id',tenant.id).order('date',{ascending:false});
-    if(error){ setLogs([]);setLogsErr(failed('Το ιστορικό επικοινωνίας δεν διαβάστηκε',error));setLoadedFor(tenant.id);return; }
+    if(error){ setLogs([]);setLogsErr(fail('Το ιστορικό επικοινωνίας δεν διαβάστηκε','commNotRead',error));setLoadedFor(tenant.id);return; }
     setLogsErr('');setLogs(data||[]);setLoadedFor(tenant.id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[tenant.id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[tenant.id,E,X]);
 
   useLoad(loadLogs);
   const saveLog=async()=>{
     // Η ημερομηνία είναι NOT NULL στη βάση και ο επιλογέας έχει «Εκκαθάριση»:
     // το '' απέρριπτε την καταγραφή (22007). Το κουμπί μένει κλειστό χωρίς αυτήν.
     if(!form.summary.trim()||!form.date)return;setSaving(true);
-    const ok=await saved('Η καταγραφή επικοινωνίας δεν αποθηκεύτηκε', supabase.from('tenant_comm_log').insert({tenant_id:tenant.id,property_id:propertyId,user_id:userId,type:form.type,summary:form.summary.trim(),date:form.date,outcome:form.outcome||null}));
+    const ok=await sv('Η καταγραφή επικοινωνίας δεν αποθηκεύτηκε','commNotSaved', supabase.from('tenant_comm_log').insert({tenant_id:tenant.id,property_id:propertyId,user_id:userId,type:form.type,summary:form.summary.trim(),date:form.date,outcome:form.outcome||null}));
     setSaving(false);
     // ΤΟ ΓΡΑΨΙΜΟ ΤΟΥ ΧΡΗΣΤΗ ΔΕΝ ΣΒΗΝΕΤΑΙ ΟΤΑΝ Η ΑΠΟΘΗΚΕΥΣΗ ΑΠΕΤΥΧΕ. Η φόρμα
     // έκλεινε και τα πεδία μηδενίζονταν ΑΝΕΞΑΡΤΗΤΑ από το αποτέλεσμα: ο χρήστης
@@ -262,27 +269,27 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
   const d=daysLeft(tenant.lease_end);
   const reminders=[];
   if(d!==null){
-    if(d<=30&&d>=0) reminders.push({label:`Λήξη σε ${d} ημέρες, ζήτα άμεσα απόφαση ανανέωσης`,urgent:true});
-    else if(d<=60&&d>=31) reminders.push({label:`Λήξη σε ${d} ημέρες, ενημέρωσε τον ενοικιαστή`,urgent:false});
-    else if(d<=90&&d>=61) reminders.push({label:`Λήξη σε ${d} ημέρες, ξεκίνα συζήτηση ανανέωσης`,urgent:false});
+    if(d<=30&&d>=0) reminders.push({label:`Λήξη σε ${d} ημέρες, ζήτα άμεσα απόφαση ανανέωσης`,urgent:true,en:W?.reminder(d,0)});
+    else if(d<=60&&d>=31) reminders.push({label:`Λήξη σε ${d} ημέρες, ενημέρωσε τον ενοικιαστή`,urgent:false,en:W?.reminder(d,1)});
+    else if(d<=90&&d>=61) reminders.push({label:`Λήξη σε ${d} ημέρες, ξεκίνα συζήτηση ανανέωσης`,urgent:false,en:W?.reminder(d,2)});
   }
   const inputStyle:React.CSSProperties={width:'100%',height: T.h.lg,background:'var(--bg-surface)',border:'1px solid var(--border-control)',borderRadius:T.radius.inner,padding:'0 14px',color:'var(--text-primary)',fontSize:14,letterSpacing:0,fontFamily:T.font.sans,outline:'none',boxSizing:'border-box'};
 
   return (
     <div>
       <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24, marginBottom:16 }}>
-        <SectionTitle>Γρήγορη επικοινωνία</SectionTitle>
+        <SectionTitle>{W?W.quick:'Γρήγορη επικοινωνία'}</SectionTitle>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap:10, marginBottom:14 }}>
           {tenant.phone&&(
             <a href={`tel:${tenant.phone}`} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'16px 12px', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, textDecoration:'none', color:'var(--text-primary)', transition:'border-color 0.15s' }}>
               <div style={{ width:36, height:36, borderRadius: T.radius.modal, background:'var(--bg-overlay)', border:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}></div>
-              <div style={{ textAlign:'center' as const }}><div style={{ fontSize:12, fontWeight:600, fontFamily:T.font.sans, color:'var(--text-primary)' }}>Κλήση</div><div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-secondary)', fontFamily:T.font.sans, marginTop:2 }}>{tenant.phone}</div></div>
+              <div style={{ textAlign:'center' as const }}><div style={{ fontSize:12, fontWeight:600, fontFamily:T.font.sans, color:'var(--text-primary)' }}>{W?W.call:'Κλήση'}</div><div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-secondary)', fontFamily:T.font.sans, marginTop:2 }}>{tenant.phone}</div></div>
             </a>
           )}
           {tenant.email&&(
             <a href={`mailto:${tenant.email}`} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'16px 12px', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, textDecoration:'none', color:'var(--text-primary)' }}>
               <div style={{ width:36, height:36, borderRadius: T.radius.modal, background:'var(--bg-overlay)', border:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}></div>
-              <div style={{ textAlign:'center' as const }}><div style={{ fontSize:12, fontWeight:600, fontFamily:T.font.sans }}>Ηλεκτρονικό ταχυδρομείο</div><div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-secondary)', fontFamily:T.font.sans, marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' as const, maxWidth:120 }}>{tenant.email}</div></div>
+              <div style={{ textAlign:'center' as const }}><div style={{ fontSize:12, fontWeight:600, fontFamily:T.font.sans }}>{W?W.email:'Ηλεκτρονικό ταχυδρομείο'}</div><div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-secondary)', fontFamily:T.font.sans, marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' as const, maxWidth:120 }}>{tenant.email}</div></div>
             </a>
           )}
           {tenant.phone&&(
@@ -298,55 +305,56 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
             </a>
           )}
         </div>
-        {reminders.map((r,i)=><AlertBar key={i} text={`Υπενθύμιση: ${r.label}`} level={r.urgent?'critical':'warning'}/>)}
+        {reminders.map((r,i)=><AlertBar key={i} text={r.en??`Υπενθύμιση: ${r.label}`} level={r.urgent?'critical':'warning'}/>)}
       </div>
 
       <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
-          <SectionTitle>Ιστορικό επικοινωνίας</SectionTitle>
+          <SectionTitle>{W?W.history:'Ιστορικό επικοινωνίας'}</SectionTitle>
           {/* Το `s.btnSm` ήταν περίγραμμα accent σε bg-elevated: γεωμετρικά
               δευτερεύον κουμπί, οπότε δευτερεύον μένει. Ο τόνος accent του
               λεκτικού ήταν η μόνη του διαφορά από το `s.btnGhost` και δεν έχει
               ρόλο στο `Btn` — η κύρια ενέργεια δηλώνεται με primary. */}
           {/* Χωρίς διαβασμένο ιστορικό η νέα καταχώρηση γράφεται στα τυφλά:
               πάνω από ένα ημερολόγιο που κανείς δεν ξέρει τι έχει ήδη μέσα. */}
-          {!logsErr&&<Btn variant="secondary" onClick={()=>setShowAdd(v=>!v)}>{showAdd?'Κλείσιμο':'+ Νέα καταχώρηση'}</Btn>}
+          {!logsErr&&<Btn variant="secondary" onClick={()=>setShowAdd(v=>!v)}>{W?(showAdd?W.close:W.add):showAdd?'Κλείσιμο':'+ Νέα καταχώρηση'}</Btn>}
         </div>
 
         {showAdd&&(
           <div style={{ background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:20, marginBottom:20 }}>
             <div style={{ ...formGrid(150, 210), gap:12, marginBottom:12 }}>
               <div>
-                <div style={{ ...labelStyle, marginBottom:8 }}>Τύπος επικοινωνίας</div>
-                <SelectField ariaLabel="Τύπος επικοινωνίας" value={form.type} onChange={v=>{ if(isCommType(v)) setForm(f=>({...f,type:v})); }}
+                <div style={{ ...labelStyle, marginBottom:8 }}>{W?W.type:'Τύπος επικοινωνίας'}</div>
+                <SelectField ariaLabel={W?W.type:'Τύπος επικοινωνίας'} value={form.type} onChange={v=>{ if(isCommType(v)) setForm(f=>({...f,type:v})); }}
                   options={(Object.keys(TYPE_LABELS) as CommLog['type'][]).map(k=>({ value:k, label:TYPE_LABELS[k] }))}/>
               </div>
               <div>
-                <div style={{ ...labelStyle, marginBottom:8 }}>Ημερομηνία</div>
-                <DatePicker value={form.date} onChange={v=>setForm(f=>({...f,date:v}))}/>
+                <div style={{ ...labelStyle, marginBottom:8 }}>{W?W.date:'Ημερομηνία'}</div>
+                <DatePicker ariaLabel={W?W.date:undefined} value={form.date} onChange={v=>setForm(f=>({...f,date:v}))}/>
               </div>
               <div>
-                <div style={{ ...labelStyle, marginBottom:8 }}>Αποτέλεσμα</div>
-                <input type="text" value={form.outcome} onChange={e=>setForm(f=>({...f,outcome:e.target.value}))} placeholder="Θετικό, αρνητικό…" style={inputStyle}/>
+                <div style={{ ...labelStyle, marginBottom:8 }}>{W?W.outcome:'Αποτέλεσμα'}</div>
+                <input type="text" value={form.outcome} onChange={e=>setForm(f=>({...f,outcome:e.target.value}))} placeholder={W?W.outcomeHint:'Θετικό, αρνητικό…'} style={inputStyle}/>
               </div>
             </div>
             <div style={{ marginBottom:14 }}>
-              <div style={{ ...labelStyle, marginBottom:8 }}>Σύνοψη επικοινωνίας *</div>
+              <div style={{ ...labelStyle, marginBottom:8 }}>{W?W.summary:'Σύνοψη επικοινωνίας *'}</div>
               <Dictation multiline value={form.summary} onChange={v=>setForm(f=>({...f,summary:v}))}>
-              <textarea aria-label="Σύνοψη επικοινωνίας" value={form.summary} onChange={e=>setForm(f=>({...f,summary:e.target.value}))} placeholder="Περιγραφή επικοινωνίας…" rows={3}
+              <textarea aria-label={W?W.summaryAria:'Σύνοψη επικοινωνίας'} value={form.summary} onChange={e=>setForm(f=>({...f,summary:e.target.value}))} placeholder={W?W.summaryHint:'Περιγραφή επικοινωνίας…'} rows={3}
                 style={{ width:'100%', background:'var(--bg-surface)', border:'1px solid var(--border-default)', borderRadius:T.radius.inner, padding:'10px 14px', color:'var(--text-primary)', fontSize:14, letterSpacing:0, fontFamily:T.font.sans, outline:'none', boxSizing:'border-box' as const, resize:'vertical' as const, lineHeight:1.6 }}/>
               </Dictation>
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
-              <Btn variant="secondary" onClick={()=>setShowAdd(false)}>Ακύρωση</Btn>
-              <Btn variant="primary" onClick={saveLog} disabled={saving||!form.summary.trim()||!form.date}>{saving?'Αποθήκευση…':'Αποθήκευση'}</Btn>
+              <Btn variant="secondary" onClick={()=>setShowAdd(false)}>{W?W.cancel:'Ακύρωση'}</Btn>
+              <Btn variant="primary" onClick={saveLog} disabled={saving||!form.summary.trim()||!form.date}>{W?(saving?W.saving:W.save):saving?'Αποθήκευση…':'Αποθήκευση'}</Btn>
             </div>
           </div>
         )}
 
-        {loading&&<Spinner label="Φόρτωση…" />}
-        {!loading&&logsErr&&<InfoBanner tone="negative">{logsErr} Ώσπου να διαβαστεί δεν ξέρουμε αν το ιστορικό είναι κενό: μην καταγράψεις ξανά επικοινωνία που ίσως υπάρχει ήδη.</InfoBanner>}
-        {!loading&&!logsErr&&logs.length===0&&<EmptyState icon={<MessageSquare size={20}/>} title="Καμία επικοινωνία ακόμη" hint="Κατέγραψε κλήσεις, μηνύματα και επισκέψεις για να έχεις πλήρες ιστορικό με τον ενοικιαστή." />}
+        {loading&&<Spinner label={W?W.loading:'Φόρτωση…'} />}
+        {!loading&&logsErr&&W&&<InfoBanner tone="negative">{logsErr}{W.loadErrTail}</InfoBanner>}
+        {!loading&&logsErr&&!W&&<InfoBanner tone="negative">{logsErr} Ώσπου να διαβαστεί δεν ξέρουμε αν το ιστορικό είναι κενό: μην καταγράψεις ξανά επικοινωνία που ίσως υπάρχει ήδη.</InfoBanner>}
+        {!loading&&!logsErr&&logs.length===0&&<EmptyState icon={<MessageSquare size={20}/>} title={W?W.empty[0]:'Καμία επικοινωνία ακόμη'} hint={W?W.empty[1]:'Κατέγραψε κλήσεις, μηνύματα και επισκέψεις για να έχεις πλήρες ιστορικό με τον ενοικιαστή.'} />}
         {!loading&&logs.map(log=>(
           <div key={log.id} style={{ display:'flex', gap:14, alignItems:'flex-start', padding:'14px 0', borderBottom:'1px solid var(--border-subtle)' }}>
             <div style={{ width:38, height:38, borderRadius: T.radius.modal, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:16 }}>
@@ -354,7 +362,7 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
             <div style={{ flex:1 }}>
               <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6 }}>
                 <span style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-primary)', fontFamily:T.font.sans }}>{TYPE_SHORT[log.type]}</span>
-                <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans }}>{localDay(log.date).toLocaleDateString('el-GR',{day:'2-digit',month:'long',year:'numeric'})}</span>
+                <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans }}>{E?E.longDate(log.date):localDay(log.date).toLocaleDateString('el-GR',{day:'2-digit',month:'long',year:'numeric'})}</span>
                 {log.outcome&&<StatusBadge label={log.outcome} color="var(--accent)" bg="var(--accent-dim)"/>}
               </div>
               <div style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.6 }}>{log.summary}</div>
@@ -362,7 +370,7 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
             {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ. Το `s.btnDng` είναι γεωμετρικά δευτερεύον κουμπί, αλλά
                 ο κόκκινος τόνος του δεν έχει ρόλο στο `Btn`: με `secondary` η διαγραφή
                 θα έχανε το χρώμα που την ξεχωρίζει από τις υπόλοιπες ενέργειες. */}
-            <button style={s.btnDng} onClick={async()=>{if(!(await confirmDialog('Διαγραφή καταγραφής επικοινωνίας;',{tone:'negative',confirmLabel:'Διαγραφή'})))return;if(await saved('Η καταγραφή δεν διαγράφηκε',supabase.from('tenant_comm_log').delete().eq('id',log.id)))loadLogs();}}>Διαγραφή</button>
+            <button style={s.btnDng} onClick={async()=>{if(!(await (E&&W?confirmDialog(E.ask(W.delAsk,W.del,true)):confirmDialog('Διαγραφή καταγραφής επικοινωνίας;',{tone:'negative',confirmLabel:'Διαγραφή'}))))return;if(await sv('Η καταγραφή δεν διαγράφηκε','commNotDeleted',supabase.from('tenant_comm_log').delete().eq('id',log.id)))loadLogs();}}>{W?W.del:'Διαγραφή'}</button>
           </div>
         ))}
       </div>
@@ -396,6 +404,10 @@ export function LegalTaxView({ tenant, propertyCount, rentTax }:{ tenant:Tenant;
    * ιδιοκτησίας, οπότε το ίδιο ακίνητο είχε τρεις φόρους σε τρεις οθόνες.
    */
   rentTax:PropertyRentTax|null }) {
+  // Τα αγγλικά, ή `null` στα ελληνικά. Ίδιοι αριθμοί από τις ίδιες σταθερές.
+  const E=useAppEn('tenants');
+  const W=E?.legal;
+  const S=useAppEn('shell');
   const taxLoading=!rentTax;
   const annualRent=rentTax?.income.annual??0;
   // ΤΕΚΜΑΡΤΗ ΕΚΠΤΩΣΗ 5%: ίδιος συντελεστής και ίδιος ΟΡΟΣ με το
@@ -432,22 +444,33 @@ export function LegalTaxView({ tenant, propertyCount, rentTax }:{ tenant:Tenant;
   // ΕΝΑ φόρο (ίδιος με την Επισκόπηση), οπότε η παλιά επιφύλαξη «υποεκτίμηση»
   // δεν ισχύει· μένει η εξήγηση της ενοποίησης όταν υπάρχουν δύο ή περισσότερα.
   const kpis:KPIItem[]=[
-    { label:'Ετήσιο ακαθάριστο ενοίκιο', value:taxLoading?ABSENT:fe(annualRent), tone:'accent', sub:rentTax?.income.estimated?'εκτίμηση':undefined },
-    { label:'Φόρος για αυτό το ακίνητο', value:taxLoading?ABSENT:fe(tax), tone:'warning', sub:!taxLoading&&annualRent>0?`πραγματικός συντελεστής ${fp((effRate*100))} επί των ακαθάριστων`:undefined },
-    ...(isCommercial?[{ label:`Ψηφιακό Τέλος Συναλλαγής (${fpRate(COMMERCIAL_STAMP_DUTY*100)})`, value:fe(stampDuty), tone:'warning' as const }]:[]),
+    { label:W?W.gross:'Ετήσιο ακαθάριστο ενοίκιο', value:taxLoading?(E?E.notSet:ABSENT):fe(annualRent), tone:'accent', sub:rentTax?.income.estimated?(W?W.estimate:'εκτίμηση'):undefined },
+    { label:W?W.tax:'Φόρος για αυτό το ακίνητο', value:taxLoading?(E?E.notSet:ABSENT):fe(tax), tone:'warning', sub:!taxLoading&&annualRent>0?(W?W.effective(fp((effRate*100))):`πραγματικός συντελεστής ${fp((effRate*100))} επί των ακαθάριστων`):undefined },
+    ...(isCommercial?[{ label:W?W.duty(fpRate(COMMERCIAL_STAMP_DUTY*100)):`Ψηφιακό Τέλος Συναλλαγής (${fpRate(COMMERCIAL_STAMP_DUTY*100)})`, value:fe(stampDuty), tone:'warning' as const }]:[]),
     // ΤΟ ΟΝΟΜΑ ΛΕΕΙ ΤΙ ΑΦΑΙΡΕΘΗΚΕ ΚΑΙ ΤΙΠΟΤΑ ΠΑΡΑΠΑΝΩ. Σε μίσθωση κατοικίας
     // δεν υπάρχει κανένα τέλος: το «και Τέλη» ήταν λέξη για ποσό που δεν
     // αφαιρέθηκε ποτέ. Και στην επαγγελματική, το τέλος αφαιρείται ΟΛΟΚΛΗΡΟ,
     // που είναι η δυσμενέστερη εκδοχή για τον ιδιοκτήτη· ποιον βαρύνει τελικά
     // το ορίζει το μισθωτήριο, οπότε η παραδοχή γράφεται αντί να υπονοείται.
-    { label:isCommercial?'Καθαρό μετά από φόρο και τέλος':'Καθαρό μετά τον φόρο', value:taxLoading?ABSENT:fe(net), tone:'positive' as const,
-      sub:isCommercial?'με το τέλος να το βαρύνεσαι εξ ολοκλήρου':undefined },
+    { label:W?W.net(isCommercial):isCommercial?'Καθαρό μετά από φόρο και τέλος':'Καθαρό μετά τον φόρο', value:taxLoading?(E?E.notSet:ABSENT):fe(net), tone:'positive' as const,
+      sub:isCommercial?(W?W.netSub:'με το τέλος να το βαρύνεσαι εξ ολοκλήρου'):undefined },
   ];
 
   return (
     <div>
       <KPIGrid items={kpis}/>
-      <InfoBanner tone="info">
+      {W?<InfoBanner tone="info">
+        <strong>{W.head}</strong>{' '}
+        {manyIncomes?W.many(fn(consolidated?.count??propertyCount)):W.one}{' '}
+        {W.rentLine(fe(tenant.monthly_rent||0), tenant.lease_category?(E?.leaseCategories[tenant.lease_category]??''):(E?E.notSet:''))}
+        {viaBank
+          ? W.viaBank(ratePct, fe(taxable), cashMatters)
+          : !cashMatters
+            ? W.beforeBank(ratePct, fe(taxable), taxYear, grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT))
+            : deductionRate>0
+              ? W.reduced(ratePct, fp((PRESUMPTIVE_DEDUCTION_RATE*100)), fe(taxable), grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT))
+              : W.none(fp((PRESUMPTIVE_DEDUCTION_RATE*100)))}
+      </InfoBanner>:<InfoBanner tone="info">
         <strong>Εκτίμηση για αυτό το ακίνητο, ίδια με την Επισκόπηση. Η κλίμακα εφαρμόζεται στο σύνολο των ενοικίων σου.</strong>{' '}
         {manyIncomes
           ? `Έχεις ${fn(consolidated?.count??propertyCount)} ακίνητα με έσοδα: ο φόρος βγαίνει μία φορά στο σύνολό τους και εδώ φαίνεται το μερίδιο αυτού του ακινήτου.`
@@ -460,7 +483,7 @@ export function LegalTaxView({ tenant, propertyCount, rentTax }:{ tenant:Tenant;
             : deductionRate>0
               ? `, με τεκμαρτή έκπτωση ${ratePct} αντί ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} (φορολογητέο ${fe(taxable)}): για τα μισθώματα που εισπράττονται μετρητά από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} η έκπτωση δεν δίνεται.`
               : `. Επειδή το ενοίκιο δεν δηλώνεται ως ηλεκτρονική είσπραξη, η τεκμαρτή έκπτωση ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} δεν εφαρμόζεται και φορολογούνται ολόκληρα τα ακαθάριστα.`}
-      </InfoBanner>
+      </InfoBanner>}
 
       {/* ΤΟ ΔΥΟ-ΑΝΑ-ΣΕΙΡΑ ΞΕΚΙΝΑΕΙ ΜΟΝΟ ΟΤΑΝ Η ΣΤΗΛΗ ΠΑΙΡΝΕΙ ΟΣΟ ΤΟ ΤΗΛΕΦΩΝΟ.
           Μετρήθηκε στη σκηνή «tenant», καρτέλα «Νομικά και Φόρος». Με κατώφλι 280
@@ -477,7 +500,7 @@ export function LegalTaxView({ tenant, propertyCount, rentTax }:{ tenant:Tenant;
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 406px), 1fr))', gap:16, marginTop:16 }}>
         {/* Φόρος εισοδήματος από ενοίκια */}
         <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
-          <SectionTitle>Φόρος εισοδήματος από ενοίκια ({taxYear})</SectionTitle>
+          <SectionTitle>{W?W.title(taxYear):<>Φόρος εισοδήματος από ενοίκια ({taxYear})</>}</SectionTitle>
           {/* ═══ ΔΕΥΤΕΡΟ ΣΥΣΤΗΜΑ ΠΙΝΑΚΑ ΚΑΙ ΤΕΛΟΣ ═══════════════════════════════
               Τα `s.th` και `s.td` του TabTenantHelpers ήταν ΑΛΛΟΣ πίνακας από
               τον πίνακα του προϊόντος: κεφαλίδα 9 εικονοστοιχείων αντί 11,
@@ -490,13 +513,13 @@ export function LegalTaxView({ tenant, propertyCount, rentTax }:{ tenant:Tenant;
           <div className="po-table-box">
            <div className="po-scroll-x">
             <table className="po-table" style={{ '--tbl-min': '320px' }}>
-              <thead><tr>{['Κλιμάκιο εισοδήματος','Συντελεστής'].map((h,i)=><th key={i} scope="col" style={{ textAlign:i?'right' as const:'left' as const }}>{h}</th>)}</tr></thead>
+              <thead><tr>{(W?W.cols:['Κλιμάκιο εισοδήματος','Συντελεστής']).map((h,i)=><th key={i} scope="col" style={{ textAlign:i?'right' as const:'left' as const }}>{h}</th>)}</tr></thead>
               <tbody>
                 {rentalRowsForYear(taxYear).map((r,i)=>{
                   const active=bracketTaxable>r.from&&(r.to===Infinity||bracketTaxable<=r.to);
                   return (
                     <tr key={i} className={active?'is-on':undefined}>
-                      <td><span style={{ display:'inline-flex', alignItems:'center', gap:8 }}>{r.range}{active&&<Badge tone="accent">εδώ</Badge>}</span></td>
+                      <td><span style={{ display:'inline-flex', alignItems:'center', gap:8 }}>{W&&r.to===Infinity?W.over(fe(r.from)):r.range}{active&&<Badge tone="accent">{W?W.here:'εδώ'}</Badge>}</span></td>
                       <td className="num" style={{ fontWeight:active?700:400 }}>{r.rate}</td>
                     </tr>
                   );
@@ -509,46 +532,48 @@ export function LegalTaxView({ tenant, propertyCount, rentTax }:{ tenant:Tenant;
               δεξιά άκρη ριγμένη κάτω από έναν πίνακα που κλείνει ίσια. Παίρνει
               πλήρη στοίχιση ΜΑΖΙ με συλλαβισμό: σκέτη η στοίχιση θα τέντωνε τα
               κενά, αφού τα τρία ποσά της πρότασης δεν σπάνε πουθενά. */}
-          <div className="po-just" style={{ marginTop:12, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6 }}>{hy(<>Ο φόρος υπολογίζεται προοδευτικά ανά κλιμάκιο επί του φορολογητέου ({fe(taxable)} = ακαθάριστα {fe(annualRent)}{deductionRate>0?` μείον τεκμαρτή έκπτωση ${ratePct}`:''}{manyIncomes?`· όλα τα ακίνητα μαζί ${fe(bracketTaxable)}`:''}), σύνολο {fe(tax)} για αυτό το ακίνητο. Επιβεβαίωσε την τελική δήλωση με λογιστή ή την ΑΑΔΕ.</>)}</div>
+          <div className="po-just" style={{ marginTop:12, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6 }}>{W?W.calc(fe(taxable),fe(annualRent),deductionRate>0?W.minus(ratePct):'',manyIncomes?W.allProps(fe(bracketTaxable)):'',fe(tax)):hy(<>Ο φόρος υπολογίζεται προοδευτικά ανά κλιμάκιο επί του φορολογητέου ({fe(taxable)} = ακαθάριστα {fe(annualRent)}{deductionRate>0?` μείον τεκμαρτή έκπτωση ${ratePct}`:''}{manyIncomes?`· όλα τα ακίνητα μαζί ${fe(bracketTaxable)}`:''}), σύνολο {fe(tax)} για αυτό το ακίνητο. Επιβεβαίωσε την τελική δήλωση με λογιστή ή την ΑΑΔΕ.</>)}</div>
         </div>
 
         {/* Νομικές υποχρεώσεις */}
         <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
-          <SectionTitle>Υποχρεώσεις και πλαίσιο</SectionTitle>
-          <InfoBlock title="ΑΑΔΕ, Δήλωση Πληροφοριακών Στοιχείων Μίσθωσης" tone="var(--warning)">
+          <SectionTitle>{W?W.duties:'Υποχρεώσεις και πλαίσιο'}</SectionTitle>
+          <InfoBlock title={W?W.declTitle:'ΑΑΔΕ, Δήλωση Πληροφοριακών Στοιχείων Μίσθωσης'} tone="var(--warning)">
             {/* Η μακρύτερη επιφύλαξη του αρχείου: 546 χαρακτήρες σε κουτί 398,
                 δηλαδή εννιά γραμμές με ριγμένη δεξιά άκρη. Το `po-just` μπαίνει
                 σε δικό μας φορέα κειμένου μέσα στο InfoBlock — το InfoBlock το
                 μοιράζονται κι άλλες καρτέλες. Ο συλλαβισμός πάει μαζί του:
                 χωρίς αυτόν εννιά γραμμές κλείνουν τεντώνοντας τα κενά. */}
-            <div className="po-just">{hy(<>Κάθε νέα μίσθωση, καθώς και κάθε τροποποίηση ή λύση, δηλώνεται ηλεκτρονικά στην ΑΑΔΕ έως το τέλος του επόμενου μήνα από την έναρξη ή τη μεταβολή.{tenant.lease_start?` Για έναρξη ${fmtD(tenant.lease_start)}, προθεσμία δήλωσης έως ${lastDayNextMonth(tenant.lease_start)}.`:''} Χωρίς τη δήλωση δεν αναγνωρίζεται φορολογικά η μίσθωση. Μετά την υποβολή, ο μισθωτής (και τυχόν συνιδιοκτήτες) ειδοποιείται μέσω myAADE/email και έχει 30 ημέρες να την αποδεχθεί ή να την απορρίψει — αλλιώς θεωρείται σιωπηρά αποδεκτή (ισχύς από 02/06/2025)· ενημέρωσέ τον εγκαίρως. Επιβεβαίωσε την ακριβή προθεσμία στην ΑΑΔΕ (σύνδεσμος πιο κάτω).</>)}</div>
+            <div className="po-just">{W?W.decl(tenant.lease_start?fmtD(tenant.lease_start):null,tenant.lease_start?lastDayNextMonth(tenant.lease_start):null):hy(<>Κάθε νέα μίσθωση, καθώς και κάθε τροποποίηση ή λύση, δηλώνεται ηλεκτρονικά στην ΑΑΔΕ έως το τέλος του επόμενου μήνα από την έναρξη ή τη μεταβολή.{tenant.lease_start?` Για έναρξη ${fmtD(tenant.lease_start)}, προθεσμία δήλωσης έως ${lastDayNextMonth(tenant.lease_start)}.`:''} Χωρίς τη δήλωση δεν αναγνωρίζεται φορολογικά η μίσθωση. Μετά την υποβολή, ο μισθωτής (και τυχόν συνιδιοκτήτες) ειδοποιείται μέσω myAADE/email και έχει 30 ημέρες να την αποδεχθεί ή να την απορρίψει — αλλιώς θεωρείται σιωπηρά αποδεκτή (ισχύς από 02/06/2025)· ενημέρωσέ τον εγκαίρως. Επιβεβαίωσε την ακριβή προθεσμία στην ΑΑΔΕ (σύνδεσμος πιο κάτω).</>)}</div>
           </InfoBlock>
-          <InfoBlock title="Είσπραξη μέσω τράπεζας" tone={viaBank?'var(--positive)':'var(--negative)'}>
+          <InfoBlock title={W?W.bankTitle:'Είσπραξη μέσω τράπεζας'} tone={viaBank?'var(--positive)':'var(--negative)'}>
             {/* Ο αρνητικός κλάδος είναι 264 χαρακτήρες σε κουτί 398, τέσσερις
                 γραμμές. Ο θετικός πιάνει δύο — η στοίχιση αγγίζει μόνο την
                 πρώτη του, οπότε ο ίδιος φορέας καλύπτει τους δύο κλάδους. */}
-            <div className="po-just">{hy(viaBank
+            <div className="po-just">{W?(viaBank
+              ? W.bankYes(fp((PRESUMPTIVE_DEDUCTION_RATE*100)),fe(taxable),fe(annualRent))
+              : W.bankNo(grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT),fp((PRESUMPTIVE_DEDUCTION_RATE*100)),fe(annualRent),fe(annualRent*(1-PRESUMPTIVE_DEDUCTION_RATE)))):hy(viaBank
               ? `Το ενοίκιο εισπράττεται μέσω τράπεζας, οπότε ισχύει η τεκμαρτή έκπτωση ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} και φορολογείται το ${fe(taxable)} αντί του ${fe(annualRent)}.`
               : `Το ενοίκιο δηλώνεται ως μη τραπεζική είσπραξη. Από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} (ν. 5222/2025) η τεκμαρτή έκπτωση ${fp((PRESUMPTIVE_DEDUCTION_RATE*100))} θα προϋποθέτει είσπραξη μέσω τράπεζας· χωρίς αυτήν θα φορολογείται το 100% των ακαθάριστων, δηλαδή ${fe(annualRent)} αντί ${fe(annualRent*(1-PRESUMPTIVE_DEDUCTION_RATE))}. Για τις χρήσεις 2025-2026 η έκπτωση ισχύει κανονικά· συμπλήρωσε IBAN είσπραξης εγκαίρως στα στοιχεία της μίσθωσης.`)}</div>
           </InfoBlock>
-          <InfoBlock title="Αναπροσαρμογή ΔΤΚ">
+          <InfoBlock title={W?W.cpiTitle:'Αναπροσαρμογή ΔΤΚ'}>
             {/* Με τον προαιρετικό κλάδο του ν. 1703/1987 το κείμενο φτάνει τους
                 497 χαρακτήρες σε κουτί 398, δηλαδή οκτώ γραμμές. Χωρίς αυτόν
                 μένουν τρεις. Και στις δύο περιπτώσεις πάει πέρα πέρα. */}
-            <div className="po-just">{hy(<>{`Η αναπροσαρμογή μισθώματος γίνεται όπως και όποτε ορίζει ο όρος αναπροσαρμογής του μισθωτηρίου, συνήθως βάσει Δείκτη Τιμών Καταναλωτή (ΕΛΣΤΑΤ). Χρησιμοποίησε την ενέργεια «Αναπροσαρμογή ενοικίου» στην καρτέλα «${navLabel('accounting')}», στις «Αναφορές και ενέργειες».`}{!isCommercial&&' Αν η κατοικία μισθώθηκε για διάρκεια μικρότερη της τριετίας χωρίς όρο αναπροσαρμογής, ο νόμος (άρθρο 2 ν. 1703/1987) προβλέπει ετήσια αναπροσαρμογή ίση με το 75% της μεταβολής του ΔΤΚ έως τη συμπλήρωση της τριετίας· με χαμηλό ή αρνητικό ΔΤΚ το ενοίκιο ουσιαστικά μένει σταθερό. Επιβεβαίωσε την εφαρμογή στη σύμβασή σου.'}</>)}</div>
+            <div className="po-just">{W?<>{W.cpi(S?S.nav.accounting:navLabel('accounting'))}{!isCommercial&&W.cpiShort}</>:hy(<>{`Η αναπροσαρμογή μισθώματος γίνεται όπως και όποτε ορίζει ο όρος αναπροσαρμογής του μισθωτηρίου, συνήθως βάσει Δείκτη Τιμών Καταναλωτή (ΕΛΣΤΑΤ). Χρησιμοποίησε την ενέργεια «Αναπροσαρμογή ενοικίου» στην καρτέλα «${navLabel('accounting')}», στις «Αναφορές και ενέργειες».`}{!isCommercial&&' Αν η κατοικία μισθώθηκε για διάρκεια μικρότερη της τριετίας χωρίς όρο αναπροσαρμογής, ο νόμος (άρθρο 2 ν. 1703/1987) προβλέπει ετήσια αναπροσαρμογή ίση με το 75% της μεταβολής του ΔΤΚ έως τη συμπλήρωση της τριετίας· με χαμηλό ή αρνητικό ΔΤΚ το ενοίκιο ουσιαστικά μένει σταθερό. Επιβεβαίωσε την εφαρμογή στη σύμβασή σου.'}</>)}</div>
           </InfoBlock>
-          <InfoBlock title="Νόμιμη αύξηση ενοικίου">
+          <InfoBlock title={W?W.raiseTitle:'Νόμιμη αύξηση ενοικίου'}>
             {/* Οι δύο κλάδοι είναι 261 κι 375 χαρακτήρες σε κουτί 398: τέσσερις
                 γραμμές ο ένας, έξι ο άλλος. Οποιος κι αν παιχτεί, το κουτί
                 γεμίζει πέρα πέρα. */}
-            <div className="po-just">{hy(isCommercial
+            <div className="po-just">{W?(isCommercial?W.raiseCommercial(CAP_YEAR,fpRate(COMMERCIAL_RENT_CAP_2026.pct)):W.raiseHome(fpRate(COMMERCIAL_RENT_CAP_2026.pct))):hy(isCommercial
               ?`Στις υφιστάμενες επαγγελματικές μισθώσεις (ΠΔ 34/1995), η αναπροσαρμογή για το ${CAP_YEAR} δεν επιτρέπεται να ξεπερνά το ${fpRate(COMMERCIAL_RENT_CAP_2026.pct)} επί του μισθώματος του ${CAP_YEAR - 1}, ακόμη κι αν οι αγοραίες τιμές ανέβηκαν περισσότερο. Το όριο δεν ισχύει σε νέα μίσθωση που υπογράφεις μέσα στο ${CAP_YEAR}.`
               :`Σε ενεργή μίσθωση κατοικίας δεν μπορείς να αυξήσεις μονομερώς το ενοίκιο κατά τη διάρκεια της σύμβασης, εκτός αν υπάρχει ρητός όρος αναπροσαρμογής (π.χ. ΔΤΚ ή σταθερό ποσοστό). Νέο, υψηλότερο μίσθωμα μπαίνει μόνο με νέα συμφωνία που αποδέχεται και ο μισθωτής. Για το 2026 δεν ισχύει γενικό κρατικό πλαφόν στα ενοίκια κατοικίας (το όριο ${fpRate(COMMERCIAL_RENT_CAP_2026.pct)} αφορά μόνο τις εμπορικές μισθώσεις).`)}</div>
           </InfoBlock>
-          <InfoBlock title="Ελάχιστη διάρκεια και εγγύηση">
-            {isCommercial
+          <InfoBlock title={W?W.minTitle:'Ελάχιστη διάρκεια και εγγύηση'}>
+            {W?<>{isCommercial?W.minCommercial:W.minHome}{W.deposit(tenant.deposit_amount?fe(tenant.deposit_amount):'')}</>:<>{isCommercial
               ?'Για επαγγελματική μίσθωση ισχύει η ελάχιστη νόμιμη διάρκεια των τριών ετών.'
-              :'Για μίσθωση κατοικίας ισχύει η τριετής ελάχιστη προστασία διάρκειας, ακόμη κι αν συμφωνηθεί μικρότερος χρόνος.'} Η εγγύηση{tenant.deposit_amount?` (${fe(tenant.deposit_amount)})`:''} επιστρέφεται στη λήξη, μετά από έλεγχο για φθορές.
+              :'Για μίσθωση κατοικίας ισχύει η τριετής ελάχιστη προστασία διάρκειας, ακόμη κι αν συμφωνηθεί μικρότερος χρόνος.'} Η εγγύηση{tenant.deposit_amount?` (${fe(tenant.deposit_amount)})`:''} επιστρέφεται στη λήξη, μετά από έλεγχο για φθορές.</>}
           </InfoBlock>
           {/* ═══ ΕΝΑ ΟΝΟΜΑ, Ο ΝΟΜΟΣ ΠΟΥ ΙΣΧΥΕΙ, ΚΑΜΙΑ ΕΠΙΝΟΗΜΕΝΗ ΚΑΤΑΝΟΜΗ ══════
               Τρία λάθη σε τρεις σειρές. (α) Ο τίτλος έλεγε δύο ονόματα για ΕΝΑ
@@ -575,12 +600,12 @@ export function LegalTaxView({ tenant, propertyCount, rentTax }:{ tenant:Tenant;
               «με βάση τη μεταξύ τους συμφωνία» ζει στο άρθρο 4 §5 και αφορά τη
               διανομή κληρονομίας με συμβολαιογράφο, όχι τη μίσθωση: δεν την
               επικαλούμαστε. */}
-          <InfoBlock title="Ψηφιακό Τέλος Συναλλαγής" tone={isCommercial?'var(--warning)':'var(--positive)'}>
+          <InfoBlock title={W?W.dutyTitle:'Ψηφιακό Τέλος Συναλλαγής'} tone={isCommercial?'var(--warning)':'var(--positive)'}>
             {/* Ο επαγγελματικός κλάδος είναι 434 χαρακτήρες σε κουτί 398, επτά
                 γραμμές με τρία ποσά κι ένα ποσοστό που δεν σπάνε. Ο κλάδος της
                 κατοικίας είναι μία γραμμή: την τελευταία γραμμή η στοίχιση δεν
                 την πειράζει, άρα ο κοινός φορέας δεν τον βλάπτει. */}
-            <div className="po-just">{hy(isCommercial
+            <div className="po-just">{W?(isCommercial?W.dutyCommercial(fp(COMMERCIAL_STAMP_DUTY*100),fe(annualRent),fe(stampDuty),fe(stampDuty/12)):W.dutyHome):hy(isCommercial
               ?`Επαγγελματική μίσθωση: ${fp(COMMERCIAL_STAMP_DUTY*100)} επί του μισθώματος, το τέλος που αντικατέστησε το χαρτόσημο με τον ίδιο συντελεστή (άρθρο 6 ν. 5177/2025). Για ετήσιο ενοίκιο ${fe(annualRent)} ανέρχεται σε ${fe(stampDuty)} τον χρόνο, δηλαδή ${fe(stampDuty/12)} τον μήνα. Τη δήλωση και την απόδοση στο κράτος τις κάνεις εσύ ως εκμισθωτής· ποιον βαρύνει όμως το κόστος το ορίζει το μισθωτήριο και συνήθως χρεώνεται στον μισθωτή. Δεν οφείλεται αν η μίσθωση έχει νομίμως υπαχθεί σε ΦΠΑ.`
               :'Μίσθωση κατοικίας: δεν οφείλεται Ψηφιακό Τέλος Συναλλαγής.')}</div>
           </InfoBlock>
@@ -595,6 +620,12 @@ export function LegalTaxView({ tenant, propertyCount, rentTax }:{ tenant:Tenant;
 
 export function DamagesView({ tenant, propertyId, userId, damages, onRefresh }:{ tenant:Tenant; propertyId:string; userId:string; damages:TenantDamage[]; onRefresh:()=>void }) {
   const supabase=createClient();
+  const E=useAppEn('tenants');
+  const X=useAppEn('errors');
+  /** Γραφή στη βάση με το σφάλμα στη γλώσσα της οθόνης. */
+  const sv=(el:string,k:string,q:Parameters<typeof saved>[1])=>saved(el,q,X&&E?(e:unknown)=>X.failed(E.err[k]??el,e):undefined);
+  const W=E?.damages;
+  const fD=(d:string|null)=>E&&!d?E.noDate:fmtD(d);
   const [addOpen,setAddOpen]=useState(false);
   const [busy,setBusy]=useState(false);
   const blankF=()=>({ occurred_on:todayISO(), description:'', cost:'', charged_to_tenant:false, repaired:false, repaired_on:'', notes:'' });
@@ -608,21 +639,21 @@ export function DamagesView({ tenant, propertyId, userId, damages, onRefresh }:{
     if(!f.description.trim()) return;
     setBusy(true);
     const payload={ tenant_id:tenant.id, property_id:propertyId, user_id:userId, occurred_on:f.occurred_on||null, description:f.description.trim(), cost:f.cost?Math.max(0,parseFloat(f.cost)):null, charged_to_tenant:f.charged_to_tenant, repaired:f.repaired, repaired_on:f.repaired?(f.repaired_on||todayISO()):null, notes:f.notes.trim()||null };
-    if(editId){ if(!await saved('Η φθορά δεν ενημερώθηκε', supabase.from('tenant_damages').update(payload).eq('id',editId))) return; }
-    else { if(!await saved('Η φθορά δεν καταχωρήθηκε', supabase.from('tenant_damages').insert(payload))) return; }
+    if(editId){ if(!await sv('Η φθορά δεν ενημερώθηκε','damageNotUpdated', supabase.from('tenant_damages').update(payload).eq('id',editId))) return; }
+    else { if(!await sv('Η φθορά δεν καταχωρήθηκε','damageNotSaved', supabase.from('tenant_damages').insert(payload))) return; }
     setBusy(false); setAddOpen(false); setF(blankF()); setEditId(null); onRefresh();
   };
-  const del=async(d:TenantDamage)=>{ if(!(await confirmDialog('Διαγραφή φθοράς;',{tone:'negative',confirmLabel:'Διαγραφή'}))) return; if(await saved('Η φθορά δεν διαγράφηκε',supabase.from('tenant_damages').delete().eq('id',d.id))) onRefresh(); };
+  const del=async(d:TenantDamage)=>{ if(!(await (E&&W?confirmDialog(E.ask(W.delAsk,W.del,true)):confirmDialog('Διαγραφή φθοράς;',{tone:'negative',confirmLabel:'Διαγραφή'})))) return; if(await sv('Η φθορά δεν διαγράφηκε','damageNotDeleted',supabase.from('tenant_damages').delete().eq('id',d.id))) onRefresh(); };
 
   // Ομαδοποίηση ανά έτος μίσθωσης (από lease_start· αλλιώς ανά ημερολογιακό έτος).
   const bucketOf=(occurred:string|null):{key:string;label:string;sort:number}=>{
-    if(!occurred) return { key:'', label:'Χωρίς ημερομηνία', sort:-1 };
+    if(!occurred) return { key:'', label:W?W.noDate:'Χωρίς ημερομηνία', sort:-1 };
     const oy=new Date(occurred+'T00:00:00');
     if(tenant.lease_start){
       const ls=new Date(tenant.lease_start+'T00:00:00');
       if(!isNaN(ls.getTime())&&!isNaN(oy.getTime())){
         const yr=Math.max(1,Math.floor((oy.getTime()-ls.getTime())/(365*86400000))+1);
-        return { key:`y${yr}`, label:`Έτος μίσθωσης ${yr}`, sort:yr };
+        return { key:`y${yr}`, label:W?W.leaseYear(yr):`Έτος μίσθωσης ${yr}`, sort:yr };
       }
     }
     const y=occurred.slice(0,4);
@@ -646,41 +677,41 @@ export function DamagesView({ tenant, propertyId, userId, damages, onRefresh }:{
     <div>
       {damages.length>0&&(
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap:10, marginBottom:16 }}>
-          <KpiCard label="Συνολικό κόστος" value={fmt(totalCost)} color="var(--text-primary)"/>
-          <KpiCard label="Χρέωση ενοικιαστή" value={fmt(chargedTotal)} color={chargedTotal>0?'var(--warning)':'var(--positive)'}/>
-          <KpiCard label="Εκκρεμείς επισκευές" value={String(openRepairs)} color={openRepairs>0?'var(--warning)':'var(--positive)'}/>
+          <KpiCard label={W?W.total:'Συνολικό κόστος'} value={fmt(totalCost)} color="var(--text-primary)"/>
+          <KpiCard label={W?W.charged:'Χρέωση ενοικιαστή'} value={fmt(chargedTotal)} color={chargedTotal>0?'var(--warning)':'var(--positive)'}/>
+          <KpiCard label={W?W.open:'Εκκρεμείς επισκευές'} value={String(openRepairs)} color={openRepairs>0?'var(--warning)':'var(--positive)'}/>
         </div>
       )}
       <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, gap:12, flexWrap:'wrap' as const }}>
-          <SectionTitle>Φθορές και επισκευές</SectionTitle>
-          <Btn variant="secondary" onClick={()=>addOpen?setAddOpen(false):openNew()}>{addOpen?'Κλείσιμο':'+ Νέα καταγραφή'}</Btn>
+          <SectionTitle>{W?W.title:'Φθορές και επισκευές'}</SectionTitle>
+          <Btn variant="secondary" onClick={()=>addOpen?setAddOpen(false):openNew()}>{W?(addOpen?W.close:W.add):addOpen?'Κλείσιμο':'+ Νέα καταγραφή'}</Btn>
         </div>
 
         {addOpen&&(
           <div style={{ background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:20, marginBottom:20 }}>
             <div className="kpi-row" style={{ ...s.g3, marginBottom:14 }}>
-              <DatePicker label="Ημερομηνία" value={f.occurred_on} onChange={v=>setF(x=>({...x,occurred_on:v}))}/>
-              <NumberInput label="Κόστος" value={f.cost} onChange={v=>setF(x=>({...x,cost:v}))} suffix="€"/>
-              <div><div style={{ ...labelStyle, marginBottom:8 }}>Χρέωση στον ενοικιαστή</div><Toggle on={f.charged_to_tenant} onChange={v=>setF(x=>({...x,charged_to_tenant:v}))} ariaLabel="Χρέωση στον ενοικιαστή"/></div>
+              <DatePicker label={W?W.date:'Ημερομηνία'} value={f.occurred_on} onChange={v=>setF(x=>({...x,occurred_on:v}))}/>
+              <NumberInput label={W?W.cost:'Κόστος'} value={f.cost} onChange={v=>setF(x=>({...x,cost:v}))} suffix="€"/>
+              <div><div style={{ ...labelStyle, marginBottom:8 }}>{W?W.chargeTenant:'Χρέωση στον ενοικιαστή'}</div><Toggle on={f.charged_to_tenant} onChange={v=>setF(x=>({...x,charged_to_tenant:v}))} ariaLabel={W?W.chargeTenant:'Χρέωση στον ενοικιαστή'}/></div>
             </div>
             <div style={{ marginBottom:14 }}>
-              <TextInput dictation label="Περιγραφή *" value={f.description} onChange={v=>setF(x=>({...x,description:v}))} placeholder="Φθορά πάγκου κουζίνας"/>
+              <TextInput dictation label={W?W.desc:'Περιγραφή *'} value={f.description} onChange={v=>setF(x=>({...x,description:v}))} placeholder={W?W.descHint:'Φθορά πάγκου κουζίνας'}/>
             </div>
             <div className="kpi-row" style={{ ...s.g3, marginBottom:14 }}>
-              <div><div style={{ ...labelStyle, marginBottom:8 }}>Επισκευάστηκε</div><Toggle on={f.repaired} onChange={v=>setF(x=>({...x,repaired:v}))} ariaLabel="Επισκευάστηκε"/></div>
-              {f.repaired&&<DatePicker label="Ημερομηνία επισκευής" value={f.repaired_on} onChange={v=>setF(x=>({...x,repaired_on:v}))}/>}
-              <TextInput dictation label="Σημείωση" value={f.notes} onChange={v=>setF(x=>({...x,notes:v}))} placeholder="προαιρετικό"/>
+              <div><div style={{ ...labelStyle, marginBottom:8 }}>{W?W.repaired:'Επισκευάστηκε'}</div><Toggle on={f.repaired} onChange={v=>setF(x=>({...x,repaired:v}))} ariaLabel={W?W.repaired:'Επισκευάστηκε'}/></div>
+              {f.repaired&&<DatePicker label={W?W.repairedOn:'Ημερομηνία επισκευής'} value={f.repaired_on} onChange={v=>setF(x=>({...x,repaired_on:v}))}/>}
+              <TextInput dictation label={W?W.note:'Σημείωση'} value={f.notes} onChange={v=>setF(x=>({...x,notes:v}))} placeholder={W?W.optional:'προαιρετικό'}/>
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
-              <Btn variant="secondary" onClick={()=>{setAddOpen(false);setEditId(null);}}>Ακύρωση</Btn>
-              <Btn variant="primary" onClick={save} disabled={busy}>{busy?'Αποθήκευση…':editId?'Αποθήκευση':'Καταχώρηση'}</Btn>
+              <Btn variant="secondary" onClick={()=>{setAddOpen(false);setEditId(null);}}>{W?W.cancel:'Ακύρωση'}</Btn>
+              <Btn variant="primary" onClick={save} disabled={busy}>{W?(busy?W.saving:editId?W.save:W.record):busy?'Αποθήκευση…':editId?'Αποθήκευση':'Καταχώρηση'}</Btn>
             </div>
           </div>
         )}
 
         {damages.length===0?(
-          <EmptyState icon={<Hammer size={20}/>} title="Καμία φθορά ή επισκευή ακόμη" hint="Κατέγραψε φθορές με φωτογραφίες και κόστος, για τεκμηρίωση στην απόδοση της εγγύησης." />
+          <EmptyState icon={<Hammer size={20}/>} title={W?W.empty[0]:'Καμία φθορά ή επισκευή ακόμη'} hint={W?W.empty[1]:'Κατέγραψε φθορές με φωτογραφίες και κόστος, για τεκμηρίωση στην απόδοση της εγγύησης.'} />
         ):groups.map(g=>(
           <div key={g.label} style={{ marginBottom:T.sp.lg }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
@@ -695,8 +726,8 @@ export function DamagesView({ tenant, propertyId, userId, damages, onRefresh }:{
                       <div style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-primary)', fontFamily:T.font.sans }}>{d.description}</div>
                       <div style={{ fontSize:12, color:'var(--text-secondary)', marginTop: 4, display:'flex', gap:8, flexWrap:'wrap' as const, alignItems:'center' }}>
                         {d.occurred_on&&<span>{fmtD(d.occurred_on)}</span>}
-                        {d.repaired?<Badge tone="positive">Επισκευάστηκε{d.repaired_on?` ${fmtD(d.repaired_on)}`:''}</Badge>:<Badge tone="warning">Εκκρεμεί</Badge>}
-                        {d.charged_to_tenant&&<Badge tone="accent">Χρέωση ενοικιαστή</Badge>}
+                        {d.repaired?<Badge tone="positive">{W?W.repairedBadge(d.repaired_on?fD(d.repaired_on):''):<>Επισκευάστηκε{d.repaired_on?` ${fmtD(d.repaired_on)}`:''}</>}</Badge>:<Badge tone="warning">{W?W.pending:'Εκκρεμεί'}</Badge>}
+                        {d.charged_to_tenant&&<Badge tone="accent">{W?W.charged:'Χρέωση ενοικιαστή'}</Badge>}
                       </div>
                       {d.notes&&<div style={{ fontSize:12, color:'var(--text-tertiary)', marginTop:6, fontFamily:T.font.sans, lineHeight:1.5 }}>{d.notes}</div>}
                     </div>
@@ -706,8 +737,8 @@ export function DamagesView({ tenant, propertyId, userId, damages, onRefresh }:{
                           `Btn`. Το μέγεθος γράφεται στο δοχείο γιατί ο σύνδεσμος
                           κληρονομεί τη γραμματοσειρά της πρότασης που τον περιέχει. */}
                       <div style={{ display:'flex', gap:6, marginTop:6, justifyContent:'flex-end', fontSize:12 }}>
-                        <LinkBtn onClick={()=>openEdit(d)}>Επεξεργασία</LinkBtn>
-                        <LinkBtn tone="quiet" onClick={()=>del(d)}>Διαγραφή</LinkBtn>
+                        <LinkBtn onClick={()=>openEdit(d)}>{W?W.edit:'Επεξεργασία'}</LinkBtn>
+                        <LinkBtn tone="quiet" onClick={()=>del(d)}>{W?W.del:'Διαγραφή'}</LinkBtn>
                       </div>
                     </div>
                   </div>
@@ -736,6 +767,12 @@ const MAINT_STATUS:Record<string,{label:string;c:string;bg:string}>={
 
 export function MaintenanceView({ tenant, propertyId, userId, requests, others, onRefresh }:{ tenant:Tenant; propertyId:string; userId:string; requests:MaintenanceReq[]; others:MaintenanceReq[]; onRefresh:()=>void }) {
   const supabase=createClient();
+  const E=useAppEn('tenants');
+  const X=useAppEn('errors');
+  /** Γραφή στη βάση με το σφάλμα στη γλώσσα της οθόνης. */
+  const sv=(el:string,k:string,q:Parameters<typeof saved>[1])=>saved(el,q,X&&E?(e:unknown)=>X.failed(E.err[k]??el,e):undefined);
+  const W=E?.maint;
+  const stLabel=(k:string)=>W?.status[k]??(MAINT_STATUS[k]||MAINT_STATUS.new).label;
   const [busy,setBusy]=useState(false);
   const [assignFor,setAssignFor]=useState<string|null>(null);   // ποιο αίτημα αναθέτει σε συνεργείο
   const [histOpen,setHistOpen]=useState(false);                 // ιστορικό ακινήτου (μαζεμένο)
@@ -767,8 +804,8 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
   const [doneCost,setDoneCost]=useState('');
   const setStatus=async(m:MaintenanceReq,status:string)=>{
     setBusy(true);
-    const ok=await saved('Η κατάσταση του αιτήματος δεν αποθηκεύτηκε', supabase.from('maintenance_requests').update({ status, resolved_at: status==='done'?new Date().toISOString():null }).eq('id',m.id));
-    setBusy(false); onRefresh(); if(ok) notifyOk('Το αίτημα ενημερώθηκε');
+    const ok=await sv('Η κατάσταση του αιτήματος δεν αποθηκεύτηκε','requestStatusNotSaved', supabase.from('maintenance_requests').update({ status, resolved_at: status==='done'?new Date().toISOString():null }).eq('id',m.id));
+    setBusy(false); onRefresh(); if(ok) notifyOk(W?W.updated:'Το αίτημα ενημερώθηκε');
   };
   // Ολοκλήρωση εργασίας: σημειώνεται «done» και, αν δοθεί κόστος, καταχωρείται
   // δαπάνη ώστε να μπει αυτόματα στη λογιστική εικόνα του ακινήτου.
@@ -778,12 +815,12 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
     // ΔΥΟ ΓΡΑΨΙΜΑΤΑ ΚΑΙ ΤΟ ΔΕΥΤΕΡΟ ΕΞΑΡΤΑΤΑΙ ΑΠΟ ΤΟ ΠΡΩΤΟ. Αν το αίτημα δεν
     // έκλεισε, η δαπάνη δεν πρέπει να μπει: θα έμενε κόστος επισκευής χωρίς
     // επισκευή. Και το τελικό μήνυμα λέει ΤΙ ΕΓΙΝΕ ΠΡΑΓΜΑΤΙΚΑ, όχι τι ζητήθηκε.
-    const closed=await saved('Το αίτημα δεν κλείστηκε', supabase.from('maintenance_requests').update({ status:'done', resolved_at:new Date().toISOString() }).eq('id',m.id));
+    const closed=await sv('Το αίτημα δεν κλείστηκε','requestNotClosed', supabase.from('maintenance_requests').update({ status:'done', resolved_at:new Date().toISOString() }).eq('id',m.id));
     let costSaved=false;
     if(closed&&Number.isFinite(cost)&&cost>0){
       // Η ομάδα ΔΕΝ γραφόταν: το κόστος της επισκευής που πλήρωσε ο ιδιοκτήτης
       // δεν εξέπιπτε ποτέ. Το στρώμα την παράγει από την κατηγορία.
-      costSaved=await saved('Το αίτημα έκλεισε, αλλά το κόστος δεν καταχωρήθηκε στις δαπάνες', expenses.insert(supabase, [expenses.row({ propertyId, userId }, {
+      costSaved=await sv('Το αίτημα έκλεισε, αλλά το κόστος δεν καταχωρήθηκε στις δαπάνες','costNotRecorded', expenses.insert(supabase, [expenses.row({ propertyId, userId }, {
         amount:cost, date:todayISO(), paid:true,
         category:'Συντήρηση & Επισκευές', description:[m.title,m.assignee_name].filter(Boolean).join(' · ').slice(0,120),
       })]));
@@ -791,25 +828,25 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
     setBusy(false); onRefresh();
     if(!closed) return;
     setDoneFor(null); setDoneCost('');
-    notifyOk(costSaved?'Ολοκληρώθηκε και καταχωρήθηκε στις δαπάνες':'Ολοκληρώθηκε');
+    notifyOk(W?(costSaved?W.doneCost:W.done):costSaved?'Ολοκληρώθηκε και καταχωρήθηκε στις δαπάνες':'Ολοκληρώθηκε');
   };
   const toDamage=async(m:MaintenanceReq)=>{
     setBusy(true);
-    const ok=await saved('Η φθορά δεν καταγράφηκε', supabase.from('tenant_damages').insert({ tenant_id:tenant.id, property_id:propertyId, user_id:userId, occurred_on:todayISO(), description:[m.title,m.description].filter(Boolean).join(': ').slice(0,500), cost:null, charged_to_tenant:false, repaired:false, notes:'Από αίτημα βλάβης ενοικιαστή' }));
-    setBusy(false); onRefresh(); if(ok) notifyOk('Καταγράφηκε στις φθορές');
+    const ok=await sv('Η φθορά δεν καταγράφηκε','damageNotRecorded', supabase.from('tenant_damages').insert({ tenant_id:tenant.id, property_id:propertyId, user_id:userId, occurred_on:todayISO(), description:[m.title,m.description].filter(Boolean).join(': ').slice(0,500), cost:null, charged_to_tenant:false, repaired:false, notes:'Από αίτημα βλάβης ενοικιαστή' }));
+    setBusy(false); onRefresh(); if(ok) notifyOk(W?W.toDamage:'Καταγράφηκε στις φθορές');
   };
-  const del=async(m:MaintenanceReq)=>{ if(!(await confirmDialog('Διαγραφή αιτήματος;',{tone:'negative',confirmLabel:'Διαγραφή'}))) return; if(await saved('Το αίτημα δεν διαγράφηκε',supabase.from('maintenance_requests').delete().eq('id',m.id))) onRefresh(); };
+  const del=async(m:MaintenanceReq)=>{ if(!(await (E&&W?confirmDialog(E.ask(W.delAsk,W.del,true)):confirmDialog('Διαγραφή αιτήματος;',{tone:'negative',confirmLabel:'Διαγραφή'})))) return; if(await sv('Το αίτημα δεν διαγράφηκε','requestNotDeleted',supabase.from('maintenance_requests').delete().eq('id',m.id))) onRefresh(); };
   // Από το κοινό `fd`, όχι δικό του μορφοποιητή: έγραφε «05 Οκτ 2026» (26/10/2026).
   const gdt=(d:string|null)=>d?fd(d):ABSENT_DATE;
   const openAssign=(m:MaintenanceReq)=>{ setAssignFor(m.id); setAf({name:m.assignee_name||'',contact:m.assignee_contact||''}); };
   const saveAssign=async(m:MaintenanceReq)=>{
     setBusy(true);
-    const ok=await saved('Η ανάθεση δεν αποθηκεύτηκε', supabase.from('maintenance_requests').update({ assignee_name:af.name.trim()||null, assignee_contact:af.contact.trim()||null, status:m.status==='new'?'in_progress':m.status }).eq('id',m.id));
+    const ok=await sv('Η ανάθεση δεν αποθηκεύτηκε','assignNotSaved', supabase.from('maintenance_requests').update({ assignee_name:af.name.trim()||null, assignee_contact:af.contact.trim()||null, status:m.status==='new'?'in_progress':m.status }).eq('id',m.id));
     setBusy(false); onRefresh();
     // Το πλαίσιο ανάθεσης μένει ανοιχτό όταν η αποθήκευση απέτυχε: κλειστό, με
     // κόκκινο μήνυμα από πάνω, δεν αφήνει τον χρήστη να ξαναδοκιμάσει.
     if(!ok) return;
-    setAssignFor(null); notifyOk('Η ανάθεση αποθηκεύτηκε');
+    setAssignFor(null); notifyOk(W?W.assigned:'Η ανάθεση αποθηκεύτηκε');
   };
   // Μήνυμα προς συνεργείο (τίτλος, περιγραφή, ακίνητο, σύνδεσμοι φωτογραφιών).
   const contractorText=(m:MaintenanceReq)=>[
@@ -821,15 +858,16 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
   return (
     <div>
       <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
-        <SectionTitle>Αιτήματα βλάβης</SectionTitle>
+        <SectionTitle>{W?W.title:'Αιτήματα βλάβης'}</SectionTitle>
         <div style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6, margin:'6px 0 18px' }}>
-          Αιτήματα που στέλνει ο ενοικιαστής μέσω της πύλης. Διαχειρίσου την κατάστασή τους και, αν πρόκειται για φθορά, κατέγραψέ τα στο ιστορικό φθορών.
+          {W?<>{W.intro} {W.greekNote}</>:'Αιτήματα που στέλνει ο ενοικιαστής μέσω της πύλης. Διαχειρίσου την κατάστασή τους και, αν πρόκειται για φθορά, κατέγραψέ τα στο ιστορικό φθορών.'}
         </div>
         {/* ΜΙΑ ΦΟΡΑ ΠΑΝΩ ΑΠΟ ΤΗ ΛΙΣΤΑ: η υπογραφή γίνεται με ΜΙΑ κλήση για όλες τις
             φωτογραφίες όλων των αιτημάτων, οπότε η αποτυχία είναι επίσης μία. */}
-        {photoErr&&<InfoBanner tone="negative">{photoErr} Τα αιτήματα φαίνονται κανονικά· λείπουν μόνο οι εικόνες τους, που είναι και το βασικό στοιχείο για να κριθεί αν χρειάζεται τεχνίτης.</InfoBanner>}
+        {photoErr&&W&&<InfoBanner tone="negative">{photoErr}{W.photoErrTail}</InfoBanner>}
+        {photoErr&&!W&&<InfoBanner tone="negative">{photoErr} Τα αιτήματα φαίνονται κανονικά· λείπουν μόνο οι εικόνες τους, που είναι και το βασικό στοιχείο για να κριθεί αν χρειάζεται τεχνίτης.</InfoBanner>}
         {list.length===0?(
-          <EmptyState icon={<Wrench size={20}/>} title="Κανένα αίτημα βλάβης ακόμη" hint="Όταν ο ενοικιαστής στείλει αίτημα από την πύλη, θα εμφανιστεί εδώ για διαχείριση." />
+          <EmptyState icon={<Wrench size={20}/>} title={W?W.empty[0]:'Κανένα αίτημα βλάβης ακόμη'} hint={W?W.empty[1]:'Όταν ο ενοικιαστής στείλει αίτημα από την πύλη, θα εμφανιστεί εδώ για διαχείριση.'} />
         ):(
           <div style={{ display:'flex', flexDirection:'column' as const, gap:12 }}>
             {list.map(m=>{
@@ -839,34 +877,34 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
                   <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, flexWrap:'wrap' as const, marginBottom:8 }}>
                     <div style={{ minWidth:0 }}>
                       <div style={{ fontSize:14, fontWeight:600, color:'var(--text-primary)', fontFamily:T.font.sans }}>{m.title}</div>
-                      <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, marginTop:2 }}>{gdt(m.created_at)}{m.contact?` · ${m.contact}`:''}{m.resolved_at?` · επιλύθηκε ${gdt(m.resolved_at)}`:''}</div>
+                      <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, marginTop:2 }}>{gdt(m.created_at)}{m.contact?` · ${m.contact}`:''}{m.resolved_at?(W?W.resolved(gdt(m.resolved_at)):` · επιλύθηκε ${gdt(m.resolved_at)}`):''}</div>
                     </div>
-                    <span style={{ ...s.badge(st.c,st.bg), border:`1px solid color-mix(in srgb, ${st.c} 26%, transparent)`, fontFamily:T.font.sans, whiteSpace:'nowrap' as const }}>{st.label}</span>
+                    <span style={{ ...s.badge(st.c,st.bg), border:`1px solid color-mix(in srgb, ${st.c} 26%, transparent)`, fontFamily:T.font.sans, whiteSpace:'nowrap' as const }}>{W?stLabel(m.status||'new'):st.label}</span>
                   </div>
                   {m.description&&<div style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.6, marginBottom:12, whiteSpace:'pre-wrap' as const }}>{m.description}</div>}
                   {(signed[m.id]?.length??0)>0&&(
                     <div style={{ display:'flex', gap:8, flexWrap:'wrap' as const, marginBottom:12 }}>
                       {signed[m.id].map((url,pi)=>(
                         <a key={pi} href={url} target="_blank" rel="noopener noreferrer" style={{ display:'block', width:64, height:64, borderRadius: T.radius.chip, overflow:'hidden', border:'1px solid var(--border-subtle)' }}>
-                          <RuntimeImg src={url} alt="Φωτογραφία βλάβης" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
+                          <RuntimeImg src={url} alt={W?W.photoAlt:'Φωτογραφία βλάβης'} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
                         </a>
                       ))}
                     </div>
                   )}
                   {(m.assignee_name||m.assignee_contact)&&assignFor!==m.id&&(
                     <div style={{ fontSize:12, color:'var(--text-secondary)', fontFamily:T.font.sans, marginBottom:10 }}>
-                      Ανατέθηκε σε: <strong style={{ color:'var(--text-primary)' }}>{m.assignee_name||ABSENT}</strong>{m.assignee_contact?` · ${m.assignee_contact}`:''}
+                      {W?W.assignedTo:'Ανατέθηκε σε: '}<strong style={{ color:'var(--text-primary)' }}>{m.assignee_name||ABSENT}</strong>{m.assignee_contact?` · ${m.assignee_contact}`:''}
                     </div>
                   )}
                   {assignFor===m.id&&(
                     <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:14, marginBottom:10 }}>
                       <div style={{ ...s.g2, marginBottom:10 }}>
-                        <TextInput label="Συνεργείο ή τεχνικός" value={af.name} onChange={v=>setAf(a=>({...a,name:v}))} placeholder="Παράδειγμα: Υδραυλικός Παπαδόπουλος"/>
-                        <TextInput label="Τηλέφωνο ή ηλεκτρονικό ταχυδρομείο" value={af.contact} onChange={v=>setAf(a=>({...a,contact:v}))} placeholder="69XXXXXXXX"/>
+                        <TextInput label={W?W.contractor:'Συνεργείο ή τεχνικός'} value={af.name} onChange={v=>setAf(a=>({...a,name:v}))} placeholder={W?W.contractorHint:'Παράδειγμα: Υδραυλικός Παπαδόπουλος'}/>
+                        <TextInput label={W?W.contact:'Τηλέφωνο ή ηλεκτρονικό ταχυδρομείο'} value={af.contact} onChange={v=>setAf(a=>({...a,contact:v}))} placeholder="69XXXXXXXX"/>
                       </div>
                       {savedContacts.length>0&&(
                         <div style={{ marginBottom:10 }}>
-                          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color:'var(--text-tertiary)', fontFamily:T.font.sans, marginBottom:6 }}>Από τις επαφές σου</div>
+                          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color:'var(--text-tertiary)', fontFamily:T.font.sans, marginBottom:6 }}>{W?W.fromContacts:'Από τις επαφές σου'}</div>
                           <div style={{ display:'flex', gap:6, flexWrap:'wrap' as const }}>
                             {savedContacts.slice(0,8).map(c=>(
                               // Μοιάζει με πλακίδιο αλλά δεν κρατά κατάσταση: συμπληρώνει τη
@@ -879,23 +917,23 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
                         </div>
                       )}
                       <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
-                        <Btn variant="secondary" onClick={()=>setAssignFor(null)}>Ακύρωση</Btn>
-                        <Btn variant="primary" disabled={busy} onClick={()=>saveAssign(m)}>Αποθήκευση</Btn>
+                        <Btn variant="secondary" onClick={()=>setAssignFor(null)}>{W?W.cancel:'Ακύρωση'}</Btn>
+                        <Btn variant="primary" disabled={busy} onClick={()=>saveAssign(m)}>{W?W.save:'Αποθήκευση'}</Btn>
                       </div>
                     </div>
                   )}
                   {doneFor===m.id&&(
                     <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:14, marginBottom:10 }}>
                       <div style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.55, marginBottom:10 }}>
-                        Κόστος εργασίας; Αν το συμπληρώσεις, καταχωρείται αυτόματα στις δαπάνες του ακινήτου.
+                        {W?W.costAsk:'Κόστος εργασίας; Αν το συμπληρώσεις, καταχωρείται αυτόματα στις δαπάνες του ακινήτου.'}
                       </div>
                       <div style={{ display:'flex', gap:8, alignItems:'flex-end', flexWrap:'wrap' as const }}>
                         <div style={{ width:150 }}>
-                          <TextInput label="Κόστος" suffix="€" value={doneCost} onChange={setDoneCost} placeholder="Προαιρετικό"/>
+                          <TextInput label={W?W.cost:'Κόστος'} suffix="€" value={doneCost} onChange={setDoneCost} placeholder={W?W.optional:'Προαιρετικό'}/>
                         </div>
                         <div style={{ flex:1 }}/>
-                        <Btn variant="secondary" onClick={()=>setDoneFor(null)}>Ακύρωση</Btn>
-                        <Btn variant="primary" disabled={busy} onClick={()=>completeWithCost(m)}>Ολοκλήρωση</Btn>
+                        <Btn variant="secondary" onClick={()=>setDoneFor(null)}>{W?W.cancel:'Ακύρωση'}</Btn>
+                        <Btn variant="primary" disabled={busy} onClick={()=>completeWithCost(m)}>{W?W.complete:'Ολοκλήρωση'}</Btn>
                       </div>
                     </div>
                   )}
@@ -906,16 +944,16 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
                         Τα δύο μηνύματα προς το συνεργείο είναι ΠΡΟΟΡΙΣΜΟΙ: μένουν
                         σύνδεσμοι, με το `href` του ίδιου κουμπιού, ώστε η σειρά να μη
                         σπάει σε δύο μεγέθη. */}
-                    {m.status!=='new'&&<Btn variant="secondary" disabled={busy} onClick={()=>setStatus(m,'new')}>Νέο</Btn>}
-                    {m.status!=='in_progress'&&<Btn variant="secondary" disabled={busy} onClick={()=>setStatus(m,'in_progress')}>Σε εξέλιξη</Btn>}
-                    {m.status!=='done'&&<Btn variant="secondary" disabled={busy} onClick={()=>{ setDoneFor(m.id); setDoneCost(''); }}>Ολοκληρώθηκε</Btn>}
-                    <Btn variant="secondary" disabled={busy} onClick={()=>openAssign(m)}>{(m.assignee_name||m.assignee_contact)?'Ανάθεση':'Ανάθεση σε συνεργείο'}</Btn>
-                    {m.assignee_contact&&normalizePhone(m.assignee_contact).length>=10&&<Btn variant="secondary" href={whatsappLink(msgDigits(m.assignee_contact),contractorText(m))} newTab>WhatsApp συνεργείου</Btn>}
-                    {m.assignee_contact&&m.assignee_contact.includes('@')&&<Btn variant="secondary" href={`mailto:${m.assignee_contact}?subject=${encodeURIComponent('Εργασία: '+m.title)}&body=${encodeURIComponent(contractorText(m))}`}>Μήνυμα στο συνεργείο</Btn>}
-                    <Btn variant="secondary" disabled={busy} onClick={()=>toDamage(m)}>Καταγραφή ως φθορά</Btn>
+                    {m.status!=='new'&&<Btn variant="secondary" disabled={busy} onClick={()=>setStatus(m,'new')}>{W?W.status.new:'Νέο'}</Btn>}
+                    {m.status!=='in_progress'&&<Btn variant="secondary" disabled={busy} onClick={()=>setStatus(m,'in_progress')}>{W?W.status.in_progress:'Σε εξέλιξη'}</Btn>}
+                    {m.status!=='done'&&<Btn variant="secondary" disabled={busy} onClick={()=>{ setDoneFor(m.id); setDoneCost(''); }}>{W?W.status.done:'Ολοκληρώθηκε'}</Btn>}
+                    <Btn variant="secondary" disabled={busy} onClick={()=>openAssign(m)}>{W?((m.assignee_name||m.assignee_contact)?W.assign:W.assignTo):(m.assignee_name||m.assignee_contact)?'Ανάθεση':'Ανάθεση σε συνεργείο'}</Btn>
+                    {m.assignee_contact&&normalizePhone(m.assignee_contact).length>=10&&<Btn variant="secondary" href={whatsappLink(msgDigits(m.assignee_contact),contractorText(m))} newTab>{W?W.whatsapp:'WhatsApp συνεργείου'}</Btn>}
+                    {m.assignee_contact&&m.assignee_contact.includes('@')&&<Btn variant="secondary" href={`mailto:${m.assignee_contact}?subject=${encodeURIComponent('Εργασία: '+m.title)}&body=${encodeURIComponent(contractorText(m))}`}>{W?W.message:'Μήνυμα στο συνεργείο'}</Btn>}
+                    <Btn variant="secondary" disabled={busy} onClick={()=>toDamage(m)}>{W?W.recordDamage:'Καταγραφή ως φθορά'}</Btn>
                     {/* Ιδιος λόγος με τη διαγραφή του ιστορικού επικοινωνίας: το κόκκινο
                         του `s.btnDng` δεν υπάρχει σε κανέναν από τους τρεις ρόλους του `Btn`. */}
-                    <button style={s.btnDng} disabled={busy} onClick={()=>del(m)}>Διαγραφή</button>
+                    <button style={s.btnDng} disabled={busy} onClick={()=>del(m)}>{W?W.del:'Διαγραφή'}</button>
                   </div>
                 </div>
               );
@@ -929,8 +967,8 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
           <div style={{ borderTop:'1px solid var(--border-subtle)', marginTop:20, paddingTop:14 }}>
             <button onClick={()=>setHistOpen(o=>!o)} className="acc-toggle acc-row">
               <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ color:'var(--text-tertiary)', transform:histOpen?'rotate(90deg)':'none', transition:'transform 0.2s', flexShrink:0 }}><path d="M9 6l6 6-6 6"/></svg>
-              <span style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-secondary)' }}>Ιστορικό ακινήτου</span>
-              <span style={{ marginLeft:'auto', fontSize:12, color:'var(--text-tertiary)', fontWeight:600 }}>{others.length} {others.length===1?'αίτημα':'αιτήματα'}</span>
+              <span style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-secondary)' }}>{W?W.history:'Ιστορικό ακινήτου'}</span>
+              <span style={{ marginLeft:'auto', fontSize:12, color:'var(--text-tertiary)', fontWeight:600 }}>{W?W.count(others.length):<>{others.length} {others.length===1?'αίτημα':'αιτήματα'}</>}</span>
             </button>
             {histOpen&&(
               <div style={{ marginTop:12, display:'flex', flexDirection:'column' as const, gap:6 }}>
@@ -939,7 +977,7 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
                     <span style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily:T.font.sans, fontVariantNumeric:'tabular-nums' as const, width:74, flexShrink:0 }}>{gdt(m.created_at)}</span>
                     <span style={{ flex:1, minWidth:0, fontSize: 'var(--fs-base)', color:'var(--text-primary)', fontFamily:T.font.sans, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' as const }}>{m.title}</span>
                     {m.assignee_name&&<span style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily:T.font.sans, whiteSpace:'nowrap' as const }}>{m.assignee_name}</span>}
-                    <span style={{ fontSize: 'var(--fs-xs)', fontWeight:600, color:m.status==='done'?'var(--text-tertiary)':'var(--text-secondary)', fontFamily:T.font.sans, whiteSpace:'nowrap' as const }}>{m.status==='done'?'Ολοκληρώθηκε':m.status==='in_progress'?'Σε εξέλιξη':'Νέο'}</span>
+                    <span style={{ fontSize: 'var(--fs-xs)', fontWeight:600, color:m.status==='done'?'var(--text-tertiary)':'var(--text-secondary)', fontFamily:T.font.sans, whiteSpace:'nowrap' as const }}>{W?stLabel(m.status==='done'?'done':m.status==='in_progress'?'in_progress':'new'):m.status==='done'?'Ολοκληρώθηκε':m.status==='in_progress'?'Σε εξέλιξη':'Νέο'}</span>
                   </div>
                 ))}
               </div>
