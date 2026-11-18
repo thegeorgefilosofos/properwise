@@ -31,6 +31,22 @@ import { INSIGHTS_EN, OBLIGATIONS_EN } from '@/lib/i18n/en/app/overview';
 import type { AgendaItem } from '@/lib/home/agenda';
 import type { CashPosition } from '@/lib/home/cash';
 import type { StartPanelState } from '@/lib/home/start';
+import { useAppEn } from '@/lib/i18n/appEn';
+import { TenantSummary } from './components/TabTenant';
+import { PaymentsView, DepositView } from './components/TabTenantMoney';
+import { DashboardView } from './components/TabTenantCare';
+import { PaymentBars, MissingCriticalBar, FilePickRow, leaseAlerts } from './components/TabTenantParts';
+import { ServicesEditor } from './components/TabTenantHelpers';
+import { PeaLeaseNotice } from './components/PeaLeaseNotice';
+import RentReceived from './components/RentReceived';
+import { TENANTS_EN } from '@/lib/i18n/en/app/tenants';
+import { TENANT_FIELDS } from '@/lib/property/fields';
+import { PAY_METHODS } from './components/TabTenantTypes';
+import { ID_DOCS } from './components/TabTenantHelpers';
+import type { Tenant, RentPayment } from './components/TabTenantTypes';
+import type { FieldDecision } from '@/lib/property/fields';
+import type { CashLine } from '@/lib/home/cash';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 let passed = 0, failed = 0;
 const fails: string[] = [];
@@ -55,7 +71,8 @@ const noStyles = (html: string) => {
     i = c + 1;
   }
 };
-const strip = (h: string) => noStyles(h).split('Ελληνικά').join('').split('Σπίτι Κηφισιά').join('');
+// Ό,τι έγραψε ο χρήστης (όνομα ακινήτου, ενοικιαστή, σημείωση) μένει όπως το έγραψε.
+const strip = (h: string) => noStyles(h).split('Ελληνικά').join('').split('Σπίτι Κηφισιά').join('').split('Μαρία Παπαδοπούλου').join('');
 
 async function main() {
   // ── Ο κανόνας της γλώσσας ──────────────────────────────────────────────
@@ -84,6 +101,48 @@ async function main() {
   await loadAppEn('settings');
   await loadAppEn('overview');
   await loadAppEn('expenses');
+  await loadAppEn('tenants');
+
+  // ── Ο ενοικιαστής: οι τιμές της βάσης μένουν ελληνικές, η οθόνη τις λέει αγγλικά ──
+  ok('κάθε τρόπος πληρωμής έχει αγγλικό όνομα', TENANTS_EN.payMethods.length === PAY_METHODS.length);
+  ok('κάθε έγγραφο ταυτοποίησης έχει αγγλικό όνομα', TENANTS_EN.idDocs.length === ID_DOCS.length);
+  ok('κάθε πεδίο ενοικιαστή του μητρώου έχει αγγλικό όνομα και «γιατί»', TENANT_FIELDS.filter(f => f.id.startsWith('tenant.')).every(f => !!TENANTS_EN.fields[f.id]?.[0] && !!TENANTS_EN.fields[f.id]?.[1]));
+  ok('αγγλικό λεξικό ενοικιαστή χωρίς ελληνικό γράμμα', !GREEK.test(JSON.stringify(TENANTS_EN)));
+  ok('τακτικό αριθμητικό της ημέρας πληρωμής', TENANTS_EN.form.dueDay(1) === '1st' && TENANTS_EN.form.dueDay(2) === '2nd' && TENANTS_EN.form.dueDay(11) === '11th' && TENANTS_EN.form.dueDay(23) === '23rd');
+  ok('η γραμμή ενοικίου από τη δόση', TENANTS_EN.received.line(2026, 1) === 'Rent for January 2026');
+  ok('το κουμπί καταχώρησης με το ποσό όπως στα ελληνικά', TENANTS_EN.received.recordLabel(2, '1.234,50€') === 'Record 2 installments · 1.234,50€');
+  const tenantRow = {
+    id: 't1', property_id: 'p1', user_id: 'u1', full_name: 'Μαρία Παπαδοπούλου', email: 'm@example.com', phone: '6900000000',
+    profession: null, afm: null, id_doc_type: null, id_doc_number: null, iban: null, notes: null,
+    lease_type: 'annual', lease_category: null, lease_start: '2026-01-01', lease_end: '2026-12-31', custom_lease_days: null,
+    monthly_rent: 650, payment_frequency: 'monthly', pending_rent: null, pending_rent_from: null,
+    deposit_amount: 1300, deposit_returned: false, deposit_return_date: null, e_payment: true, streaming: null, cleaning: null, extra_perks: null,
+    parking_included: false, parking_extra: false, parking_extra_price: null, lease_doc_url: null, lease_doc_name: null, lease_doc_external_url: null,
+    status: 'active', rent_due_day: 5, deposit_method: 'Τραπεζική κατάθεση', deposit_paid_on: '2026-01-01', move_out_date: null,
+    furnishing: 'furnished', rent_iban: null, aade_lease_decl_ref: null, created_at: '2026-01-01',
+  } as Tenant;
+  const pay = (m: number, paid: boolean, late = 0, extra: Partial<RentPayment> = {}): RentPayment => ({
+    id: `r${m}`, tenant_id: 't1', property_id: 'p1', user_id: 'u1', period_month: m, period_year: 2026, amount: 650,
+    base_rent: 650, services_charge: null, paid, paid_date: paid ? `2026-${String(m).padStart(2, '0')}-0${5 + Math.min(late, 4)}` : null,
+    days_late: late, notes: null, method: paid ? 'Μετρητά' : null, receipt_url: null, receipt_doc_id: null,
+    due_date: `2026-${String(m).padStart(2, '0')}-05`, tenant_declared: null, tenant_declared_at: null, tenant_note: null, created_at: '2026-01-01', ...extra,
+  });
+  const payments = [pay(1, true), pay(2, true, 3), pay(3, false), pay(4, false, 0, { tenant_declared: true }), pay(5, false)];
+  const enAlerts = leaseAlerts(payments, tenantRow, TENANTS_EN.alerts), elAlerts = leaseAlerts(payments, tenantRow);
+  ok('ειδοποιήσεις μίσθωσης: ίδιο πλήθος και επίπεδα', enAlerts.map(a => a.level).join() === elAlerts.map(a => a.level).join() && elAlerts.length > 0);
+  for (const a of enAlerts) ok(`ειδοποίηση μίσθωσης: χωρίς ελληνικό γράμμα (${a.text})`, !GREEK.test(a.text));
+  const missingFields = TENANT_FIELDS.filter(f => f.id === 'tenant.afm' || f.id === 'tenant.rent_iban').map(f => ({ id: f.id, label: f.label })) as FieldDecision[];
+  const Summary = () => { const E = useAppEn('tenants'); return createElement(TenantSummary, { rent: 1300, leases: 2, arrears: 650, arrearsCount: 1, deposits: 2600, past: 1, en: E?.summary }); };
+  const Missing = () => { const E = useAppEn('tenants'); return createElement(MissingCriticalBar, { missing: missingFields, en: E ? { head: E.missing, fields: E.fields } : undefined }); };
+  const Pick = () => { const E = useAppEn('tenants'); return createElement(FilePickRow, { label: E ? 'Signed lease' : 'Υπογεγραμμένο μισθωτήριο', busy: false, docs: [], onPick: () => {}, en: E?.file }); };
+  const Services = () => { const E = useAppEn('tenants'); return createElement(ServicesEditor, { value: [{ name: '', cost: 20, payer: 'split' }], onChange: () => {}, en: E ? { ...E.services, payer: E.payer } : undefined }); };
+  const Pea = () => { const E = useAppEn('tenants'); return createElement(PeaLeaseNotice, { peaExpiry: '2025-01-01', propType: 'apartment', leaseStart: '2026-12-01', en: E?.pea }); };
+  const PeaMissing = () => { const E = useAppEn('tenants'); return createElement(PeaLeaseNotice, { peaExpiry: null, propType: 'apartment', leaseStart: '2026-12-01', en: E?.pea }); };
+  const rentLines: CashLine[] = [
+    { label: 'Ενοίκιο Σεπτεμβρίου 2026', amount: 650, due: '2026-09-05', daysLeft: -40, rent: { id: 'a', year: 2026, month: 9 } },
+    { label: 'Ενοίκιο Οκτωβρίου 2026', amount: 650, due: '2026-10-05', daysLeft: -10, rent: { id: 'b', year: 2026, month: 10 } },
+  ] as CashLine[];
+  const supa = {} as SupabaseClient;
 
   // ── Οι δαπάνες: κάθε κατηγορία της ταξινομίας έχει αγγλικό όνομα ────────
   ok('κάθε κατηγορία έχει αγγλικό όνομα', CATEGORIES.every(c => !!CATEGORY_EN[c.slug]));
@@ -142,6 +201,20 @@ async function main() {
     ['από πού ξεκινάς', () => createElement(StartPanel, { state: start, collapsed: false, onToggle: nav, onNavigate: nav, onPreview: nav })],
     ['σύγκριση μηνών', () => createElement(ExpenseCompare, { spends, today: new Date('2026-11-17T10:00:00Z') })],
     ['από πού ξεκινάς, κλειστό', () => createElement(StartPanel, { state: start, collapsed: true, onToggle: nav, onNavigate: nav, onPreview: nav })],
+    ['σύνοψη ενοικιαστών', () => createElement(Summary)],
+    ['τι λείπει για τη δήλωση', () => createElement(Missing)],
+    ['ανέβασμα αρχείου', () => createElement(Pick)],
+    ['υπηρεσίες', () => createElement(Services)],
+    ['ΠΕΑ που έληξε', () => createElement(Pea)],
+    ['ΠΕΑ που λείπει', () => createElement(PeaMissing)],
+    ['γράφημα πληρωμών', () => createElement(PaymentBars, { payments })],
+    ['άδειο γράφημα πληρωμών', () => createElement(PaymentBars, { payments: [] })],
+    ['επισκόπηση ενοικιαστή', () => createElement(DashboardView, { tenant: tenantRow, payments, propertyCount: 1 })],
+    ['είσπραξη ενοικίων', () => createElement(PaymentsView, { tenant: tenantRow, propertyId: 'p1', userId: 'u1', payments, onRefresh: nav, plan: 'agency' })],
+    ['είσπραξη χωρίς δόσεις', () => createElement(PaymentsView, { tenant: tenantRow, propertyId: 'p1', userId: 'u1', payments: [], onRefresh: nav })],
+    ['εγγύηση', () => createElement(DepositView, { tenant: tenantRow, payments, damages: [], onReturned: nav })],
+    ['είσπραξη από την Επισκόπηση', () => createElement(RentReceived, { onClose: nav, lines: rentLines, supabase: supa, propertyId: 'p1', tenantId: 't1', leaseViaBank: false, today: '2026-10-15', onSaved: nav })],
+    ['μία δόση από την Επισκόπηση', () => createElement(RentReceived, { onClose: nav, lines: rentLines.slice(0, 1), supabase: supa, propertyId: 'p1', tenantId: 't1', leaseViaBank: true, today: '2026-10-15', onSaved: nav })],
   ];
 
   const items = [{ id: 'p1', name: 'Σπίτι Κηφισιά', status: '', address: null }];
@@ -168,6 +241,11 @@ async function main() {
   const enCash = renderToStaticMarkup(createElement(AppLocaleProvider, { locale: 'en' }, more[2][1]()));
   ok('ταμείο στα αγγλικά: «30,00€»', enCash.includes('30,00€'));
   ok('παρατήρηση στα αγγλικά: ποσά με ελληνική γραφή', enIns.some(i => /\d,\d{2}€/.test(`${i.detail} ${i.metric ?? ''}`)) && !enIns.some(i => /€\d/.test(`${i.detail} ${i.metric ?? ''}`)));
+  const enPay = renderToStaticMarkup(createElement(AppLocaleProvider, { locale: 'en' }, createElement(PaymentsView, { tenant: tenantRow, propertyId: 'p1', userId: 'u1', payments, onRefresh: nav })));
+  ok('είσπραξη στα αγγλικά: «650,00€» και ημερομηνία «05/03/2026»', enPay.includes('650,00€') && enPay.includes('05/03/2026') && !enPay.includes('€650'));
+  ok('είσπραξη στα αγγλικά: ο τρόπος της βάσης γράφεται αγγλικά', enPay.includes('Cash'));
+  const enRr = renderToStaticMarkup(createElement(AppLocaleProvider, { locale: 'en' }, more[more.length - 2][1]()));
+  ok('είσπραξη από την Επισκόπηση: μήνας από τη δόση', enRr.includes('September 2026') || enRr.includes('Rent for September'));
   const lang = renderToStaticMarkup(createElement(AppLocaleProvider, { locale: 'en' }, createElement(LanguageSetting)));
   ok('ο επιλογέας λέει «Language»', lang.includes('Language'));
 

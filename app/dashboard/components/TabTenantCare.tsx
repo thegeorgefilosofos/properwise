@@ -83,6 +83,7 @@ import {
   filledTenantIds,
 } from './TabTenantParts';
 import { useLoad } from '@/app/hooks/useLoad';
+import { useAppEn } from '@/lib/i18n/appEn';
 import { COMMERCIAL_RENT_CAP_2026 } from '@/lib/documents/rentAdjustment';
 import { Dictation } from '@/components/dictation/MicButton';
 
@@ -102,7 +103,10 @@ const labelStyle = { ...TT.label, marginBottom: 8 };
 // ─── HTML escaping for values interpolated into document.write() templates ────
 
 export function DashboardView({ tenant, payments, propertyCount }:{ tenant:Tenant; payments:RentPayment[]; propertyCount:number }) {
-  const alerts=useMemo(()=>leaseAlerts(payments,tenant),[payments,tenant]);
+  // Τα αγγλικά της επισκόπησης του ντοσιέ, ή `null` στα ελληνικά.
+  const E=useAppEn('tenants');
+  const W=E?.dash;
+  const alerts=useMemo(()=>leaseAlerts(payments,tenant,E?.alerts),[payments,tenant,E]);
   const d=daysLeft(tenant.lease_end); const st=leaseSt(d);
   const lines=useMemo(()=>tenantLines(tenant),[tenant]);
   const servicesCharge=tenantServicesCharge(tenant);
@@ -124,7 +128,7 @@ export function DashboardView({ tenant, payments, propertyCount }:{ tenant:Tenan
   return (
     <div>
       {/* Τι λείπει για τη δήλωση — πρώτο, γιατί είναι το μόνο που κοστίζει */}
-      <MissingCriticalBar missing={missing}/>
+      <MissingCriticalBar missing={missing} en={E?{ head:E.missing, fields:E.fields }:undefined}/>
 
       {alerts.length>0&&(
         <div style={{ marginBottom:20 }}>
@@ -134,20 +138,28 @@ export function DashboardView({ tenant, payments, propertyCount }:{ tenant:Tenan
 
       {/* KPI Strip */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 90px), 1fr))', gap:10, marginBottom:20 }}>
-        <KpiCard label="Βασικό ενοίκιο" value={fmt(tenant.monthly_rent)} color="var(--text-primary)"/>
-        <KpiCard label="Σύνολο μηνιαίως" value={fmt(totalTenant)} color="var(--text-primary)"/>
-        <KpiCard label="Κόστη ιδιοκτήτη" value={fmt(ownerCosts)} color="var(--text-primary)"/>
-        <KpiCard label="Λήξη μίσθωσης" value={d==null?ABSENT_DATE:d<0?'Έληξε':`${d} ημέρες`} color={st?.color||'var(--text-primary)'}/>
-        <KpiCard label="Εκκρεμή ποσά" value={fmt(unpaidAmt)} color={unpaidAmt>0?'var(--negative)':'var(--text-primary)'}/>
-        <KpiCard label="Εγγύηση" value={fmt(tenant.deposit_amount)} color={tenant.deposit_returned?'var(--positive)':'var(--accent)'}/>
+        <KpiCard label={W?W.base:'Βασικό ενοίκιο'} value={fmt(tenant.monthly_rent)} color="var(--text-primary)"/>
+        <KpiCard label={W?W.total:'Σύνολο μηνιαίως'} value={fmt(totalTenant)} color="var(--text-primary)"/>
+        <KpiCard label={W?W.ownerCosts:'Κόστη ιδιοκτήτη'} value={fmt(ownerCosts)} color="var(--text-primary)"/>
+        <KpiCard label={W?W.leaseEnd:'Λήξη μίσθωσης'} value={E&&W?(d==null?E.noDate:d<0?W.ended:E.days(d)):d==null?ABSENT_DATE:d<0?'Έληξε':`${d} ημέρες`} color={st?.color||'var(--text-primary)'}/>
+        <KpiCard label={W?W.open:'Εκκρεμή ποσά'} value={fmt(unpaidAmt)} color={unpaidAmt>0?'var(--negative)':'var(--text-primary)'}/>
+        <KpiCard label={W?W.deposit:'Εγγύηση'} value={fmt(tenant.deposit_amount)} color={tenant.deposit_returned?'var(--positive)':'var(--accent)'}/>
       </div>
 
       {/* Ιστορικό πληρωμών, με λόγια — γεγονότα, όχι βαθμός */}
       <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24, marginBottom:16 }}>
-        <SectionTitle>Πώς πληρώνει</SectionTitle>
+        <SectionTitle>{W?W.howPays:'Πώς πληρώνει'}</SectionTitle>
         {payments.length===0?(
           <div style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.7 }}>
-            Δεν έχει καταγραφεί ακόμη καμία δόση. Μόλις καταγραφεί η πρώτη είσπραξη, εδώ θα βλέπεις πόσες δόσεις πληρώθηκαν και με πόση καθυστέρηση.
+            {W?W.none:'Δεν έχει καταγραφεί ακόμη καμία δόση. Μόλις καταγραφεί η πρώτη είσπραξη, εδώ θα βλέπεις πόσες δόσεις πληρώθηκαν και με πόση καθυστέρηση.'}
+          </div>
+        ):W?(
+          <div style={{ fontSize:14, color:'var(--text-primary)', fontFamily:T.font.sans, lineHeight:1.8 }}>
+            <strong style={{ fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{W.paidOf(paidPay.length,payments.length)}</strong>{W.paidTail}
+            {late.length>0
+              ? <> · <strong style={{ fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fn(late.length)}</strong>{W.lateCount}<strong style={{ fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fn(avgLate)}</strong>{W.daysTail}</>
+              : <> · {W.noLate}</>}
+            {unpaidAmt>0&&<> · {W.owes}<strong style={{ color:'var(--negative)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fmt(unpaidAmt)}</strong></>}
           </div>
         ):(
           <div style={{ fontSize:14, color:'var(--text-primary)', fontFamily:T.font.sans, lineHeight:1.8 }}>
@@ -161,25 +173,25 @@ export function DashboardView({ tenant, payments, propertyCount }:{ tenant:Tenan
       </div>
 
       <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24, marginBottom:16 }}>
-        <SectionTitle>Ιστορικό πληρωμών, τελευταίοι 12 μήνες</SectionTitle>
+        <SectionTitle>{W?W.history:'Ιστορικό πληρωμών, τελευταίοι 12 μήνες'}</SectionTitle>
         <PaymentBars payments={payments}/>
         {payments.length>0&&(
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 120px), 1fr))', gap:10, marginTop:20 }}>
-            <KpiCard label="Πληρωμές" value={`${paidPay.length}/${payments.length}`} color="var(--text-primary)"/>
-            <KpiCard label="Ποσοστό εξόφλησης" value={`${fp(((paidPay.length/payments.length)*100))}`} color="var(--text-primary)"/>
-            <KpiCard label="Μέση καθυστέρηση" value={avgLate>0?`${fn(avgLate)} ημέρες`:'Χωρίς'} color={avgLate>7?'var(--warning)':'var(--positive)'}/>
-            <KpiCard label="Εισπραχθέντα σύνολο" value={fmt(totalReceived)} color="var(--text-primary)"/>
+            <KpiCard label={W?W.payments:'Πληρωμές'} value={`${paidPay.length}/${payments.length}`} color="var(--text-primary)"/>
+            <KpiCard label={W?W.rate:'Ποσοστό εξόφλησης'} value={`${fp(((paidPay.length/payments.length)*100))}`} color="var(--text-primary)"/>
+            <KpiCard label={W?W.avgLate:'Μέση καθυστέρηση'} value={W?(avgLate>0?W.avgDays(fn(avgLate)):W.noDelay):avgLate>0?`${fn(avgLate)} ημέρες`:'Χωρίς'} color={avgLate>7?'var(--warning)':'var(--positive)'}/>
+            <KpiCard label={W?W.received:'Εισπραχθέντα σύνολο'} value={fmt(totalReceived)} color="var(--text-primary)"/>
           </div>
         )}
       </div>
 
       <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
-        <SectionTitle>Οικονομική ανάλυση ενοικιαστή</SectionTitle>
-        <DataRow label="Ακαθάριστα ενοίκια ανά έτος" value={<span style={{ color:'var(--text-primary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{fmt(annualRent)}</span>}/>
-        <DataRow label="Κόστη ιδιοκτήτη ανά έτος" value={<span style={{ color:'var(--text-primary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{feSigned(-totalCosts)}</span>}/>
-        <DataRow label="Καθαρό εισόδημα ανά έτος" value={<span style={{ color:'var(--accent)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700, fontSize:15 }}>{fmt(netIncome)}</span>}/>
-        <DataRow label="Εισπραχθέντα σύνολο" value={<span style={{ color:'var(--text-primary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:600 }}>{fmt(totalReceived)}</span>}/>
-        <DataRow label="Εκκρεμή σύνολο" value={<span style={{ color:unpaidAmt>0?'var(--negative)':'var(--text-tertiary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:600 }}>{fmt(unpaidAmt)}</span>}/>
+        <SectionTitle>{W?W.analysis:'Οικονομική ανάλυση ενοικιαστή'}</SectionTitle>
+        <DataRow label={W?W.grossYear:'Ακαθάριστα ενοίκια ανά έτος'} value={<span style={{ color:'var(--text-primary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{fmt(annualRent)}</span>}/>
+        <DataRow label={W?W.costsYear:'Κόστη ιδιοκτήτη ανά έτος'} value={<span style={{ color:'var(--text-primary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{feSigned(-totalCosts)}</span>}/>
+        <DataRow label={W?W.netYear:'Καθαρό εισόδημα ανά έτος'} value={<span style={{ color:'var(--accent)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700, fontSize:15 }}>{fmt(netIncome)}</span>}/>
+        <DataRow label={W?W.received:'Εισπραχθέντα σύνολο'} value={<span style={{ color:'var(--text-primary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:600 }}>{fmt(totalReceived)}</span>}/>
+        <DataRow label={W?W.openTotal:'Εκκρεμή σύνολο'} value={<span style={{ color:unpaidAmt>0?'var(--negative)':'var(--text-tertiary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:600 }}>{fmt(unpaidAmt)}</span>}/>
       </div>
     </div>
   );

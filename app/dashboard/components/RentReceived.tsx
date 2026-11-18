@@ -55,12 +55,14 @@ import * as rentStore from '@/lib/data/rent';
 import { saved } from '@/components/dbWrite';
 import { notifyOk, notifyError } from '@/components/Toast';
 import type { CashLine } from '@/lib/home/cash';
-import { pickedLines, recordLabel, receiptNote } from '@/lib/home/rentReceipt';
+import { pickedLines, recordLabel, receiptNote, receiptTotal } from '@/lib/home/rentReceipt';
 import { hy } from '@/components/Hyphen';
 import { navLabel } from '@/lib/nav/labels';
 import { FIRST_MONTH_BANK_RECEIPT, FIRST_YEAR_BANK_RECEIPT } from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
 import { fpRate, grDateOf } from '@/lib/core/format';
+import { useAppEn } from '@/lib/i18n/appEn';
+import { useLocale } from '@/lib/i18n/useLocale';
 
 /** Οι γραμμές που μπορούν να εισπραχθούν από εδώ: όσες ξέρουν τη δόση τους. */
 export function receivableLines(lines: readonly CashLine[]): CashLine[] {
@@ -93,6 +95,15 @@ export default function RentReceived({
   const [paidDate, setPaidDate] = useState(today);
   const [method, setMethod] = useState<PayMethod>(leaseViaBank ? 'Τραπεζική κατάθεση' : 'Μετρητά');
   const [busy, setBusy] = useState(false);
+  // Τα αγγλικά του παραθύρου, ή `null` στα ελληνικά. Στα αγγλικά το παράθυρο
+  // περιμένει το λεξικό του (λίγα χιλιοστά) αντί να δείξει ένα καρέ ελληνικά.
+  const E = useAppEn('tenants');
+  const W = E?.received;
+  const S = useAppEn('shell');
+  const X = useAppEn('errors');
+  /** Γραφή στη βάση με το σφάλμα στη γλώσσα της οθόνης. */
+  const sv = (el: string, k: string, q: Parameters<typeof saved>[1]) => saved(el, q, X && E ? (e: unknown) => X.failed(E.err[k] ?? el, e) : undefined);
+  const waitEn = useLocale() === 'en' && !W;
 
   const ids = new Set(openLines.map(l => l.rent?.id ?? ''));
   const chosen = touched
@@ -101,7 +112,7 @@ export default function RentReceived({
 
   // Χωρίς εισπράξιμη γραμμή δεν υπάρχει παράθυρο. Ο καλών δεν το προσαρτά ποτέ
   // άδειο· ο φρουρός είναι εδώ ώστε ο τύπος να το εγγυάται και όχι η σύμβαση.
-  if (!openLines[0]?.rent) return null;
+  if (!openLines[0]?.rent || waitEn) return null;
 
   const selected = pickedLines(
     openLines.map(l => ({ id: l.rent?.id ?? '', amount: l.amount, line: l })), chosen,
@@ -124,7 +135,7 @@ export default function RentReceived({
     for (const l of selected) {
       const ref = l.rent;
       if (!ref) continue;
-      const ok = await saved('Η είσπραξη δεν καταχωρήθηκε',
+      const ok = await sv('Η είσπραξη δεν καταχωρήθηκε','receiptNotRecorded',
         rentStore.markPaid(supabase, ref.id, l.due, paidDate, method));
       if (!ok) continue;
       done++;
@@ -141,7 +152,7 @@ export default function RentReceived({
       }
     }
     setBusy(false);
-    const note = receiptNote(done, selected.length);
+    const note = W ? W.note(done, selected.length) : receiptNote(done, selected.length);
     if (done === 0) { notifyError(note); return; }
     onClose();
     // Πρώτο ενοίκιο καταχωρημένο: το προϊόν έπαψε να είναι άδειο βιβλίο.
@@ -167,9 +178,16 @@ export default function RentReceived({
    * που το γράφει έξι φορές.
    */
   const SEP = ' · ';
+  /** Η γραμμή στη γλώσσα της οθόνης: στα αγγλικά ο μήνας βγαίνει από τη δόση, όχι από το ελληνικό κείμενο. */
+  const textOf = (l: CashLine) => {
+    if (!W) return l.label;
+    const parts = l.label.split(SEP);
+    const tail = W.line(l.rent?.year, l.rent?.month);
+    return parts.length > 1 ? [...parts.slice(0, -1), tail].join(SEP) : tail;
+  };
   const commonTail = (() => {
     if (openLines.length < 2) return '';
-    const parts = openLines.map(l => l.label.split(SEP));
+    const parts = openLines.map(l => textOf(l).split(SEP));
     const first = parts[0];
     if (first.length < 2) return '';
     let n = 0;
@@ -177,23 +195,25 @@ export default function RentReceived({
     return n ? first.slice(first.length - n).join(SEP) : '';
   })();
   const rowLabel = (l: CashLine) =>
-    commonTail && l.label.endsWith(SEP + commonTail)
-      ? l.label.slice(0, -(SEP.length + commonTail.length))
-      : l.label;
+    commonTail && textOf(l).endsWith(SEP + commonTail)
+      ? textOf(l).slice(0, -(SEP.length + commonTail.length))
+      : textOf(l);
 
   const lateNote = (l: CashLine) =>
     l.daysLeft != null && l.daysLeft < 0
-      ? `${Math.abs(l.daysLeft)} ${Math.abs(l.daysLeft) === 1 ? 'ημέρα' : 'ημέρες'} πίσω`
+      ? (W ? W.late(Math.abs(l.daysLeft)) : `${Math.abs(l.daysLeft)} ${Math.abs(l.daysLeft) === 1 ? 'ημέρα' : 'ημέρες'} πίσω`)
       : '';
 
   return (
     <Modal open onClose={() => { if (!busy) onClose(); }} size="sm"
-      title={openLines.length === 1 ? 'Είσπραξη ενοικίου' : 'Είσπραξη ενοικίων'}
-      footerInfo={`Μερική πληρωμή ή άλλο ποσό καταχωρείς στην καρτέλα «${navLabel('tenant')}».`}
+      title={W ? W.title(openLines.length) : openLines.length === 1 ? 'Είσπραξη ενοικίου' : 'Είσπραξη ενοικίων'}
+      footerInfo={W ? W.footer(S ? S.nav.tenant : navLabel('tenant')) : `Μερική πληρωμή ή άλλο ποσό καταχωρείς στην καρτέλα «${navLabel('tenant')}».`}
       footer={<>
-        <Btn variant="ghost" onClick={busy ? undefined : onClose}>Ακύρωση</Btn>
+        <Btn variant="ghost" onClick={busy ? undefined : onClose}>{W ? W.cancel : 'Ακύρωση'}</Btn>
         <Btn variant="primary" className="rr-cta" onClick={record} disabled={busy || !selected.length}>
-          {busy ? 'Καταχώρηση…' : recordLabel(selected.map(l => ({ id: l.rent?.id ?? '', amount: l.amount })))}
+          {busy ? (W ? W.recording : 'Καταχώρηση…') : W
+            ? W.recordLabel(selected.length, fe(receiptTotal(selected.map(l => ({ id: l.rent?.id ?? '', amount: l.amount })))))
+            : recordLabel(selected.map(l => ({ id: l.rent?.id ?? '', amount: l.amount })))}
         </Btn>
       </>}>
 
@@ -202,9 +222,9 @@ export default function RentReceived({
       {openLines.length === 1 ? (
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: T.sp.md, flexWrap: 'wrap' }}>
           <div>
-            <div style={{ ...TT.body, fontWeight: 700 }}>{openLines[0].label}</div>
+            <div style={{ ...TT.body, fontWeight: 700 }}>{textOf(openLines[0])}</div>
             <div style={{ ...TT.caption, marginTop: 2 }}>
-              {[openLines[0].due ? `Προθεσμία ${fd(openLines[0].due)}` : '', lateNote(openLines[0])].filter(Boolean).join(' · ')}
+              {[openLines[0].due ? (W ? W.due(fd(openLines[0].due)) : `Προθεσμία ${fd(openLines[0].due)}`) : '', lateNote(openLines[0])].filter(Boolean).join(' · ')}
             </div>
           </div>
           <div style={{ ...TT.kpi }}>{fe(openLines[0].amount)}</div>
@@ -228,10 +248,10 @@ export default function RentReceived({
           {/* Ενέργεια επιλογής, όχι φίλτρο: το σκέτο «Όλες» δίπλα στον μήνα
               διαβαζόταν ως «δείξε όλες». */}
           <Btn variant="ghost" className="rr-nowrap" onClick={() => setTouched(allOn ? new Set() : new Set(openLines.map(l => l.rent?.id ?? '')))}>
-            {allOn ? 'Αποεπιλογή όλων' : `Επιλογή όλων (${openLines.length})`}
+            {W ? (allOn ? W.clearAll : W.selectAll(openLines.length)) : allOn ? 'Αποεπιλογή όλων' : `Επιλογή όλων (${openLines.length})`}
           </Btn>
         </div>
-        <div role="group" aria-label="Δόσεις προς είσπραξη" style={{ display: 'flex', flexDirection: 'column', gap: T.sp.sm }}>
+        <div role="group" aria-label={W ? W.group : 'Δόσεις προς είσπραξη'} style={{ display: 'flex', flexDirection: 'column', gap: T.sp.sm }}>
           {openLines.map(l => {
             const on = chosen.has(l.rent?.id ?? '');
             return (
@@ -277,9 +297,9 @@ export default function RentReceived({
           Τώρα κάθε κουμπί παίρνει όλη τη σειρά με `flex-basis`. */}
       <style>{`@media (max-width: 480px) { .act-row:has(.rr-cta) > * { flex: 1 1 100%; } } .rr-cta, .rr-nowrap { white-space: nowrap; }`}</style>
       <div {...fieldRow(200)}>
-        <DatePicker label="Ημερομηνία είσπραξης" value={paidDate} onChange={setPaidDate} />
-        <CustomSelect label="Τρόπος είσπραξης" value={method} onChange={v => setMethod(v as PayMethod)}
-          options={PAY_METHODS.map(m => ({ value: m, label: m }))} />
+        <DatePicker label={W ? W.date : 'Ημερομηνία είσπραξης'} placeholder={E ? E.choose : undefined} value={paidDate} onChange={setPaidDate} />
+        <CustomSelect label={W ? W.method : 'Τρόπος είσπραξης'} value={method} onChange={v => setMethod(v as PayMethod)}
+          options={PAY_METHODS.map((m, i) => ({ value: m, label: E ? (E.payMethods[i] ?? m) : m }))} />
       </div>
 
       {/* ΛΕΓΕΤΑΙ ΜΟΝΟ ΟΤΑΝ ΑΛΛΑΖΕΙ ΚΑΤΙ. Η αντίστροφη πρόταση («με τραπεζική
@@ -294,7 +314,7 @@ export default function RentReceived({
           αντί να τα τεντώνει. */}
       {method === 'Μετρητά' && (
         <InfoBanner tone="warning" className="po-just">
-          {hy(<>{`Από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} (ν. 5222/2025) η τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)} θα προϋποθέτει είσπραξη μέσω τραπεζικού ή ηλεκτρονικού μέσου· με μετρητά θα χάνεται. Για εισπράξεις έως τότε η έκπτωση ισχύει κανονικά.`}</>)}
+          {W ? W.cashWarning(grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT), fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)) : hy(<>{`Από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} (ν. 5222/2025) η τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)} θα προϋποθέτει είσπραξη μέσω τραπεζικού ή ηλεκτρονικού μέσου· με μετρητά θα χάνεται. Για εισπράξεις έως τότε η έκπτωση ισχύει κανονικά.`}</>)}
         </InfoBanner>
       )}
     </Modal>

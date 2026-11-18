@@ -3,3 +3,9 @@
 export function useRouter() {
   return { push() {}, replace() {}, refresh() {}, back() {}, prefetch() {} }
 }
+
+// Η διαδρομή της σελίδας: το `useLocale` τη διαβάζει για να ξέρει αν σερβίρεται
+// κάτω από το /en. Ο πάγκος δείχνει την ελληνική εγγραφή.
+export function usePathname() {
+  return '/signup'
+}

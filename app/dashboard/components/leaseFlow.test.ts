@@ -158,7 +158,7 @@ const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; fails.push
   ok('9: η αρχειοθέτηση PDF περνά από το uploadPath', /uploadPath\(`\$\{i\.fileName\}\.pdf`/.test(DOC))
   // 10. Η κλειδαριά πριν από κάθε await.
   const iLock = TAB.indexOf('if(saveLock.current) return;')
-  const iDpa = TAB.indexOf('await ensureDpa(supabase))){setError(\'Τα στοιχεία δεν αποθηκεύτηκαν')
+  const iDpa = TAB.indexOf('await ensureDpa(supabase))){setError(E?E.toast.saveNeedsDpa:\'Τα στοιχεία δεν αποθηκεύτηκαν')
   ok('10: η κλειδαριά μπαίνει πριν τη σύμβαση επεξεργασίας', iLock > 0 && iDpa > iLock)
 }
 

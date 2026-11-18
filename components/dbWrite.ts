@@ -36,7 +36,12 @@ interface WriteOutcome { error: DbError | null }
  *          ήδη δει, οπότε ο καλών δεν έχει να πει τίποτα άλλο· έχει μόνο να
  *          σταματήσει.
  */
-export async function saved(what: string, query: PromiseLike<WriteOutcome>): Promise<boolean> {
+export async function saved(
+  what: string,
+  query: PromiseLike<WriteOutcome>,
+  /** Το μήνυμα σε άλλη γλώσσα (π.χ. `failedEn` της αγγλικής εφαρμογής). Χωρίς αυτό, τα ελληνικά. */
+  say?: (e: unknown) => string,
+): Promise<boolean> {
   let outcome: WriteOutcome;
   try {
     outcome = await query;
@@ -44,11 +49,11 @@ export async function saved(what: string, query: PromiseLike<WriteOutcome>): Pro
     // Δίκτυο που έπεσε στη μέση: ο πελάτης ΠΕΤΑ εδώ, δεν επιστρέφει σφάλμα.
     // Η μία διαδρομή πρέπει να καλύπτει και τις δύο περιπτώσεις, αλλιώς μένει
     // ακριβώς το κενό που ήρθε να κλείσει.
-    notifyError(writeErrorMessage(what, { message: e instanceof Error ? e.message : 'Σφάλμα δικτύου' }));
+    notifyError(say ? say(e) : writeErrorMessage(what, { message: e instanceof Error ? e.message : 'Σφάλμα δικτύου' }));
     return false;
   }
   if (outcome?.error) {
-    notifyError(writeErrorMessage(what, outcome.error));
+    notifyError(say ? say(outcome.error) : writeErrorMessage(what, outcome.error));
     return false;
   }
   return true;

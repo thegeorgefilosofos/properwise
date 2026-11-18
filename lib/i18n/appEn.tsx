@@ -26,6 +26,7 @@ import type { SHELL_EN } from './en/app/shell';
 import type { SETTINGS_EN } from './en/app/settings';
 import type { OVERVIEW_EN } from './en/app/overview';
 import type { EXPENSES_EN } from './en/app/expenses';
+import type { TENANTS_EN } from './en/app/tenants';
 import type { ERRORS_EN } from './en/app/errors';
 
 /** Ενα κλειδί ανά οθόνη ή ομάδα οθονών. */
@@ -34,6 +35,7 @@ export type AppEn = {
   settings: typeof SETTINGS_EN;
   overview: typeof OVERVIEW_EN;
   expenses: typeof EXPENSES_EN;
+  tenants: typeof TENANTS_EN;
   /** Τα σφάλματα των ειδοποιήσεων (toast), δίδυμο του lib/core/dbError.ts. */
   errors: typeof ERRORS_EN;
 };
@@ -44,6 +46,7 @@ const LOADERS: { [K in AppEnKey]: () => Promise<AppEn[K]> } = {
   settings: () => import('./en/app/settings').then(m => m.SETTINGS_EN),
   overview: () => import('./en/app/overview').then(m => m.OVERVIEW_EN),
   expenses: () => import('./en/app/expenses').then(m => m.EXPENSES_EN),
+  tenants: () => import('./en/app/tenants').then(m => m.TENANTS_EN),
   errors: () => import('./en/app/errors').then(m => m.ERRORS_EN),
 };
 

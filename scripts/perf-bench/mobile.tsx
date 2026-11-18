@@ -14,6 +14,7 @@ import type React from 'react';
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
+import { AppLocaleProvider, loadAppEn, type AppEnKey } from '@/lib/i18n/appEn';
 import Typesetter from '@/components/Typesetter';
 import JustifyPolish from '@/components/JustifyPolish';
 import type { Responder } from '../e2e-money/fakeDb';
@@ -710,7 +711,20 @@ const withNoa = params.get('noa') === '1' && !portal;
 // αλλιώς οι σαρωτές θα μετρούσαν κείμενο που ο χρήστης δεν βλέπει ποτέ έτσι.
 // Και ο υποδοχέας επιβεβαίωσης, όπως στο app/layout.tsx: χωρίς αυτόν το «Να
 // φύγουν οι αλλαγές;» του οδηγού (19/10/2026) δεν θα εμφανιζόταν ποτέ εδώ.
-createRoot(host).render(withNoa
+const scene = withNoa
   ? <><Typesetter /><JustifyPolish /><View /><ConfirmHost /><PropertyAssistant propertyId="p1" userId="u1" propContext={{ name: 'Ακίνητο 2' }} onNavigate={() => {}} onScan={() => {}} assistantLocked={params.get('locked') === '1'} /></>
-  : <><Typesetter /><JustifyPolish /><View /><ConfirmHost /></>);
+  : <><Typesetter /><JustifyPolish /><View /><ConfirmHost /></>;
+// ═══ Η ΑΓΓΛΙΚΗ ΕΦΑΡΜΟΓΗ (`&lang=en`) ═════════════════════════════════════════
+// Οπως τη στήνει το app/dashboard/layout.tsx για όποιον διάλεξε English: η
+// ρίζα λέει `lang="en"`, ο πάροχος δίνει τη γλώσσα και τα λεξικά κατεβαίνουν
+// πριν από την πρώτη απόδοση, όπως στο `withAppEn` των καρτελών. Χωρίς την
+// παράμετρο ο πάγκος αποδίδει ό,τι απέδιδε, ίδιο ως το byte.
+if (params.get('lang') === 'en') {
+  document.documentElement.lang = 'en';
+  const keys: AppEnKey[] = ['shell', 'settings', 'overview', 'expenses', 'tenants'];
+  void Promise.all(keys.map(loadAppEn)).then(() =>
+    createRoot(host).render(<AppLocaleProvider locale="en">{scene}</AppLocaleProvider>));
+} else {
+  createRoot(host).render(scene);
+}
 requestAnimationFrame(() => { window.__t.firstPaint = performance.now(); });

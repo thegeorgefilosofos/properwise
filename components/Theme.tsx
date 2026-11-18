@@ -1019,7 +1019,7 @@ export function SelectBox({ checked, indeterminate, onChange, label }: {
   );
 }
 
-export function ExportButton({ onClick, label = 'Εξαγωγή Excel', disabled }: { onClick: () => void; label?: string; disabled?: boolean }) {
+export function ExportButton({ onClick, label = 'Εξαγωγή Excel', title = 'Εξαγωγή σε Excel (.xlsx)', disabled }: { onClick: () => void; label?: string; title?: string; disabled?: boolean }) {
   const icon = <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>;
   // ΤΟ ΙΔΙΟ ΚΟΥΜΠΙ ΠΟΥ ΕΙΝΑΙ ΚΑΙ ΤΟ «ΑΚΥΡΩΣΗ» ΔΙΠΛΑ ΤΟΥ. Το τοπικό `base`
   // απαριθμούσε διάφανο φόντο, περίγραμμα `--border-default` και κείμενο
@@ -1030,7 +1030,7 @@ export function ExportButton({ onClick, label = 'Εξαγωγή Excel', disabled
   // κουμπί δίπλα του. Ο τίτλος μένει, γιατί ΠΡΟΣΘΕΤΕΙ την επέκταση του αρχείου
   // που το λεκτικό δεν λέει.
   return (
-    <Btn variant="secondary" onClick={onClick} disabled={disabled} title="Εξαγωγή σε Excel (.xlsx)">
+    <Btn variant="secondary" onClick={onClick} disabled={disabled} title={title}>
       {icon}{label}
     </Btn>
   );

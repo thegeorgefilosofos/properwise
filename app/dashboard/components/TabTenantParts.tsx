@@ -18,6 +18,8 @@ import { fieldDecision, type FieldContext, type FieldDecision } from '@/lib/prop
 import { InfoDot, fieldLabelStyle } from './UIComponents';
 import type { RentPayment, Tenant } from './TabTenantTypes';
 import { days } from '@/lib/core/greek';
+import { useAppEn } from '@/lib/i18n/appEn';
+import type { TenantsEn } from '@/lib/i18n/en/app/tenants';
 
 // ─── Micro components ─────────────────────────────────────────────────────────
 // Κεφαλίδα ενότητας: ίδια οπτική με το κοινό SecHdr (χωρίς διακοσμητική τελεία),
@@ -202,10 +204,22 @@ export function AlertBar({ text, level='warning' }: { text:string; level?:'criti
  * καθυστερήσεις. Δύο σημεία δεν είναι πρότυπο και το app το παρουσίαζε ως
  * πρόβλεψη. Ό,τι μένει είναι μετρήσιμο σήμερα: μια ημερομηνία και ένα πλήθος.
  */
-export function leaseAlerts(payments:RentPayment[], tenant:Tenant|null):{text:string;level:'critical'|'warning'|'info'}[] {
+export function leaseAlerts(payments:RentPayment[], tenant:Tenant|null, en?:TenantsEn['alerts']):{text:string;level:'critical'|'warning'|'info'}[] {
   if (!tenant) return [];
   const alerts:{text:string;level:'critical'|'warning'|'info'}[]=[];
   const d=daysLeft(tenant.lease_end);
+  // Τα αγγλικά: ίδια κατώφλια, ίδια σειρά, ίδια επίπεδα.
+  if(en){
+    if(d!==null){
+      if(d<0) alerts.push({text:en.ended,level:'critical'});
+      else if(d<=30) alerts.push({text:en.endsSoon(d),level:'critical'});
+      else if(d<=60) alerts.push({text:en.endsTalk(d),level:'warning'});
+      else if(d<=90) alerts.push({text:en.ends(d),level:'info'});
+    }
+    const open=payments.filter(p=>!p.paid).length;
+    if(open>=2) alerts.push({text:en.unpaid(open),level:'critical'});
+    return alerts;
+  }
   if(d!==null){
     if(d<0) alerts.push({text:'Το μισθωτήριο έχει λήξει, ανανέωσε ή ξεκίνα διαδικασία αποχώρησης',level:'critical'});
     // Το «Κρίσιμο:» και το «απαιτείται άμεση ενέργεια» τα έλεγε ήδη το χρώμα·
@@ -234,7 +248,9 @@ export const tenantFieldCtx = (furnished:boolean, propertyCount:number):FieldCon
 });
 
 /** Γραμμή συμμόρφωσης: τι λείπει για να κλείσει η δήλωση, με το γιατί. */
-export function MissingCriticalBar({ missing }:{ missing:FieldDecision[] }) {
+export function MissingCriticalBar({ missing, en }:{ missing:FieldDecision[];
+  /** Τα αγγλικά: η αρχή της πρότασης και τα ονόματα των πεδίων. */
+  en?:{ head:(n:number)=>string; fields:Record<string, readonly [string,string]> } }) {
   if(!missing.length) return null;
   return (
     /* ═══ ΕΛΕΓΕ ΔΥΟ ΦΟΡΕΣ ΤΟ ΙΔΙΟ, ΜΕ ΤΑ ΙΔΙΑ ΛΟΓΙΑ ══════════════════════════
@@ -248,9 +264,9 @@ export function MissingCriticalBar({ missing }:{ missing:FieldDecision[] }) {
        γιατί ζει δίπλα στο πεδίο, εκεί που χρησιμεύει. */
     <div style={{ background:'var(--warning-dim)', border:'1px solid color-mix(in srgb, var(--warning) 26%, transparent)', borderLeft:'3px solid var(--warning)', borderRadius:T.radius.inner, padding:'12px 16px', marginBottom:16, fontSize:12, fontFamily:T.font.sans, lineHeight:1.6 }}>
       <span style={{ fontWeight:600, color:'var(--warning)' }}>
-        Λείπουν {fn(missing.length)} στοιχεία που χρειάζεται η δήλωση:
+        {en?en.head(missing.length):<>Λείπουν {fn(missing.length)} στοιχεία που χρειάζεται η δήλωση:</>}
       </span>{' '}
-      <span style={{ color:'var(--text-secondary)' }}>{missing.map(m=>m.label).join(' · ')}</span>
+      <span style={{ color:'var(--text-secondary)' }}>{missing.map(m=>en?.fields[m.id]?.[0]??m.label).join(' · ')}</span>
     </div>
   );
 }
@@ -268,8 +284,10 @@ export function MissingCriticalBar({ missing }:{ missing:FieldDecision[] }) {
  * ανέβηκε δεν είναι «καλά νέα» — είναι κατάσταση. Παίρνει το χρώμα του
  * κειμένου, όπως κάθε άλλη κατάσταση της εφαρμογής.
  */
-export function FilePickRow({ label, hint, busy, docs, onPick }: {
+export function FilePickRow({ label, hint, busy, docs, onPick, en }: {
   label: string; hint?: string; busy: boolean;
+  /** Τα δύο λεκτικά του κουμπιού στα αγγλικά. */
+  en?: TenantsEn['file'];
   docs: readonly { id: string; file_name: string }[];
   onPick: (f: File) => void;
 }) {
@@ -281,7 +299,7 @@ export function FilePickRow({ label, hint, busy, docs, onPick }: {
           {hint&&<div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, marginTop: 4 }}>{hint}</div>}
         </div>
         <label style={{ ...sty.btnSm, cursor:busy?'default':'pointer', opacity:busy?0.6:1, whiteSpace:'nowrap' as const }}>
-          {busy?'Ανέβασμα…':'Επιλογή αρχείου'}
+          {en?(busy?en.uploading:en.pick):busy?'Ανέβασμα…':'Επιλογή αρχείου'}
           <input type="file" accept=".pdf,image/*" style={{ display:'none' }} disabled={busy}
             onChange={e=>{ const f=e.target.files?.[0]; if(f) onPick(f); e.currentTarget.value=''; }}/>
         </label>
@@ -328,8 +346,12 @@ const LATENESS: Record<Lateness, { color: string; label: string; Icon: typeof Ch
 const latenessOf = (p: RentPayment): Lateness => !p.paid ? 'unpaid' : (p.days_late || 0) > 0 ? 'late' : 'ontime'
 
 export function PaymentBars({ payments }:{payments:RentPayment[]}) {
+  // Τα αγγλικά του γραφήματος, ή `null` στα ελληνικά.
+  const B=useAppEn('tenants');
+  const W=B?.bars;
+  const mon=(m:number)=>B?B.monthShort(m-1):MONTHS_SHORT[m-1];
   if(!payments.length) return (
-    <EmptyState icon={<BarChart3 size={20}/>} title="Καμία πληρωμή ακόμη" hint="Μόλις καταγραφεί η πρώτη είσπραξη, το γράφημα 12 μηνών γεμίζει αυτόματα." />
+    <EmptyState icon={<BarChart3 size={20}/>} title={W?W.empty[0]:'Καμία πληρωμή ακόμη'} hint={W?W.empty[1]:'Μόλις καταγραφεί η πρώτη είσπραξη, το γράφημα 12 μηνών γεμίζει αυτόματα.'} />
   );
   const last12=[...payments].sort((a,b)=>b.period_year-a.period_year||b.period_month-a.period_month).slice(0,12).reverse();
   return (
@@ -338,7 +360,9 @@ export function PaymentBars({ payments }:{payments:RentPayment[]}) {
         {last12.map((p)=>{
           const late=p.days_late||0;
           const L=LATENESS[latenessOf(p)];
-          const says=`${MONTHS_SHORT[p.period_month-1]} ${p.period_year}: ${p.paid?'Εξοφλήθη':'Απλήρωτη'}${late>0?` (καθυστέρηση ${days(late)})`:''}`;
+          const says=W
+            ? `${mon(p.period_month)} ${p.period_year}: ${p.paid?W.paid:W.unpaid}${late>0?W.late_by(late):''}`
+            : `${MONTHS_SHORT[p.period_month-1]} ${p.period_year}: ${p.paid?'Εξοφλήθη':'Απλήρωτη'}${late>0?` (καθυστέρηση ${days(late)})`:''}`;
           return (
             <div key={p.id} role="img" aria-label={says} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center' }}
               title={says}>
@@ -352,12 +376,12 @@ export function PaymentBars({ payments }:{payments:RentPayment[]}) {
       <div style={{ display:'flex', gap: 4 }}>
         {last12.map((p,i)=>(
           <div key={i} style={{ flex:1, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', textAlign:'center' as const, fontFamily:T.font.sans }}>
-            {MONTHS_SHORT[p.period_month-1]}
+            {mon(p.period_month)}
           </div>
         ))}
       </div>
       <div style={{ display:'flex', flexWrap:'wrap' as const, gap:'10px 16px', marginTop:12 }}>
-        {Object.values(LATENESS).map(({color,label,Icon})=>(
+        {(Object.keys(LATENESS) as Lateness[]).map(k=>({ ...LATENESS[k], label:W?W[k]:LATENESS[k].label })).map(({color,label,Icon})=>(
           <div key={label} style={{ display:'flex', alignItems:'center', gap: 4 }}>
             <span style={{ width:14, height:14, borderRadius:3, background:color, flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center', color:'var(--on-tone)' }}>
               <Icon size={9} strokeWidth={3} aria-hidden="true" />

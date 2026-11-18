@@ -11,8 +11,12 @@
 import { InfoBanner } from '@/components/Theme';
 import { athensToday } from '@/lib/core/time';
 import { leasePeaNotice, PEA_REGISTRY_LABEL, PEA_REGISTRY_URL } from '@/lib/property/peaExpiry';
+import { grDate } from '@/lib/core/format';
+import type { TenantsEn } from '@/lib/i18n/en/app/tenants';
 
-export function PeaLeaseNotice({ peaExpiry, propType, leaseStart }: {
+export function PeaLeaseNotice({ peaExpiry, propType, leaseStart, en: W }: {
+  /** Τα αγγλικά της ειδοποίησης, ή τίποτα στα ελληνικά. Ίδιος κανόνας, ίδιες ημερομηνίες. */
+  en?: TenantsEn['pea'];
   /** Η λήξη του ΠΕΑ του ακινήτου, όπως είναι στη βάση. */
   peaExpiry: string | null | undefined;
   /** Ο τύπος του ακινήτου: σε οικόπεδο, θέση στάθμευσης ή αποθήκη δεν φαίνεται. */
@@ -22,6 +26,17 @@ export function PeaLeaseNotice({ peaExpiry, propType, leaseStart }: {
 }) {
   const n = leasePeaNotice({ pea_expiry: peaExpiry, prop_type: propType }, leaseStart, athensToday());
   if (!n) return null;
+  if (W) {
+    const exp = grDate(peaExpiry ? peaExpiry.slice(0, 10) : null);
+    const body = n.kind === 'missing' ? W.missing : leaseStart ? W.expiresBefore(exp) : W.expired(exp);
+    return (
+      <InfoBanner tone="info">
+        <strong style={{ color: 'var(--text-primary)' }}>{W.title}</strong>
+        {' '}{body} {W.why} {n.kind === 'missing' ? W.missingAction : W.expiredAction}
+        {' '}{W.ref}<a href={PEA_REGISTRY_URL} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>{W.registry}</a>.
+      </InfoBanner>
+    );
+  }
   return (
     <InfoBanner tone="info">
       <strong style={{ color: 'var(--text-primary)' }}>{n.title}</strong>

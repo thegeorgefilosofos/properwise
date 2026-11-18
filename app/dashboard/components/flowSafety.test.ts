@@ -190,7 +190,7 @@ const body = (src: string, start: string, end: string): string => {
   ok('7: η πρόταση λέει ότι τα αρχεία δεν περιλαμβάνονται', FILES_NOT_IN_EXPORT.includes('όχι τα ίδια τα αρχεία'))
   ok('7: και πώς κατεβαίνουν', FILES_NOT_IN_EXPORT.includes('«Λήψη»'))
   ok('7: «από την καρτέλα «…»»', FILES_NOT_IN_EXPORT.includes('από την καρτέλα «Φάκελος ακινήτου»'))
-  ok('7: το μισθωτήριο με το πραγματικό κουμπί', FILES_NOT_IN_EXPORT.includes('«Άνοιγμα PDF»') && read('app/dashboard/components/TabTenant.tsx').includes('>Άνοιγμα PDF<'))
+  ok('7: το μισθωτήριο με το πραγματικό κουμπί', FILES_NOT_IN_EXPORT.includes('«Άνοιγμα PDF»') && read('app/dashboard/components/TabTenant.tsx').includes(":'Άνοιγμα PDF'}</Btn>"))
   const src = read('app/dashboard/components/TabSettings.tsx')
   ok('7: χρησιμοποιείται σε δύο θέσεις (εξαγωγή και διαγραφή)', (src.match(/\$\{FILES_NOT_IN_EXPORT\}/g) || []).length === 2)
   ok('7: η διαγραφή δεν λέει πια ότι η εξαγωγή αρκεί', !src.includes('προηγείται η εξαγωγή δεδομένων'))

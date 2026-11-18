@@ -119,7 +119,7 @@ async function run() {
   // Η διαγραφή ζει πλέον στο «⋯» της κάρτας (ActionMenu), όχι σε κάδο στη γωνία.
   const at = SRC.indexOf('onClick:()=>delTenant(t)')
   const btn = at >= 0 ? SRC.slice(at - 300, at + 200) : ''
-  ok('η ενέργεια έχει λεκτικό «Διαγραφή ενοικιαστή»', btn.includes('label:`Διαγραφή ενοικιαστή'))
+  ok('η ενέργεια έχει λεκτικό «Διαγραφή ενοικιαστή»', btn.includes('label:E?E.deleteTenant:`Διαγραφή ενοικιαστή'))
   ok('η ενέργεια έχει τόνο κινδύνου', btn.includes('danger:true'))
   ok('η ενέργεια δείχνει κάδο', btn.includes('<Trash2'))
   ok('η ενέργεια δεν δείχνει «×»', !btn.includes('M18 6 6 18'))

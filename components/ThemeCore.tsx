@@ -16,9 +16,10 @@
 // φορτώνουν σε δημόσια σελίδα εισάγουν από ΕΔΩ.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { type ReactNode, type CSSProperties, type MouseEvent, type PointerEvent, type Ref, useState, useEffect, useRef, useSyncExternalStore, useId } from 'react';
+import { type ReactNode, type CSSProperties, type MouseEvent, type PointerEvent, type Ref, useState, useEffect, useRef, useSyncExternalStore, useId, useContext } from 'react';
 import { T, TT } from './tokens';
 import { backdropDismiss } from '@/lib/ui/dismiss';
+import { LocaleOverrideContext } from '@/lib/i18n/useLocale';
 import { cssZoom } from '@/lib/core/cssZoom';
 
 // ═══ useOverlayShell — η συμπεριφορά κάθε επικάλυψης, μία φορά ════════════
@@ -275,7 +276,7 @@ export function useOverlayShell(open: boolean, onClose: () => void) {
 //
 // Το ύψος βγαίνει από το T.h.md, που στην αφή ανεβαίνει μόνο του στα 44.
 // ═══════════════════════════════════════════════════════════════════════════
-export function CloseButton({ onClose, tone = 'default', style, label = 'Κλείσιμο' }: {
+export function CloseButton({ onClose, tone = 'default', style, label: given }: {
   onClose: () => void;
   /** «onMedia» για πάνω σε φωτογραφία, όπου το τριτεύον γκρι χάνεται. */
   tone?: 'default' | 'onMedia';
@@ -289,6 +290,11 @@ export function CloseButton({ onClose, tone = 'default', style, label = 'Κλε�
   // `.po-ico` ξέρει επιπλέον τι είναι `:focus-visible` και τι είναι αφή, που
   // αυτοί δεν ήξεραν. Η μία ορατή διαφορά είναι ότι στην αιώρηση ανάβει τώρα
   // και φόντο, όπως σε κάθε άλλο κουμπί εικονιδίου της εφαρμογής.
+  //
+  // ΣΤΗΝ ΑΓΓΛΙΚΗ ΕΦΑΡΜΟΓΗ «Close». Μόνο ο πάροχος της εφαρμογής το αλλάζει
+  // (lib/i18n/appEn.tsx)· χωρίς αυτόν το όνομα μένει «Κλείσιμο», ίδιο ως το byte.
+  const en = useContext(LocaleOverrideContext) === 'en';
+  const label = given ?? (en ? 'Close' : 'Κλείσιμο');
   return (
     <IconBtn onClick={onClose} label={label} title={label} size="md" round
       tone={tone === 'onMedia' ? 'media' : undefined} style={style}>

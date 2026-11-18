@@ -32,6 +32,7 @@ import {
 import { T, InfoBanner, Badge, Btn, EmptyState, Modal, fe, fd, fdLong, fn, Spinner, ExportButton, ABSENT, ABSENT_DATE, TT, pressable, RuntimeImg } from '@/components/Theme';
 import { navLabel } from '@/lib/nav/labels';
 import { feSigned, fpSigned, fp, fpRate } from '@/lib/core/format';
+import { useAppEn } from '@/lib/i18n/appEn';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Η ΝΟΜΙΚΗ ΒΑΣΗ ΤΗΣ ΑΝΑΠΡΟΣΑΡΜΟΓΗΣ ΕΙΝΑΙ Ο ΟΡΟΣ ΤΟΥ ΜΙΣΘΩΤΗΡΙΟΥ
@@ -474,6 +475,19 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
   const canCollect = hasFeature({ plan }, 'rent_collection');
   const supabase=createClient();
   const branding=useReportBranding(userId);
+  // Τα αγγλικά της είσπραξης, ή `null` στα ελληνικά. Απόδειξη, κατάσταση,
+  // μηνύματα προς τον ενοικιαστή και Excel μένουν ελληνικά: τα διαβάζει ο
+  // ενοικιαστής και ο λογιστής, όχι η οθόνη.
+  const E=useAppEn('tenants');
+  const W=E?.pay;
+  const X=useAppEn('errors');
+  /** Γραφή στη βάση με το σφάλμα στη γλώσσα της οθόνης. */
+  const sv=(el:string,k:string,q:Parameters<typeof saved>[1])=>saved(el,q,X&&E?(e:unknown)=>X.failed(E.err[k]??el,e):undefined);
+  const fail=(el:string,k:string,e:unknown)=>X&&E?X.failed(E.err[k]??el,e):failed(el,e);
+  /** Ο τρόπος πληρωμής στη βάση μένει ελληνικός· η οθόνη τον λέει στη γλώσσα της. */
+  const methodLabel=(m:string|null)=>{ if(!m) return E?E.notSet:ABSENT; const i=PAY_METHODS.indexOf(m as PayMethod); return E&&i>=0?E.payMethods[i]:m; };
+  const methodOptions=PAY_METHODS.map(m=>({value:m,label:methodLabel(m)}));
+  const fD=(d:string|null)=>E&&!d?E.noDate:fmtD(d);
   const [rentDueDay,setRentDueDay]=useState(Math.min(Math.max(1,tenant.rent_due_day||1),28));
   const [busy,setBusy]=useState(false);
   const [addOpen,setAddOpen]=useState(false);
@@ -527,9 +541,9 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
     // notifyOk('Δημιουργήθηκαν N δόσεις') ακολουθούσε αμέσως μετά. Ο ιδιοκτήτης
     // δεν είχε κανέναν τρόπο να μάθει ότι ο πίνακας έμενε κενός — και μαζί του
     // η Πύλη ενοικιαστή, η οφειλή και το Ε2.
-    if(error) { notifyError(failed('Οι δόσεις δεν δημιουργήθηκαν', error)); return false; }
+    if(error) { notifyError(X&&E?X.failed(E.err.installmentsNotCreated,error):failed('Οι δόσεις δεν δημιουργήθηκαν', error)); return false; }
     return true;
-  },[tenant,propertyId,userId,supabase]);
+  },[tenant,propertyId,userId,supabase,X,E]);
 
   // Lazy: όταν ανοίγει η προβολή και λείπουν δόσεις, δημιούργησέ τες μία φορά.
   const didLazy=React.useRef(false);
@@ -540,7 +554,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
   },[missing.length]);
 
   // Το μήνυμα λέει «δημιουργήθηκαν» ΜΟΝΟ αν όντως γράφτηκαν.
-  const generateNow=async()=>{ setBusy(true); const ok=await genForRows(missing); setBusy(false); onRefresh(); if(ok) notifyOk(missing.length?`Δημιουργήθηκαν ${missing.length} δόσεις`:'Οι δόσεις είναι ενημερωμένες'); };
+  const generateNow=async()=>{ setBusy(true); const ok=await genForRows(missing); setBusy(false); onRefresh(); if(ok) notifyOk(W?(missing.length?W.created(missing.length):W.upToDate):missing.length?`Δημιουργήθηκαν ${missing.length} δόσεις`:'Οι δόσεις είναι ενημερωμένες'); };
 
   const sorted=useMemo(()=>[...payments].sort((a,b)=>b.period_year-a.period_year||b.period_month-a.period_month),[payments]);
   const open=useMemo(()=>payments.filter(p=>!p.paid),[payments]);
@@ -573,9 +587,9 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
     const ids=staleUnpaid.map(p=>p.id); if(!ids.length) return;
     setBusy(true);
     // Ενημερώνει μόνο τις συγκεκριμένες εκκρεμείς δόσεις (όχι δηλωμένες/χειροκίνητες εκτός λίστας).
-    const okSync=await saved('Οι δόσεις δεν ενημερώθηκαν', rentStore.updateMany(supabase,ids,{amount:targetAmt,base_rent:baseRent,services_charge:svcCharge}));
+    const okSync=await sv('Οι δόσεις δεν ενημερώθηκαν','installmentsNotUpdated', rentStore.updateMany(supabase,ids,{amount:targetAmt,base_rent:baseRent,services_charge:svcCharge}));
     setBusy(false); if(!okSync) return;
-    onRefresh(); notifyOk('Οι εκκρεμείς δόσεις ενημερώθηκαν');
+    onRefresh(); notifyOk(W?W.synced:'Οι εκκρεμείς δόσεις ενημερώθηκαν');
   };
 
   const doMarkPaid=async(p:RentPayment,method:PayMethod,receipt:string,paidDate:string,docId?:string|null)=>{
@@ -583,16 +597,16 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
     // πληρώθηκε, η δόση μένει ανοιχτή και το ξαναβλέπει μήνες μετά στη δήλωση.
     // Οι ημέρες καθυστέρησης υπολογίζονταν εδώ, με τον ίδιο τύπο γραμμένο και
     // δέκα γραμμές πιο κάτω. Ο τύπος ζει τώρα στο στρώμα, μία φορά.
-    if(!await saved('Η πληρωμή δεν καταχωρήθηκε', rentStore.markPaid(supabase,p.id,p.due_date,paidDate,method,{receipt_url:receipt||null,receipt_doc_id:docId??p.receipt_doc_id??null}))) return;
+    if(!await sv('Η πληρωμή δεν καταχωρήθηκε','paymentNotRecorded', rentStore.markPaid(supabase,p.id,p.due_date,paidDate,method,{receipt_url:receipt||null,receipt_doc_id:docId??p.receipt_doc_id??null}))) return;
     await setRentDueOccurrencePaid(supabase,tenant.id,propertyId,p.period_year,p.period_month,true);
-    onRefresh(); notifyOk('Καταχωρήθηκε ως πληρωμένο');
+    onRefresh(); notifyOk(W?W.markedPaid:'Καταχωρήθηκε ως πληρωμένο');
   };
-  const doUnpay=async(p:RentPayment)=>{ if(!await saved('Η αναίρεση δεν αποθηκεύτηκε', rentStore.markUnpaid(supabase,p.id))) return; await setRentDueOccurrencePaid(supabase,tenant.id,propertyId,p.period_year,p.period_month,false); onRefresh(); };
+  const doUnpay=async(p:RentPayment)=>{ if(!await sv('Η αναίρεση δεν αποθηκεύτηκε','undoNotSaved', rentStore.markUnpaid(supabase,p.id))) return; await setRentDueOccurrencePaid(supabase,tenant.id,propertyId,p.period_year,p.period_month,false); onRefresh(); };
 
   const savePay=async()=>{
     // Ήταν ΠΡΑΣΙΝΟ ενώ πρόκειται για σφάλμα επικύρωσης — το παλιό banner είχε έναν
     // μόνο τόνο για τα πάντα. Τώρα ο τόνος λέει την αλήθεια.
-    if(!payF.amount){notify('Συμπλήρωσε ποσό',{tone:'warning'});return;}
+    if(!payF.amount){notify(W?W.fillAmount:'Συμπλήρωσε ποσό',{tone:'warning'});return;}
     setBusy(true);
     // «Πληρώθηκε» με σβησμένη ημερομηνία αποθηκευόταν ΑΠΛΗΡΩΤΗ, χωρίς λέξη:
     // το '' έστελνε τη ροή στα unpaidFields. Πληρωμή χωρίς ημερομηνία είναι σήμερα.
@@ -606,10 +620,10 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
     });
     // Ίδιο σφάλμα, δεύτερο σημείο: η καταχώρηση πληρωμής απορριπτόταν και το
     // «Πληρωμή καταχωρήθηκε» εμφανιζόταν ούτως ή άλλως.
-    if(payErr){ setBusy(false); notifyError(failed('Η πληρωμή δεν καταχωρήθηκε', payErr)); return; }
+    if(payErr){ setBusy(false); notifyError(fail('Η πληρωμή δεν καταχωρήθηκε','paymentNotRecorded', payErr)); return; }
     await setRentDueOccurrencePaid(supabase,tenant.id,propertyId,payF.period_year,payF.period_month,payF.paid);
     setBusy(false);setAddOpen(false);setPayF({period_month:new Date().getMonth()+1,period_year:new Date().getFullYear(),amount:'',method:'Τραπεζική κατάθεση',paid:true,paid_date:todayISO(),notes:''});
-    onRefresh();notifyOk('Η πληρωμή καταχωρήθηκε');
+    onRefresh();notifyOk(W?W.recorded:'Η πληρωμή καταχωρήθηκε');
   };
 
   // Το user_properties έχει `name` και `address` — όχι `title`/`label`, που ήταν
@@ -622,6 +636,8 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
   // μηνιαίο ενοίκιο — από τον ίδιο τον ιδιοκτήτη, από τον ενοικιαστή στην
   // απόδειξη και από τον λογιστή στην εξαγωγή.
   const monthLabel=(p:RentPayment)=>periodLabel(p.period_year,p.period_month,periodMonths,monthNom);
+  /** Η περίοδος στην οθόνη: στα αγγλικά με αγγλικούς μήνες. Η απόδειξη κρατά το `monthLabel`. */
+  const screenMonth=(p:RentPayment)=>E?periodLabel(p.period_year,p.period_month,periodMonths,E.month):monthLabel(p);
 
   const printReceipt=(p:RentPayment)=>{
     const paidDate=p.paid_date?rDate(p.paid_date):ABSENT_DATE;
@@ -751,7 +767,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
     // έμενε με τον σπίνερ «Ανάλυση εγγράφου…» για πάντα, χάνοντας ό,τι είχε
     // συμπληρώσει. Το ίδιο πρότυπο με το scanDoc.ts, που το είχε ήδη λύσει.
     if(file.size>MAX_SCAN_MB*1024*1024){
-      setScan({stage:'error',msg:`Το αρχείο είναι μεγαλύτερο από ${MAX_SCAN_MB} MB. Δοκίμασε μικρότερη φωτογραφία.`});
+      setScan({stage:'error',msg:W?W.tooBig(MAX_SCAN_MB):`Το αρχείο είναι μεγαλύτερο από ${MAX_SCAN_MB} MB. Δοκίμασε μικρότερη φωτογραφία.`});
       return;
     }
     setScan({stage:'scanning'});
@@ -759,7 +775,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
     const timer=setTimeout(()=>ctrl.abort(),45000);
     try{
       const contentPart=await scanContentPart(file);
-      if(!contentPart){ setScan({stage:'error',msg:'Αυτό το αρχείο δεν διαβάζεται. Ανέβασε φωτογραφία (JPG, PNG) ή PDF.'}); return; }
+      if(!contentPart){ setScan({stage:'error',msg:W?W.unreadable:'Αυτό το αρχείο δεν διαβάζεται. Ανέβασε φωτογραφία (JPG, PNG) ή PDF.'}); return; }
       const res=await fetch('/api/anthropic',{method:'POST',headers:{'Content-Type':'application/json'},signal:ctrl.signal,body:JSON.stringify({kind:'scan',model:'claude-sonnet-5',max_tokens:1500,system:SYSTEM_PROMPT,messages:[{role:'user',content:[contentPart,{type:'text',text:'Αναγνώρισε και ανάλυσε αυτό το έγγραφο. Διάβασε κάθε στοιχείο με ακρίβεια.'}]}]})});
       const data=await res.json().catch(()=>null);
       // Ο διακομιστής επιστρέφει ήδη ελληνικό, χρήσιμο μήνυμα. Το πετούσαμε και
@@ -767,11 +783,12 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
       // «χαλάσαμε εμείς» για αρχείο που ήταν απλώς μεγάλο ή για όριο που
       // ξεπεράστηκε.
       if(!res.ok||data?.error){
-        const detail=typeof data?.error==='string'&&data.error.trim()?data.error.trim():'Η σάρωση δεν ολοκληρώθηκε. Δοκίμασε ξανά.';
+        // Στα αγγλικά το μήνυμα του διακομιστή (ελληνικό) δίνει τη θέση του στο γενικό.
+        const detail=W?W.scanFailed:typeof data?.error==='string'&&data.error.trim()?data.error.trim():'Η σάρωση δεν ολοκληρώθηκε. Δοκίμασε ξανά.';
         setScan({stage:'error',msg:detail}); return;
       }
       const text=(data.content||[]).find((c:{type:string})=>c.type==='text')?.text||'{}';
-      let doc:ScannedDoc; try{ doc=JSON.parse(text.replace(/```json?|```/g,'').trim()); }catch{ setScan({stage:'error',msg:'Το έγγραφο δεν διαβάστηκε. Δοκίμασε με πιο καθαρή φωτογραφία.'}); return; }
+      let doc:ScannedDoc; try{ doc=JSON.parse(text.replace(/```json?|```/g,'').trim()); }catch{ setScan({stage:'error',msg:W?W.unclear:'Το έγγραφο δεν διαβάστηκε. Δοκίμασε με πιο καθαρή φωτογραφία.'}); return; }
       if(doc.amount!=null) doc.amount=numify(doc.amount as unknown);
       doc.doc_type=classifyDocType(doc);
       // Best-effort αρχειοθέτηση του πρωτότυπου (property_documents) για τεκμηρίωση.
@@ -799,8 +816,8 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
       const best=amt[0]||[...scored].sort((a,b)=>a.dist-b.dist)[0];
       setScan({stage:'match',doc,method,docId,periodId:best?.p.id});
     }catch(err){ setScan({stage:'error',msg:(err as Error)?.name==='AbortError'
-      ?'Η σάρωση άργησε πολύ. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.'
-      :'Η σάρωση δεν ολοκληρώθηκε. Δοκίμασε ξανά.'}); }
+      ?(W?W.slow:'Η σάρωση άργησε πολύ. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.')
+      :(W?W.scanFailed:'Η σάρωση δεν ολοκληρώθηκε. Δοκίμασε ξανά.')}); }
     finally{ clearTimeout(timer); }
   };
   const confirmScan=async()=>{
@@ -818,58 +835,60 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
     const st=payStatus(p);
     const k:StatusKind=st==='paid'?'paid':st==='overdue'?'overdue':'pending';
     const pill=statusPill(k);
-    return <span style={{ ...s.badge(pill.color,pill.background), border:pill.border, fontFamily:T.font.sans }}>{STATUS_LABEL[k]}</span>;
+    return <span style={{ ...s.badge(pill.color,pill.background), border:pill.border, fontFamily:T.font.sans }}>{E?.status[k]??STATUS_LABEL[k]}</span>;
   };
 
   return (
     <div>
       {/* KPI strip */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 120px), 1fr))', gap:10, marginBottom:16 }}>
-        <KpiCard label="Εισπραχθέντα" value={fmt(received)} color="var(--text-primary)"/>
-        <KpiCard label="Ληξιπρόθεσμα" value={fmt(arrearsTotal)} sub={`${fn(overdue.length)} ${overdue.length===1?'δόση':'δόσεις'}`} color={arrearsTotal>0?'var(--negative)':'var(--text-primary)'}/>
-        <KpiCard label="Εκκρεμείς" value={String(open.length)} color="var(--text-primary)"/>
-        <KpiCard label="Δόσεις" value={`${payments.filter(p=>p.paid).length}/${payments.length}`} color="var(--text-primary)"/>
+        <KpiCard label={W?W.received:'Εισπραχθέντα'} value={fmt(received)} color="var(--text-primary)"/>
+        <KpiCard label={W?W.overdue:'Ληξιπρόθεσμα'} value={fmt(arrearsTotal)} sub={W?W.installments(overdue.length):`${fn(overdue.length)} ${overdue.length===1?'δόση':'δόσεις'}`} color={arrearsTotal>0?'var(--negative)':'var(--text-primary)'}/>
+        <KpiCard label={W?W.pending:'Εκκρεμείς'} value={String(open.length)} color="var(--text-primary)"/>
+        <KpiCard label={W?W.count:'Δόσεις'} value={`${payments.filter(p=>p.paid).length}/${payments.length}`} color="var(--text-primary)"/>
       </div>
 
       <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, gap:12, flexWrap:'wrap' as const }}>
-          <SectionTitle>Καρτέλα ενοικίου</SectionTitle>
+          <SectionTitle>{W?W.title:'Καρτέλα ενοικίου'}</SectionTitle>
           <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' as const }}>
             <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-              <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans }}>Ημέρα λήξης</span>
+              <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans }}>{W?W.dueDay:'Ημέρα λήξης'}</span>
               <div style={{ minWidth:88 }}>
-                <SelectField ariaLabel="Ημέρα λήξης" value={String(rentDueDay)} onChange={v=>setRentDueDay(+v)}
+                <SelectField ariaLabel={W?W.dueDay:'Ημέρα λήξης'} value={String(rentDueDay)} onChange={v=>setRentDueDay(+v)}
                   options={Array.from({length:28},(_,i)=>i+1).map(d=>({ value:String(d), label:String(d) }))}/>
               </div>
             </div>
             {/* Χωρίς size lg: το ExportButton της ίδιας σειράς είναι κανονικό ύψος κουμπιού
                 και τα τρία δικά μας ζυγίζουν μαζί του. */}
-            <Btn variant="secondary" onClick={()=>fileRef.current?.click()}>Σάρωσε απόδειξη</Btn>
+            <Btn variant="secondary" onClick={()=>fileRef.current?.click()}>{W?W.scan:'Σάρωσε απόδειξη'}</Btn>
             <input ref={fileRef} type="file" accept="image/*,application/pdf" style={{ display:'none' }} onChange={e=>{const f=e.target.files?.[0];if(f)runScan(f);e.target.value='';}}/>
-            <Btn variant="secondary" onClick={generateNow} disabled={busy}>{busy?'…':'Δημιουργία δόσεων'}</Btn>
-            <ExportButton disabled={payments.length===0} onClick={exportPaymentsXlsx}/>
-            <Btn variant="secondary" onClick={()=>setAddOpen(v=>!v)}>{addOpen?'Κλείσιμο':'+ Καταχώρηση'}</Btn>
+            <Btn variant="secondary" onClick={generateNow} disabled={busy}>{busy?'…':W?W.generate:'Δημιουργία δόσεων'}</Btn>
+            <ExportButton disabled={payments.length===0} onClick={exportPaymentsXlsx} label={W?W.export:undefined} title={W?W.exportTitle:undefined}/>
+            <Btn variant="secondary" onClick={()=>setAddOpen(v=>!v)}>{W?(addOpen?W.close:W.add):addOpen?'Κλείσιμο':'+ Καταχώρηση'}</Btn>
           </div>
         </div>
+        {/* Μόνο στα αγγλικά: τι μένει ελληνικό και γιατί. */}
+        {W&&<div style={{ fontSize:'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.5, margin:'-6px 0 12px' }}>{W.greekNote}</div>}
 
-        {missing.length>0&&<InfoBanner tone="info">Λείπουν {fn(missing.length)} μηνιαίες δόσεις βάσει της μίσθωσης. Πάτησε «Δημιουργία δόσεων» για αυτόματη συμπλήρωση.</InfoBanner>}
+        {missing.length>0&&<InfoBanner tone="info">{W?W.missing(missing.length):<>Λείπουν {fn(missing.length)} μηνιαίες δόσεις βάσει της μίσθωσης. Πάτησε «Δημιουργία δόσεων» για αυτόματη συμπλήρωση.</>}</InfoBanner>}
 
         {declaredPending.length>0&&(
           <div style={{ background:'var(--accent-soft)', border:'1px solid var(--accent-border)', borderRadius:T.radius.inner, padding:'14px 16px', margin:'4px 0 8px' }}>
             <div style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-primary)', fontFamily:T.font.sans, marginBottom:2 }}>
-              {fn(declaredPending.length)} {declaredPending.length===1?'πληρωμή δηλώθηκε':'πληρωμές δηλώθηκαν'} από τον ενοικιαστή
+              {W?W.declared(declaredPending.length):<>{fn(declaredPending.length)} {declaredPending.length===1?'πληρωμή δηλώθηκε':'πληρωμές δηλώθηκαν'} από τον ενοικιαστή</>}
             </div>
             <div style={{ fontSize:12, color:'var(--text-secondary)', fontFamily:T.font.sans, marginBottom:12, lineHeight:1.5 }}>
-              Ο ενοικιαστής δήλωσε πληρωμή μέσω της πύλης. Επιβεβαίωσε την είσπραξη για να καταχωρηθεί ως πληρωμένη.
+              {W?W.declaredBody:'Ο ενοικιαστής δήλωσε πληρωμή μέσω της πύλης. Επιβεβαίωσε την είσπραξη για να καταχωρηθεί ως πληρωμένη.'}
             </div>
             <div style={{ display:'flex', flexDirection:'column' as const, gap:8 }}>
               {declaredPending.map(p=>(
                 <div key={p.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' as const, background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:'10px 14px' }}>
                   <div style={{ minWidth:0 }}>
-                    <div style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-primary)', fontFamily:T.font.sans }}>{monthLabel(p)} · <span style={{ fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fmt(p.amount)}</span></div>
+                    <div style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-primary)', fontFamily:T.font.sans }}>{screenMonth(p)} · <span style={{ fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fmt(p.amount)}</span></div>
                     {p.tenant_note&&<div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, marginTop:2, whiteSpace:'pre-wrap' as const }}>{p.tenant_note}</div>}
                   </div>
-                  <Btn variant="secondary" onClick={()=>setMark({p,method:'Τραπεζική κατάθεση',receipt:''})}>Επιβεβαίωση είσπραξης</Btn>
+                  <Btn variant="secondary" onClick={()=>setMark({p,method:'Τραπεζική κατάθεση',receipt:''})}>{W?W.confirmReceipt:'Επιβεβαίωση είσπραξης'}</Btn>
                 </div>
               ))}
             </div>
@@ -879,28 +898,28 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
         {staleUnpaid.length>0&&(
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' as const, background:'var(--warning-soft)', border:'1px solid var(--warning-border)', borderRadius:T.radius.inner, padding:'11px 16px', margin:'4px 0' }}>
             <span style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.5 }}>
-              {fn(staleUnpaid.length)} εκκρεμείς δόσεις δεν αντιστοιχούν στο τρέχον ποσό ({fmt(targetAmt)}{svcCharge>0?`: ενοίκιο ${fmt(baseRent)} + υπηρεσίες ${fmt(svcCharge)}`:''}).
+              {W?W.stale(staleUnpaid.length,fmt(targetAmt),svcCharge>0?W.split(fmt(baseRent),fmt(svcCharge)):''):<>{fn(staleUnpaid.length)} εκκρεμείς δόσεις δεν αντιστοιχούν στο τρέχον ποσό ({fmt(targetAmt)}{svcCharge>0?`: ενοίκιο ${fmt(baseRent)} + υπηρεσίες ${fmt(svcCharge)}`:''}).</>}
             </span>
-            <Btn variant="secondary" onClick={syncUnpaidToTarget} disabled={busy}>{busy?'…':'Ενημέρωση εκκρεμών'}</Btn>
+            <Btn variant="secondary" onClick={syncUnpaidToTarget} disabled={busy}>{busy?'…':W?W.updatePending:'Ενημέρωση εκκρεμών'}</Btn>
           </div>
         )}
 
         {addOpen&&(
           <div style={{ background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:20, margin:'12px 0 4px' }}>
             <div style={{ ...s.g4, marginBottom:14 }}>
-              <SelectField label="Μήνας" value={String(payF.period_month)} onChange={v=>setPayF(f=>({...f,period_month:+v}))} options={MONTHS_NOM.map((m,i)=>({value:String(i+1),label:m}))}/>
-              <NumberInput label="Έτος" value={String(payF.period_year)} onChange={v=>setPayF(f=>({...f,period_year:+v}))} min={2000}/>
-              <NumberInput label="Ποσό" value={payF.amount} onChange={v=>setPayF(f=>({...f,amount:v}))} suffix="€" placeholder={tenant.monthly_rent?.toString()}/>
-              <SelectField label="Τρόπος πληρωμής" value={payF.method} onChange={v=>setPayF(f=>({...f,method:v as PayMethod}))} options={PAY_METHODS.map(m=>({value:m,label:m}))}/>
+              <SelectField label={W?W.month:'Μήνας'} value={String(payF.period_month)} onChange={v=>setPayF(f=>({...f,period_month:+v}))} options={MONTHS_NOM.map((m,i)=>({value:String(i+1),label:E?E.month(i):m}))}/>
+              <NumberInput label={W?W.year:'Έτος'} value={String(payF.period_year)} onChange={v=>setPayF(f=>({...f,period_year:+v}))} min={2000}/>
+              <NumberInput label={W?W.amount:'Ποσό'} value={payF.amount} onChange={v=>setPayF(f=>({...f,amount:v}))} suffix="€" placeholder={tenant.monthly_rent?.toString()}/>
+              <SelectField label={W?W.method:'Τρόπος πληρωμής'} value={payF.method} onChange={v=>setPayF(f=>({...f,method:v as PayMethod}))} options={methodOptions}/>
             </div>
             <div className="kpi-row" style={{ ...s.g3, marginBottom:14 }}>
-              <div><div style={{ ...labelStyle, marginBottom:8 }}>Εξοφλήθη</div><Toggle on={payF.paid} onChange={v=>setPayF(f=>({...f,paid:v}))} ariaLabel="Εξοφλήθη"/></div>
-              {payF.paid&&<DatePicker label="Ημερομηνία πληρωμής" value={payF.paid_date} onChange={v=>setPayF(f=>({...f,paid_date:v}))}/>}
-              <TextInput dictation label="Σημείωση" value={payF.notes} onChange={v=>setPayF(f=>({...f,notes:v}))} placeholder="προαιρετικό"/>
+              <div><div style={{ ...labelStyle, marginBottom:8 }}>{W?W.paid:'Εξοφλήθη'}</div><Toggle on={payF.paid} onChange={v=>setPayF(f=>({...f,paid:v}))} ariaLabel={W?W.paid:'Εξοφλήθη'}/></div>
+              {payF.paid&&<DatePicker label={W?W.paidDate:'Ημερομηνία πληρωμής'} placeholder={E?E.choose:undefined} value={payF.paid_date} onChange={v=>setPayF(f=>({...f,paid_date:v}))}/>}
+              <TextInput dictation label={W?W.note:'Σημείωση'} value={payF.notes} onChange={v=>setPayF(f=>({...f,notes:v}))} placeholder={W?W.optional:'προαιρετικό'}/>
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
-              <Btn variant="secondary" onClick={()=>setAddOpen(false)}>Ακύρωση</Btn>
-              <Btn variant="primary" onClick={savePay} disabled={busy}>{busy?'Αποθήκευση…':'Καταχώρηση'}</Btn>
+              <Btn variant="secondary" onClick={()=>setAddOpen(false)}>{W?W.cancel:'Ακύρωση'}</Btn>
+              <Btn variant="primary" onClick={savePay} disabled={busy}>{W?(busy?W.saving:W.record):busy?'Αποθήκευση…':'Καταχώρηση'}</Btn>
             </div>
           </div>
         )}
@@ -908,9 +927,9 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
         {payments.length===0?(
           <EmptyState
             icon={<Banknote size={20}/>}
-            title="Καμία δόση ακόμη"
-            hint={tenant.lease_start&&tenant.monthly_rent?'Πάτησε «Δημιουργία δόσεων» για αυτόματη συμπλήρωση από τη μίσθωση.':'Όρισε έναρξη μίσθωσης και μηνιαίο μίσθωμα για αυτόματη δημιουργία δόσεων.'}
-            action={tenant.lease_start&&tenant.monthly_rent?<Btn variant="primary" onClick={generateNow} disabled={busy}>Δημιουργία δόσεων</Btn>:undefined}
+            title={W?W.empty:'Καμία δόση ακόμη'}
+            hint={W?(tenant.lease_start&&tenant.monthly_rent?W.emptyReady:W.emptyNeeds):tenant.lease_start&&tenant.monthly_rent?'Πάτησε «Δημιουργία δόσεων» για αυτόματη συμπλήρωση από τη μίσθωση.':'Όρισε έναρξη μίσθωσης και μηνιαίο μίσθωμα για αυτόματη δημιουργία δόσεων.'}
+            action={tenant.lease_start&&tenant.monthly_rent?<Btn variant="primary" onClick={generateNow} disabled={busy}>{W?W.generate:'Δημιουργία δόσεων'}</Btn>:undefined}
           />
         ):(
           /* Ο ΠΙΝΑΚΑΣ ΤΟΥ ΠΡΟΪΟΝΤΟΣ, ΟΧΙ ΤΟ ΔΕΥΤΕΡΟ ΣΥΣΤΗΜΑ. Τα `s.th`/`s.td`/
@@ -922,18 +941,18 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
           <div className="po-table-box" style={{ marginTop:14 }}>
            <div className="po-scroll-x">
             <table className="po-table pin-1" style={{ '--tbl-min': '820px', '--row-bg': 'var(--bg-surface)' }}>
-              <thead><tr>{['Περίοδος','Ποσό','Κατάσταση','Τρόπος','Ημερομηνία πληρωμής','Λήξη','Ενέργειες'].map((h,i)=><th key={i} scope="col" style={{ textAlign: i===1 ? ('right' as const) : undefined }}>{h}</th>)}</tr></thead>
+              <thead><tr>{(W?W.cols:['Περίοδος','Ποσό','Κατάσταση','Τρόπος','Ημερομηνία πληρωμής','Λήξη','Ενέργειες']).map((h,i)=><th key={i} scope="col" style={{ textAlign: i===1 ? ('right' as const) : undefined }}>{h}</th>)}</tr></thead>
             <tbody>
               {sorted.map(p=>(
                 <tr key={p.id}>
-                  <td><strong style={{ fontFamily:T.font.sans }}>{MONTHS_SHORT[p.period_month-1]}</strong> <span style={{ color:'var(--text-tertiary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{p.period_year}</span></td>
+                  <td><strong style={{ fontFamily:T.font.sans }}>{E?E.monthShort(p.period_month-1):MONTHS_SHORT[p.period_month-1]}</strong> <span style={{ color:'var(--text-tertiary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{p.period_year}</span></td>
                   <td className="num" style={{ fontWeight:600, color:'var(--text-primary)' }}>{fmt(p.amount)}
-                    {p.services_charge&&p.services_charge>0?<span style={{ display:'block', fontSize: 'var(--fs-xs)', fontWeight:400, color:'var(--text-tertiary)', fontFamily:T.font.sans }}>ενοίκιο {fmt(p.base_rent)} + υπηρεσίες {fmt(p.services_charge)}</span>:null}
+                    {p.services_charge&&p.services_charge>0?<span style={{ display:'block', fontSize: 'var(--fs-xs)', fontWeight:400, color:'var(--text-tertiary)', fontFamily:T.font.sans }}>{W?W.rentPlus(fmt(p.base_rent),fmt(p.services_charge)):<>ενοίκιο {fmt(p.base_rent)} + υπηρεσίες {fmt(p.services_charge)}</>}</span>:null}
                   </td>
-                  <td><StatusPill p={p}/>{p.tenant_declared&&!p.paid?<span style={{ display:'block', marginTop:4, fontSize: 'var(--fs-xs)', color:'var(--warning)', fontFamily:T.font.sans, fontWeight:600 }}>Δηλώθηκε από τον ενοικιαστή</span>:null}</td>
-                  <td>{p.method||ABSENT}</td>
-                  <td>{fmtD(p.paid_date)}</td>
-                  <td>{fmtD(p.due_date)}{p.days_late&&p.days_late>0?<span style={{ display:'block', fontSize: 'var(--fs-xs)', color:p.days_late>14?'var(--negative)':'var(--warning)' }}>+{days(p.days_late)}</span>:null}</td>
+                  <td><StatusPill p={p}/>{p.tenant_declared&&!p.paid?<span style={{ display:'block', marginTop:4, fontSize: 'var(--fs-xs)', color:'var(--warning)', fontFamily:T.font.sans, fontWeight:600 }}>{W?W.reportedByTenant:'Δηλώθηκε από τον ενοικιαστή'}</span>:null}</td>
+                  <td>{methodLabel(p.method)}</td>
+                  <td>{fD(p.paid_date)}</td>
+                  <td>{fD(p.due_date)}{p.days_late&&p.days_late>0?<span style={{ display:'block', fontSize: 'var(--fs-xs)', color:p.days_late>14?'var(--negative)':'var(--warning)' }}>+{E?E.days(p.days_late):days(p.days_late)}</span>:null}</td>
                   <td>
                     {/* ΕΔΩ ΤΑ ΚΟΥΜΠΙΑ ΜΕΝΟΥΝ ΧΕΙΡΟΠΟΙΗΤΑ. Το κελί ενεργειών είναι πυκνό —
                         γέμισμα 6×10 με λεκτικό fs-xs — και μοιράζεται τη σειρά με τρεις
@@ -942,19 +961,19 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
                         και θα άφηνε τη σειρά μισή στοιχισμένη. */}
                     <div style={{ display:'flex', gap:6, flexWrap:'wrap' as const }}>
                       {!p.paid
-                        ?<button style={s.btnSm} onClick={()=>setMark({p,method:'Τραπεζική κατάθεση',receipt:''})}>Πληρωμένο</button>
-                        :<button style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)' }} onClick={()=>doUnpay(p)}>Αναίρεση</button>}
-                      {!p.paid&&canCollect&&<button style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)' }} onClick={()=>{setCopied(false);setReq(p);}}>Αίτημα πληρωμής</button>}
-                      <button style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)' }} onClick={()=>printStatement(p)}>Κατάσταση</button>
-                      {p.paid&&<button style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)' }} onClick={()=>printReceipt(p)}>Απόδειξη</button>}
+                        ?<button style={s.btnSm} onClick={()=>setMark({p,method:'Τραπεζική κατάθεση',receipt:''})}>{W?W.markPaid:'Πληρωμένο'}</button>
+                        :<button style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)' }} onClick={()=>doUnpay(p)}>{W?W.undo:'Αναίρεση'}</button>}
+                      {!p.paid&&canCollect&&<button style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)' }} onClick={()=>{setCopied(false);setReq(p);}}>{W?W.request:'Αίτημα πληρωμής'}</button>}
+                      <button style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)' }} onClick={()=>printStatement(p)}>{W?W.statement:'Κατάσταση'}</button>
+                      {p.paid&&<button style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)' }} onClick={()=>printReceipt(p)}>{W?W.receipt:'Απόδειξη'}</button>}
                       {tenant.phone&&(p.paid||canCollect)&&<a href={p.paid?whatsappLink(msgDigits(tenant.phone),receiptText(p)):whatsappLink(msgDigits(tenant.phone),reminderText(p))} target="_blank" rel="noopener noreferrer" style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)', textDecoration:'none' }}>WhatsApp</a>}
                       {tenant.phone&&(p.paid||canCollect)&&<a href={viberLink(p.paid?receiptText(p):reminderText(p))} target="_blank" rel="noopener noreferrer" style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)', textDecoration:'none' }}>Viber</a>}
                       {/* ΤΟ ΤΑΧΥΔΡΟΜΕΙΟ ΕΛΕΙΠΕ ΚΑΙ ΜΕ ΑΥΤΟ ΟΛΟΚΛΗΡΗ Η ΥΠΕΝΘΥΜΙΣΗ.
                           Η γραμμή έδινε WhatsApp και Viber και τα δύο δεμένα στο
                           ΤΗΛΕΦΩΝΟ. Οποιος ιδιοκτήτης είχε μόνο το email του μισθωτή
                           του δεν είχε ΚΑΝΕΝΑΝ τρόπο να στείλει υπενθύμιση από εδώ. */}
-                      {tenant.email&&(p.paid||canCollect)&&<a href={`mailto:${tenant.email}?subject=${encodeURIComponent(rentSubject(periodGen(p)))}&body=${encodeURIComponent(p.paid?receiptText(p):reminderText(p))}`} style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)', textDecoration:'none' }}>Ηλεκτρονικό ταχυδρομείο</a>}
-                      <button style={s.btnDng} onClick={async()=>{if(!(await confirmDialog('Διαγραφή πληρωμής;',{tone:'negative',confirmLabel:'Διαγραφή'})))return;if(await saved('Η πληρωμή δεν διαγράφηκε',rentStore.remove(supabase,p.id)))onRefresh();}}>Διαγραφή</button>
+                      {tenant.email&&(p.paid||canCollect)&&<a href={`mailto:${tenant.email}?subject=${encodeURIComponent(rentSubject(periodGen(p)))}&body=${encodeURIComponent(p.paid?receiptText(p):reminderText(p))}`} style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)', textDecoration:'none' }}>{W?W.email:'Ηλεκτρονικό ταχυδρομείο'}</a>}
+                      <button style={s.btnDng} onClick={async()=>{if(!(await (E&&W?confirmDialog(E.ask(W.delAsk,W.del,true)):confirmDialog('Διαγραφή πληρωμής;',{tone:'negative',confirmLabel:'Διαγραφή'}))))return;if(await sv('Η πληρωμή δεν διαγράφηκε','paymentNotDeleted',rentStore.remove(supabase,p.id)))onRefresh();}}>{W?W.del:'Διαγραφή'}</button>
                     </div>
                   </td>
                 </tr>
@@ -972,14 +991,14 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
           επιστροφή εστίασης, κανένα κλείδωμα κύλισης του φόντου. */}
       {mark&&(
         <Modal open onClose={()=>setMark(null)} size="sm"
-          title="Σήμανση ως πληρωμένο"
-          subtitle={`${monthLabel(mark.p)} · ${fmt(mark.p.amount)}`}
+          title={W?W.markTitle:'Σήμανση ως πληρωμένο'}
+          subtitle={`${screenMonth(mark.p)} · ${fmt(mark.p.amount)}`}
           footer={<>
-            <Btn variant="secondary" onClick={()=>setMark(null)}>Ακύρωση</Btn>
-            <Btn variant="primary" onClick={async()=>{const mm=mark;setMark(null);await doMarkPaid(mm.p,mm.method,mm.receipt,todayISO());}}>Καταχώρηση</Btn>
+            <Btn variant="secondary" onClick={()=>setMark(null)}>{W?W.cancel:'Ακύρωση'}</Btn>
+            <Btn variant="primary" onClick={async()=>{const mm=mark;setMark(null);await doMarkPaid(mm.p,mm.method,mm.receipt,todayISO());}}>{W?W.record:'Καταχώρηση'}</Btn>
           </>}>
-          <SelectField label="Τρόπος πληρωμής" value={mark.method} onChange={v=>setMark(m=>m?{...m,method:v as PayMethod}:m)} options={PAY_METHODS.map(m=>({value:m,label:m}))}/>
-          <TextInput label="Σύνδεσμος απόδειξης (προαιρετικό)" value={mark.receipt} onChange={v=>setMark(m=>m?{...m,receipt:v}:m)} placeholder="https://…"/>
+          <SelectField label={W?W.method:'Τρόπος πληρωμής'} value={mark.method} onChange={v=>setMark(m=>m?{...m,method:v as PayMethod}:m)} options={methodOptions}/>
+          <TextInput label={W?W.receiptLink:'Σύνδεσμος απόδειξης (προαιρετικό)'} value={mark.receipt} onChange={v=>setMark(m=>m?{...m,receipt:v}:m)} placeholder="https://…"/>
         </Modal>
       )}
 
@@ -988,43 +1007,43 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
           κυλά ΜΟΝΟ το σώμα και κρατά κεφαλίδα και ενέργειες πάντα ορατές. */}
       {req&&(
         <Modal open onClose={()=>setReq(null)} size="sm"
-          title="Αίτημα πληρωμής"
-          ariaLabel="Αίτημα πληρωμής"
-          subtitle={<>{monthLabel(req)} · {fmt(req.amount)}{req.services_charge&&req.services_charge>0?<span style={{ color:'var(--text-tertiary)' }}> (ενοίκιο {fmt(req.base_rent)} + υπηρεσίες {fmt(req.services_charge)})</span>:null}</>}
+          title={W?W.request:'Αίτημα πληρωμής'}
+          ariaLabel={W?W.request:'Αίτημα πληρωμής'}
+          subtitle={<>{screenMonth(req)} · {fmt(req.amount)}{req.services_charge&&req.services_charge>0?<span style={{ color:'var(--text-tertiary)' }}>{W?W.reqSub(fmt(req.base_rent),fmt(req.services_charge)):<> (ενοίκιο {fmt(req.base_rent)} + υπηρεσίες {fmt(req.services_charge)})</>}</span>:null}</>}
           footer={<>
-            <Btn variant="secondary" onClick={()=>{const rp=req;setReq(null);setMark({p:rp,method:'Τραπεζική κατάθεση',receipt:''});}}>Σήμανση εξόφλησης</Btn>
-            <Btn variant="primary" onClick={()=>setReq(null)}>Κλείσιμο</Btn>
+            <Btn variant="secondary" onClick={()=>{const rp=req;setReq(null);setMark({p:rp,method:'Τραπεζική κατάθεση',receipt:''});}}>{W?W.markSettled:'Σήμανση εξόφλησης'}</Btn>
+            <Btn variant="primary" onClick={()=>setReq(null)}>{W?W.close:'Κλείσιμο'}</Btn>
           </>}>
           {tenant.rent_iban?(
             <>
               <div style={{ display:'flex', flexDirection:'column' as const, alignItems:'center' }}>
-                <RuntimeImg src={qrSrc(epcPayload(tenant.rent_iban,landlordName,req.amount,reqRef(req)))} alt="QR πληρωμής" width={200} height={200} style={{ borderRadius: T.radius.popup, border:'1px solid var(--border-subtle)', background:'var(--qr-paper)', padding:8 }}/>
-                <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, marginTop:8, textAlign:'center' as const }}>Σάρωση από την τραπεζική εφαρμογή (SEPA/IRIS) για προσυμπλήρωση της μεταφοράς.</div>
+                <RuntimeImg src={qrSrc(epcPayload(tenant.rent_iban,landlordName,req.amount,reqRef(req)))} alt={W?W.qrAlt:'QR πληρωμής'} width={200} height={200} style={{ borderRadius: T.radius.popup, border:'1px solid var(--border-subtle)', background:'var(--qr-paper)', padding:8 }}/>
+                <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, marginTop:8, textAlign:'center' as const }}>{W?W.qrHint:'Σάρωση από την τραπεζική εφαρμογή (SEPA/IRIS) για προσυμπλήρωση της μεταφοράς.'}</div>
               </div>
               <div>
-                <div style={{ ...labelStyle, marginBottom:6 }}>IBAN πληρωμής</div>
+                <div style={{ ...labelStyle, marginBottom:6 }}>{W?W.iban:'IBAN πληρωμής'}</div>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                   <div style={{ flex:1, fontFamily:T.font.mono, fontSize: 'var(--fs-base)', color:'var(--text-primary)', background:'var(--bg-elevated)', border:'1px solid var(--border-default)', borderRadius:T.radius.inner, padding:'10px 12px', wordBreak:'break-all' as const }}>{tenant.rent_iban}</div>
                   {/* size lg γιατί κάθεται δίπλα στο κουτί του IBAN, που έχει ύψος πεδίου. */}
-                  <Btn variant="secondary" size="lg" onClick={async()=>{ const ok=await copyText(tenant.rent_iban||''); setCopied(ok); if(!ok) notifyError('Δεν έγινε η αντιγραφή. Επίλεξε και αντίγραψε το IBAN χειροκίνητα.'); }}>{copied?'Αντιγράφηκε':'Αντιγραφή'}</Btn>
+                  <Btn variant="secondary" size="lg" onClick={async()=>{ const ok=await copyText(tenant.rent_iban||''); setCopied(ok); if(!ok) notifyError(W?W.copyFail:'Δεν έγινε η αντιγραφή. Επίλεξε και αντίγραψε το IBAN χειροκίνητα.'); }}>{W?(copied?W.copied:W.copy):copied?'Αντιγράφηκε':'Αντιγραφή'}</Btn>
                 </div>
               </div>
             </>
           ):(
-            <InfoBanner tone="info">Πρόσθεσε IBAN πληρωμής στα στοιχεία του ενοικιαστή για δημιουργία QR και προσυμπλήρωση της μεταφοράς.</InfoBanner>
+            <InfoBanner tone="info">{W?W.noIban:'Πρόσθεσε IBAN πληρωμής στα στοιχεία του ενοικιαστή για δημιουργία QR και προσυμπλήρωση της μεταφοράς.'}</InfoBanner>
           )}
 
           <div>
-            <div style={{ ...labelStyle, marginBottom:8 }}>Κοινοποίηση αιτήματος</div>
+            <div style={{ ...labelStyle, marginBottom:8 }}>{W?W.share:'Κοινοποίηση αιτήματος'}</div>
             <div style={{ display:'flex', gap:8, flexWrap:'wrap' as const }}>
               {/* Οι τρεις προορισμοί μένουν σύνδεσμοι — το `href` του Btn δίνει την ίδια όψη —
                   ώστε η σειρά κοινοποίησης να μη γίνει τρία πλακίδια των 32 δίπλα σε ένα κουμπί των 36. */}
               {tenant.phone&&<Btn variant="secondary" href={whatsappLink(msgDigits(tenant.phone),paymentRequestText(req))} newTab>WhatsApp</Btn>}
               {tenant.phone&&<Btn variant="secondary" href={viberLink(paymentRequestText(req))} newTab>Viber</Btn>}
-              {tenant.email&&<Btn variant="secondary" href={`mailto:${tenant.email}?subject=${encodeURIComponent(requestSubject(periodGen(req)))}&body=${encodeURIComponent(paymentRequestText(req))}`}>Ηλεκτρονικό ταχυδρομείο</Btn>}
+              {tenant.email&&<Btn variant="secondary" href={`mailto:${tenant.email}?subject=${encodeURIComponent(requestSubject(periodGen(req)))}&body=${encodeURIComponent(paymentRequestText(req))}`}>{W?W.email:'Ηλεκτρονικό ταχυδρομείο'}</Btn>}
               {/* Το catch ήταν κενό: αν η αντιγραφή αποτύγχανε (άρνηση δικαιώματος, μη ασφαλές
                   context), ο χρήστης νόμιζε ότι το κείμενο ήταν στο πρόχειρο και το επικολλούσε στο κενό. */}
-              <Btn variant="secondary" onClick={async()=>{ if(await copyText(paymentRequestText(req))) notifyOk('Το κείμενο αντιγράφηκε'); else notifyError('Δεν έγινε η αντιγραφή. Επίλεξε και αντίγραψε το κείμενο χειροκίνητα.'); }}>Αντιγραφή κειμένου</Btn>
+              <Btn variant="secondary" onClick={async()=>{ if(await copyText(paymentRequestText(req))) notifyOk(W?W.textCopied:'Το κείμενο αντιγράφηκε'); else notifyError(W?W.textCopyFail:'Δεν έγινε η αντιγραφή. Επίλεξε και αντίγραψε το κείμενο χειροκίνητα.'); }}>{W?W.copyText:'Αντιγραφή κειμένου'}</Btn>
             </div>
           </div>
         </Modal>
@@ -1038,34 +1057,34 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
           να κλείσει στη μέση και το αποτέλεσμα να χαθεί χωρίς μήνυμα. */}
       {scan&&(
         <Modal open onClose={()=>{ if(scan.stage!=='scanning') setScan(null); }} size="sm"
-          title="Σάρωση απόδειξης"
+          title={W?W.scanTitle:'Σάρωση απόδειξης'}
           footer={
-            scan.stage==='error' ? <Btn variant="secondary" onClick={()=>setScan(null)}>Κλείσιμο</Btn>
+            scan.stage==='error' ? <Btn variant="secondary" onClick={()=>setScan(null)}>{W?W.close:'Κλείσιμο'}</Btn>
             : scan.stage==='match'&&scan.doc ? <>
-                <Btn variant="secondary" onClick={()=>setScan(null)}>Ακύρωση</Btn>
-                <Btn variant="primary" onClick={confirmScan} disabled={open.length===0||!scan.periodId}>Σήμανση ως πληρωμένο</Btn>
+                <Btn variant="secondary" onClick={()=>setScan(null)}>{W?W.cancel:'Ακύρωση'}</Btn>
+                <Btn variant="primary" onClick={confirmScan} disabled={open.length===0||!scan.periodId}>{W?W.markTitle:'Σήμανση ως πληρωμένο'}</Btn>
               </>
             : undefined
           }>
-          {scan.stage==='scanning'&&<Spinner label="Ανάλυση εγγράφου…"/>}
+          {scan.stage==='scanning'&&<Spinner label={W?W.analysing:'Ανάλυση εγγράφου…'}/>}
           {scan.stage==='error'&&<InfoBanner tone="warning">{scan.msg}</InfoBanner>}
           {scan.stage==='match'&&scan.doc&&(
             <>
               <div style={{ display:'flex', gap:8, flexWrap:'wrap' as const }}>
-                <Badge tone={scan.doc.doc_type==='payment'?'positive':'warning'}>{scan.doc.doc_type==='payment'?'Απόδειξη πληρωμής':`Τύπος: ${DOC_TYPE_LABELS[scan.doc.doc_type] ?? scan.doc.doc_type}`}</Badge>
+                <Badge tone={scan.doc.doc_type==='payment'?'positive':'warning'}>{W?(scan.doc.doc_type==='payment'?W.paymentReceipt:W.docType(scan.doc.doc_type)):scan.doc.doc_type==='payment'?'Απόδειξη πληρωμής':`Τύπος: ${DOC_TYPE_LABELS[scan.doc.doc_type] ?? scan.doc.doc_type}`}</Badge>
                 {typeof scan.doc.amount==='number'&&<Badge tone="accent">{fmt(scan.doc.amount)}</Badge>}
                 {(scan.doc.issue_date||scan.doc.due_date)&&<Badge tone="neutral">{fd((scan.doc.issue_date||scan.doc.due_date) as string)}</Badge>}
               </div>
-              {scan.doc.doc_type!=='payment'&&<InfoBanner tone="warning">Το έγγραφο δεν αναγνωρίστηκε ως απόδειξη πληρωμής. Επίλεξε δόση χειροκίνητα πριν τη σήμανση.</InfoBanner>}
+              {scan.doc.doc_type!=='payment'&&<InfoBanner tone="warning">{W?W.notReceipt:'Το έγγραφο δεν αναγνωρίστηκε ως απόδειξη πληρωμής. Επίλεξε δόση χειροκίνητα πριν τη σήμανση.'}</InfoBanner>}
               {open.length===0?(
-                <InfoBanner tone="info">Καμία ανοιχτή δόση για αντιστοίχιση. Η πληρωμή θα καταχωρηθεί ως νέα εγγραφή.</InfoBanner>
+                <InfoBanner tone="info">{W?W.noOpen:'Καμία ανοιχτή δόση για αντιστοίχιση. Η πληρωμή θα καταχωρηθεί ως νέα εγγραφή.'}</InfoBanner>
               ):(
                 <div>
-                  <div style={{ ...labelStyle, marginBottom:8 }}>Αντιστοίχιση σε δόση</div>
-                  <SelectField ariaLabel="Αντιστοίχιση σε δόση" value={scan.periodId||''} onChange={v=>setScan(sc=>sc?{...sc,periodId:v}:sc)}
-                    options={open.map(p=>({ value:p.id, label:`${monthLabel(p)} · ${fmt(p.amount)}` }))}/>
+                  <div style={{ ...labelStyle, marginBottom:8 }}>{W?W.match:'Αντιστοίχιση σε δόση'}</div>
+                  <SelectField ariaLabel={W?W.match:'Αντιστοίχιση σε δόση'} value={scan.periodId||''} onChange={v=>setScan(sc=>sc?{...sc,periodId:v}:sc)}
+                    options={open.map(p=>({ value:p.id, label:`${screenMonth(p)} · ${fmt(p.amount)}` }))}/>
                   <div style={{ marginTop:12 }}>
-                    <SelectField label="Τρόπος πληρωμής" value={scan.method||'Τραπεζική κατάθεση'} onChange={v=>setScan(sc=>sc?{...sc,method:v as PayMethod}:sc)} options={PAY_METHODS.map(m=>({value:m,label:m}))}/>
+                    <SelectField label={W?W.method:'Τρόπος πληρωμής'} value={scan.method||'Τραπεζική κατάθεση'} onChange={v=>setScan(sc=>sc?{...sc,method:v as PayMethod}:sc)} options={methodOptions}/>
                   </div>
                 </div>
               )}
@@ -1094,7 +1113,48 @@ export function DepositView({ tenant, payments, damages, onReturned }:{ tenant:T
   const chargeable=damages.filter(d=>d.charged_to_tenant).reduce((a,d)=>a+(d.cost||0),0);
   const netReturn=Math.max(0,deposit-unpaid-chargeable);
   const dueDate=tenant.move_out_date||tenant.lease_end||null;
-  const methodLabel=tenant.deposit_method||ABSENT;
+  // Τα αγγλικά της εγγύησης, ή `null` στα ελληνικά. Ο τρόπος μένει ελληνικός στη βάση.
+  const E=useAppEn('tenants');
+  const W=E?.deposit;
+  const X=useAppEn('errors');
+  /** Γραφή στη βάση με το σφάλμα στη γλώσσα της οθόνης. */
+  const sv=(el:string,k:string,q:Parameters<typeof saved>[1])=>saved(el,q,X&&E?(e:unknown)=>X.failed(E.err[k]??el,e):undefined);
+  const methodIdx=(PAY_METHODS as readonly string[]).indexOf(tenant.deposit_method||'');
+  const methodLabel=E?(tenant.deposit_method?(methodIdx>=0?E.payMethods[methodIdx]:tenant.deposit_method):E.notSet):tenant.deposit_method||ABSENT;
+  const fD=(d:string|null)=>E&&!d?E.noDate:fmtD(d);
+  if(E&&W) return (
+    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap:16 }}>
+      <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
+        <SectionTitle>{W.title}</SectionTitle>
+        <DataRow label={W.amount} value={<span style={{ color:'var(--accent)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700, fontSize:15 }}>{fmt(deposit)}</span>}/>
+        <DataRow label={W.method} value={methodLabel}/>
+        <DataRow label={W.paidOn} value={fD(tenant.deposit_paid_on)}/>
+        <DataRow label={W.status} value={tenant.deposit_returned?<StatusBadge label={W.returned} color="var(--positive)" bg="var(--positive-dim)"/>:<StatusBadge label={W.held} color="var(--accent)" bg="var(--accent-dim)"/>}/>
+        {tenant.deposit_returned&&tenant.deposit_return_date&&<DataRow label={W.returnDate} value={fD(tenant.deposit_return_date)}/>}
+        {!tenant.deposit_returned&&deposit>0&&(
+          <div style={{ marginTop:14 }}>
+            <Btn variant="secondary" field
+              onClick={async()=>{await sv('Η επιστροφή εγγύησης δεν καταχωρήθηκε','depositNotRecorded', tenantStore.update(supabase,tenant.id,{deposit_returned:true,deposit_return_date:todayISO()}));onReturned();}}>
+              {W.markReturned}
+            </Btn>
+          </div>
+        )}
+        <div style={{ marginTop:14, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6 }}>{W.notIncome}</div>
+      </div>
+
+      <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
+        <SectionTitle>{W.whenTitle}</SectionTitle>
+        <div style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.8, marginBottom:14 }}>
+          {W.when[0]}{dueDate?<>(<strong style={{ color:'var(--text-primary)' }}>{fD(dueDate)}</strong>){tenant.move_out_date?W.when[1]:''}</>:W.when[2]}{W.when[3]}<strong style={{ color:'var(--text-primary)' }}>{W.when[4]}</strong>{W.when[5]}<strong style={{ color:'var(--text-primary)' }}>{W.when[6]}</strong>{W.when[7]}
+        </div>
+        <DataRow label={W.heldRow} value={<span style={{ fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:600 }}>{fmt(deposit)}</span>}/>
+        <DataRow label={W.unpaid} value={<span style={{ color:unpaid>0?'var(--negative)':'var(--text-tertiary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:600 }}>{unpaid>0?feSigned(-unpaid):fmt(0)}</span>}/>
+        <DataRow label={W.damages} value={<span style={{ color:chargeable>0?'var(--negative)':'var(--text-tertiary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:600 }}>{chargeable>0?feSigned(-chargeable):fmt(0)}</span>}/>
+        <DataRow label={W.net} value={<span style={{ color:'var(--positive)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700, fontSize:15 }}>{fmt(netReturn)}</span>}/>
+        <div style={{ marginTop:12, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6 }}>{W.netNote}</div>
+      </div>
+    </div>
+  );
   return (
     <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap:16 }}>
       <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
@@ -1108,7 +1168,7 @@ export function DepositView({ tenant, payments, damages, onReturned }:{ tenant:T
         {!tenant.deposit_returned&&deposit>0&&(
           <div style={{ marginTop:14 }}>
             <Btn variant="secondary" field
-              onClick={async()=>{await saved('Η επιστροφή εγγύησης δεν καταχωρήθηκε', tenantStore.update(supabase,tenant.id,{deposit_returned:true,deposit_return_date:todayISO()}));onReturned();}}>
+              onClick={async()=>{await sv('Η επιστροφή εγγύησης δεν καταχωρήθηκε','depositNotRecorded', tenantStore.update(supabase,tenant.id,{deposit_returned:true,deposit_return_date:todayISO()}));onReturned();}}>
               Σήμανση ως επιστραμμένη
             </Btn>
           </div>

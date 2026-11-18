@@ -67,7 +67,7 @@ export const TabPricing = dynamic(() => import('./TabPricing'), { loading: TabWa
 // ένα καρέ ελληνικά. Στα ελληνικά ο φορτωτής είναι ο ίδιος, χωρίς αναμονή.
 export const TabSettings = dynamic(withAppEn(['settings'], () => import('./TabSettings')), { loading: TabWait, ssr: false });
 export const TabReferral = dynamic(() => import('./TabReferral'), { loading: TabWait, ssr: false });
-export const TabTenant = dynamic(() => import('./TabTenant'), { loading: TabWait, ssr: false });
+export const TabTenant = dynamic(withAppEn(['tenants', 'errors'], () => import('./TabTenant')), { loading: TabWait, ssr: false });
 export const TabLoan = dynamic(() => import('./TabLoan'), { loading: TabWait, ssr: false });
 export const TabAccounting = dynamic(() => import('./TabAccounting'), { loading: TabWait, ssr: false });
 export const TabInventory = dynamic(() => import('./TabInventory'), { loading: TabWait, ssr: false });
