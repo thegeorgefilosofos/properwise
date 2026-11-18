@@ -27,6 +27,8 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.119.0'
 import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'
 import { firmInviteEmail, firmInviteVerdict, type MyFirmRow } from '../_shared/firmInvite.ts'
+// Η πρόσκληση φεύγει στη γλώσσα των μηνυμάτων του Υπεύθυνου που προσκαλεί.
+import { msgLangOfMeta } from '../_shared/msgLang.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? ''
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
@@ -98,7 +100,7 @@ Deno.serve(async (req) => {
   const { subject, html } = firmInviteEmail({
     firmName: verdict.firmName, role: verdict.role,
     inviterEmail: userData.user.email || '', inviterName: verdict.inviterName, inviteeEmail: email,
-  })
+  }, msgLangOfMeta(userData.user.user_metadata))
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',

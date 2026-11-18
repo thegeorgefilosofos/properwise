@@ -33,6 +33,8 @@ export interface AckInput {
   apiKey: string | undefined;
   /** Η δημόσια διεύθυνση που γράφτηκε· λείπει σημαίνει υποστήριξη (εφεδρεία). */
   kind?: AckKind;
+  /** Η γλώσσα της επιβεβαίωσης· λείπει σημαίνει ελληνικά. */
+  lang?: 'el' | 'en';
 }
 
 export type AckResult = { ok: true } | { ok: false; reason: string };
@@ -55,7 +57,7 @@ export async function sendReplyAck(
   const replyTo = box.address;
   const from = `${box.label} <${replyTo}>`;
 
-  const { subject, html } = replyAckEmail(input.name);
+  const { subject, html } = replyAckEmail(input.name, input.lang ?? 'el');
 
   let res: Response;
   try {

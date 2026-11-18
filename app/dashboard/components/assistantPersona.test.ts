@@ -347,7 +347,9 @@ for (const prefs of [id(), id({ formal: true }), id({ memory: false }), id({ com
   // cron την 1η του μήνα) φεύγει μόνο σε όσους έχουν ανοιχτές τις υπενθυμίσεις
   // με email (reminder_recipients). Οι τέσσερις καταστάσεις είναι του email.
   {
-    const fn = readFileSync('supabase/functions/send-monthly-statements/index.ts', 'utf8');
+    // Το κείμενο του email ζει στο _shared/statementEmail.ts· η αποστολή στο index.ts.
+    const fn = readFileSync('supabase/functions/send-monthly-statements/index.ts', 'utf8')
+      + readFileSync('supabase/functions/_shared/statementEmail.ts', 'utf8');
     ok('γνώση: μηνιαία κατάσταση με email', p.includes('«Μηνιαία κατάσταση»') && p.includes('όσο είναι ανοιχτές οι «Υπενθυμίσεις με email»')
       && ['Πλήρης', 'Μερική', 'Ληξιπρόθεσμο', 'Χωρίς μίσθωμα'].every(w => fn.includes(`'${w}'`) && p.includes(`«${w}»`))
       && fn.includes('Μηνιαία κατάσταση') && fn.includes("rpc('reminder_recipients')")

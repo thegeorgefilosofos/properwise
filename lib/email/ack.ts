@@ -53,7 +53,8 @@ const para = (html: string): string =>
  *
  * @param name Το όνομα του παραλήπτη, ήδη σε καθαρή μορφή· κενό όταν άγνωστο.
  */
-export function replyAckEmail(name: string): { subject: string; html: string } {
+export function replyAckEmail(name: string, lang: 'el' | 'en' = 'el'): { subject: string; html: string } {
+  if (lang === 'en') return replyAckEmailEn(name);
   const subject = 'PROPERWISE | Λάβαμε το μήνυμά σου';
 
   const clean = (name || '').trim();
@@ -96,6 +97,66 @@ ${para('Σε ευχαριστούμε που εμπιστεύεσαι το PROPE
 <tr>
 <td style="padding:18px 32px 24px;border-top:1px solid ${RULE};">
 <p style="margin:0;font-size:12px;color:${MUTE};mso-line-height-rule:exactly;line-height:18px;">Αυτοματοποιημένη επιβεβαίωση παραλαβής. Μπορείς να απαντήσεις σε αυτό το email και θα φτάσει στην ομάδα μας.</p>
+<p style="margin:8px 0 0;font-size:12px;color:${MUTE};mso-line-height-rule:exactly;line-height:18px;"><a href="mailto:${esc(IDENTITY.supportEmail)}" style="color:${ACCENT};text-decoration:none;">${esc(IDENTITY.supportEmail)}</a></p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+</body>
+</html>`;
+
+  return { subject, html };
+}
+
+/**
+ * Η ίδια επιβεβαίωση στα αγγλικά, για όποιον μας έγραψε στα αγγλικά
+ * (lib/inbound/replyAck.ts, `ackLangOf`). Ιδιο σχήμα, ίδια διεύθυνση υποστήριξης.
+ */
+function replyAckEmailEn(name: string): { subject: string; html: string } {
+  const subject = 'PROPERWISE | We received your message';
+
+  const clean = (name || '').trim();
+  const greeting = clean
+    ? `Hi <b>${esc(clean)}</b>,`
+    : 'Hi,';
+
+  const preheader = 'We received your message and will reply as soon as possible.';
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>${esc(subject)}</title>
+</head>
+<body style="margin:0;padding:0;background:${C.canvas};">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;color:${C.canvas};">${esc(preheader)}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;background:${C.canvas};">
+<tr>
+<td align="center" style="padding:24px 16px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;width:100%;max-width:600px;background:${C.page};border:1px solid ${RULE};border-radius:12px;overflow:hidden;">
+<tr>
+<td style="padding:24px 32px;border-bottom:1px solid ${RULE};">
+<a href="${esc(siteUrl(''))}" style="text-decoration:none;color:${NAVY};font-size:20px;font-weight:700;letter-spacing:0.14em;">
+<img src="${WORDMARK}" alt="PROPERWISE" height="26" style="display:block;border:0;outline:none;text-decoration:none;height:26px;">
+</a>
+</td>
+</tr>
+<tr>
+<td style="padding:32px 32px 28px;">
+<p style="margin:0 0 18px;font-size:17px;color:${INK};font-weight:600;mso-line-height-rule:exactly;line-height:24px;">${greeting}</p>
+${para('We received your message and thank you for contacting us.')}
+${para('A member of our team will look at it carefully and reply as soon as possible. You don’t need to do anything else; we will get back to you.')}
+${para('Thank you for trusting PROPERWISE with the management of your properties.')}
+<p style="margin:24px 0 0;font-size:15px;color:${TEXT};mso-line-height-rule:exactly;line-height:25px;">Kind regards,<br><b style="color:${INK};">The PROPERWISE team</b></p>
+</td>
+</tr>
+<tr>
+<td style="padding:18px 32px 24px;border-top:1px solid ${RULE};">
+<p style="margin:0;font-size:12px;color:${MUTE};mso-line-height-rule:exactly;line-height:18px;">An automatic confirmation of receipt. You can reply to this email and it will reach our team.</p>
 <p style="margin:8px 0 0;font-size:12px;color:${MUTE};mso-line-height-rule:exactly;line-height:18px;"><a href="mailto:${esc(IDENTITY.supportEmail)}" style="color:${ACCENT};text-decoration:none;">${esc(IDENTITY.supportEmail)}</a></p>
 </td>
 </tr>

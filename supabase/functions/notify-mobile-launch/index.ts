@@ -17,7 +17,9 @@
 //   (Επανάλαβε μέχρι το "sent" να γίνει 0 — στέλνει σε παρτίδες.)
 // ─────────────────────────────────────────────────────────────────────────
 
-import { emailShell, eyebrow, h, p, buttonPair, linkLine } from '../_shared/emailTemplates.ts';
+// Το email ζει δίπλα, στο launchEmail.ts, σε δύο γλώσσες: σε αυτήν του λογαριασμού στη λίστα.
+import { launchEmail } from './launchEmail.ts'
+import { msgLangReader } from '../_shared/msgLang.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2.119.0'
 import { APP_URL as SITE } from '../_shared/site.ts'
 import { timingSafeEqual } from '../_shared/auth.ts'
@@ -41,19 +43,6 @@ const ANDROID_URL    = Deno.env.get('ANDROID_APP_URL') || 'https://play.google.c
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
-function launchEmail(): { subject: string; html: string } {
-  const subject = 'Η εφαρμογή PROPERWISE για κινητά κυκλοφόρησε'
-  const html = emailShell({
-    preheader: 'Η εφαρμογή για κινητό είναι διαθέσιμη.',
-    footerNote: 'Λαμβάνεις αυτό το email επειδή ζήτησες ειδοποίηση για την εφαρμογή. Είναι το μόνο μήνυμα αυτής της λίστας. · properwise.gr',
-    bodyHtml: eyebrow('Μόλις κυκλοφόρησε')
-      + h('Η εφαρμογή για κινητά είναι εδώ')
-      + p('Ζήτησες να μάθεις πρώτος. Η εφαρμογή για κινητό είναι πλέον διαθέσιμη: όλη η διαχείριση των ακινήτων σου στο κινητό, με λίγα πατήματα ή με τη φωνή σου.')
-      + buttonPair({ label: 'App Store', url: IOS_URL }, { label: 'Google Play', url: ANDROID_URL })
-      + linkLine('ή συνέχισε από τον υπολογιστή', APP_URL),
-  })
-  return { subject, html }
-}
 
 /**
  * Τι έγινε με μία αποστολή.
@@ -135,12 +124,15 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ message: 'Κανένας εκκρεμής παραλήπτης σε αυτό το κύμα', wave, sent: 0, done: true }), { status: 200, headers: { 'Content-Type': 'application/json' } })
     }
 
-    const { subject, html } = launchEmail()
+    // Το ίδιο email στη γλώσσα κάθε λογαριασμού της λίστας (μία ανάγνωση ανά άνθρωπο).
+    const urls = { ios: IOS_URL, android: ANDROID_URL, app: APP_URL }
+    const langOf = msgLangReader(supabase)
     const sent: string[] = [], failed: string[] = [], retry: string[] = [], release: string[] = []
     let stop: number | null = null
     for (const r of rows) {
       const id = r.user_id as string
       if (stop !== null) { release.push(id); continue }
+      const { subject, html } = launchEmail(urls, await langOf(id))
       const out = await sendEmail(id, r.email as string, subject, html)
       if (out.kind === 'config') { stop = out.status; release.push(id); continue }
       ;(out.kind === 'sent' ? sent : out.kind === 'failed' ? failed : retry).push(id)

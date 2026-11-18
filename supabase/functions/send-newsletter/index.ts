@@ -10,12 +10,14 @@
 // authorized() το δέχεται. Προαιρετικά: RESEND_FROM (branded αποστολέας μετά την
 // επαλήθευση domain) & APP_URL (μία πηγή: _shared/site.ts).
 // ─────────────────────────────────────────────────────────────────────────
-import { emailShell, eyebrow, linkLine, listUnsubscribeHeaders } from '../_shared/emailTemplates.ts';
+import { listUnsubscribeHeaders, type Lang } from '../_shared/emailTemplates.ts';
+// Το πλαίσιο του μηνύματος ζει στο _shared/noticeEmails.ts, σε δύο γλώσσες.
+import { newsLayout, updateBlock, newsSubject, type ProductUpdate } from '../_shared/noticeEmails.ts'
+import { msgLangOfMeta } from '../_shared/msgLang.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2.119.0'
 import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 import { APP_URL } from '../_shared/site.ts'
 import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'
-import { EMAIL_LIGHT as C } from '../_shared/emailPalette.ts'
 import { audience, batchKey, ensurePrefs, readPrefs } from '../_shared/marketingAudience.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
@@ -26,7 +28,6 @@ const FROM_EMAIL     = senderFrom(Deno.env.get('RESEND_FROM'))
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } })
-const esc = (v: unknown) => String(v ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] || c))
 
 // Εξουσιοδότηση cron (zero-config): δέχεται (α) το service-role key (Bearer),
 // (β) το προαιρετικό x-cron-secret env, ή (γ) το κοινό μυστικό cron από τη ΒΔ
@@ -36,29 +37,16 @@ async function authorized(req: Request): Promise<CronAuth> {
   return authorizeCron(req, { serviceKey: SERVICE_KEY, envSecret: CRON_SECRET, supabase })
 }
 
-interface Update { id: string; title: string; body_html: string; cta_label?: string; cta_url?: string }
+type Update = ProductUpdate
 
-function layout(inner: string, unsubUrl: string): string {
-  return emailShell({
-    unsubUrl,
-    bodyHtml: eyebrow('Νέες δυνατότητες') + inner,
-  })
-}
 
-function updateBlock(u: Update): string {
-  const cta = u.cta_url ? linkLine(u.cta_label || 'Δες περισσότερα', u.cta_url) : ''
-  return `<div class="rule-t" style="padding:20px 0 4px;border-top:1px solid ${C.rule};">
-    <h2 class="ink" style="margin:0 0 7px;font-size:17px;color:${C.ink};font-weight:600;letter-spacing:-0.2px;mso-line-height-rule:exactly;line-height:24px;">${esc(u.title)}</h2>
-    <div class="tx" style="font-size:15px;color:${C.text};mso-line-height-rule:exactly;line-height:25px;">${u.body_html || ''}</div>${cta}
-  </div>`
-}
 
-async function listUsers(): Promise<{ id: string; email: string }[]> {
-  const out: { id: string; email: string }[] = []
+async function listUsers(): Promise<{ id: string; email: string; lang: Lang }[]> {
+  const out: { id: string; email: string; lang: Lang }[] = []
   for (let page = 1; page <= 100; page++) {
     const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 })
     if (error || !data?.users?.length) break
-    for (const u of data.users) if (u.email && u.email_confirmed_at) out.push({ id: u.id, email: u.email })
+    for (const u of data.users) if (u.email && u.email_confirmed_at) out.push({ id: u.id, email: u.email, lang: msgLangOfMeta(u.user_metadata) })
     if (data.users.length < 1000) break
   }
   return out
@@ -123,16 +111,17 @@ Deno.serve(async (req) => {
   const toSend = (updates as Update[]).filter(u => claimedIds.has(u.id))
   if (!toSend.length) return json({ message: 'already_claimed' })
 
-  const inner = toSend.map(updateBlock).join('')
-  // Χωρίς πρόθεμα «PROPERWISE»: το όνομα του αποστολέα το λέει ήδη στη λίστα.
-  const subject = toSend.length === 1 ? toSend[0].title : `${toSend.length} νέες δυνατότητες`
+  // Η γλώσσα κάθε παραλήπτη· το περιεχόμενο των ανακοινώσεων φεύγει όπως γράφτηκε.
+  const langOf = new Map(users.map(u => [u.id, u.lang]))
+  const inner = { el: toSend.map(u => updateBlock(u)).join(''), en: toSend.map(u => updateBlock(u, 'en')).join('') }
+  // Χωρίς πρόθεμα «PROPERWISE»: το όνομα του αποστολέα το λέει ήδη στη λίστα (newsSubject).
 
   let sent = 0, failed = 0
   for (let i = 0; i < recipients.length; i += 100) {
     const chunk = recipients.slice(i, i + 100)
     const payload = chunk.map(u => {
       const unsubUrl = `${APP_URL}/unsubscribe/${u.token}`
-      return { from: FROM_EMAIL, reply_to: REPLY_TO, to: u.email, subject, html: layout(inner, unsubUrl), headers: listUnsubscribeHeaders(unsubUrl) }
+      return { from: FROM_EMAIL, reply_to: REPLY_TO, to: u.email, subject: newsSubject(toSend, langOf.get(u.id) ?? 'el'), html: newsLayout(inner[langOf.get(u.id) ?? 'el'], unsubUrl, langOf.get(u.id) ?? 'el'), headers: listUnsubscribeHeaders(unsubUrl) }
     })
     try {
       const res = await fetch('https://api.resend.com/emails/batch', {

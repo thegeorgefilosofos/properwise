@@ -14,11 +14,12 @@
 //   (RESEND_API_KEY / SUPABASE_URL / SUPABASE_ANON_KEY υπάρχουν ήδη)
 // ─────────────────────────────────────────────────────────────────────────
 
-import { emailShell, eyebrow, h, p, button } from '../_shared/emailTemplates.ts';
+// Το email ζει στο _shared/noticeEmails.ts, σε δύο γλώσσες: σε αυτήν του διαχειριστή που προσκαλεί.
+import { orgInviteEmail } from '../_shared/noticeEmails.ts'
+import { msgLangOfMeta } from '../_shared/msgLang.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2.119.0'
 import { APP_URL } from '../_shared/site.ts'
 import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'
-import { EMAIL_LIGHT as C } from '../_shared/emailPalette.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
@@ -33,26 +34,6 @@ const CORS = {
 }
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } })
-
-const roleLabel = (r: string) => (r === 'admin' ? 'Διαχειριστής' : 'Μέλος')
-const esc = (s: string) => s.replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c] as string))
-
-function inviteEmail(orgName: string, inviter: string, role: string): { subject: string; html: string } {
-  // «στο Χ» με όνομα, «σε μια ομάδα στο PROPERWISE» χωρίς: το άρθρο αλλάζει με το ουσιαστικό.
-  const org = orgName ? `στο ${esc(orgName)}` : 'σε μια ομάδα στο PROPERWISE'
-  const who = inviter ? esc(inviter) : 'Ο διαχειριστής της ομάδας'
-  // Το θέμα είναι απλό κείμενο: το esc() εκεί θα έγραφε «&amp;» αυτούσιο.
-  const subject = orgName ? `Πρόσκληση στην ομάδα «${orgName}»` : 'Πρόσκληση στο PROPERWISE'
-  const html = emailShell({
-    preheader: `${who} σε προσκάλεσε ${org}.`,
-    footerNote: 'Έλαβες αυτό το email επειδή προστέθηκες σε ομάδα. Αν δεν το περίμενες, αγνόησέ το. · properwise.gr',
-    bodyHtml: eyebrow('Πρόσκληση σε ομάδα')
-      + h(`Προσκλήθηκες ${org}`)
-      + p(`${who} σε προσκάλεσε να συνεργαστείς στο PROPERWISE με ρόλο <strong class="ink" style="color:${C.ink};">${roleLabel(role)}</strong>. Δημιούργησε λογαριασμό με αυτό το email και θα βρεις την ομάδα να σε περιμένει.`)
-      + button('Δημιουργία λογαριασμού', SIGNUP_URL),
-  })
-  return { subject, html }
-}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
@@ -131,7 +112,7 @@ Deno.serve(async (req) => {
     }, 429)
   }
 
-  const { subject, html } = inviteEmail(orgRow.name || '', inviter, member.role || 'member')
+  const { subject, html } = orgInviteEmail(orgRow.name || '', inviter, member.role || 'member', SIGNUP_URL, msgLangOfMeta(userData.user.user_metadata))
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
