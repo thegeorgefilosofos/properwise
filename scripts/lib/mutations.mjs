@@ -788,7 +788,7 @@ export const MUTATIONS = {
   // αποστολής · η παλέτα του email ξεφεύγει από το token της εφαρμογής · ένα
   // κουτί της παλέτας γίνεται τόσο πυκνό που το κείμενό του πέφτει κάτω από 4,5:1.
   'email-palette': { every: [
-    { file: 'supabase/functions/send-reminders/index.ts', from: "eyebrow('Ληξιπρόθεσμο ενοίκιο', 'negative')", to: "eyebrow('Ληξιπρόθεσμο ενοίκιο', 'negative') + '<b style=\"color:#d93025\">!</b>'" },
+    { file: 'supabase/functions/_shared/reminderEmail.ts', from: "eyebrow(t.rentEyebrow, 'negative')", to: "eyebrow(t.rentEyebrow, 'negative') + '<b style=\"color:#d93025\">!</b>'" },
     { file: 'supabase/functions/_shared/emailPalette.ts', from: "ink: '#0f1b2e',", to: "ink: '#1d1d1f'," },
     { file: 'supabase/functions/_shared/emailPalette.ts', from: "accentFill: 'rgba(19,86,194,.06)',", to: "accentFill: 'rgba(19,86,194,.6)'," },
   ] },
