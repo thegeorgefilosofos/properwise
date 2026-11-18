@@ -657,7 +657,9 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
         {offersBulk(kindOf(edited)?.value, file, sniffOutcome) && onBulkImport ? (
           <div className="act-center" style={{ display: 'flex', gap: T.sp.sm, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Btn variant="secondary" onClick={reset}>{W ? W.scanNew : 'Σάρωσε νέο έγγραφο'}</Btn>
-            <Btn variant="primary" onClick={() => onBulkImport(file)}>{W ? W.bulkAll : 'Καταχώρησε όλα τα ακίνητα'}</Btn>
+            {W
+              ? <Btn variant="primary" onClick={() => onBulkImport(file)}>{W.bulkAll}</Btn>
+              : <Btn variant="primary" onClick={() => onBulkImport(file)}>Καταχώρησε όλα τα ακίνητα</Btn>}
           </div>
         ) : kindOf(edited)?.value === 'e2' && onOpenAccounting ? (
           <div className="act-center" style={{ display: 'flex', gap: T.sp.sm, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -799,7 +801,9 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
             <div role="button" tabIndex={0} onClick={openBulk} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();openBulk()}else if(e.key===" ")e.preventDefault()}} onKeyUp={e=>{if(e.key===" "){e.preventDefault();openBulk()}}}
               className="pick-tile pick-tile-css" style={{ minHeight: 172, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 16 }}>
               <svg aria-hidden="true" width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M9 21v-6h6v6"/></svg>
-              <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>{W ? W.bulk[0] : 'Πολλά ακίνητα από Ε9 ή ΕΝΦΙΑ'}</div>
+              {W
+                ? <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>{W.bulk[0]}</div>
+                : <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>Πολλά ακίνητα από Ε9 ή ΕΝΦΙΑ</div>}
               <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>{W ? W.bulk[1] : 'Όλα μαζί, από το myAADE'}</div>
             </div>
           )}
