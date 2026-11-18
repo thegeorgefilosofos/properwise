@@ -40,6 +40,16 @@ ok(withName.html.includes('Λάβαμε το μήνυμά σου και σε ε�
 ok(withName.html.includes('Η ομάδα του PROPERWISE'), 'η υπογραφή');
 ok(withName.html.includes('Αυτοματοποιημένη επιβεβαίωση παραλαβής'), 'η σημείωση του υποσέλιδου');
 
+// ── Στα αγγλικά: ίδιο σχήμα, κανένα ελληνικό γράμμα, ελληνικά αμετάβλητα ──
+{
+  const en = replyAckEmail('Maria', 'en');
+  const GREEK = /[\p{Script=Greek}]/u;
+  ok(en.subject === 'PROPERWISE | We received your message', 'EN: το θέμα');
+  ok(en.html.includes('<html lang="en">') && en.html.includes('Hi <b>Maria</b>,'), 'EN: γλώσσα και προσφώνηση');
+  ok(!GREEK.test(en.subject + en.html), 'EN: κανένα ελληνικό γράμμα');
+  ok(JSON.stringify(replyAckEmail('Maria', 'el')) === JSON.stringify(replyAckEmail('Maria')), 'ελληνικά: ίδια με χωρίς γλώσσα');
+}
+
 console.log(`\nemail/ack.ts — ${p} passed, ${f} failed`);
 if (f > 0) process.exit(1);
 console.log('όλα πέρασαν');

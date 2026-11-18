@@ -85,7 +85,7 @@ const base = {
   ok('δέσμευση της ίδιας γραμμής πριν από την προσπάθεια', branch.includes("rpc('support_forward_claim', { p_limit: 1, p_provider_id: event.emailId })"))
   ok('η προσπάθεια περνά από την κοινή ρουτίνα', branch.includes('await forwardOne(rows[0], forwardDeps(db))') && !branch.includes('forwardSupport('))
   ok('ειδοποίηση με κωδικό για λάθος ρύθμισης και οριστική αποτυχία', branch.includes("{ status: 200, code: result.code }"))
-  ok('η επιβεβαίωση δεν υπόσχεται προτεραιότητα', /handleReplyAck\(db, event\.from, process\.env\[KEY_ENV\], \{ kind \}\)/.test(branch)
+  ok('η επιβεβαίωση δεν υπόσχεται προτεραιότητα', /handleReplyAck\(db, event\.from, process\.env\[KEY_ENV\], \{ kind, lang: ackLangOf\(event\.subject\) \}\)/.test(branch)
     && !readFileSync('lib/email/ack.ts', 'utf8').includes('προτεραιότητα'))
   ok(`το ${FORWARD_ENV} διαβάζεται σε ένα σημείο`, readFileSync('lib/support/forwardDeps.ts', 'utf8').includes('to: process.env[FORWARD_ENV]'))
 

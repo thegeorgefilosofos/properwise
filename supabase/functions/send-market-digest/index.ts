@@ -9,18 +9,20 @@
 // key (Authorization: Bearer, από το vault) και η authorized() το δέχεται.
 // Προαιρετικά: RESEND_FROM (branded αποστολέας μετά την επαλήθευση domain).
 // ─────────────────────────────────────────────────────────────────────────
-import { emailShell, eyebrow, h, note, dataTable, listUnsubscribeHeaders } from '../_shared/emailTemplates.ts'
-import { EMAIL_LIGHT as C } from '../_shared/emailPalette.ts'
+import { listUnsubscribeHeaders } from '../_shared/emailTemplates.ts'
+// Το email ζει στο _shared/marketDigestEmail.ts, σε δύο γλώσσες.
+import { DIGEST_METRICS, digestLayout, digestRows, digestSubject } from '../_shared/marketDigestEmail.ts'
+import { msgLangOfMeta } from '../_shared/msgLang.ts'
+import type { Lang } from '../_shared/emailTemplates.ts'
 import { audience, batchKey, ensurePrefs, readPrefs } from '../_shared/marketingAudience.ts'
 ;
 import { createClient } from 'npm:@supabase/supabase-js@2.119.0'
 import { APP_URL } from '../_shared/site.ts'
 import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
-import { pct } from '../_shared/format.ts'
 import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'
 // Ο ΙΔΙΟΣ ΚΑΝΟΝΑΣ ΣΕΙΡΑΣ ΜΕ ΤΗΝ ΤΡΟΦΟΔΟΣΙΑ: το lib/market/ecb.ts φορτώνεται και
 // από το Deno (όπως στη market-data-updater), χωρίς σχετικές εισαγωγές.
-import { digestCutoff, weeklyDigest, type MarketKey, type RatesRow } from '../../../lib/market/ecb.ts'
+import { digestCutoff, weeklyDigest, type RatesRow } from '../../../lib/market/ecb.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
@@ -39,52 +41,12 @@ async function authorized(req: Request): Promise<CronAuth> {
   return authorizeCron(req, { serviceKey: SERVICE_KEY, envSecret: CRON_SECRET, supabase })
 }
 
-const METRICS: { key: MarketKey; label: string }[] = [
-  { key: 'euribor_3m', label: 'Euribor 3 μηνών' },
-  { key: 'euribor_6m', label: 'Euribor 6 μηνών' },
-  { key: 'euribor_12m', label: 'Euribor 12 μηνών' },
-  { key: 'ecb_rate', label: 'Επιτόκιο ΕΚΤ' },
-  { key: 'bog_housing_new', label: 'Επιτόκιο νέων στεγαστικών (ΤτΕ)' },
-]
-
-function rowHtml(label: string, cur: number | null, prev: number | null): string {
-  // ΧΩΡΙΣ ΤΙΜΗ, ΧΩΡΙΣ ΓΡΑΜΜΗ. Ο τοπικός μορφοποιητής έγραφε «—» στη θέση της
-  // τιμής· ο κοινός θα έγραφε «0,00%», που είναι χειρότερο — λέει ότι το
-  // επιτόκιο ΕΙΝΑΙ μηδέν. Η απουσία λέγεται με απουσία, όπως και στην οθόνη.
-  if (cur == null) return ''
-  const d = prev != null ? cur - prev : null
-  // ΚΑΜΙΑ ΠΑΥΛΑ ΣΕ ΘΕΣΗ ΤΙΜΗΣ ΚΑΙ ΟΙ ΔΥΟ ΣΙΩΠΕΣ ΔΕΝ ΕΙΝΑΙ Η ΙΔΙΑ. Το digest
-  // φεύγει μόνο όταν κινηθεί ΤΟΥΛΑΧΙΣΤΟΝ ένα από τα πέντε μεγέθη, άρα σε κάθε
-  // email που στέλνεται τα υπόλοιπα εμφανίζονταν με «—». Ενα σημάδι που σημαίνει
-  // άλλοτε «δεν άλλαξε» και άλλοτε «δεν έχουμε προηγούμενη τιμή» δεν λέει τίποτα
-  // από τα δύο· και ο αναγνώστης οθόνης το διαβάζει ως «παύλα».
-  const arrow = d == null ? `<span class="fa" style="color:${C.mute};">Χωρίς σύγκριση</span>`
-    : Math.abs(d) < 0.001 ? `<span class="fa" style="color:${C.mute};">Αμετάβλητο</span>`
-    : d > 0 ? `<span class="neg" style="color:${C.negative};">▲ ${pct(Math.abs(d))}</span>` : `<span class="pos" style="color:${C.positive};">▼ ${pct(Math.abs(d))}</span>`
-  return `<tr>
-    <td class="rule-b tx" style="padding:11px 0;border-bottom:1px solid ${C.rule};font-size:13px;color:${C.text};">${label}</td>
-    <td class="ink rule-b" style="padding:11px 0;border-bottom:1px solid ${C.rule};text-align:right;font-size:13px;font-weight:600;color:${C.ink};">${pct(cur)}</td>
-    <td class="rule-b" style="padding:11px 0;border-bottom:1px solid ${C.rule};text-align:right;font-size:12px;">${arrow}</td>
-  </tr>`
-}
-
-function layout(inner: string, unsubUrl: string): string {
-  return emailShell({
-    unsubUrl,
-    preheader: 'Τα επιτόκια της εβδομάδας.',
-    bodyHtml: eyebrow('Δεδομένα αγοράς')
-      + h('Εβδομαδιαία ενημέρωση επιτοκίων')
-      + dataTable(inner)
-      + note('Χρήσιμο για την αξιολόγηση δανείων και αποδόσεων στο PROPERWISE.'),
-  })
-}
-
-async function listUsers(): Promise<{ id: string; email: string }[]> {
-  const out: { id: string; email: string }[] = []
+async function listUsers(): Promise<{ id: string; email: string; lang: Lang }[]> {
+  const out: { id: string; email: string; lang: Lang }[] = []
   for (let page = 1; page <= 100; page++) {
     const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 })
     if (error || !data?.users?.length) break
-    for (const u of data.users) if (u.email && u.email_confirmed_at) out.push({ id: u.id, email: u.email })
+    for (const u of data.users) if (u.email && u.email_confirmed_at) out.push({ id: u.id, email: u.email, lang: msgLangOfMeta(u.user_metadata) })
     if (data.users.length < 1000) break
   }
   return out
@@ -121,7 +83,7 @@ Deno.serve(async (req) => {
   // ΜΕΤΑΒΟΛΗ ΜΟΝΟ ΜΕΣΑ ΣΤΗΝ ΙΔΙΑ ΣΕΙΡΑ (13.10.2026) και τιμή μόνο από σειρά του
   // καταλόγου: η `weeklyDigest` ρωτά τη `sameSeries` και την ταυτότητα. Τιμή της
   // F κάτω από το `bog_housing_new` δεν γράφεται ως «Επιτόκιο νέων στεγαστικών».
-  const digest = weeklyDigest(curRow as RatesRow, baseRow as RatesRow | null, METRICS.map(m => m.key))
+  const digest = weeklyDigest(curRow as RatesRow, baseRow as RatesRow | null, DIGEST_METRICS.map(m => m.key))
   const cur: Record<string, number | null> = Object.fromEntries(digest.lines.map(l => [l.key, l.cur]))
   const prev: Record<string, number | null> = Object.fromEntries(digest.lines.map(l => [l.key, l.prev]))
 
@@ -150,15 +112,17 @@ Deno.serve(async (req) => {
   if (skippedNoToken) console.error(`[send-market-digest] ${skippedNoToken} παραλήπτες χωρίς token απεγγραφής: δεν στάλθηκε`)
   if (!recipients.length) return json({ message: 'no_subscribers', skippedNoToken })
 
-  const inner = METRICS.map(m => rowHtml(m.label, cur[m.key], prev[m.key])).join('')
-  const subject = 'PROPERWISE · Εβδομαδιαία ενημέρωση επιτοκίων'
+  // Η γλώσσα κάθε παραλήπτη από τη «Γλώσσα μηνυμάτων και email» του Λογαριασμού.
+  const langOf = new Map(users.map(u => [u.id, u.lang]))
+  const inner = { el: digestRows(cur, prev, 'el'), en: digestRows(cur, prev, 'en') }
 
   let sent = 0, failed = 0
   for (let i = 0; i < recipients.length; i += 100) {
     const chunk = recipients.slice(i, i + 100)
     const payload = chunk.map(u => {
       const unsubUrl = `${APP_URL}/unsubscribe/${u.token}`
-      return { from: FROM_EMAIL, reply_to: REPLY_TO, to: u.email, subject, html: layout(inner, unsubUrl), headers: listUnsubscribeHeaders(unsubUrl) }
+      const lang = langOf.get(u.id) ?? 'el'
+      return { from: FROM_EMAIL, reply_to: REPLY_TO, to: u.email, subject: digestSubject(lang), html: digestLayout(inner[lang], unsubUrl, lang), headers: listUnsubscribeHeaders(unsubUrl) }
     })
     try {
       const res = await fetch('https://api.resend.com/emails/batch', {
