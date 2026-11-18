@@ -95,10 +95,10 @@ export const UPSELL: Record<string, CopyFn> = {
     const lead = o
       ? `If PROPERWISE has become part of your routine, annual billing gives you a <b>${percent(o.pct)}</b> discount compared with monthly, with the code <b>${o.code}</b> at checkout. Same features, lower cost.`
       : 'If PROPERWISE has become part of your routine, annual billing costs less than twelve monthly payments: up to two months’ fewer charges a year. Same features, lower cost.'
-    return { subject: promo ? `Pay annually and save ${percent(c.discountPct)}` : 'Pay annually and gain up to two months', html: shell({
+    return { subject: promo ? `Pay annually and save ${percent(o ? o.pct : 0)}` : 'Pay annually and gain up to two months', html: shell({
       preheader: 'Same plan, lower cost.',
       unsubUrl: c.unsubUrl,
-      hero: heroStat(promo ? `${percent(c.discountPct)}` : 'up to 2 months', promo ? 'saving' : 'fewer charges a year'),
+      hero: heroStat(promo ? `${percent(o ? o.pct : 0)}` : 'up to 2 months', promo ? 'saving' : 'fewer charges a year'),
       bodyHtml: eyebrow('Annual billing') + h('Lower cost with the annual subscription') + hi(c)
         + p(lead)
         + p('You can switch in your Account, under Subscription.')
