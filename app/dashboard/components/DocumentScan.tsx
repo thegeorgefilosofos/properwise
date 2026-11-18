@@ -391,7 +391,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
     // περιέχει…» θα γραφόταν στον Φάκελο μόλις ο χρήστης διάλεγε τύπο.
     if (r.doc) setEdited(isDocumentary(r.doc) ? withPropertyLine(r.doc, propertyAtak) : { doc_type: 'other', is_document: false });
     else { setError(r.error || 'unreadable'); setErrorText(r.errorText || ''); setEdited({ doc_type: 'other', is_document: false }); }
-  }, [propertyAtak, onBulkImport, propertyId, setSniffing]);
+  }, [propertyAtak, onBulkImport, propertyId, setSniffing, W]);
 
   // ΖΕΣΤΟΣ ΑΝΑΓΝΩΣΤΗΣ. Το chunk της ανάγνωσης στη συσκευή ζητείται μόλις ανοίξει
   // η Σάρωση, όχι όταν πέσει το PDF: το πρώτο PDF δεν περιμένει το δίκτυο μέσα
