@@ -35,6 +35,7 @@ import {
 import { inferRole } from '@/lib/contacts/roles';
 import { ensureDpa } from '@/lib/legal/dpa';
 import { SAY } from '@/lib/core/dbError';
+import { useAppEn } from '@/lib/i18n/appEn';
 
 // Το prompt ζει στο scanDoc.ts (μαζί με όλη τη μηχανή σάρωσης). Επανεξάγεται εδώ
 // επειδή οθόνες που δεν ανήκουν σε αυτή τη ροή (Ενοικιαστής, Αρχείο) το εισάγουν
@@ -214,6 +215,10 @@ const DocIcon = ({ size }: { size: number }) => (
 
 export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyChange, onDirtyChange, onManual, onOpenAccounting, onBulkImport, initialFile, properties }: Props) {
   const supabase = createClient();
+  // Τα αγγλικά της σάρωσης, ή `null` στα ελληνικά (lib/i18n/appEn.tsx). Τα
+  // πεδία του εγγράφου ακολουθούν το ελληνικό χαρτί σε αυτή τη φάση.
+  const W = useAppEn('expenses')?.scan;
+  const S = useAppEn('shell');
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   // Το ref διαβάζεται ΜΕΣΑ σε useCallback, όχι στην απόδοση. Ο κανόνας
@@ -349,7 +354,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
     // τεράστια αρχεία (το base64 φουσκώνει ~33%, οπότε 10MB ≈ 13MB payload).
     if (f.size > SCAN_FILE_MAX_MB * 1024 * 1024) {
       // Ο ίδιος μορφοποιητής με τη γραμμή του αρχείου: «9,5 MB», όχι «9.5MB».
-      setError(`Το αρχείο είναι πολύ μεγάλο (${sizeLabel(f.size)}). Όριο ${SCAN_FILE_MAX_MB} MB.`); return;
+      setError(W ? W.tooBig(sizeLabel(f.size), SCAN_FILE_MAX_MB) : `Το αρχείο είναι πολύ μεγάλο (${sizeLabel(f.size)}). Όριο ${SCAN_FILE_MAX_MB} MB.`); return;
     }
     // ΤΟ PDF ΤΟΥ myAADE ΔΕΝ ΠΕΡΝΑ ΑΠΟ ΤΟ AI (12/11/2026). Η κεφαλίδα διαβάζεται
     // στη συσκευή, ΠΡΙΝ από το `scanDocument`: Ε9 ή πράξη ΕΝΦΙΑ πάει κατευθείαν
@@ -386,7 +391,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
     // περιέχει…» θα γραφόταν στον Φάκελο μόλις ο χρήστης διάλεγε τύπο.
     if (r.doc) setEdited(isDocumentary(r.doc) ? withPropertyLine(r.doc, propertyAtak) : { doc_type: 'other', is_document: false });
     else { setError(r.error || 'unreadable'); setErrorText(r.errorText || ''); setEdited({ doc_type: 'other', is_document: false }); }
-  }, [propertyAtak, onBulkImport, propertyId, setSniffing]);
+  }, [propertyAtak, onBulkImport, propertyId, setSniffing, W]);
 
   // ΖΕΣΤΟΣ ΑΝΑΓΝΩΣΤΗΣ. Το chunk της ανάγνωσης στη συσκευή ζητείται μόλις ανοίξει
   // η Σάρωση, όχι όταν πέσει το PDF: το πρώτο PDF δεν περιμένει το δίκτυο μέσα
@@ -562,7 +567,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
         <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--positive-soft)', border: '1px solid var(--positive-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
           <svg aria-hidden="true" width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="var(--positive)" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5" /></svg>
         </div>
-        <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6, letterSpacing: '-0.01em' }}>Καταχωρήθηκε</div>
+        <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6, letterSpacing: '-0.01em' }}>{W ? W.saved : 'Καταχωρήθηκε'}</div>
         {/* Και ΠΟΥ: με περισσότερα ακίνητα, το όνομα του ακινήτου που διάλεξε. */}
         <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', marginBottom: T.sp.xl }}>
           {docSummaryLine(edited)}{targetName && (properties?.length ?? 0) > 1 ? ` · ${targetName}` : ''}
@@ -580,7 +585,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
             <InfoBanner tone="warning">{failedNotice(failedInfo)}</InfoBanner>
           </div>
         ) : (
-          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: T.sp.xxl }}>Ενημερώθηκαν αυτόματα οι σχετικές καρτέλες.</div>
+          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: T.sp.xxl }}>{W ? W.savedSub : 'Ενημερώθηκαν αυτόματα οι σχετικές καρτέλες.'}</div>
         )}
 
         {/* Πρόταση αποθήκευσης εκδότη στις Επαφές (μόνο για λογαριασμό/απόδειξη με όνομα
@@ -651,16 +656,18 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
             η κύρια ενέργεια και η νέα σάρωση η δεύτερη. */}
         {offersBulk(kindOf(edited)?.value, file, sniffOutcome) && onBulkImport ? (
           <div className="act-center" style={{ display: 'flex', gap: T.sp.sm, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Btn variant="secondary" onClick={reset}>Σάρωσε νέο έγγραφο</Btn>
-            <Btn variant="primary" onClick={() => onBulkImport(file)}>Καταχώρησε όλα τα ακίνητα</Btn>
+            <Btn variant="secondary" onClick={reset}>{W ? W.scanNew : 'Σάρωσε νέο έγγραφο'}</Btn>
+            {W
+              ? <Btn variant="primary" onClick={() => onBulkImport(file)}>{W.bulkAll}</Btn>
+              : <Btn variant="primary" onClick={() => onBulkImport(file)}>Καταχώρησε όλα τα ακίνητα</Btn>}
           </div>
         ) : kindOf(edited)?.value === 'e2' && onOpenAccounting ? (
           <div className="act-center" style={{ display: 'flex', gap: T.sp.sm, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Btn variant="secondary" onClick={reset}>Σάρωσε νέο έγγραφο</Btn>
-            <Btn variant="primary" onClick={onOpenAccounting}>Άνοιγμα στη {navLabel('accounting')}</Btn>
+            <Btn variant="secondary" onClick={reset}>{W ? W.scanNew : 'Σάρωσε νέο έγγραφο'}</Btn>
+            <Btn variant="primary" onClick={onOpenAccounting}>{W && S ? W.openIn(S.nav.accounting) : <>Άνοιγμα στη {navLabel('accounting')}</>}</Btn>
           </div>
         ) : (
-          <Btn variant="primary" onClick={reset}>Σάρωσε νέο έγγραφο</Btn>
+          <Btn variant="primary" onClick={reset}>{W ? W.scanNew : 'Σάρωσε νέο έγγραφο'}</Btn>
         )}
       </div>
     );
@@ -705,7 +712,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
           {/* ΥΠΟΣΧΟΤΑΝ «ΟΤΙΔΗΠΟΤΕ» ΚΑΙ ΚΑΤΑΧΩΡΙΣΗ ΧΩΡΙΣ ΤΟΝ ΧΡΗΣΤΗ. Η ροή όμως
               περνά πάντα από το βήμα ελέγχου, όπου ο χρήστης επιβεβαιώνει ή
               διορθώνει: η πρόταση λέει αυτό που γίνεται. */}
-          {bulkOnly
+          {W ? (bulkOnly ? W.introBulk : W.intro) : bulkOnly
             ? 'Δεν έχεις ακόμη ακίνητο για να καταχωρήσεις ένα έγγραφο. Από το Ε9 ή την πράξη ΕΝΦΙΑ του myAADE περνούν όλα τα ακίνητά σου μαζί.'
             : <>Φωτογράφισε ή ανέβασε λογαριασμό, απόδειξη, μισθωτήριο, τίτλο, ασφάλεια ή <span title="Ενιαίος Φόρος Ιδιοκτησίας Ακινήτων">ΕΝΦΙΑ</span>. Προτείνουμε πού μπαίνει και το επιβεβαιώνεις εσύ.</>}
         </div>
@@ -732,8 +739,8 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
             {/* Τρία πλακίδια, τρεις προστακτικές: «Φωτογράφισε», «Ανέβασε
                 αρχείο», «Γράψε το χειροκίνητα». Ηταν ουσιαστικό, προστακτική
                 και επίρρημα για τρεις απαντήσεις στην ίδια ερώτηση. */}
-            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>Φωτογράφισε</div>
-            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Με την κάμερα της συσκευής</div>
+            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>{W ? W.photo[0] : 'Φωτογράφισε'}</div>
+            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>{W ? W.photo[1] : 'Με την κάμερα της συσκευής'}</div>
           </div>
           <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => e.target.files?.[0] && loadFile(e.target.files[0])} />
 
@@ -742,7 +749,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
             onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'var(--accent-dim)'; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.background = 'var(--bg-elevated)'; }}>
             <svg aria-hidden="true" width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg>
-            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>Ανέβασε αρχείο</div>
+            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>{W ? W.upload[0] : 'Ανέβασε αρχείο'}</div>
             {/* ΜΟΝΟ Ο,ΤΙ ΔΙΑΒΑΖΕΤΑΙ. Υποσχόταν «Excel» και δεχόταν .csv/.xlsx/.ods
                 που η ανάγνωση δεν διαβάζει: ο χρήστης έπαιρνε «η υπηρεσία δεν
                 απαντά». Το `accept` έρχεται από την ίδια λίστα με τον έλεγχο. */}
@@ -762,8 +769,8 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.background = 'var(--bg-elevated)'; }}>
               {/* Ιδια κάθετη διάταξη με τα διπλανά: 12 κάτω από το εικονίδιο, 4 κάτω από τον τίτλο. Το `gap: 10` πρόσθετε κενό πάνω στο 4 και το πλακίδιο κατέβαινε. */}
               <svg aria-hidden="true" width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-              <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>Γράψε το χειροκίνητα</div>
-              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Χωρίς παραστατικό</div>
+              <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>{W ? W.manual[0] : 'Γράψε το χειροκίνητα'}</div>
+              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>{W ? W.manual[1] : 'Χωρίς παραστατικό'}</div>
             </div>
           )}
 
@@ -772,8 +779,8 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
             <div role="button" tabIndex={0} onClick={() => setImporting(true)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();setImporting(true)}else if(e.key===" ")e.preventDefault()}} onKeyUp={e=>{if(e.key===" "){e.preventDefault();setImporting(true)}}}
               className="pick-tile pick-tile-css" style={{ minHeight: 172, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 16 }}>
               <svg aria-hidden="true" width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M3 3h18v18H3z"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
-              <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>Κινήσεις τράπεζας</div>
-              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>CSV ή Excel</div>
+              <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>{W ? W.bank[0] : 'Κινήσεις τράπεζας'}</div>
+              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>{W ? W.bank[1] : 'CSV ή Excel'}</div>
             </div>
           )}
 
@@ -794,8 +801,10 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
             <div role="button" tabIndex={0} onClick={openBulk} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();openBulk()}else if(e.key===" ")e.preventDefault()}} onKeyUp={e=>{if(e.key===" "){e.preventDefault();openBulk()}}}
               className="pick-tile pick-tile-css" style={{ minHeight: 172, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 16 }}>
               <svg aria-hidden="true" width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M9 21v-6h6v6"/></svg>
-              <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>Πολλά ακίνητα από Ε9 ή ΕΝΦΙΑ</div>
-              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Όλα μαζί, από το myAADE</div>
+              {W
+                ? <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>{W.bulk[0]}</div>
+                : <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>Πολλά ακίνητα από Ε9 ή ΕΝΦΙΑ</div>}
+              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>{W ? W.bulk[1] : 'Όλα μαζί, από το myAADE'}</div>
             </div>
           )}
 
@@ -822,7 +831,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
               πάροχο AI. Τώρα λέει τη σειρά: πρώτα η συσκευή και μόνο όταν
               αναγνωριστεί εκεί, μένει εκεί. Χωρίς ακίνητο ανοίγει μόνο η μαζική,
               που διαβάζει το PDF πάντα στη συσκευή: εκεί η πρόταση ισχύει χωρίς όρο. */}
-          {bulkOnly ? 'Το PDF του myAADE διαβάζεται στη συσκευή σου· η φωτογραφία διαβάζεται με AI' : <>Η ανάγνωση γίνεται με AI. Ένα PDF του myAADE το ελέγχουμε πρώτα στη συσκευή σου: αν αναγνωριστεί ως Ε9 ή πράξη ΕΝΦΙΑ, δεν στέλνεται στον πάροχο AI</>}. Ισχύει η <a href="/privacy" target="_blank" rel="noreferrer" style={{ color: 'var(--text-secondary)', textDecoration: 'none', borderBottom: '1px solid var(--border-default)' }}>πολιτική απορρήτου</a>· ο πάροχος AI δεσμεύεται με σύμβαση να μην εκπαιδεύει μοντέλα με τα έγγραφά σου.
+          {W ? <>{bulkOnly ? W.privacyBulk : W.privacy}{W.privacyTail[0]}<a href="/en/privacy" target="_blank" rel="noreferrer" style={{ color: 'var(--text-secondary)', textDecoration: 'none', borderBottom: '1px solid var(--border-default)' }}>{W.privacyTail[1]}</a>{W.privacyTail[2]}</> : <>{bulkOnly ? 'Το PDF του myAADE διαβάζεται στη συσκευή σου· η φωτογραφία διαβάζεται με AI' : <>Η ανάγνωση γίνεται με AI. Ένα PDF του myAADE το ελέγχουμε πρώτα στη συσκευή σου: αν αναγνωριστεί ως Ε9 ή πράξη ΕΝΦΙΑ, δεν στέλνεται στον πάροχο AI</>}. Ισχύει η <a href="/privacy" target="_blank" rel="noreferrer" style={{ color: 'var(--text-secondary)', textDecoration: 'none', borderBottom: '1px solid var(--border-default)' }}>πολιτική απορρήτου</a>· ο πάροχος AI δεσμεύεται με σύμβαση να μην εκπαιδεύει μοντέλα με τα έγγραφά σου.</>}
         </p>
       </div>
     );
@@ -831,7 +840,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
   // ── Βήμα 2: έλεγχος ─────────────────────────────────────────────────────────
   const isPdf = file?.type === 'application/pdf';
   const isImage = !!file?.type.startsWith('image/');
-  const fileName = file?.name || 'Έγγραφο';
+  const fileName = file?.name || (W ? W.file : 'Έγγραφο');
   const fileMeta = file ? `${sizeLabel(file.size)}${isPdf ? ' · PDF' : ''}` : '';
 
   // ΕΝΑ ΜΗΝΥΜΑ, ΤΟ ΣΗΜΑΝΤΙΚΟΤΕΡΟ. Ηταν ως τρία πλαίσια στη σειρά, χειρόγραφα,
@@ -843,6 +852,12 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
       const said = [...new Set(invalid.map(k => INVALID_SAY[k]).filter(Boolean))];
       const many = said.length > 1;
       return { tone: 'negative', body: `${said.join(' ')} ${many ? 'Διόρθωσέ τα ή άφησέ τα κενά· δεν θα αποθηκευτούν.' : 'Διόρθωσέ το ή άφησέ το κενό· δεν θα αποθηκευτεί.'}` };
+    }
+    if (error && W) {
+      // Στα αγγλικά: ίδιο σφάλμα, ίδιες συμβουλές. Το κείμενο του ορίου σαρώσεων
+      // έρχεται από τον διακομιστή στα ελληνικά, οπότε εδώ μένει η γενική συμβουλή.
+      const [t, tips] = W.errors[error] ?? W.errors.other;
+      return { tone: 'warning', body: <><strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{t}.</strong> {tips.map(sentence).join(' ')}</> };
     }
     if (error) {
       const title = error === 'unreadable' ? 'Δεν διάβασα καθαρά το έγγραφο'
@@ -863,9 +878,9 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
         : ['Δοκίμασε ξανά σε λίγο', 'Συμπλήρωσε τα πεδία χειροκίνητα'];
       return { tone: 'warning', body: <><strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{title}.</strong> {tips.map(sentence).join(' ')}</> };
     }
-    if (!kind) return { tone: 'info', body: 'Δεν βρέθηκαν στοιχεία εγγράφου σε αυτή την εικόνα. Διάλεξε τύπο για να το καταχωρήσεις ή ανέβασε άλλο αρχείο.' };
+    if (!kind) return { tone: 'info', body: W ? W.noKind : 'Δεν βρέθηκαν στοιχεία εγγράφου σε αυτή την εικόνα. Διάλεξε τύπο για να το καταχωρήσεις ή ανέβασε άλλο αρχείο.' };
     if (!typeTouched && edited?.confidence != null && edited.confidence < TYPE_UNSURE_BELOW) {
-      return { tone: 'warning', body: 'Η σάρωση δεν είναι σίγουρη για τον τύπο. Έλεγξέ τον.' };
+      return { tone: 'warning', body: W ? W.unsure : 'Η σάρωση δεν είναι σίγουρη για τον τύπο. Έλεγξέ τον.' };
     }
     if (form?.info) return { tone: 'info', body: form.info };
     return null;
@@ -880,7 +895,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
   const shortName = kind ? `${kind.short}${kind.doc_type === 'tax' && edited?.tax_year ? ` ${edited.tax_year}` : ''}` : 'Διάλεξε τύπο';
 
   const fileThumb = (
-    <a href={fileUrl || undefined} target="_blank" rel="noopener noreferrer" aria-label="Άνοιγμα εγγράφου"
+    <a href={fileUrl || undefined} target="_blank" rel="noopener noreferrer" aria-label={W ? W.openDoc : 'Άνοιγμα εγγράφου'}
       // Μικρογραφία, όχι χειριστήριο: τετράγωνο 48 από την αναλογία, όχι από ύψος της κλίμακας πεδίων.
       style={{ width: 48, aspectRatio: '1', flexShrink: 0, borderRadius: T.radius.inner, overflow: 'hidden', border: '1px solid var(--border-subtle)', background: 'var(--bg-base)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       {isImage && fileUrl
@@ -894,8 +909,8 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
       <div className="scan-review" data-preview={isImage && fileUrl ? '' : undefined}>
         {/* ── Αριστερά (≥821, μόνο εικόνα): το έγγραφο, όσο ψηλό χωράει ── */}
         {isImage && fileUrl && (
-          <aside className="scan-preview" aria-label="Το έγγραφο">
-            <a href={fileUrl} target="_blank" rel="noopener noreferrer" aria-label="Άνοιγμα εγγράφου"
+          <aside className="scan-preview" aria-label={W ? W.doc : 'Το έγγραφο'}>
+            <a href={fileUrl} target="_blank" rel="noopener noreferrer" aria-label={W ? W.openDoc : 'Άνοιγμα εγγράφου'}
               style={{ display: 'block', borderRadius: T.radius.card, overflow: 'hidden', border: '1px solid var(--border-subtle)', background: 'var(--bg-base)' }}>
               {/* Το ύψος του παραθύρου (92dvh) μείον κεφαλίδα, μπάρα και γέμισμα.
                   ΤΟ ΚΟΥΤΙ ΥΠΑΡΧΕΙ ΠΡΙΝ ΑΠΟ ΤΗΝ ΕΙΚΟΝΑ. Η εικόνα είναι `lazy`: ώσπου
@@ -912,7 +927,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                 <div style={{ ...TT.caption }}>{fileMeta}</div>
               </div>
               <div style={{ marginRight: -GHOST_INSET }}>
-                <Btn variant="ghost" onClick={reset} disabled={busy}>Άλλο αρχείο</Btn>
+                <Btn variant="ghost" onClick={reset} disabled={busy}>{W ? W.otherFile : 'Άλλο αρχείο'}</Btn>
               </div>
             </div>
           </aside>
@@ -927,7 +942,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
               <div className="po-elide" style={{ ...TT.bodySm, ...ELIDE, color: 'var(--text-primary)' }}>{fileName}</div>
               <div style={{ ...TT.caption }}>{fileMeta}</div>
             </div>
-            <Btn variant="secondary" onClick={reset} disabled={busy}>Άλλο αρχείο</Btn>
+            <Btn variant="secondary" onClick={reset} disabled={busy}>{W ? W.otherFile : 'Άλλο αρχείο'}</Btn>
           </div>
 
           {/* ΖΩΝΤΑΝΟ ΚΑΙ ΜΕ ΤΟ ΣΧΗΜΑ ΤΟΥ ΑΠΟΤΕΛΕΣΜΑΤΟΣ. Μια ακίνητη κουκκίδα με το
@@ -1208,7 +1223,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                 λείπει. Το δευτερεύον έχει πλήρη αντίθεση και λέει «όχι ακόμη». */}
             <Btn variant={canSave ? 'primary' : 'secondary'} onClick={submit} disabled={saving}
               describedBy={reason ? reasonId : undefined}>
-              {saving ? 'Καταχώρηση…' : 'Καταχώρηση'}
+              {W ? (saving ? W.filing : W.fileIt) : saving ? 'Καταχώρηση…' : 'Καταχώρηση'}
             </Btn>
           </div>
         </div>

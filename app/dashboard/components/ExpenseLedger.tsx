@@ -64,6 +64,8 @@ import { matchesLedgerFilter, isOverdue, isPendingNotOverdue, type LedgerFilter 
 import { monthYearLabel, monthGen } from '@/lib/core/months';
 import { afmDigits, isValidAfm, parseAmount } from '@/lib/core/greek';
 import { Dictation } from '@/components/dictation/MicButton';
+import { useAppEn } from '@/lib/i18n/appEn';
+import type { ExpensesEn } from '@/lib/i18n/en/app/expenses';
 
 interface Props {
   propertyId: string;
@@ -148,6 +150,18 @@ async function fetchLedger(
   return { bills: r.bills, expenses: r.expenses };
 }
 
+/**
+ * ΤΑ ΑΓΓΛΙΚΑ (lib/i18n/en/app/expenses.ts). Τα ποσά και οι ημερομηνίες δεν
+ * αλλάζουν: η αγγλική εφαρμογή τα γράφει όπως η ελληνική (lib/i18n/en/app/format.ts).
+ * Το όνομα μιας γραμμής μένει ό,τι έγραψε ο χρήστης· μόνο η ετικέτα κατηγορίας
+ * της ταξινομίας, όταν μπαίνει στη θέση του, μεταφράζεται.
+ */
+const nameIn = (E: ExpensesEn | null, e: Parameters<typeof entryName>[0]): string => {
+  const n = entryName(e);
+  return E && n === categoryLabel(e.category) ? E.categoryEn(e.category) : n;
+};
+const dueIn = (E: ExpensesEn | null, due: string) => (E ? E.due(daysUntil(due) ?? 0) : dueText(due));
+
 /** «1 απλήρωτη», «4 απλήρωτες»: η λέξη είναι η δαπάνη, όπως στον τίτλο του πλακιδίου. */
 const unpaidBillsLabel = (n: number): string =>
   `${n} ${n === 1 ? 'απλήρωτη' : 'απλήρωτες'}`;
@@ -159,6 +173,9 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
   // Ένα instance ανά component. Χωρίς useMemo, κάθε render έφτιαχνε νέο client
   // και το κανάλι realtime ξαναδενόταν χωρίς λόγο.
   const supabase = useMemo(() => createClient(), []);
+  // Τα αγγλικά των δαπανών, ή `null` στα ελληνικά (lib/i18n/appEn.tsx).
+  const E = useAppEn('expenses');
+  const unpaidN = (n: number) => (E ? E.unpaid(n) : unpaidBillsLabel(n));
   const [loading, setLoading] = useState(!!propertyId);
   const [bills, setBills] = useState<LedgerBill[]>([]);
   const [expenses, setExpenses] = useState<LedgerExpense[]>([]);
@@ -432,7 +449,10 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
   // το ΠΟΙΑ γραμμή πάτησε. Η επιβεβαίωση απαντά σε αυτό.
   const removeExpense = async (e: LedgerEntry) => {
     if (!e.expenseId) return;
-    if (!await confirmDialog({
+    if (!await confirmDialog(E ? {
+      title: E.deleteConfirm.title(e.amount), message: E.deleteConfirm.message(nameIn(E, e), shortDate(e.date)),
+      confirmLabel: E.deleteConfirm.confirm, cancelLabel: E.deleteConfirm.cancel, tone: 'negative',
+    } : {
       title: `Διαγραφή δαπάνης ${fe(e.amount)};`,
       message: `«${entryName(e)}» της ${shortDate(e.date)}.\nΗ γραμμή φεύγει οριστικά από τον Προϋπολογισμό, τη Λογιστική και τον φάκελο του λογιστή. Δεν αναιρείται.`,
       confirmLabel: 'Διαγραφή',
@@ -443,7 +463,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
     setBusy('');
     if (!ok) return;
     await load();
-    notify('Η δαπάνη διαγράφηκε');
+    notify(E ? E.deleted : 'Η δαπάνη διαγράφηκε');
   };
 
   const markPaid = async (e: LedgerEntry) => {
@@ -476,9 +496,9 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
         const { error } = await expenseStore.update(supabase, e.expenseId, { paid: true });
         if (error) throw error;
       }
-      notify('Μπήκε ως πληρωμένο');
+      notify(E ? E.markedPaid : 'Μπήκε ως πληρωμένο');
       await load();
-    } catch { notifyError('Δεν αποθηκεύτηκε. Δοκίμασε ξανά.'); }
+    } catch { notifyError(E ? E.notSaved : 'Δεν αποθηκεύτηκε. Δοκίμασε ξανά.'); }
     finally { setBusy(null); }
   };
 
@@ -695,14 +715,14 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
         {/* ΕΝΑ ΟΥΣΙΑΣΤΙΚΟ ΓΙΑ ΤΗΝ ΙΔΙΑ ΜΟΝΑΔΑ. Έγραφε «1 απλήρωτη» στο ένα
             πλακίδιο, «4 χρεώσεις» στο διπλανό και η Επισκόπηση «4 απλήρωτα»
             για τα ίδια ποσά. Παντού πλέον «απλήρωτοι λογαριασμοί». */}
-        <Stat label={`Δαπάνες ${monthGen(Number(thisMonth.slice(5, 7)) - 1)}`} value={loading ? null : fe(monthTotal)}
-          sub={monthUnpaid ? unpaidBillsLabel(monthUnpaid) : undefined} />
+        <Stat label={E ? E.monthStat(Number(thisMonth.slice(5, 7)) - 1) : `Δαπάνες ${monthGen(Number(thisMonth.slice(5, 7)) - 1)}`} value={loading ? null : fe(monthTotal)}
+          sub={monthUnpaid ? unpaidN(monthUnpaid) : undefined} />
         {/* ΔΥΟ ΠΛΑΚΙΔΙΑ ΕΛΕΓΑΝ ΤΗΝ ΙΔΙΑ ΓΡΑΜΜΗ. Το «Ανεξόφλητες» λέει πλέον
             πόσες από αυτές έχουν ήδη λήξει: αυτό ζητά κίνηση σήμερα. */}
-        <Stat label={'Ανεξόφλητες δαπάνες'} value={loading ? null : fe(unpaidTotal)}
-          sub={unpaid.length ? `${unpaidBillsLabel(unpaid.length)}${overdueN ? `, ${overdueN} ${overdueN === 1 ? 'ληξιπρόθεσμη' : 'ληξιπρόθεσμες'}` : ''}` : undefined} />
-        <Stat label={`Δαπάνες ${thisMonth.slice(0, 4)}`} value={loading ? null : fe(yearTotal)}
-          sub={yearExcluded > 0 ? `${fe(yearExcluded)} εκτός στατιστικών` : undefined} />
+        <Stat label={E ? E.unpaidStat : 'Ανεξόφλητες δαπάνες'} value={loading ? null : fe(unpaidTotal)}
+          sub={unpaid.length ? `${unpaidN(unpaid.length)}${overdueN ? (E ? E.overdueTail(overdueN) : `, ${overdueN} ${overdueN === 1 ? 'ληξιπρόθεσμη' : 'ληξιπρόθεσμες'}`) : ''}` : undefined} />
+        <Stat label={E ? E.yearStat(thisMonth.slice(0, 4)) : `Δαπάνες ${thisMonth.slice(0, 4)}`} value={loading ? null : fe(yearTotal)}
+          sub={yearExcluded > 0 ? (E ? E.excluded(yearExcluded) : `${fe(yearExcluded)} εκτός στατιστικών`) : undefined} />
       </div>
 
       {inbox}
@@ -711,11 +731,11 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
           Το ληξιπρόθεσμο ήταν μία κίτρινη γραμμή βαθιά στη λίστα, χωρίς τρόπο
           να το βρεις. Πλακίδια μόνο όταν υπάρχει κάτι απλήρωτο. */}
       {(unpaid.length > 0 || filter) && (
-        <div role="group" aria-label="Φίλτρο δαπανών" className="po-rail ledger-rail" style={{ marginBottom: T.sp.lg }}>
-          <ChipToggle shape="seg" on={!filter} onClick={() => setFilter(null)}>Όλες</ChipToggle>
-          {(overdueN > 0 || filter?.kind === 'overdue') && <ChipToggle shape="seg" on={filter?.kind === 'overdue'} onClick={() => setFilter(filter?.kind === 'overdue' ? null : { kind: 'overdue' })}>{`Ληξιπρόθεσμες ${overdueN}`}</ChipToggle>}
-          {(pendingN > 0 || filter?.kind === 'pending') && <ChipToggle shape="seg" on={filter?.kind === 'pending'} onClick={() => setFilter(filter?.kind === 'pending' ? null : { kind: 'pending' })}>{`Εκκρεμούν ${pendingN}`}</ChipToggle>}
-          {filter?.kind === 'buckets' && <ChipToggle shape="seg" on onClick={() => setFilter(null)} title="Καθαρισμός φίλτρου">{`Σε υπέρβαση: ${filter.label}`}</ChipToggle>}
+        <div role="group" aria-label={E ? E.filter : 'Φίλτρο δαπανών'} className="po-rail ledger-rail" style={{ marginBottom: T.sp.lg }}>
+          <ChipToggle shape="seg" on={!filter} onClick={() => setFilter(null)}>{E ? E.all : 'Όλες'}</ChipToggle>
+          {(overdueN > 0 || filter?.kind === 'overdue') && <ChipToggle shape="seg" on={filter?.kind === 'overdue'} onClick={() => setFilter(filter?.kind === 'overdue' ? null : { kind: 'overdue' })}>{E ? E.overdue(overdueN) : `Ληξιπρόθεσμες ${overdueN}`}</ChipToggle>}
+          {(pendingN > 0 || filter?.kind === 'pending') && <ChipToggle shape="seg" on={filter?.kind === 'pending'} onClick={() => setFilter(filter?.kind === 'pending' ? null : { kind: 'pending' })}>{E ? E.pending(pendingN) : `Εκκρεμούν ${pendingN}`}</ChipToggle>}
+          {filter?.kind === 'buckets' && <ChipToggle shape="seg" on onClick={() => setFilter(null)} title={E ? E.clearFilter : 'Καθαρισμός φίλτρου'}>{E ? E.overBudget(filter.label) : `Σε υπέρβαση: ${filter.label}`}</ChipToggle>}
         </div>
       )}
 
@@ -736,7 +756,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
           <span className="exp-note-ico"><CalendarClock size={15} aria-hidden="true" /></span>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ ...TT.bodySm, color: 'var(--text-primary)', fontWeight: 600 }}>
-              {missing.length === 1 ? 'Ένα πάγιο δεν έχει καταχωρηθεί ακόμη' : `${missing.length} πάγια δεν έχουν καταχωρηθεί ακόμη`}
+              {E ? E.missingTitle(missing.length) : missing.length === 1 ? 'Ένα πάγιο δεν έχει καταχωρηθεί ακόμη' : `${missing.length} πάγια δεν έχουν καταχωρηθεί ακόμη`}
             </div>
             {/* ── ΜΙΑ ΓΡΑΜΜΗ ΑΝΑ ΠΑΓΙΟ, ΜΕ ΤΗΝ ΕΝΕΡΓΕΙΑ ΔΙΠΛΑ ────────────────
                 ΠΡΙΝ ήταν μία πρόταση με τελείες ανάμεσα: ο χρήστης διάβαζε ότι
@@ -755,16 +775,16 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
                 // Το `LinkBtn` κάθεται στη γραμμή κειμένου, όπως το «Αλλαγή».
                 <div key={m.key} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', fontSize: 'var(--fs-xs)', lineHeight: 1.6 }}>
                   <span style={{ ...TT.caption, lineHeight: 1.6, minWidth: 0 }}>
-                    {entryName(m)}, συνήθως {fe(m.typicalAmount)} {cadenceLabel(m.everyMonths)} · το περιμέναμε {shortDate(m.expectedDate)}
+                    {E ? E.missingLine(nameIn(E, m), m.typicalAmount, E.cadence(m.everyMonths), shortDate(m.expectedDate)) : <>{entryName(m)}, συνήθως {fe(m.typicalAmount)} {cadenceLabel(m.everyMonths)} · το περιμέναμε {shortDate(m.expectedDate)}</>}
                   </span>
                   <LinkBtn onClick={() => {
                     setSeed({ id: m.key, what: m.title, date: m.expectedDate, slug: resolveCategory(m.category) || '' });
                     setAdding(true);
-                  }}>Καταχώρηση</LinkBtn>
+                  }}>{E ? E.record : 'Καταχώρηση'}</LinkBtn>
                 </div>
               ))}
               {missing.length > 4 && (
-                <span style={{ ...TT.caption }}>και άλλα {missing.length - 4}</span>
+                <span style={{ ...TT.caption }}>{E ? E.andMore(missing.length - 4) : <>και άλλα {missing.length - 4}</>}</span>
               )}
             </div>
           </div>
@@ -779,11 +799,11 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
           <span className="exp-note-ico"><TrendingUp size={15} aria-hidden="true" /></span>
           <div style={{ minWidth: 0 }}>
             <div style={{ ...TT.bodySm, color: 'var(--text-primary)', fontWeight: 600 }}>
-              {changed.length === 1 ? 'Μία χρέωση άλλαξε ποσό' : `${changed.length} χρεώσεις άλλαξαν ποσό`}
+              {E ? E.changedTitle(changed.length) : changed.length === 1 ? 'Μία χρέωση άλλαξε ποσό' : `${changed.length} χρεώσεις άλλαξαν ποσό`}
             </div>
             <div style={{ ...TT.caption, marginTop: 4, lineHeight: 1.6 }}>
-              {changed.slice(0, 3).map(c => c.message).join(' ')}
-              {changed.length > 3 ? ` Και άλλες ${changed.length - 3}.` : ''}
+              {changed.slice(0, 3).map(c => (E ? E.changedLine(nameIn(E, c), c.flatRate, c.previous, c.current, c.deltaEur, (c.deltaEur / c.previous) * 100) : c.message)).join(' ')}
+              {changed.length > 3 ? (E ? E.andOthers(changed.length - 3) : ` Και άλλες ${changed.length - 3}.`) : ''}
             </div>
           </div>
         </div>
@@ -814,7 +834,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
             κεφαλίδα (`onScan`, με τη χειροκίνητη καταχώρηση μέσα), εδώ μένει
             μόνο η «Ακύρωση» της ανοιχτής φόρμας, ως δευτερεύουσα. */}
         {(adding || !onScan) && (
-          <Btn variant={adding ? 'ghost' : onScan ? 'secondary' : 'primary'} onClick={() => { setSeed(undefined); setAdding(v => !v); }}>{adding ? 'Ακύρωση' : 'Νέα δαπάνη'}</Btn>
+          <Btn variant={adding ? 'ghost' : onScan ? 'secondary' : 'primary'} onClick={() => { setSeed(undefined); setAdding(v => !v); }}>{E ? (adding ? E.cancel : E.newExpense) : adding ? 'Ακύρωση' : 'Νέα δαπάνη'}</Btn>
         )}
         <div className="ledger-spacer" style={{ flex: 1 }} />
         {/* ΤΟ ΠΕΔΙΟ ΤΩΝ ΑΛΛΩΝ ΛΙΣΤΩΝ (17/11/2026): εικονίδιο, σχήμα χαπιού,
@@ -826,7 +846,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
         <div className="po-search ledger-search">
           <Search size={15} aria-hidden="true" className="po-search-icon" />
           <input type="search" value={q} onChange={ev => setQ(ev.target.value)}
-            placeholder="Περιγραφή ή πάροχος" className="po-search-input" aria-label="Αναζήτηση δαπανών" />
+            placeholder={E ? E.search : 'Περιγραφή ή πάροχος'} className="po-search-input" aria-label={E ? E.searchLabel : 'Αναζήτηση δαπανών'} />
         </div>
       </div>}
 
@@ -851,10 +871,10 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
               </svg>
               <span style={{ minWidth: 0 }}>
                 <span style={{ display: 'block', fontFamily: T.font.sans, fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-                  Φωτογράφισε ή ανέβασε αρχείο
+                  {E ? E.photo : 'Φωτογράφισε ή ανέβασε αρχείο'}
                 </span>
                 <span style={{ display: 'block', fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>
-                  Απόδειξη, λογαριασμός ή PDF: συμπληρώνεται μόνο του
+                  {E ? E.photoSub : 'Απόδειξη, λογαριασμός ή PDF: συμπληρώνεται μόνο του'}
                 </span>
               </span>
             </button>
@@ -884,11 +904,10 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--warning)', flexShrink: 0, marginTop: 6 }} />
           <div style={{ minWidth: 0 }}>
             <div style={{ ...TT.body, fontWeight: 600, marginBottom: 2 }}>
-              {needsEye.length} {needsEye.length === 1 ? 'γραμμή θέλει μια ματιά' : 'γραμμές θέλουν μια ματιά'}
+              {E ? E.needsEye(needsEye.length) : <>{needsEye.length} {needsEye.length === 1 ? 'γραμμή θέλει μια ματιά' : 'γραμμές θέλουν μια ματιά'}</>}
             </div>
             <div style={TT.bodySm}>
-              Είτε δεν έχουν κατηγορία, είτε μοιάζουν διπλές. Δεν χάνεται τίποτα, αλλά μέχρι να
-              τακτοποιηθούν δεν μετρούν σωστά στον Προϋπολογισμό.
+              {E ? E.needsEyeSub : 'Είτε δεν έχουν κατηγορία, είτε μοιάζουν διπλές. Δεν χάνεται τίποτα, αλλά μέχρι να τακτοποιηθούν δεν μετρούν σωστά στον Προϋπολογισμό.'}
             </div>
           </div>
         </div>
@@ -923,12 +942,12 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
            λίστα και με γεμάτη. Ενα δεύτερο κουμπί στο κέντρο της οθόνης, που
            κάνει το ίδιο πράγμα και εξαφανίζεται μόλις μπει η πρώτη δαπάνη,
            ρωτούσε τον χρήστη ποιο από τα δύο είναι το σωστό. */
-        <EmptyState title="Καμία δαπάνη ακόμη" />
+        <EmptyState title={E ? E.none : 'Καμία δαπάνη ακόμη'} />
       // Ο τίτλος λέει ήδη ότι δεν βρέθηκε τίποτα. Ο υπότιτλος έλεγε το ίδιο με
       // άλλα λόγια· τώρα λέει ΤΙ αναζητήθηκε, που είναι το χρήσιμο.
       ) : months.length === 0 ? (
-        <EmptyState title="Δεν βρέθηκαν δαπάνες" hint={q.trim() ? `Καμία εγγραφή δεν ταιριάζει με «${q}».` : 'Καμία εγγραφή δεν ταιριάζει με το φίλτρο.'}
-          action={<Btn variant="secondary" onClick={() => { setQ(''); setFilter(null); }}>Εκκαθάριση</Btn>} />
+        <EmptyState title={E ? E.noMatch : 'Δεν βρέθηκαν δαπάνες'} hint={E ? (q.trim() ? E.noMatchQ(q) : E.noMatchFilter) : q.trim() ? `Καμία εγγραφή δεν ταιριάζει με «${q}».` : 'Καμία εγγραφή δεν ταιριάζει με το φίλτρο.'}
+          action={<Btn variant="secondary" onClick={() => { setQ(''); setFilter(null); }}>{E ? E.clear : 'Εκκαθάριση'}</Btn>} />
       ) : (
         <Card pad="sm" gap={false}>
           {shown.map(m => (
@@ -940,7 +959,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
                   υπάρχει άθροισμα· ο ίδιος κανόνας ισχύει ήδη για τον μέσο όρο
                   του δωδεκαμήνου στη σύγκριση και για τη σειρά των παγίων. */}
               <div className="exp-month">
-                <span style={TT.label}>{monthYearLabel(m.month)}</span>
+                <span style={TT.label}>{E ? E.monthYear(m.month) : monthYearLabel(m.month)}</span>
                 {/* ΤΟ ΑΘΡΟΙΣΜΑ ΕΙΝΑΙ ΟΣΩΝ ΜΕΤΡΑΝΕ, ΟΠΩΣ ΚΑΙ ΤΟ ΠΛΑΚΙΔΙΟ ΑΠΟ ΠΑΝΩ.
                     Μια εξαιρεμένη γραμμή φαίνεται στη λίστα με διαγραμμένο ποσό:
                     αν μετρούσε εδώ, η κεφαλίδα του μήνα θα διαφωνούσε με το
@@ -973,10 +992,10 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
                 aria-expanded={wholeHistory}
                 style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '0 4px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: T.font.sans }}>
                 <span style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
-                  {wholeHistory ? 'Λιγότερα' : 'Περισσότερα'}
+                  {E ? (wholeHistory ? E.less : E.more) : wholeHistory ? 'Λιγότερα' : 'Περισσότερα'}
                 </span>
                 <span style={{ ...TT.caption, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
-                  {fn(olderCount)} παλιότερες
+                  {E ? E.older(fn(olderCount)) : <>{fn(olderCount)} παλιότερες</>}
                 </span>
                 <ChevronRight aria-hidden size={15} style={{ flexShrink: 0, color: 'var(--text-tertiary)', transform: wholeHistory ? 'rotate(-90deg)' : 'rotate(90deg)', transition: 'transform .18s' }} />
               </button>
@@ -1045,11 +1064,12 @@ function catIcon(slug: string | null): ReactNode {
 }
 
 function Row({ e, busy, counts, onPaid, onEdit, onDelete }: { e: LedgerEntry; busy: boolean; counts: boolean; onPaid: () => void; onEdit: (() => void) | null; onDelete: (() => void) | null }) {
-  const cat = categoryLabel(e.category);
-  const due = e.due ? dueText(e.due) : null;
-  const name = entryName(e);
+  const E = useAppEn('expenses');
+  const cat = E ? E.categoryEn(e.category) : categoryLabel(e.category);
+  const due = e.due ? dueIn(E, e.due) : null;
+  const name = nameIn(E, e);
   const showCat = cat && bare(cat) !== bare(name);
-  const meta = [showCat ? cat : '', e.recurring ? 'πάγιο' : '', counts ? '' : 'εκτός στατιστικών'].filter(Boolean).join(' · ');
+  const meta = [showCat ? cat : '', e.recurring ? (E ? E.recurring : 'πάγιο') : '', counts ? '' : (E ? E.outOfStats : 'εκτός στατιστικών')].filter(Boolean).join(' · ');
   const slug = resolveCategory(e.category);
   const date = shortDate(e.date);
 
@@ -1092,7 +1112,7 @@ function Row({ e, busy, counts, onPaid, onEdit, onDelete }: { e: LedgerEntry; bu
       {!e.paid ? (
         <span className="exp-pay">
           <button type="button" className="exp-pay-btn" onClick={onPaid} disabled={busy}>
-            <Check size={14} aria-hidden="true" />{busy ? 'Γίνεται…' : 'Πληρώθηκε'}
+            <Check size={14} aria-hidden="true" />{E ? (busy ? E.working : E.paid) : busy ? 'Γίνεται…' : 'Πληρώθηκε'}
           </button>
         </span>
       ) : <span className="exp-pay" aria-hidden="true" />}
@@ -1105,9 +1125,9 @@ function Row({ e, busy, counts, onPaid, onEdit, onDelete }: { e: LedgerEntry; bu
       </span>
       <span className="exp-more-cell">
         {(onEdit || onDelete) && (
-          <ActionMenu iconOnly label={`Ενέργειες για ${name}, ${fe(e.amount)}`} items={[
-            ...(onEdit ? [{ key: 'edit', label: 'Επεξεργασία', icon: <Pencil size={15} aria-hidden="true" />, onClick: onEdit }] : []),
-            ...(onDelete ? [{ key: 'del', label: 'Διαγραφή δαπάνης', description: `${name} · ${fe(e.amount)}`, danger: true, icon: <Trash2 size={15} aria-hidden="true" />, onClick: onDelete }] : []),
+          <ActionMenu iconOnly label={E ? E.actionsFor(name, e.amount) : `Ενέργειες για ${name}, ${fe(e.amount)}`} items={[
+            ...(onEdit ? [{ key: 'edit', label: E ? E.edit : 'Επεξεργασία', icon: <Pencil size={15} aria-hidden="true" />, onClick: onEdit }] : []),
+            ...(onDelete ? [{ key: 'del', label: E ? E.delete : 'Διαγραφή δαπάνης', description: `${name} · ${fe(e.amount)}`, danger: true, icon: <Trash2 size={15} aria-hidden="true" />, onClick: onDelete }] : []),
           ]} />
         )}
       </span>
@@ -1138,6 +1158,7 @@ const LAB: React.CSSProperties = { display: 'block', fontSize: 12, color: 'var(-
 function AfmField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const bad = value.trim() !== '' && !isValidAfm(value);
   const id = useId();
+  const A = useAppEn('expenses')?.afm;
   return (
     // ΠΑΙΡΝΕΙ ΤΟ ΠΛΑΤΟΣ ΤΟΥ ΚΕΛΙΟΥ ΤΟΥ, ΔΕΝ ΤΟ ΟΡΙΖΕΙ ΜΟΝΟ ΤΟΥ. Το πεδίο
     // κουβαλούσε δικό του `flex: 0 1 190px`, οπότε σε όποιο πλέγμα κι αν
@@ -1150,19 +1171,19 @@ function AfmField({ value, onChange }: { value: string; onChange: (v: string) =>
           240 εικονοστοιχεία δίπλα σε κάθε καταχώρηση δαπάνης και έλεγε στον
           εκατοστό λογαριασμό ό,τι είχε πει στον πρώτο. */}
       <span style={{ ...LAB, display: 'flex', alignItems: 'center' }}>
-        <label htmlFor={id}>ΑΦΜ προμηθευτή</label>
-        <InfoHint label="Γιατί ζητείται το ΑΦΜ">Προαιρετικό. Χωρίς αυτό, ο λογιστής ταιριάζει τα παραστατικά με το όνομα.</InfoHint>
+        <label htmlFor={id}>{A ? A.label : 'ΑΦΜ προμηθευτή'}</label>
+        <InfoHint label={A ? A.why : 'Γιατί ζητείται το ΑΦΜ'}>{A ? A.hint : 'Προαιρετικό. Χωρίς αυτό, ο λογιστής ταιριάζει τα παραστατικά με το όνομα.'}</InfoHint>
       </span>
       <input id={id} value={value} onChange={e => onChange(e.target.value)} inputMode="numeric" maxLength={13}
         aria-invalid={bad || undefined}
         style={{ ...FIELD, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}
-        placeholder="Εννέα ψηφία" />
+        placeholder={A ? A.placeholder : 'Εννέα ψηφία'} />
       {/* Το λάθος ΦΑΙΝΕΤΑΙ, δεν κρύβεται πουθενά: κάθεται κάτω από το πεδίο που
           το γέννησε, εκεί που το ψάχνει το μάτι μετά την πληκτρολόγηση. Είναι η
           τελευταία σειρά της φόρμας, οπότε τίποτα δεν μετακινείται από κάτω. */}
       {bad && (
         <span style={{ ...TT.caption, display: 'block', marginTop: 6, lineHeight: 1.5 }}>
-          Δεν είναι έγκυρο ΑΦΜ. Εννέα ψηφία, όπως στο παραστατικό.
+          {A ? A.bad : 'Δεν είναι έγκυρο ΑΦΜ. Εννέα ψηφία, όπως στο παραστατικό.'}
         </span>
       )}
     </div>
@@ -1188,6 +1209,8 @@ function EditExpense({ row, userId, counts, onCountsChange, onClose, onSaved }: 
   onClose: () => void; onSaved: () => Promise<void>;
 }) {
   const supabase = useMemo(() => createClient(), []);
+  const EX = useAppEn('expenses');
+  const F = EX?.form;
   const [what, setWhat] = useState((row.description || '').trim());
   // ═══ ΔΕΥΤΕΡΟΣ ΜΟΡΦΟΠΟΙΗΤΗΣ ΠΟΣΟΥ, ΣΤΟ ΙΔΙΟ ΑΡΧΕΙΟ, ΜΕ ΑΛΛΗ ΕΞΟΔΟ ═══════════
   // Εδώ ζούσε ένα `n.toFixed(2).replace('.', ',')`, δηλαδή ποσό χωρίς τελεία
@@ -1222,9 +1245,9 @@ function EditExpense({ row, userId, counts, onCountsChange, onClose, onSaved }: 
   // φαίνεται αλλού, ώστε το κλειδωμένο κουμπί να μην είναι ποτέ ανεξήγητο.
   // Η ημερομηνία είναι NOT NULL στη βάση και ο επιλογέας έχει «Εκκαθάριση»:
   // το '' γύριζε «Δεν αποθηκεύτηκε» χωρίς να λέει γιατί (22007).
-  const missing = !what.trim() ? 'Θέλει περιγραφή.'
-    : (amt === null || amt <= 0) ? 'Θέλει ποσό μεγαλύτερο από μηδέν.'
-    : !date ? 'Θέλει ημερομηνία.'
+  const missing = !what.trim() ? (F ? F.needWhat : 'Θέλει περιγραφή.')
+    : (amt === null || amt <= 0) ? (F ? F.needAmount : 'Θέλει ποσό μεγαλύτερο από μηδέν.')
+    : !date ? (F ? F.needDate : 'Θέλει ημερομηνία.')
     : null;
   const ready = !missing && afmOk;
 
@@ -1257,10 +1280,10 @@ function EditExpense({ row, userId, counts, onCountsChange, onClose, onSaved }: 
         if (action && 'forget' in action) await hintStore.forget(supabase, userId, action.key);
         else if (action) await hintStore.learn(supabase, userId, action.key, action.category);
       }
-      notify('Αποθηκεύτηκε');
+      notify(EX ? EX.savedOk : 'Αποθηκεύτηκε');
       onClose();
       await onSaved();
-    } catch { notifyError('Δεν αποθηκεύτηκε. Δοκίμασε ξανά.'); }
+    } catch { notifyError(EX ? EX.notSaved : 'Δεν αποθηκεύτηκε. Δοκίμασε ξανά.'); }
     finally { setSaving(false); }
   };
 
@@ -1274,12 +1297,12 @@ function EditExpense({ row, userId, counts, onCountsChange, onClose, onSaved }: 
     // ζητούν 104+154+186+128 για τα τέσσερα γνωστού μήκους, συν 48 για τα
     // τέσσερα κενά, δηλαδή 620· στο «lg» (760, άρα 712 περιεχόμενο) θα έμεναν
     // 92 για την περιγραφή. Στο «xl» μένουν 312, που είναι πλάτος περιγραφής.
-    <Modal open onClose={onClose} title="Επεξεργασία δαπάνης" size="xl"
+    <Modal open onClose={onClose} title={F ? F.editTitle : 'Επεξεργασία δαπάνης'} size="xl"
       footerInfo={missing ?? undefined}
       footer={<>
-        <Btn variant="secondary" onClick={onClose}>Ακύρωση</Btn>
+        <Btn variant="secondary" onClick={onClose}>{EX ? EX.cancel : 'Ακύρωση'}</Btn>
         <Btn variant="primary" onClick={save} disabled={saving || !ready}>
-          {saving ? 'Γίνεται…' : 'Αποθήκευση'}
+          {F && EX ? (saving ? EX.working : F.save) : saving ? 'Γίνεται…' : 'Αποθήκευση'}
         </Btn>
       </>}>
       {/* ═══ ΜΙΑ ΣΕΙΡΑ, ΟΧΙ ΤΕΣΣΕΡΙΣ ═════════════════════════════════════════
@@ -1298,15 +1321,15 @@ function EditExpense({ row, userId, counts, onCountsChange, onClose, onSaved }: 
           λίστα με ΟΛΕΣ τις κατηγορίες απαντά σε αυτό, έξι πλακίδια όχι. */}
       <div className="exp-edit">
         <label className="exp-edit-wide" style={{ minWidth: 0 }}>
-          <span style={LAB}>Περιγραφή</span>
+          <span style={LAB}>{F ? F.what : 'Περιγραφή'}</span>
           <Dictation value={what} onChange={setWhat}>
-            <input aria-label="Περιγραφή" value={what} onChange={e => setWhat(e.target.value)} style={FIELD}
-              placeholder="λογαριασμός ΔΕΗ, υδραυλικός" />
+            <input aria-label={F ? F.what : 'Περιγραφή'} value={what} onChange={e => setWhat(e.target.value)} style={FIELD}
+              placeholder={F ? F.whatPlaceholder : 'λογαριασμός ΔΕΗ, υδραυλικός'} />
           </Dictation>
         </label>
         {/* Ίδια γεωμετρία με την καταχώρηση: το ευρώ μέσα στο πεδίο, δεξιά. */}
         <label style={{ minWidth: 0, position: 'relative' }}>
-          <span style={LAB}>Ποσό</span>
+          <span style={LAB}>{F ? F.amount : 'Ποσό'}</span>
           {/* Το δεξί περιθώριο του πεδίου (14) συν 20 για το «€» που κάθεται πάνω του. */}
           <input value={amount} onChange={e => setAmount(e.target.value)} inputMode="decimal"
             style={{ ...FIELD, paddingRight: 14 + T.sp.xl, textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}
@@ -1314,14 +1337,14 @@ function EditExpense({ row, userId, counts, onCountsChange, onClose, onSaved }: 
           <span aria-hidden style={{ position: 'absolute', right: 14, bottom: 0, height: T.h.lg, display: 'flex', alignItems: 'center', fontSize: 14, color: 'var(--text-tertiary)', pointerEvents: 'none' }}>€</span>
         </label>
         <div style={{ minWidth: 0 }}>
-          <span style={LAB}>Ημερομηνία</span>
+          <span style={LAB}>{F ? F.date : 'Ημερομηνία'}</span>
           <DatePicker value={date} onChange={setDate} />
         </div>
         <div style={{ minWidth: 0 }}>
-          <span style={LAB}>Κατηγορία</span>
-          <CustomSelect value={slug} onChange={setSlug} ariaLabel="Κατηγορία δαπάνης"
-            placeholder="Χωρίς κατηγορία"
-            options={CATEGORIES.map(c => ({ value: c.slug, label: c.label }))} />
+          <span style={LAB}>{F ? F.category : 'Κατηγορία'}</span>
+          <CustomSelect value={slug} onChange={setSlug} ariaLabel={F ? F.categoryLabel : 'Κατηγορία δαπάνης'}
+            placeholder={F ? F.noCategory : 'Χωρίς κατηγορία'}
+            options={CATEGORIES.map(c => ({ value: c.slug, label: EX ? EX.categories[c.slug] ?? c.label : c.label }))} />
         </div>
         <AfmField value={afm} onChange={setAfm} />
       </div>
@@ -1343,12 +1366,12 @@ function EditExpense({ row, userId, counts, onCountsChange, onClose, onSaved }: 
           σειρά με τέσσερα κενά δίπλα του. */}
       <div className="exp-count">
         <span style={{ minWidth: 0 }}>
-          <span style={{ ...TT.body, display: 'block' }}>Μετρά στα στατιστικά</span>
+          <span style={{ ...TT.body, display: 'block' }}>{F ? F.counts : 'Μετρά στα στατιστικά'}</span>
           <span style={{ ...TT.caption, display: 'block', marginTop: 2 }}>
-            Μετρά στο σύνολο της χρονιάς, μένει έξω από τη σύγκριση μηνών και τους μέσους όρους.
+            {F ? F.countsHint : 'Μετρά στο σύνολο της χρονιάς, μένει έξω από τη σύγκριση μηνών και τους μέσους όρους.'}
           </span>
         </span>
-        <Toggle on={countsDraft} onChange={setCountsDraft} ariaLabel="Μετρά στα στατιστικά" />
+        <Toggle on={countsDraft} onChange={setCountsDraft} ariaLabel={F ? F.counts : 'Μετρά στα στατιστικά'} />
       </div>
     </Modal>
   );
@@ -1373,6 +1396,8 @@ interface AddSeed {
 
 function QuickAdd({ propertyId, userId, seed, onDone }: { propertyId: string; userId: string; seed?: AddSeed; onDone: () => void }) {
   const supabase = createClient();
+  const EX = useAppEn('expenses');
+  const F = EX?.form;
   const today = athensToday();
   const [what, setWhat] = useState(seed?.what ?? '');
   const [amount, setAmount] = useState('');
@@ -1417,7 +1442,7 @@ function QuickAdd({ propertyId, userId, seed, onDone }: { propertyId: string; us
     // Η ΗΜΕΡΟΜΗΝΙΑ ΛΕΓΕΤΑΙ, ΔΕΝ ΑΠΟΡΡΙΠΤΕΤΑΙ ΑΠΟ ΤΗ ΒΑΣΗ. Ο επιλογέας έχει
     // «Εκκαθάριση»· το '' έφτανε στη στήλη (date, NOT NULL) και ο χρήστης έβλεπε
     // «Δεν αποθηκεύτηκε. Δοκίμασε ξανά.», που δεν θα πετύχαινε ποτέ.
-    if (!(paid ? date : (due || date))) { notifyError('Συμπλήρωσε ημερομηνία.'); return; }
+    if (!(paid ? date : (due || date))) { notifyError(F ? F.fillDate : 'Συμπλήρωσε ημερομηνία.'); return; }
     setSaving(true);
     try {
       // Ο SUPABASE ΔΕΝ ΠΕΤΑΕΙ ΕΞΑΙΡΕΣΗ ΣΕ ΣΦΑΛΜΑ ΒΑΣΗΣ — ΕΠΙΣΤΡΕΦΕΙ { error }.
@@ -1482,9 +1507,9 @@ function QuickAdd({ propertyId, userId, seed, onDone }: { propertyId: string; us
       // Καταγράφεται το ΠΩΣ μπήκε, όχι το τι είναι: ποσό, περιγραφή, πάροχος
       // και ΑΦΜ δεν φεύγουν ποτέ από τη γραμμή τους.
       void track(supabase, PRODUCT_EVENTS.expense_added, { source: 'manual' });
-      notify(paid ? 'Καταχωρήθηκε' : 'Καταχωρήθηκε ως εκκρεμής υποχρέωση');
+      notify(F ? (paid ? F.recorded : F.recordedPending) : paid ? 'Καταχωρήθηκε' : 'Καταχωρήθηκε ως εκκρεμής υποχρέωση');
       onDone();
-    } catch { notifyError('Δεν αποθηκεύτηκε. Δοκίμασε ξανά.'); }
+    } catch { notifyError(EX ? EX.notSaved : 'Δεν αποθηκεύτηκε. Δοκίμασε ξανά.'); }
     finally { setSaving(false); }
   };
 
@@ -1519,17 +1544,17 @@ function QuickAdd({ propertyId, userId, seed, onDone }: { propertyId: string; us
           διορθώσει. */}
       <div className="exp-edit">
         <label className="exp-edit-wide" style={{ minWidth: 0 }}>
-          <span style={LAB}>Περιγραφή</span>
+          <span style={LAB}>{F ? F.what : 'Περιγραφή'}</span>
           <Dictation value={what} onChange={setWhat}>
-            <input ref={first} aria-label="Περιγραφή" value={what} onChange={e => setWhat(e.target.value)} style={FIELD}
-              placeholder="λογαριασμός ΔΕΗ, υδραυλικός" />
+            <input ref={first} aria-label={F ? F.what : 'Περιγραφή'} value={what} onChange={e => setWhat(e.target.value)} style={FIELD}
+              placeholder={F ? F.whatPlaceholder : 'λογαριασμός ΔΕΗ, υδραυλικός'} />
           </Dictation>
         </label>
         {/* Το ευρώ ζει ΜΕΣΑ στο πεδίο, δεξιά, όπως σε κάθε άλλο ποσό της
             εφαρμογής. Χωρίς αυτό, ένα κενό κουτί δίπλα στη λέξη «Πόσο;» δεν
             έλεγε καν σε τι μονάδα απαντά ο χρήστης. */}
         <label style={{ minWidth: 0, position: 'relative' }}>
-          <span style={LAB}>Ποσό</span>
+          <span style={LAB}>{F ? F.amount : 'Ποσό'}</span>
           {/* Το δεξί περιθώριο του πεδίου (14) συν 20 για το «€» που κάθεται πάνω του. */}
           <input value={amount} onChange={e => setAmount(e.target.value)} inputMode="decimal"
             style={{ ...FIELD, paddingRight: 14 + T.sp.xl, textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}
@@ -1543,7 +1568,7 @@ function QuickAdd({ propertyId, userId, seed, onDone }: { propertyId: string; us
             επιλέγει η γλώσσα του περιηγητή. Ο επιλογέας της εφαρμογής είναι
             ελληνικός, με Δευτέρα πρώτη και ο ίδιος σε κάθε οθόνη. */}
         <div style={{ minWidth: 0 }}>
-          <span style={LAB}>{paid ? 'Ημερομηνία' : 'Λήξη'}</span>
+          <span style={LAB}>{F ? (paid ? F.date : F.dueDate) : paid ? 'Ημερομηνία' : 'Λήξη'}</span>
           <DatePicker value={paid ? date : (due || date)}
             onChange={v => (paid ? setDate(v) : setDue(v))} />
         </div>
@@ -1551,18 +1576,18 @@ function QuickAdd({ propertyId, userId, seed, onDone }: { propertyId: string; us
             φόρμα χρησιμοποιεί την ίδια και η ενσωματωμένη έχει minHeight 32,
             οπότε θα ξεχώριζε η μία γραμμή από τις άλλες ακριβώς δίπλα της. */}
         <div style={{ minWidth: 0 }}>
-          <span style={LAB}>Κατηγορία</span>
-          <CustomSelect value={slug} onChange={v => { setPicked(v); setTouched(true); }} ariaLabel="Κατηγορία δαπάνης"
-            options={[{ value: '', label: 'Χωρίς κατηγορία' }, ...CATEGORIES.map(c => ({ value: c.slug, label: c.label }))]} />
+          <span style={LAB}>{F ? F.category : 'Κατηγορία'}</span>
+          <CustomSelect value={slug} onChange={v => { setPicked(v); setTouched(true); }} ariaLabel={F ? F.categoryLabel : 'Κατηγορία δαπάνης'}
+            options={[{ value: '', label: F ? F.noCategory : 'Χωρίς κατηγορία' }, ...CATEGORIES.map(c => ({ value: c.slug, label: EX ? EX.categories[c.slug] ?? c.label : c.label }))]} />
         </div>
         {/* Ο ΔΙΑΚΟΠΤΗΣ ΔΙΠΛΑ ΣΤΗΝ ΗΜΕΡΟΜΗΝΙΑ ΠΟΥ ΟΡΙΖΕΙ. Ο ίδιος διακόπτης
             αλλάζει την ετικέτα εκείνου του πεδίου («Ημερομηνία» ή «Λήξη») και
             το αν η γραμμή γίνεται δαπάνη ή υποχρέωση: στην ίδια σειρά, η αιτία
             και το αποτέλεσμα φαίνονται μαζί. */}
         <div style={{ minWidth: 0 }}>
-          <span style={LAB}>Πληρώθηκε</span>
+          <span style={LAB}>{F ? F.paid : 'Πληρώθηκε'}</span>
           <div style={{ height: T.h.lg, display: 'flex', alignItems: 'center' }}>
-            <Toggle on={paid} onChange={setPaid} ariaLabel="Πληρώθηκε" />
+            <Toggle on={paid} onChange={setPaid} ariaLabel={F ? F.paid : 'Πληρώθηκε'} />
           </div>
         </div>
       </div>
@@ -1588,7 +1613,7 @@ function QuickAdd({ propertyId, userId, seed, onDone }: { propertyId: string; us
         className="acc-toggle acc-row"
         style={{ minHeight: T.h.sm, marginTop: 12 }}>
         <span style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', flex: 1, minWidth: 0 }}>
-          {moreOpen ? 'Λιγότερα' : `Περισσότερα: ποιος πληρώνει${paid ? ', ΑΦΜ προμηθευτή' : ''}`}
+          {F ? (moreOpen ? F.moreOpen : F.moreClosed(paid)) : moreOpen ? 'Λιγότερα' : `Περισσότερα: ποιος πληρώνει${paid ? ', ΑΦΜ προμηθευτή' : ''}`}
         </span>
         <ChevronRight aria-hidden size={15} style={{ flexShrink: 0, color: 'var(--text-tertiary)', transform: moreOpen ? 'rotate(90deg)' : 'none', transition: 'transform .18s' }} />
       </button>
@@ -1596,12 +1621,12 @@ function QuickAdd({ propertyId, userId, seed, onDone }: { propertyId: string; us
       {moreOpen && (
         <div className="exp-edit" style={{ marginTop: 12 }}>
           <div style={{ minWidth: 0 }}>
-            <span style={LAB}>Ποιος πληρώνει</span>
-            <CustomSelect ariaLabel="Ποιος πληρώνει" value={paidBy} onChange={setPaidBy} options={PAID_BY_OPTIONS} />
+            <span style={LAB}>{F ? F.whoPays : 'Ποιος πληρώνει'}</span>
+            <CustomSelect ariaLabel={F ? F.whoPays : 'Ποιος πληρώνει'} value={paidBy} onChange={setPaidBy} options={F ? PAID_BY_OPTIONS.map(o => ({ ...o, label: F.paidBy[o.value] ?? o.label })) : PAID_BY_OPTIONS} />
           </div>
           {SHARED_SCOPES.has(paidBy) ? (
             <label style={{ minWidth: 0 }}>
-              <span style={LAB}>Μερίδιό μου</span>
+              <span style={LAB}>{F ? F.myShare : 'Μερίδιό μου'}</span>
               <input value={sharePct} onChange={e => setSharePct(e.target.value)} inputMode="numeric"
                 style={{ ...FIELD, textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}
                 placeholder={`${DEFAULT_SHARE_PERCENT} %`} />
@@ -1617,7 +1642,7 @@ function QuickAdd({ propertyId, userId, seed, onDone }: { propertyId: string; us
           ακριβώς η πληροφορία που λείπει τη στιγμή της απόφασης. */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 16, flexWrap: 'wrap' }}>
         <span style={{ ...TT.caption, minWidth: 0, flex: '1 1 260px' }}>
-          {paid
+          {F ? (paid ? F.paidNote : F.unpaidNote) : paid
             ? 'Μπαίνει στις δαπάνες του μήνα που διάλεξες.'
             : 'Μπαίνει στα απλήρωτα και εμφανίζεται στο Ημερολόγιο μέχρι να πληρωθεί.'}
         </span>
@@ -1625,7 +1650,7 @@ function QuickAdd({ propertyId, userId, seed, onDone }: { propertyId: string; us
             απέρριπτε ούτως ή άλλως και τότε ο χρήστης θα έχανε ολόκληρη τη
             φόρμα για ένα ψηφίο. */}
         <Btn variant="primary" onClick={save} disabled={saving || !what.trim() || !amount || !afmOk}>
-          {saving ? 'Γίνεται…' : 'Καταχώρησε'}
+          {F && EX ? (saving ? EX.working : F.record) : saving ? 'Γίνεται…' : 'Καταχώρησε'}
         </Btn>
       </div>
       </div>
