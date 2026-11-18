@@ -14,6 +14,7 @@ import { findAnomalies } from './anomaly';
 import { categoryLabel, resolveCategory } from '../expenses/taxonomy';
 import { athensParts, daysUntil as athensDaysUntil } from '../core/time';
 import { dueText } from '../facts/deadlines';
+import type { InsightsEn } from '../i18n/en/app/overview';
 
 export type InsightKind = 'urgent' | 'attention' | 'opportunity' | 'positive';
 
@@ -102,7 +103,12 @@ const daysUntil = (d: string | null | undefined, now: number): number | null =>
 
 const KIND_ORDER: Record<InsightKind, number> = { urgent: 0, attention: 1, opportunity: 2, positive: 3 };
 
-export function computeInsights(input: InsightInput): Insight[] {
+/**
+ * Οι παρατηρήσεις του ακινήτου. Με `W` (το αγγλικό λεξικό, lib/i18n/en/app/overview.ts)
+ * οι ίδιες παρατηρήσεις, με τους ίδιους κανόνες και τους ίδιους αριθμούς, γράφονται
+ * στα αγγλικά· χωρίς αυτό, τα ελληνικά όπως ήταν.
+ */
+export function computeInsights(input: InsightInput, W?: InsightsEn): Insight[] {
   const { now, property: p, tenant, rent, propValue, netYield, expensesYTD, expenses, bills, tasks, checklist, inventory, loanPayment = 0 } = input;
   const out: Insight[] = [];
 
@@ -114,38 +120,38 @@ export function computeInsights(input: InsightInput): Insight[] {
   // ── 1. Ασφάλεια ακινήτου ──────────────────────────────────────────────────
   const insD = daysUntil(p.insurance_expiry, now);
   if (insD !== null) {
-    if (insD < 0) out.push({ id: 'insurance-expired', kind: 'urgent', title: 'Η ασφάλεια του ακινήτου έχει λήξει', detail: `Έληξε ${dueText(insD)}. Ανανέωσέ την για να μη μείνει το ακίνητο ακάλυπτο.`, action: { label: navLabel('finances'), tab: 'finances' } });
-    else if (insD <= 45) out.push({ id: 'insurance-soon', kind: 'attention', title: 'Λήγει σύντομα η ασφάλεια', detail: `Σε ${insD} ${insD === 1 ? 'ημέρα' : 'ημέρες'}. Ανανέωσέ την έγκαιρα για να μη μείνει το ακίνητο ακάλυπτο.`, action: { label: navLabel('finances'), tab: 'finances' } });
+    if (insD < 0) out.push({ id: 'insurance-expired', kind: 'urgent', title: 'Η ασφάλεια του ακινήτου έχει λήξει', detail: `Έληξε ${dueText(insD)}. Ανανέωσέ την για να μη μείνει το ακίνητο ακάλυπτο.`, action: { label: navLabel('finances'), tab: 'finances' }, ...W?.insuranceExpired(insD) });
+    else if (insD <= 45) out.push({ id: 'insurance-soon', kind: 'attention', title: 'Λήγει σύντομα η ασφάλεια', detail: `Σε ${insD} ${insD === 1 ? 'ημέρα' : 'ημέρες'}. Ανανέωσέ την έγκαιρα για να μη μείνει το ακίνητο ακάλυπτο.`, action: { label: navLabel('finances'), tab: 'finances' }, ...W?.insuranceSoon(insD) });
   }
 
   // ── 2. Λήξη μίσθωσης ───────────────────────────────────────────────────────
   const leaseD = daysUntil(tenant?.lease_end, now);
   if (leaseD !== null) {
-    if (leaseD < 0) out.push({ id: 'lease-expired', kind: 'urgent', title: 'Έχει λήξει η σύμβαση ενοικίασης', detail: `Έληξε ${dueText(leaseD)}. Ανανέωσε ή σύναψε νέο μισθωτήριο.`, action: { label: navLabel('tenant'), tab: 'tenant' } });
-    else if (leaseD <= 60) out.push({ id: 'lease-soon', kind: 'attention', title: 'Πλησιάζει η λήξη της μίσθωσης', detail: `Σε ${leaseD} ${leaseD === 1 ? 'ημέρα' : 'ημέρες'}. Καλή στιγμή να συζητήσεις ανανέωση ή αναπροσαρμογή ενοικίου με τον ενοικιαστή.`, action: { label: navLabel('tenant'), tab: 'tenant' } });
+    if (leaseD < 0) out.push({ id: 'lease-expired', kind: 'urgent', title: 'Έχει λήξει η σύμβαση ενοικίασης', detail: `Έληξε ${dueText(leaseD)}. Ανανέωσε ή σύναψε νέο μισθωτήριο.`, action: { label: navLabel('tenant'), tab: 'tenant' }, ...W?.leaseExpired(leaseD) });
+    else if (leaseD <= 60) out.push({ id: 'lease-soon', kind: 'attention', title: 'Πλησιάζει η λήξη της μίσθωσης', detail: `Σε ${leaseD} ${leaseD === 1 ? 'ημέρα' : 'ημέρες'}. Καλή στιγμή να συζητήσεις ανανέωση ή αναπροσαρμογή ενοικίου με τον ενοικιαστή.`, action: { label: navLabel('tenant'), tab: 'tenant' }, ...W?.leaseSoon(leaseD) });
   }
 
   // ── 3. Λογαριασμοί: ληξιπρόθεσμοι / εκκρεμείς ─────────────────────────────
   const unpaid = bills.filter(b => !b.paid);
   const overdue = unpaid.filter(b => { const x = daysUntil(b.due_date, now); return x !== null && x < 0; });
   const overdueTotal = overdue.reduce((s, b) => s + (b.amount || 0), 0);
-  if (overdue.length) out.push({ id: 'bills-overdue', kind: 'urgent', title: `${overdue.length} ${overdue.length === 1 ? 'ληξιπρόθεσμος λογαριασμός' : 'ληξιπρόθεσμοι λογαριασμοί'}`, detail: 'Έχει περάσει η ημερομηνία πληρωμής. Εξόφλησέ τους για να αποφύγεις προσαυξήσεις ή διακοπή παροχής.', metric: overdueTotal > 0 ? eur(overdueTotal) : undefined, stake: overdueTotal > 0 ? overdueTotal : undefined, action: { label: navLabel('finances'), tab: 'finances' } });
-  else if (unpaid.length) out.push({ id: 'bills-unpaid', kind: 'attention', title: `${unpaid.length} ${unpaid.length === 1 ? 'εκκρεμής λογαριασμός' : 'εκκρεμείς λογαριασμοί'}`, detail: 'Αναμένουν πληρωμή. Τακτοποίησέ τους όσο υπάρχει χρόνος.', action: { label: navLabel('finances'), tab: 'finances' } });
+  if (overdue.length) out.push({ id: 'bills-overdue', kind: 'urgent', title: `${overdue.length} ${overdue.length === 1 ? 'ληξιπρόθεσμος λογαριασμός' : 'ληξιπρόθεσμοι λογαριασμοί'}`, detail: 'Έχει περάσει η ημερομηνία πληρωμής. Εξόφλησέ τους για να αποφύγεις προσαυξήσεις ή διακοπή παροχής.', metric: overdueTotal > 0 ? eur(overdueTotal) : undefined, stake: overdueTotal > 0 ? overdueTotal : undefined, action: { label: navLabel('finances'), tab: 'finances' }, ...W?.billsOverdue(overdue.length, overdueTotal) });
+  else if (unpaid.length) out.push({ id: 'bills-unpaid', kind: 'attention', title: `${unpaid.length} ${unpaid.length === 1 ? 'εκκρεμής λογαριασμός' : 'εκκρεμείς λογαριασμοί'}`, detail: 'Αναμένουν πληρωμή. Τακτοποίησέ τους όσο υπάρχει χρόνος.', action: { label: navLabel('finances'), tab: 'finances' }, ...W?.billsUnpaid(unpaid.length) });
 
   // ── 4. Συντήρηση & Checklist εκπρόθεσμα ──────────────────────────────────
   const tasksOverdue = tasks.filter(t => { const x = daysUntil(t.due_date, now); return x !== null && x < 0; });
   const chkOverdue = checklist.filter(c => { const x = daysUntil(c.due_date, now); return x !== null && x < 0; });
-  if (tasksOverdue.length) out.push({ id: 'tasks-overdue', kind: 'attention', title: `${tasksOverdue.length} ${tasksOverdue.length === 1 ? 'εργασία συντήρησης' : 'εργασίες συντήρησης'} σε καθυστέρηση`, detail: 'Η έγκαιρη συντήρηση κοστίζει πολύ λιγότερο από μια βλάβη. Δες τι εκκρεμεί.', action: { label: navLabel('calendar'), tab: 'calendar' } });
+  if (tasksOverdue.length) out.push({ id: 'tasks-overdue', kind: 'attention', title: `${tasksOverdue.length} ${tasksOverdue.length === 1 ? 'εργασία συντήρησης' : 'εργασίες συντήρησης'} σε καθυστέρηση`, detail: 'Η έγκαιρη συντήρηση κοστίζει πολύ λιγότερο από μια βλάβη. Δες τι εκκρεμεί.', action: { label: navLabel('calendar'), tab: 'calendar' }, ...W?.tasksOverdue(tasksOverdue.length) });
   // Ίδια λέξη με την καρτέλα που ανοίγει το κουμπί («Εκκρεμότητες»). Η «λίστα
   // υποχρεώσεων» δεν υπάρχει πουθενά στην εφαρμογή.
-  if (chkOverdue.length) out.push({ id: 'chk-overdue', kind: 'attention', title: `${chkOverdue.length} ${chkOverdue.length === 1 ? 'ληξιπρόθεσμη εκκρεμότητα' : 'ληξιπρόθεσμες εκκρεμότητες'}`, detail: chkOverdue.length === 1 ? 'Η προθεσμία της έχει περάσει.' : 'Η προθεσμία τους έχει περάσει.', action: { label: navLabel('checklist'), tab: 'checklist' } });
+  if (chkOverdue.length) out.push({ id: 'chk-overdue', kind: 'attention', title: `${chkOverdue.length} ${chkOverdue.length === 1 ? 'ληξιπρόθεσμη εκκρεμότητα' : 'ληξιπρόθεσμες εκκρεμότητες'}`, detail: chkOverdue.length === 1 ? 'Η προθεσμία της έχει περάσει.' : 'Η προθεσμία τους έχει περάσει.', action: { label: navLabel('checklist'), tab: 'checklist' }, ...W?.chkOverdue(chkOverdue.length) });
 
   // ── 5. Εγγυήσεις που λήγουν (ευκαιρία να καλυφθεί η επισκευή) ────────────
   const warrantySoon = inventory.filter(i => { const x = daysUntil(i.warranty_expiry, now); return x !== null && x >= 0 && x <= 60; });
   if (warrantySoon.length) {
     const first = warrantySoon[0];
     const d = daysUntil(first.warranty_expiry, now);
-    out.push({ id: 'warranty-soon', kind: 'opportunity', title: warrantySoon.length === 1 ? 'Λήγει η εγγύηση μιας συσκευής' : `Λήγουν ${warrantySoon.length} εγγυήσεις`, detail: `${first.name ? `«${first.name}»: ` : ''}μένουν ${d} ${d === 1 ? 'ημέρα' : 'ημέρες'} εγγύηση. Αν κάτι δεν πάει καλά, τώρα η επισκευή καλύπτεται από την εγγύηση.`, action: { label: navLabel('inventory'), tab: 'inventory' } });
+    out.push({ id: 'warranty-soon', kind: 'opportunity', title: warrantySoon.length === 1 ? 'Λήγει η εγγύηση μιας συσκευής' : `Λήγουν ${warrantySoon.length} εγγυήσεις`, detail: `${first.name ? `«${first.name}»: ` : ''}μένουν ${d} ${d === 1 ? 'ημέρα' : 'ημέρες'} εγγύηση. Αν κάτι δεν πάει καλά, τώρα η επισκευή καλύπτεται από την εγγύηση.`, action: { label: navLabel('inventory'), tab: 'inventory' }, ...W?.warrantySoon(warrantySoon.length, first.name ?? null, d ?? 0) });
   }
 
   // ── 6. Κενό ακίνητο = χαμένο εισόδημα ─────────────────────────────────────
@@ -156,10 +162,10 @@ export function computeInsights(input: InsightInput): Insight[] {
     // ΜΟΝΟ σε κενό. Οι δύο συνθήκες αποκλείονται μεταξύ τους, άρα το κουμπί δεν
     // οδήγησε ποτέ πουθενά. Η «Αξιοποίηση» είναι κυριολεκτικά η καρτέλα που
     // απαντά «τι να το κάνω;» και φαίνεται ακριβώς στο κενό ακίνητο.
-    out.push({ id: 'vacant', kind: 'opportunity', title: 'Το ακίνητο είναι κενό', detail: `Κάθε μήνας χωρίς ενοικιαστή είναι περίπου ${eur(rent)} χαμένο εισόδημα. Αν ψάχνεις, δες πρώτα τι ενοίκιο πιάνει η περιοχή σου.`, metric: `${eur(rent)}/μήνα`, stake: rent, action: { label: navLabel('plan'), tab: 'plan' } });
+    out.push({ id: 'vacant', kind: 'opportunity', title: 'Το ακίνητο είναι κενό', detail: `Κάθε μήνας χωρίς ενοικιαστή είναι περίπου ${eur(rent)} χαμένο εισόδημα. Αν ψάχνεις, δες πρώτα τι ενοίκιο πιάνει η περιοχή σου.`, metric: `${eur(rent)}/μήνα`, stake: rent, action: { label: navLabel('plan'), tab: 'plan' }, ...W?.vacant(rent) });
   } else if (isVacant && shortTerm) {
     // Βραχυχρόνια: το «κενό» ανάμεσα σε κρατήσεις είναι φυσιολογικό. Εστίασε σε πληρότητα/τιμολόγηση.
-    out.push({ id: 'vacant-st', kind: 'opportunity', title: 'Ελεύθερες ημερομηνίες', detail: 'Το κενό ανάμεσα σε κρατήσεις είναι φυσιολογικό. Πριν από την υψηλή σεζόν δες τιμή, φωτογραφίες και αξιολογήσεις.', action: { label: navLabel('roi'), tab: 'roi' } });
+    out.push({ id: 'vacant-st', kind: 'opportunity', title: 'Ελεύθερες ημερομηνίες', detail: 'Το κενό ανάμεσα σε κρατήσεις είναι φυσιολογικό. Πριν από την υψηλή σεζόν δες τιμή, φωτογραφίες και αξιολογήσεις.', action: { label: navLabel('roi'), tab: 'roi' }, ...W?.vacantShort() });
   }
 
   // ── 7. ΑΦΑΙΡΕΘΗΚΕ: «Πλήρωνε ηλεκτρονικά και γλίτωσε φόρο» ───────────────
@@ -175,7 +181,7 @@ export function computeInsights(input: InsightInput): Insight[] {
   const energyBills = bills.filter(b => (resolveCategory(b.category) ?? resolveCategory(b.type)) === 'electricity');
   const energyTotal = energyBills.reduce((s, b) => s + (b.amount || 0), 0);
   if (energyTotal > 0 && expensesYTD > 0 && energyTotal / Math.max(expensesYTD, energyTotal) > 0.25) {
-    out.push({ id: 'energy-review', kind: 'opportunity', title: 'Το ρεύμα «τρώει» μεγάλο μέρος των εξόδων', detail: 'Οι τιμές ρεύματος αλλάζουν συχνά. Η σύγκριση παρόχων στα Συμβόλαια δείχνει αν υπάρχει φθηνότερο τιμολόγιο για την κατανάλωσή σου.', metric: eur(energyTotal), stake: energyTotal, action: { label: navLabel('finances'), tab: 'finances' } });
+    out.push({ id: 'energy-review', kind: 'opportunity', title: 'Το ρεύμα «τρώει» μεγάλο μέρος των εξόδων', detail: 'Οι τιμές ρεύματος αλλάζουν συχνά. Η σύγκριση παρόχων στα Συμβόλαια δείχνει αν υπάρχει φθηνότερο τιμολόγιο για την κατανάλωσή σου.', metric: eur(energyTotal), stake: energyTotal, action: { label: navLabel('finances'), tab: 'finances' }, ...W?.energy(energyTotal) });
   }
 
   // ── 8β. Η κατηγορία που ξέφυγε τον περασμένο μήνα ──────────────────────
@@ -206,6 +212,7 @@ export function computeInsights(input: InsightInput): Insight[] {
       metric: `+${eur(top.excess)}`,
       stake: top.excess,
       action: { label: navLabel('finances'), tab: 'finances' },
+      ...W?.spendSpike(top.category, top.overPct, top.amount, top.usual, top.basedOn, more, top.excess),
     });
   }
 
@@ -220,8 +227,8 @@ export function computeInsights(input: InsightInput): Insight[] {
   const YIELD_STRONG_PCT = 5;   // κατώφλι ΕΜΦΑΝΙΣΗΣ, όχι ισχυρισμός για την αγορά
   const YIELD_LOW_PCT = 3;
   if (netYield > 0 && propValue > 0) {
-    if (netYield >= YIELD_STRONG_PCT) out.push({ id: 'yield-strong', kind: 'positive', title: 'Δυνατή απόδοση', detail: `Με όσα έχεις καταχωρήσει, το ακίνητο αποδίδει καθαρά ${fp(netYield)} τον χρόνο. Η σύγκριση με την περιοχή είναι στην καρτέλα «${navLabel('roi')}».`, metric: `${fp(netYield)}`, action: { label: navLabel('roi'), tab: 'roi' } });
-    else if (netYield < YIELD_LOW_PCT) out.push({ id: 'yield-low', kind: 'opportunity', title: 'Υπάρχει περιθώριο στην απόδοση', detail: `Η καθαρή απόδοση είναι ${fp(netYield)}. Δες στην καρτέλα «${navLabel('roi')}» τι πιάνει η περιοχή σου και ποιες δαπάνες τη μειώνουν.`, metric: `${fp(netYield)}`, action: { label: navLabel('roi'), tab: 'roi' } });
+    if (netYield >= YIELD_STRONG_PCT) out.push({ id: 'yield-strong', kind: 'positive', title: 'Δυνατή απόδοση', detail: `Με όσα έχεις καταχωρήσει, το ακίνητο αποδίδει καθαρά ${fp(netYield)} τον χρόνο. Η σύγκριση με την περιοχή είναι στην καρτέλα «${navLabel('roi')}».`, metric: `${fp(netYield)}`, action: { label: navLabel('roi'), tab: 'roi' }, ...W?.yieldStrong(netYield, W.tabRoi) });
+    else if (netYield < YIELD_LOW_PCT) out.push({ id: 'yield-low', kind: 'opportunity', title: 'Υπάρχει περιθώριο στην απόδοση', detail: `Η καθαρή απόδοση είναι ${fp(netYield)}. Δες στην καρτέλα «${navLabel('roi')}» τι πιάνει η περιοχή σου και ποιες δαπάνες τη μειώνουν.`, metric: `${fp(netYield)}`, action: { label: navLabel('roi'), tab: 'roi' }, ...W?.yieldLow(netYield, W.tabRoi) });
   }
 
   // ── 9β. ΤΟ ΔΑΝΕΙΟ, ΠΟΥ Ο ΣΥΜΒΟΥΛΟΣ ΔΕΝ ΕΒΛΕΠΕ ────────────────────────────
@@ -257,25 +264,28 @@ export function computeInsights(input: InsightInput): Insight[] {
       title: 'Η δόση ξεπερνά όσα αφήνει το ακίνητο',
       detail: `Με ${leased ? 'ενοίκιο' : 'στόχο ενοικίου'} ${eur(rent)} και δόση ${eur(loanPayment)}, μετά τις δαπάνες λείπουν ${eur(-cash)} τον μήνα. Οι δαπάνες είναι ο φετινός μηνιαίος μέσος όρος.`,
       metric: `${feSigned(cash)}/μήνα`, stake: Math.abs(cash), action: { label: navLabel('loan'), tab: 'loan' },
+      ...W?.loanNegative(leased, rent, loanPayment, -cash, cash),
     });
     else out.push({
       id: 'loan-cash-positive', kind: 'positive',
       title: leased ? 'Το ενοίκιο καλύπτει τη δόση' : 'Ο στόχος ενοικίου καλύπτει τη δόση',
       detail: `Μετά τη δόση ${eur(loanPayment)} και τις δαπάνες μένουν ${eur(cash)} τον μήνα, με βάση τον φετινό μέσο όρο.`,
       metric: `${eur(cash)}/μήνα`, stake: Math.abs(cash), action: { label: navLabel('loan'), tab: 'loan' },
+      ...W?.loanPositive(leased, loanPayment, cash),
     });
   }
 
   // ── 10. Έλλειψη στοιχείων → ανακριβή νούμερα ──────────────────────────────
   const missing: string[] = [];
-  if (!p.value && !p.obj_value) missing.push('την αξία');
-  if (!p.sqm) missing.push('το εμβαδόν');
-  if (!p.postal_code) missing.push('τον ταχυδρομικό κώδικα');
+  const missingKeys: ('value' | 'sqm' | 'postal')[] = [];
+  if (!p.value && !p.obj_value) { missing.push('την αξία'); missingKeys.push('value'); }
+  if (!p.sqm) { missing.push('το εμβαδόν'); missingKeys.push('sqm'); }
+  if (!p.postal_code) { missing.push('τον ταχυδρομικό κώδικα'); missingKeys.push('postal'); }
   if (missing.length) {
     const list = missing.length === 1 ? missing[0] : missing.slice(0, -1).join(', ') + ' και ' + missing[missing.length - 1];
     // Ίδιος λόγος με το βήμα «Συμπλήρωσε αξία & ενοίκιο»: τα πεδία δεν ζουν στον
   // «Λογαριασμό» αλλά στην επεξεργασία στοιχείων του ακινήτου.
-  out.push({ id: 'profile-incomplete', kind: 'attention', title: 'Λείπουν στοιχεία του ακινήτου', detail: `Συμπλήρωσε ${list} για να βγαίνουν σωστά οι αποδόσεις και οι συγκρίσεις. Παίρνει ένα λεπτό.`, action: { label: 'Άνοιγμα', tab: 'edit' } });
+  out.push({ id: 'profile-incomplete', kind: 'attention', title: 'Λείπουν στοιχεία του ακινήτου', detail: `Συμπλήρωσε ${list} για να βγαίνουν σωστά οι αποδόσεις και οι συγκρίσεις. Παίρνει ένα λεπτό.`, action: { label: 'Άνοιγμα', tab: 'edit' }, ...W?.profileIncomplete(missingKeys) });
   }
 
   // ── 11. Καμία πρόσφατη κίνηση → υπενθύμιση σάρωσης ───────────────────────
@@ -287,9 +297,9 @@ export function computeInsights(input: InsightInput): Insight[] {
     .map(x => -x);
   const lastExpenseDays = daysAgo.length ? Math.min(...daysAgo) : null;
   if (expenses.length === 0) {
-    out.push({ id: 'no-expenses', kind: 'opportunity', title: 'Ξεκίνα με μία φωτογραφία', detail: 'Φωτογράφισε έναν λογαριασμό ή μια απόδειξη· η δαπάνη μπαίνει μόνη της στη σωστή κατηγορία.', action: { label: 'Σάρωση', tab: 'scan' } });
+    out.push({ id: 'no-expenses', kind: 'opportunity', title: 'Ξεκίνα με μία φωτογραφία', detail: 'Φωτογράφισε έναν λογαριασμό ή μια απόδειξη· η δαπάνη μπαίνει μόνη της στη σωστή κατηγορία.', action: { label: 'Σάρωση', tab: 'scan' }, ...W?.noExpenses() });
   } else if (lastExpenseDays !== null && lastExpenseDays > 45) {
-    out.push({ id: 'stale', kind: 'attention', title: 'Έχεις καιρό να καταχωρήσεις κάτι', detail: `${lastExpenseDays} ημέρες χωρίς νέα καταχώρηση. Μια φωτογραφία του επόμενου λογαριασμού κρατά την εικόνα ενημερωμένη.`, action: { label: 'Σάρωση', tab: 'scan' } });
+    out.push({ id: 'stale', kind: 'attention', title: 'Έχεις καιρό να καταχωρήσεις κάτι', detail: `${lastExpenseDays} ημέρες χωρίς νέα καταχώρηση. Μια φωτογραφία του επόμενου λογαριασμού κρατά την εικόνα ενημερωμένη.`, action: { label: 'Σάρωση', tab: 'scan' }, ...W?.stale(lastExpenseDays) });
   }
 
   // Ταξινόμηση κατά προτεραιότητα, σταθερή για ίδιο input.

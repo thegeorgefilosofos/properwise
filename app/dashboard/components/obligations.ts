@@ -1,3 +1,4 @@
+import type { ObligationsEn } from '@/lib/i18n/en/app/overview';
 import { fe } from '@/lib/core/format';
 import { declarationDeadline } from '@/lib/tax/leaseDeclaration';
 import {
@@ -139,6 +140,12 @@ export function computeObligations(
   done: OblDone = {},
   /** Οι μισθωτές που έφυγαν από το ακίνητο. Ο τρέχων δεν έχει ημερομηνία αποχώρησης. */
   leavers: readonly OblTenant[] = [],
+  /**
+   * Το αγγλικό λεξικό (lib/i18n/en/app/overview.ts), ΜΟΝΟ για ό,τι διαβάζεται στην
+   * οθόνη. Ο,τι γράφεται στο ημερολόγιο ή φεύγει σε αρχείο το υπολογίζει η κλήση
+   * χωρίς αυτό: τα αποθηκευμένα γεγονότα μένουν ελληνικά.
+   */
+  W?: ObligationsEn,
 ): Obligation[] {
   const out: Obligation[] = [];
   const todayISO = athensToday(now);
@@ -159,8 +166,8 @@ export function computeObligations(
       ? ` Ο ΕΝΦΙΑ που έχεις καταχωρήσει: ${fe(prop.enfia)} τον χρόνο.`
       : '';
     push({
-      id: t.id, source: taxEventSource(t.id), title: t.title, date: t.date,
-      category: 'tax', note: taxObligationNotes(t) + own,
+      id: t.id, source: taxEventSource(t.id), title: W ? W.taxTitle(t) : t.title, date: t.date,
+      category: 'tax', note: W ? (t.kind.startsWith('enfia') && prop.enfia ? W.enfiaOwn(Number(prop.enfia)) : '') : taxObligationNotes(t) + own,
       priority: t.confidence === 'statutory' ? 'high' : 'medium',
       who: t.who, confidence: t.confidence, officialUrl: t.official_url,
     });
@@ -175,6 +182,7 @@ export function computeObligations(
       id: 'insurance', source: null, date: d, category: 'contract', priority: 'medium', who: 'owner',
       title: `Λήξη ασφάλισης${prop.insurance_company ? `, ${prop.insurance_company}` : ''}`,
       note: 'Ανανέωσε το ασφαλιστήριο πριν τη λήξη για να μη μείνει ακάλυπτο το ακίνητο.',
+      ...W?.insurance(prop.insurance_company ?? null),
     });
   }
 
@@ -188,6 +196,7 @@ export function computeObligations(
       date: d, category: 'contract', priority: 'high', who: 'owner',
       title: 'Λήξη σύμβασης μίσθωσης',
       note: 'Ξεκίνα συζήτηση ανανέωσης ή αναπροσαρμογής ενοικίου περίπου δύο μήνες πριν.',
+      ...W?.leaseEnd,
     });
   }
   // Δήλωση μίσθωσης στην ΑΑΔΕ — Η ΔΙΚΗ ΜΑΣ ημερομηνία, από τη δική του υπογραφή.
@@ -215,6 +224,7 @@ export function computeObligations(
         category: 'contract', priority: 'high', who: 'owner',
         title: 'Δήλωση Πληροφοριακών Στοιχείων Μίσθωσης (ΑΑΔΕ)',
         note: 'Κάθε νέα ή τροποποιημένη μίσθωση δηλώνεται ηλεκτρονικά στην ΑΑΔΕ εντός του επόμενου μήνα από την έναρξη.',
+        ...W?.leaseDecl,
       });
     }
   }
@@ -246,6 +256,7 @@ export function computeObligations(
       date: deadline, category: 'contract', priority: 'high', who: 'owner',
       title: 'Δήλωση λύσης μίσθωσης στην ΑΑΔΕ',
       note: 'Ο μισθωτής έφυγε πριν από τη λήξη της μίσθωσης. Η λύση δηλώνεται ηλεκτρονικά στην ΑΑΔΕ ως το τέλος του επόμενου μήνα από την αποχώρηση, αλλιώς η μίσθωση μένει ενεργή στο myAADE.',
+      ...W?.leaseTermination,
     });
   }
 
@@ -262,6 +273,7 @@ export function computeObligations(
       title: `Συντήρηση, ${m.task}${m.item_name ? `, ${m.item_name}` : ''}`,
       note: m.est_cost ? `Προγραμματισμένη εργασία συντήρησης εξοπλισμού. Εκτιμώμενο κόστος ${fe(m.est_cost)}.` : 'Προγραμματισμένη εργασία συντήρησης εξοπλισμού.',
       priority: du < 0 ? 'high' : 'medium',
+      ...W?.maintenance(m.task, m.item_name ?? null, m.est_cost ?? null),
     });
   });
 

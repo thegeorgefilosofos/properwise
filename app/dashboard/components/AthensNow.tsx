@@ -19,12 +19,15 @@
 
 import { useEffect, useState } from 'react';
 import { athensNowLabel } from '@/lib/core/time';
+import { useAppEn } from '@/lib/i18n/appEn';
 
 export default function AthensNow({ style }: { style?: React.CSSProperties }) {
   const [label, setLabel] = useState<string | null>(null);
+  // Στα αγγλικά: «Wednesday 18 Nov 2026, 02:45 (Athens time)».
+  const en = useAppEn('overview')?.athensNow;
 
   useEffect(() => {
-    const tick = () => setLabel(athensNowLabel());
+    const tick = () => setLabel(en ? en() : athensNowLabel());
     tick();
     // Ευθυγράμμιση στο επόμενο ακέραιο λεπτό: αλλιώς η ένδειξη «14:07» θα άλλαζε
     // κάπου στη μέση του λεπτού και θα έδειχνε λάθος ως και 59 δευτερόλεπτα.
@@ -32,7 +35,7 @@ export default function AthensNow({ style }: { style?: React.CSSProperties }) {
     let every: ReturnType<typeof setInterval> | null = null;
     const first = setTimeout(() => { tick(); every = setInterval(tick, 60_000); }, toMinute);
     return () => { clearTimeout(first); if (every) clearInterval(every); };
-  }, []);
+  }, [en]);
 
   return <div style={style} suppressHydrationWarning>{label ?? ' '}</div>;
 }
