@@ -31,7 +31,7 @@ import { isReferralCode } from '@/lib/referral/code';
 import { oauthPatch, signupData } from '@/lib/auth/signupConsent'
 import { applyNews, newsParam, pendingNews, type NewsChoice } from '@/lib/auth/signupNews'
 import { usePlanTerms, useTrialBadge, useSignupCta } from './PlanTerms'
-import { localeOfPath, type Locale } from '@/lib/i18n/locale'
+import { localeOfPath, metaLocale, LOCALE_META_KEY, type Locale } from '@/lib/i18n/locale'
 import { useCaptcha } from '../useCaptcha'
 import { captchaOptions } from '@/lib/auth/captcha'
 import { localHref } from '@/lib/i18n/paths'
@@ -317,7 +317,8 @@ export default function SignupPage() {
         return
       }
       if (oauth === '1') {
-        const patch = oauthPatch(meta, q)
+        // Η εγγραφή με Google από το /en ανοίγει κι αυτή την εφαρμογή στα αγγλικά.
+        const patch = { ...oauthPatch(meta, q), ...(A && !metaLocale(meta) ? { [LOCALE_META_KEY]: 'en' } : {}) }
         if (Object.keys(patch).length) {
           // Η `updateUser` ΔΕΝ ΠΕΤΑΕΙ, ΕΠΙΣΤΡΕΦΕΙ `{ error }`. Το `try/catch`
           // που την τύλιγε δεν έπιανε τίποτα: μια αποτυχημένη εγγραφή της
@@ -562,7 +563,7 @@ export default function SignupPage() {
         emailRedirectTo: confirmRedirect(firm ? firmQuery(query) : query),
         data: signupData({
           firm: firm ? { account_kind: 'firm', firm_name: firmName.trim(), firm_afm: firmAfm, firm_kind: firmKind, firm_terms_version: FIRM_TERMS_VERSION } : null,
-          news, refCode, plan: chosenPlan, cycle: chosenCycle,
+          news, refCode, plan: chosenPlan, cycle: chosenCycle, locale: A ? 'en' : undefined,
         }),
       },
     })

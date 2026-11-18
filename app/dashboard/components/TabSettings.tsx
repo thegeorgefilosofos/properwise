@@ -50,6 +50,8 @@ import { useLoad } from '@/app/hooks/useLoad';
 import { Users, Bell, Palette, Accessibility, ShieldCheck, History, Database, Mail, UserRound, BadgeCheck } from 'lucide-react';
 import { AccessibilitySettings } from './AccessibilitySettings';
 import { useBillingWords } from './useBillingWords';
+import { useAppEn } from '@/lib/i18n/appEn';
+import LanguageSetting from './LanguageSetting';
 
 // Φαίνεται μόνο σε όποιον έχει δώσει πρόσβαση σε γραφείο· φορτώνεται στον περιηγητή.
 const FirmAccess = dynamic(() => import('./FirmAccess').then(m => m.FirmAccess), { ssr: false });
@@ -517,6 +519,11 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
   planVersion?: number;
 }) {
   const chosenType: ProfileType = declaredType ?? profileType;
+  // Το αγγλικό λεξικό του Λογαριασμού, ή `null` στα ελληνικά (lib/i18n/appEn.tsx).
+  const E = useAppEn('settings');
+  /** Τίτλος και υπότιτλος μιας ενότητας: ελληνικά όπως ήταν, ή τα αγγλικά της. */
+  const sec = (key: string, el: { title: string; hint: string }): { title: string; hint: string } =>
+    E ? { title: E.sections[key][0], hint: E.sections[key][1] } : el;
   const supabase = createClient();
 
   // Ταυτότητα λογαριασμού & χρέωσης
@@ -777,7 +784,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
           σειρά: Προφίλ, Συνδρομή, Ειδοποιήσεις, Ασφάλεια, Δεδομένα. Ο ίδιος
           κατάλογος δύο φορές, σε απόσταση σαράντα εικονοστοιχείων. Ο υπότιτλος
           λέει τώρα τι ΕΙΝΑΙ η σελίδα· τι περιέχει το λένε οι κεφαλίδες της. */}
-      <PageTitle title="Λογαριασμός" sub="Ό,τι αφορά εσένα και τα δεδομένα σου" />
+      <PageTitle title={E ? E.title : 'Λογαριασμός'} sub={E ? E.sub : 'Ό,τι αφορά εσένα και τα δεδομένα σου'} />
 
       {/* ── 1. ΠΡΟΦΙΛ ─────────────────────────────────────────────────── */}
       <ProfileCard userId={userId} email={accountEmail} />
@@ -981,18 +988,21 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
       <Card className="acc-section set-group" style={{ animationDelay: '140ms', padding: 0 }}>
       {/* ── ΟΡΓΑΝΙΣΜΟΣ & ΟΜΑΔΑ (Επαγγελματίας ή μέλος ομάδας) ───────────── */}
       {(profileType === 'professional' || inOrg) && (
-        <CollapsibleSection title="Οργανισμός και ομάδα" hint="Μέλη και δικαιώματα" icon={<Users size={16} />}>
+        <CollapsibleSection {...sec('org', { title: 'Οργανισμός και ομάδα', hint: 'Μέλη και δικαιώματα' })} icon={<Users size={16} />}>
           <OrgTeam userId={userId} />
         </CollapsibleSection>
       )}
 
-      <CollapsibleSection title="Ειδοποιήσεις" hint="Υπενθυμίσεις και μηνύματα" icon={<Bell size={16} />}>
+      <CollapsibleSection {...sec('notifications', { title: 'Ειδοποιήσεις', hint: 'Υπενθυμίσεις και μηνύματα' })} icon={<Bell size={16} />}>
         <NotificationSettings userId={userId} />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Εμφάνιση και γλώσσα" hint="Θέμα και προθεσμίες" icon={<Palette size={16} />}>
+      <CollapsibleSection {...sec('appearance', { title: 'Εμφάνιση και γλώσσα', hint: 'Γλώσσα, θέμα και προθεσμίες' })} icon={<Palette size={16} />}>
         <SetList>
-          <SetRow title="Θέμα" desc="Σκοτεινό ή φωτεινό, για την εφαρμογή. Το site, η σύνδεση και το ταμείο μένουν σκοτεινά." control={<ThemeToggle />} />
+          {/* Η ΓΛΩΣΣΑ ΗΤΑΝ ΣΤΟΝ ΤΙΤΛΟ ΤΗΣ ΕΝΟΤΗΤΑΣ ΚΑΙ ΠΟΥΘΕΝΑ ΑΛΛΟΥ. Τώρα είναι η
+              πρώτη της γραμμή (LanguageSetting.tsx). */}
+          <LanguageSetting />
+          <SetRow title={E ? E.theme.title : 'Θέμα'} desc={E ? E.theme.desc : 'Σκοτεινό ή φωτεινό, για την εφαρμογή. Το site, η σύνδεση και το ταμείο μένουν σκοτεινά.'} control={<ThemeToggle />} />
           {/* Η ΡΥΘΜΙΣΗ «ΔΕΚΑΔΙΚΑ ΣΤΑ ΠΟΣΑ» ΕΦΥΓΕ ΚΑΙ ΔΕΝ ΕΛΕΙΨΕ ΣΕ ΚΑΝΕΝΑΝ.
               Δεν τη διάβαζε ΟΥΤΕ ΕΝΑ σημείο της εφαρμογής: ο χρήστης άλλαζε την
               επιλογή, η οθόνη έδειχνε ότι αποθηκεύτηκε και δεν συνέβαινε τίποτα.
@@ -1000,9 +1010,9 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
               διδάσκει ότι οι ρυθμίσεις δεν μετράνε.
               Τα ποσά γράφονται πάντα με δύο δεκαδικά, γιατί αλλιώς η υποδιαστολή
               κάθεται σε άλλη θέση σε κάθε γραμμή και η στήλη σπάει. */}
-          <SetRow title="Ορίζοντας προθεσμιών" desc="Πόσο μπροστά κοιτά η λίστα «Τι χρειάζεται τώρα». Ό,τι είναι πιο μακριά ζει στο Ημερολόγιο· οι ληξιπρόθεσμες εμφανίζονται πάντα."
+          <SetRow title={E ? E.horizon.title : 'Ορίζοντας προθεσμιών'} desc={E ? E.horizon.desc : 'Πόσο μπροστά κοιτά η λίστα «Τι χρειάζεται τώρα». Ό,τι είναι πιο μακριά ζει στο Ημερολόγιο· οι ληξιπρόθεσμες εμφανίζονται πάντα.'}
             control={<div style={{ width: 264 }}>
-              <CustomSelect ariaLabel="Ορίζοντας προθεσμιών" value={String(prefs.agendaHorizonDays)}
+              <CustomSelect ariaLabel={E ? E.horizon.title : 'Ορίζοντας προθεσμιών'} value={String(prefs.agendaHorizonDays)}
                 onChange={v => updatePrefs({ agendaHorizonDays: Number(v) as AppPreferences['agendaHorizonDays'] })}
                 options={[
                   { value: '30',  label: 'Επόμενος μήνας (30 ημέρες)' },
@@ -1010,7 +1020,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
                   { value: '90',  label: 'Τρίμηνο (90 ημέρες)' },
                   { value: '180', label: 'Εξάμηνο (180 ημέρες)' },
                   { value: '365', label: 'Ολόκληρο έτος (365 ημέρες)' },
-                ]} />
+                ].map(o => (E ? { value: o.value, label: E.horizon.days(E.horizon.options[o.value], Number(o.value)) } : o))} />
             </div>} />
           {/* Η ΚΙΝΗΣΗ ΚΑΙ ΤΟ ΜΕΓΕΘΟΣ ΚΕΙΜΕΝΟΥ ΠΗΓΑΝ ΣΤΗΝ «ΠΡΟΣΒΑΣΙΜΟΤΗΤΑ» από κάτω,
               μαζί με την υψηλή αντίθεση και την ανάγνωση ποσών. Οποιος τα
@@ -1026,25 +1036,26 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
               το αποτέλεσμά της. Μια ρύθμιση που τη βλέπεις να συμβαίνει δεν
               χρειάζεται δεύτερο διακόπτη σε άλλη οθόνη. */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 18 }}>
-            <span style={{ ...TT.caption }}>Γλώσσα: Ελληνικά · Νόμισμα: ευρώ (€)</span>
+            {/* Η «Γλώσσα: Ελληνικά» έφυγε από εδώ: η γλώσσα έχει πλέον δική της γραμμή, πρώτη στην ενότητα. */}
+            <span style={{ ...TT.caption }}>{E ? E.currency : 'Νόμισμα: ευρώ (€)'}</span>
             <SaveNote state={prefsState} />
           </div>
         </SetList>
       </CollapsibleSection>
 
-      <CollapsibleSection title="Προσβασιμότητα" hint="Κείμενο, αντίθεση, κίνηση, φωνή" icon={<Accessibility size={16} />}>
+      <CollapsibleSection {...sec('a11y', { title: 'Προσβασιμότητα', hint: 'Κείμενο, αντίθεση, κίνηση, φωνή' })} icon={<Accessibility size={16} />}>
         <AccessibilitySettings />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Ασφάλεια" hint="Κωδικός και επαλήθευση δύο βημάτων" icon={<ShieldCheck size={16} />}>
+      <CollapsibleSection {...sec('security', { title: 'Ασφάλεια', hint: 'Κωδικός και επαλήθευση δύο βημάτων' })} icon={<ShieldCheck size={16} />}>
         <SecuritySettings />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Δραστηριότητα" hint="Το ιστορικό των ενεργειών σου" icon={<History size={16} />}>
+      <CollapsibleSection {...sec('activity', { title: 'Δραστηριότητα', hint: 'Το ιστορικό των ενεργειών σου' })} icon={<History size={16} />}>
         <ActivityLog />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Δεδομένα και απόρρητο" hint="Εισαγωγή, εξαγωγή, λογιστής, διαγραφή" icon={<Database size={16} />}>
+      <CollapsibleSection {...sec('data', { title: 'Δεδομένα και απόρρητο', hint: 'Εισαγωγή, εξαγωγή, λογιστής, διαγραφή' })} icon={<Database size={16} />}>
         <SetList>
           {/* Η ΕΙΣΑΓΩΓΗ ΠΡΩΤΗ. Ολα τα υπόλοιπα εδώ βγάζουν δεδομένα προς τα έξω
               ή τα κλείνουν· αυτό είναι το μόνο που τα φέρνει μέσα και είναι το

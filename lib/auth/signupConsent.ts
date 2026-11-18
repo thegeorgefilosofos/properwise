@@ -4,6 +4,7 @@
 // γραμμή ορατή δίπλα σε κάθε κουμπί. Ό,τι μένει στο προφίλ είναι ΠΟΤΕ και ΠΟΙΑ
 // έκδοση. Τα δύο σημεία που το γράφουν ζουν εδώ, ώστε το
 // lib/auth/signupConsent.test.ts να κοκκινίζει αν χαθεί κάποιο πεδίο.
+import { LOCALE_META_KEY, type Locale } from '@/lib/i18n/locale'
 import { POLICY_VERSION as CONSENT_VERSION } from '@/lib/legal/identity'
 import { newsDecided, newsFromParam, newsMeta, type NewsChoice } from '@/lib/auth/signupNews'
 import { planFromParam, cycleFromParam } from '@/lib/billing/entitlements'
@@ -21,6 +22,8 @@ export function signupData(o: {
   refCode?: string
   plan?: PlanId | null
   cycle?: BillingCycle
+  /** Η γλώσσα της σελίδας εγγραφής: από το /en η εφαρμογή ανοίγει στα αγγλικά (lib/i18n/locale.ts). */
+  locale?: Locale
 }, now: Date = new Date()): Record<string, unknown> {
   return {
     ...(o.firm ?? {}),
@@ -28,6 +31,7 @@ export function signupData(o: {
     ...newsMeta(o.news),
     ...(o.refCode ? { referred_by: o.refCode } : {}),
     ...(o.plan ? { chosen_plan: o.plan, chosen_cycle: o.cycle } : {}),
+    ...(o.locale === 'en' ? { [LOCALE_META_KEY]: 'en' } : {}),
   }
 }
 

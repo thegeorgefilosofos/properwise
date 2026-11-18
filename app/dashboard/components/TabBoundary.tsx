@@ -28,6 +28,7 @@ import { Component, type ReactNode } from 'react';
 import { captureError } from '@/lib/observability/report';
 import { T } from '@/components/tokens';
 import { Btn } from '@/components/Theme';
+import { useAppEn } from '@/lib/i18n/appEn';
 
 interface Props {
   /** Ποια καρτέλα, για το μήνυμα και την αναφορά. */
@@ -57,23 +58,28 @@ export default class TabBoundary extends Component<Props, State> {
   render() {
     const { error } = this.state;
     if (!error) return this.props.children;
+    return <TabFailed name={this.props.name} error={error} onRetry={() => this.setState({ error: null })} />;
+  }
+}
 
-    return (
+/** Η οθόνη της καρτέλας που έπεσε· συνάρτηση, για να ρωτά τη γλώσσα της εφαρμογής. */
+function TabFailed({ name, error, onRetry }: { name: string; error: Error; onRetry: () => void }) {
+  const E = useAppEn('shell')?.boundary;
+  return (
       <div style={{ padding: '32px 8px', fontFamily: T.font.sans }}>
         <div style={{ maxWidth: 560 }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
-            Αυτή η ενότητα δεν φόρτωσε
+            {E ? E.title : 'Αυτή η ενότητα δεν φόρτωσε'}
           </div>
           <div style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 14 }}>
-            Οι υπόλοιπες ενότητες λειτουργούν κανονικά και τα δεδομένα σου είναι ασφαλή.
-            Δοκίμασε ξανά ή συνέχισε από το μενού.
+            {E ? E.body : 'Οι υπόλοιπες ενότητες λειτουργούν κανονικά και τα δεδομένα σου είναι ασφαλή. Δοκίμασε ξανά ή συνέχισε από το μενού.'}
           </div>
 
           {/* Το μήνυμα ορατό και αντιγράψιμο: αλλιώς η αναφορά του προβλήματος
               γίνεται περιγραφή αντί για στοιχείο. */}
           <pre
             onClick={() => { try { void navigator.clipboard.writeText(error.message); } catch { /* χωρίς άδεια */ } }}
-            title="Κλικ για αντιγραφή"
+            title={E ? E.copy : 'Κλικ για αντιγραφή'}
             style={{
               margin: '0 0 14px', padding: '10px 12px', cursor: 'copy',
               background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
@@ -81,16 +87,15 @@ export default class TabBoundary extends Component<Props, State> {
               whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 140, overflow: 'auto',
               fontFamily: T.font.mono,
             }}>
-            {this.props.name}: {error.message}
+            {name}: {error.message}
           </pre>
 
           {/* size="lg" γιατί είναι η μοναδική ενέργεια της οθόνης σφάλματος
               και κρατά το ύψος πεδίου που είχε ήδη. */}
-          <Btn variant="primary" size="lg" onClick={() => this.setState({ error: null })}>
-            Δοκίμασε ξανά
+          <Btn variant="primary" size="lg" onClick={onRetry}>
+            {E ? E.retry : 'Δοκίμασε ξανά'}
           </Btn>
         </div>
       </div>
-    );
-  }
+  );
 }

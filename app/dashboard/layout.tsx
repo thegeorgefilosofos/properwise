@@ -3,8 +3,15 @@
 // κληρονομούσε από τη ρίζα ευρετηρίαση και `canonical: "/"`. Ο λόγος και η μία
 // δήλωση ζουν στο lib/seo/noindex.ts. Χωρίς τίτλο, επίτηδες: η καρτέλα μένει
 // όπως ήταν.
+//
+// Η ΓΛΩΣΣΑ ΤΗΣ ΕΦΑΡΜΟΓΗΣ: ό,τι έγραψε το proxy.ts από την επιλογή του χρήστη
+// (lib/i18n/locale.ts, appLocale), η ίδια ανάγνωση με το `<html lang>` της
+// ρίζας. Ο πάροχος τη δίνει στο `useLocale()` και στο `useAppEn()`.
+import { requestLocale } from '@/lib/i18n/serverLocale';
+import { AppLocaleProvider } from '@/lib/i18n/appEn';
+
 export { NOINDEX as metadata } from '@/lib/seo/noindex';
 
-export default function Layout({ children }: { children: React.ReactNode }) {
-  return children;
+export default async function Layout({ children }: { children: React.ReactNode }) {
+  return <AppLocaleProvider locale={await requestLocale()}>{children}</AppLocaleProvider>;
 }

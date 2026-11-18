@@ -61,6 +61,39 @@ export function recipientLocale(chosen: string | null | undefined, acceptLanguag
   return browserLacksGreek(acceptLanguage) ? 'en' : 'el';
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Η ΕΦΑΡΜΟΓΗ: ΙΔΙΑ ΔΙΕΥΘΥΝΣΗ, ΓΛΩΣΣΑ ΑΠΟ ΤΗΝ ΕΠΙΛΟΓΗ ΤΟΥ ΧΡΗΣΤΗ
+// ─────────────────────────────────────────────────────────────────────────
+// Ο πίνακας (/dashboard) είναι ιδιωτικός και δεν ευρετηριάζεται, οπότε δεν
+// χρειάζεται ζεύγος /en: όπως οι σελίδες παραλήπτη, κρατά τη διεύθυνσή του.
+// Η γλώσσα του βγαίνει ΜΟΝΟ από τη ρητή επιλογή (cookie `pw_lang`, που
+// γράφουν οι Ρυθμίσεις μαζί με το `user_metadata.app_locale` του λογαριασμού).
+// ΟΧΙ από τον περιηγητή: πολλοί Ελληνες ιδιοκτήτες έχουν αγγλικό περιηγητή
+// και η εφαρμογή τους δεν αλλάζει γλώσσα χωρίς να το ζητήσουν.
+// ═══════════════════════════════════════════════════════════════════════════
+const APP_PREFIX = '/dashboard';
+
+/** Σελίδα της εφαρμογής: ίδια διεύθυνση και στις δύο γλώσσες. */
+export const isAppPath = (path: string): boolean => path === APP_PREFIX || path.startsWith(APP_PREFIX + '/');
+
+/** Η γλώσσα της εφαρμογής: αγγλικά μόνο με ρητή επιλογή, αλλιώς ελληνικά. */
+export const appLocale = (chosen: string | null | undefined): Locale => (chosen === 'en' ? 'en' : 'el');
+
+/**
+ * Το κλειδί του `user_metadata` με την επιλογή γλώσσας του λογαριασμού.
+ * ΟΧΙ σκέτο «locale»: το Supabase αντιγράφει στο ίδιο αντικείμενο τα στοιχεία
+ * του παρόχου σύνδεσης και η Google στέλνει δικό της `locale` (τη γλώσσα του
+ * λογαριασμού Google). Ελληνας με αγγλικό λογαριασμό Google θα έβλεπε την
+ * εφαρμογή στα αγγλικά χωρίς να το ζητήσει.
+ */
+export const LOCALE_META_KEY = 'app_locale';
+
+/** Η επιλογή γλώσσας που κρατά ο λογαριασμός, ή null αν δεν διάλεξε ποτέ. */
+export function metaLocale(meta: Record<string, unknown> | null | undefined): Locale | null {
+  const v = meta?.[LOCALE_META_KEY];
+  return v === 'en' || v === 'el' ? v : null;
+}
+
 export const localeOfPath = (path: string | null | undefined): Locale => (path && isEnPath(path) ? 'en' : 'el');
 
 /** Η μορφή του Open Graph για κάθε γλώσσα. */
