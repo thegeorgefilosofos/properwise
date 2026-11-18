@@ -37,6 +37,9 @@ import {
 } from './accounting/model'
 import { card, cardTitle, Fold, Check, Kpi } from './accounting/Bits'
 import { useAccounting, type AccountingProps } from './accounting/useAccounting'
+import { usePropertyRentTax } from './usePropertyRentTax'
+import { navLabel } from '@/lib/nav/labels'
+import { TAX_BASIS_LABELS, rentTaxBasisLabel } from '@/lib/facts/labels'
 import {
   TaxScaleCard, ConsolidationCard, AdvisoryCard, ChangesCard, TransferCostCard, CashFlowFold,
   TrialBalanceFold,
@@ -73,6 +76,12 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
     officialRentCertificate, drift, lockYear, unlockYear, shareWithAccountant, revokeAccountantLink,
     exportBundle, strNotice, strNoticeSeen, setStrNoticeSeen,
   } = useAccounting({ propertyId, userId, profileType, legalForm, plan, status, onNavigate })
+  // Ο ΦΟΡΟΣ ΤΗΣ ΕΠΙΣΚΟΠΗΣΗΣ, ΑΠΟ ΤΗΝ ΙΔΙΑ ΣΥΝΑΡΤΗΣΗ (έλεγχος 18/11/2026). Η
+  // Λογιστική φορολογεί τα ενοίκια που καταχωρήθηκαν· η Επισκόπηση όλη τη
+  // χρονιά. Για ακίνητο με μίσθωση και καμία δόση ακόμη η μία έγραφε φόρο και η
+  // άλλη 0,00€ χωρίς εξήγηση. Ο αριθμός της Επισκόπησης γράφεται εδώ με τη βάση
+  // του, από την `propertyRentTax` μέσω του `usePropertyRentTax`, όχι ξανά.
+  const rentTaxYear = usePropertyRentTax(propertyId, userId, profileType)
 
   // Το σκαλί της εξόδου: ο χρήστης πήρε κάτι που δίνεται σε τρίτον. Μετριέται
   // ΠΟΙΟ είδος αναφοράς, όχι το περιεχόμενό της.
@@ -455,12 +464,17 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             {elpForm==='sole'&&grossIncome>0 ? ' Περιλαμβάνεται το ελάχιστο τεκμαρτό εισόδημα του άρθρου 28Α.' : ''}
             {' Γι\' αυτό ο αριθμός δεν είναι σύγκριση με τα ενοίκια ιδιώτη: τη σύγκριση την κάνει ο λογιστής σου. '}
           </>}
+          {`${TAX_BASIS_LABELS.recorded(year)}. `}
           {provision.propertyTaxes>0
             ? (provision.annualTaxTotal-provision.propertyTaxes>0
               ? `Φόρος εισοδήματος ${eur(provision.annualTaxTotal-provision.propertyTaxes)} και ${eur(provision.propertyTaxes)} φόροι και τέλη ακινήτου. `
               : 'Χωρίς φόρο εισοδήματος: όλο το ποσό είναι φόροι και τέλη ακινήτου. ')
             : ''}
           {year===athensYear() ? 'Ενδεικτικά.' : `Ενδεικτικά. Το ένα δωδέκατο είναι ${eur(provision.monthly)} τον μήνα.`}
+          {!businessMode && year===athensYear() && rentTaxYear && <>
+            {' '}<strong style={{ fontWeight:600, color:'var(--text-secondary)' }}>{rentTaxBasisLabel(rentTaxYear.income.basis, year)}: {eur(rentTaxYear.tax)}</strong>
+            {` φόρος ενοικίων${isCoOwned ? ' για όλο το ακίνητο' : ''}, ο ίδιος αριθμός με την ${navLabel('overview')}.`}
+          </>}
           {/* ΕΝΑΣ ΦΟΡΟΛΟΓΟΥΜΕΝΟΣ, ΓΡΑΜΜΕΝΟ (28.09.2026). Η κλίμακα εφαρμόζεται στο
               σύνολο των ακινήτων του λογαριασμού. Σε λογαριασμό με πολλούς
               πελάτες αυτό δεν είναι ο φόρος κανενός τους· ως τον υπολογισμό ανά
