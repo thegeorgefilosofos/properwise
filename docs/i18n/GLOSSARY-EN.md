@@ -49,7 +49,7 @@ the Greek tax system. Every Greek term is explained once, then used plainly.
 | Click here | describe the destination in the link | Accessibility |
 | Log-in, Sign-in (hyphenated, as verbs) | log in (verb), login (noun only if unavoidable) | |
 | e-mail | email | |
-| Euro, EUR, € after the number | € before the number: €1,234.50 | `fmtFor('en')` |
+| Euro, EUR, € before the number | € after the number: 1.234,50€ | `fmtFor('en')`, the owner's rule (18 Nov 2026) |
 
 ---
 
@@ -82,30 +82,30 @@ the Greek tax system. Every Greek term is explained once, then used plainly.
 
 Always through `fmtFor('en')` (`lib/core/format.ts`). Never format by hand.
 
-**Exception: the logged-in app.** By the owner's decision (18 Nov 2026), the
-English UI of the app (`lib/i18n/en/app/**`) writes amounts, numbers and dates
-exactly like the Greek one: `1.234,50€`, `12,00%`, `02/11/2026`, through
-`APP_FMT` (`lib/i18n/en/app/format.ts`). The public `/en` pages keep the table
-below.
+**The owner's rule (18 Nov 2026): numbers look the same in both languages.**
+Amounts, numbers, percentages and compact dates are written exactly as in
+Greek, on `/en`, in the tools and guides and in the app: the € after the
+amount, a comma for decimals, a dot for thousands, dates as dd/mm/yyyy. The
+product video shows `1.453,50€`; every English page matches it. Month names
+in prose stay English.
 
 | What | Function | Output |
 |---|---|---|
-| Money, two decimals | `f.fe(n)` | €1,234.50 |
-| Money, whole euros | `f.feWhole(n)` | €1,235 |
-| Negative money | `f.feSigned(n)` | −€120.00 (true minus sign) |
-| Unit price | `f.feRate(n)` | €0.12345 |
-| Number | `f.fn(n, d)` | 1,234 · 2.5 |
-| Percentage, two decimals | `f.fp(n)` | 12.00% |
-| Rate, up to two decimals | `f.fpRate(n)` | 22% · 0.5% |
-| Compact date | `f.date(iso)` | 2 Nov 2026 |
+| Money, two decimals | `f.fe(n)` | 1.234,50€ |
+| Money, whole euros | `f.feWhole(n)` | 1.235€ |
+| Negative money | `f.feSigned(n)` | −120,00€ (true minus sign) |
+| Unit price | `f.feRate(n)` | 0,12345€ |
+| Number | `f.fn(n, d)` | 1.234 · 2,5 |
+| Percentage, two decimals | `f.fp(n)` | 12,00% |
+| Rate, up to two decimals | `f.fpRate(n)` | 22% · 0,5% |
+| Compact date | `f.date(iso)` | 02/11/2026 |
 | Long date in prose | `longDateEn(iso)` (`lib/i18n/en/dates.ts`) | 30 November 2026 |
 | Day and month in prose | `dayMonthEn(iso)` | 1 November |
 | Month and year | `monthYearEn(key)` | November 2026 |
 
-- **Day before month, always**: "2 Nov 2026" in tables and stamps,
-  "30 November 2026" in sentences, "on 1 November" without the year. Never
-  "11/02/2026" or "02/11/2026" — both are ambiguous to half our readers.
-  Never "November 1, 2026": it would sit next to "2 Nov 2026" on the same page.
+- **Compact dates are dd/mm/yyyy** ("02/11/2026"), as on every Greek document
+  the reader will hold. In sentences, day before month in words: "30 November
+  2026", "on 1 November". Never "November 1, 2026".
 - **Citations keep their official form**: `Government Gazette B 5590/17.09.2026`,
   `Law 5222/2025`. That date is part of the reference, not prose.
 - **No hand-typed figure** for tax, ENFIA, deadlines or prices. Every rate,
