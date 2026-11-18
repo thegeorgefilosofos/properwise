@@ -17,6 +17,11 @@ import LanguageSetting from './components/LanguageSetting';
 import AgendaPanel from './components/AgendaPanel';
 import CashHero from './components/CashHero';
 import StartPanel from './components/StartPanel';
+import ExpenseCompare from './components/ExpenseCompare';
+import { CATEGORIES } from '@/lib/expenses/taxonomy';
+import { CATEGORY_EN } from '@/lib/i18n/en/app/categories';
+import { EXPENSES_EN } from '@/lib/i18n/en/app/expenses';
+import type { Spend } from '@/lib/expenses/compare';
 import { computeInsights, type InsightInput } from '@/lib/insights/engine';
 import { computeObligations } from './components/obligations';
 import { INSIGHTS_EN, OBLIGATIONS_EN } from '@/lib/i18n/en/app/overview';
@@ -61,6 +66,18 @@ async function main() {
   await loadAppEn('shell');
   await loadAppEn('settings');
   await loadAppEn('overview');
+  await loadAppEn('expenses');
+
+  // ── Οι δαπάνες: κάθε κατηγορία της ταξινομίας έχει αγγλικό όνομα ────────
+  ok('κάθε κατηγορία έχει αγγλικό όνομα', CATEGORIES.every(c => !!CATEGORY_EN[c.slug]));
+  ok('προθεσμία δαπάνης στα αγγλικά', EXPENSES_EN.due(-3).text === 'overdue by 3 days' && EXPENSES_EN.due(-3).late && EXPENSES_EN.due(4).text === 'due in 4 days');
+  ok('συχνότητα στα αγγλικά', EXPENSES_EN.cadence(2) === 'every two months' && EXPENSES_EN.cadence(5) === 'every 5 months');
+  const spend = (month: string, category: string, amount: number): Spend => ({ date: `${month}-10`, category, amount } as Spend);
+  const spends: Spend[] = [
+    spend('2026-08', 'electricity', 60), spend('2026-08', 'water', 20),
+    spend('2026-09', 'electricity', 140), spend('2026-09', 'water', 25),
+    spend('2026-10', 'electricity', 70), spend('2026-10', 'water', 20),
+  ];
 
   // ── Οι παρατηρήσεις: ίδιοι κανόνες, ίδιο πλήθος, αγγλικό κείμενο ────────
   const NOW = new Date('2026-07-06T10:00:00').getTime();
@@ -106,6 +123,7 @@ async function main() {
     ['ταμείο', () => createElement(CashHero, { cash, showIncome: true, onNavigate: nav, onRecordRent: nav })],
     ['ήσυχο ταμείο', () => createElement(CashHero, { cash: { owedToMe: sideOf(0), owedByMe: sideOf(0) } as unknown as CashPosition, showIncome: false, onNavigate: nav, onRecordRent: null })],
     ['από πού ξεκινάς', () => createElement(StartPanel, { state: start, collapsed: false, onToggle: nav, onNavigate: nav, onPreview: nav })],
+    ['σύγκριση μηνών', () => createElement(ExpenseCompare, { spends, today: new Date('2026-11-17T10:00:00Z') })],
     ['από πού ξεκινάς, κλειστό', () => createElement(StartPanel, { state: start, collapsed: true, onToggle: nav, onNavigate: nav, onPreview: nav })],
   ];
 

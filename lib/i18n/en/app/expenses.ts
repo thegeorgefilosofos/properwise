@@ -54,10 +54,8 @@ const SCAN_EN = {
   file: 'Document',
   openDoc: 'Open the document',
   doc: 'The document',
-  chooseType: 'Choose a type',
   filing: 'Filing…',
   fileIt: 'File it',
-  formNote: 'The form below follows the Greek document, as it was issued.',
 };
 
 export const EXPENSES_EN = {

@@ -88,7 +88,7 @@ export const PortfolioTab = dynamic(() => import('./PortfolioTab'), { loading: T
 // ΧΩΡΙΣ ΣΧΗΜΑ ΑΝΑΜΟΝΗΣ, ΕΠΙΤΗΔΕΣ. Ενα σκελετό μέσα σε παράθυρο που δεν έχει
 // ακόμη πλαίσιο θα ζωγράφιζε τρεις γκρίζες μπάρες στη μέση της οθόνης.
 export const AddPropertyWizard = dynamic(() => import('./AddPropertyWizard'), { ssr: false });
-export const DocumentScan = dynamic(() => import('./DocumentScan'), { ssr: false });
+export const DocumentScan = dynamic(withAppEn(['expenses'], () => import('./DocumentScan')), { ssr: false });
 export const WelcomeOnboarding = dynamic(() => import('./WelcomeOnboarding'), { ssr: false });
 // Η περιήγηση: μόνο για όποιον πατήσει «Σύντομη περιήγηση». Κανένας άλλος δεν
 // την κατεβάζει.
