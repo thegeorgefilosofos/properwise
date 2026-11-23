@@ -3,7 +3,9 @@
 //   node scripts/perf-bench/build-mobile.mjs
 //   CHROMIUM_PATH=… node docs/marketing/kamari/2026-11-23-ena-meros/capture.mjs
 //
-// Γράφει στο work/shots/: ένα PNG ανά κατάσταση (390×844 CSS px, ×6), τα κουτιά
+// Γράφει στο work/shots/: ένα PNG ανά κατάσταση (390×844 CSS px, λήψη ×9 που
+// σμικρύνεται σε ×4 για το ολόκληρο τηλέφωνο), τα τέσσερα κοντινά ως αποκοπές της
+// λήψης ×9 στα κουτιά του `crops` του film.html (crop-<όνομα>.png), τα κουτιά
 // των στοιχείων που πατά ο δρομέας (boxes.json) και κάθε ορατή γραμμή με ψηφίο
 // (digits.json), για τον πίνακα αριθμών του plan.md. Το ρολόι παγώνει στις
 // 23/11/2026 09:41: οι «ημέρες ακόμη» βγαίνουν από το lib/tax/greekTaxCalendar.ts
@@ -11,20 +13,26 @@
 import { chromium } from 'playwright-core';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, unlinkSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '../../../..');
 const out = join(here, 'work/shots');
 mkdirSync(out, { recursive: true });
-const DSF = 6;
+const DSF = 9, WIDE = 4;
+const TL = JSON.parse(/<script id="timeline" type="application\/json">([\s\S]*?)<\/script>/.exec(readFileSync(join(here, 'film.html'), 'utf8'))[1]);
+const ff = (args) => { const r = spawnSync('ffmpeg', ['-v', 'error', '-y', ...args], { stdio: 'inherit' }); if (r.status !== 0) throw new Error('ffmpeg'); };
 const NOW = new Date('2026-11-23T09:41:00+02:00');
 
 const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
 const boxes = {}, digits = {};
 
+let lastCtx = null;   // ένα πλαίσιο τη φορά: οι λήψεις ×9 γεμίζουν τη μνήμη
 async function open(q) {
+  if (lastCtx) await lastCtx.close();
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: DSF });
+  lastCtx = ctx;
   await ctx.clock.setFixedTime(NOW);
   const p = await ctx.newPage();
   p.on('pageerror', e => console.log('σφάλμα σελίδας', q, e.message.slice(0, 160)));
@@ -36,7 +44,13 @@ const box = async (p, loc) => { const r = await loc.first().boundingBox(); retur
 async function shot(p, name, targets) {
   await p.evaluate(() => document.fonts.ready);
   await p.waitForTimeout(300);
-  await p.screenshot({ path: join(out, `${name}.png`) });
+  const big = join(out, `${name}-x${DSF}.png`);
+  await p.screenshot({ path: big });
+  // Τα κοντινά: αποκοπή της λήψης ×9, χωρίς καμία μεγέθυνση.
+  for (const [crop, c] of Object.entries(TL.crops)) if (c.shot === name)
+    ff(['-i', big, '-vf', `crop=${c.w * DSF}:${c.h * DSF}:${c.x * DSF}:${c.y * DSF}`, join(out, `crop-${crop}.png`)]);
+  ff(['-i', big, '-vf', `scale=${390 * WIDE}:${844 * WIDE}:flags=lanczos`, join(out, `${name}.png`)]);
+  unlinkSync(big);
   boxes[name] = {};
   for (const [k, loc] of Object.entries(targets)) boxes[name][k] = await box(p, loc);
   // Κάθε ορατή γραμμή κειμένου με ψηφίο, μέσα στη θύρα προβολής.
@@ -56,6 +70,8 @@ async function shot(p, name, targets) {
   console.log('✓', name);
 }
 
+// 0. Το χαρτοφυλάκιο: όλα τα ακίνητα μαζί.
+{ const q = await open('?c=portfolio&n=6'); await shot(q, 'portfolio', {}); }
 // 1. Επισκόπηση, χωρίς την ενημέρωση όρων (ο χρήστης την έχει κλείσει).
 let p = await open('?c=overview&n=6&noa=1');
 await p.click('button[aria-label="Το κατάλαβα"]');

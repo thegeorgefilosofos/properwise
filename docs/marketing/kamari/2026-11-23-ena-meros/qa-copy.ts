@@ -18,7 +18,7 @@ const visible: string[] = [];
 for (const m of film.matchAll(/text\('[^']*',\s*'([^']+)'/g)) visible.push(m[1]);
 for (const m of film.matchAll(/\[\d+, \d+, '([^']+)'\]/g)) visible.push(m[1]);
 for (const m of film.matchAll(/<div id="(?:badge|who)">([^<]+)<\/div>/g)) visible.push(m[1]);
-visible.push('16.000€');
+for (const m of film.matchAll(/const MSG = \[([^\]]+)\]/g)) for (const x of m[1].matchAll(/'([^']+)'/g)) visible.push(x[1]);
 
 const sections = copy.split(/^## /m).slice(1).map((s) => ({ where: s.split('\n')[0], text: s.slice(s.indexOf('\n') + 1).trim() }));
 const fails: string[] = [];
