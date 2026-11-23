@@ -8,6 +8,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { budgetBucket } from './taxonomy';
 import { cents } from '@/lib/core/money';
+import { UNPAID_PARTS } from '@/lib/facts/labels';
 
 /** Ό,τι χρειάζεται από μια γραμμή του καθολικού (lib/expenses/ledger.ts). */
 export interface AttentionEntry {
@@ -66,7 +67,7 @@ export function matchesLedgerFilter(e: AttentionEntry, f: LedgerFilter | null | 
 
 /** «1 ληξιπρόθεσμη», «3 ληξιπρόθεσμες»: η λέξη είναι η δαπάνη, θηλυκό. */
 export const overdueWord = (n: number): string => `${n} ${n === 1 ? 'ληξιπρόθεσμη' : 'ληξιπρόθεσμες'}`;
-/** «1 εκκρεμεί», «2 εκκρεμούν». */
-export const pendingWord = (n: number): string => `${n} ${n === 1 ? 'εκκρεμεί' : 'εκκρεμούν'}`;
+/** «1 δεν έληξε», «2 δεν έληξαν»: οι λέξεις του φίλτρου των Δαπανών (UNPAID_PARTS). */
+export const pendingWord = (n: number): string => `${n} ${n === 1 ? 'δεν έληξε' : UNPAID_PARTS.notDue}`;
 /** «1 κατηγορία σε υπέρβαση», «4 κατηγορίες σε υπέρβαση». */
 export const overWord = (n: number): string => `${n} ${n === 1 ? 'κατηγορία' : 'κατηγορίες'} σε υπέρβαση`;

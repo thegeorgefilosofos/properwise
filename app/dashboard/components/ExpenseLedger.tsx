@@ -61,7 +61,8 @@ import { CustomSelect, DatePicker, Toggle } from './UIComponents';
 import { InfoHint } from './InfoHint';
 import { athensToday, athensMonth, daysUntil } from '@/lib/core/time';
 import { matchesLedgerFilter, isOverdue, isPendingNotOverdue, type LedgerFilter } from '@/lib/expenses/attention';
-import { monthYearLabel, monthGen } from '@/lib/core/months';
+import { monthYearLabel, monthNom } from '@/lib/core/months';
+import { UNPAID_LABEL, UNPAID_PARTS } from '@/lib/facts/labels';
 import { afmDigits, isValidAfm, parseAmount } from '@/lib/core/greek';
 import { Dictation } from '@/components/dictation/MicButton';
 import { useAppEn } from '@/lib/i18n/appEn';
@@ -162,9 +163,11 @@ const nameIn = (E: ExpensesEn | null, e: Parameters<typeof entryName>[0]): strin
 };
 const dueIn = (E: ExpensesEn | null, due: string) => (E ? E.due(daysUntil(due) ?? 0) : dueText(due));
 
-/** «1 απλήρωτη», «4 απλήρωτες»: η λέξη είναι η δαπάνη, όπως στον τίτλο του πλακιδίου. */
+/** «1 ανεξόφλητη», «4 ανεξόφλητες»: η ίδια λέξη με το πλακίδιο, το φίλτρο και τον Προϋπολογισμό. */
 const unpaidBillsLabel = (n: number): string =>
-  `${n} ${n === 1 ? 'απλήρωτη' : 'απλήρωτες'}`;
+  `${n} ${n === 1 ? 'ανεξόφλητη' : 'ανεξόφλητες'}`;
+/** «1 δαπάνη», «4 δαπάνες»: κάτω από την ετικέτα «Ανεξόφλητες» η λέξη δεν ξαναλέγεται. */
+const expensesN = (n: number): string => `${n} ${n === 1 ? 'δαπάνη' : 'δαπάνες'}`;
 
 export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce, handledAddNonce, onAddHandled, inbox, filter: filterProp, onFilterChange }: Props) {
   const [ownFilter, setOwnFilter] = useState<LedgerFilter | null>(null);
@@ -709,42 +712,28 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
         {/* ΕΝΑ ΟΥΣΙΑΣΤΙΚΟ ΓΙΑ ΤΗΝ ΙΔΙΑ ΜΟΝΑΔΑ. Έγραφε «1 απλήρωτη» στο ένα
             πλακίδιο, «4 χρεώσεις» στο διπλανό και η Επισκόπηση «4 απλήρωτα»
             για τα ίδια ποσά. Παντού πλέον «απλήρωτοι λογαριασμοί». */}
-        <Stat label={E ? E.monthStat(Number(thisMonth.slice(5, 7)) - 1) : `Δαπάνες ${monthGen(Number(thisMonth.slice(5, 7)) - 1)}`} value={loading ? null : fe(monthTotal)}
+        <Stat label={E ? E.monthStat(Number(thisMonth.slice(5, 7)) - 1) : monthNom(Number(thisMonth.slice(5, 7)) - 1)} value={loading ? null : fe(monthTotal)}
           sub={monthUnpaid ? unpaidN(monthUnpaid) : undefined} />
         {/* ΔΥΟ ΠΛΑΚΙΔΙΑ ΕΛΕΓΑΝ ΤΗΝ ΙΔΙΑ ΓΡΑΜΜΗ. Το «Ανεξόφλητες» λέει πλέον
             πόσες από αυτές έχουν ήδη λήξει: αυτό ζητά κίνηση σήμερα. */}
-        <Stat label={E ? E.unpaidStat : 'Ανεξόφλητες δαπάνες'} value={loading ? null : fe(unpaidTotal)}
-          sub={unpaid.length ? `${unpaidN(unpaid.length)}${overdueN ? (E ? E.overdueTail(overdueN) : `, ${overdueN} ${overdueN === 1 ? 'ληξιπρόθεσμη' : 'ληξιπρόθεσμες'}`) : ''}` : undefined} />
-        <Stat label={E ? E.yearStat(thisMonth.slice(0, 4)) : `Δαπάνες ${thisMonth.slice(0, 4)}`} value={loading ? null : fe(yearTotal)}
+        <Stat label={E ? E.unpaidStat : UNPAID_LABEL} value={loading ? null : fe(unpaidTotal)}
+          sub={unpaid.length ? `${E ? unpaidN(unpaid.length) : expensesN(unpaid.length)}${overdueN ? (E ? E.overdueTail(overdueN) : `, ${overdueN} ${overdueN === 1 ? 'ληξιπρόθεσμη' : UNPAID_PARTS.overdue}`) : ''}` : undefined} />
+        <Stat label={E ? E.yearStat(thisMonth.slice(0, 4)) : thisMonth.slice(0, 4)} value={loading ? null : fe(yearTotal)}
           sub={yearExcluded > 0 ? (E ? E.excluded(yearExcluded) : `${fe(yearExcluded)} εκτός στατιστικών`) : undefined} />
       </div>
 
       {inbox}
 
-      {/* ── ΦΙΛΤΡΑ: ΤΙ ΧΡΕΙΑΖΕΤΑΙ ΚΙΝΗΣΗ ─────────────────────────────────────
-          Το ληξιπρόθεσμο ήταν μία κίτρινη γραμμή βαθιά στη λίστα, χωρίς τρόπο
-          να το βρεις. Πλακίδια μόνο όταν υπάρχει κάτι απλήρωτο. */}
-      {(unpaid.length > 0 || filter) && (
-        <div role="group" aria-label={E ? E.filter : 'Φίλτρο δαπανών'} className="po-rail ledger-rail" style={{ marginBottom: T.sp.lg }}>
-          <ChipToggle shape="seg" on={!filter} onClick={() => setFilter(null)}>{E ? E.all : 'Όλες'}</ChipToggle>
-          {(overdueN > 0 || filter?.kind === 'overdue') && <ChipToggle shape="seg" on={filter?.kind === 'overdue'} onClick={() => setFilter(filter?.kind === 'overdue' ? null : { kind: 'overdue' })}>{E ? E.overdue(overdueN) : `Ληξιπρόθεσμες ${overdueN}`}</ChipToggle>}
-          {(pendingN > 0 || filter?.kind === 'pending') && <ChipToggle shape="seg" on={filter?.kind === 'pending'} onClick={() => setFilter(filter?.kind === 'pending' ? null : { kind: 'pending' })}>{E ? E.pending(pendingN) : `Εκκρεμούν ${pendingN}`}</ChipToggle>}
-          {filter?.kind === 'buckets' && <ChipToggle shape="seg" on onClick={() => setFilter(null)} title={E ? E.clearFilter : 'Καθαρισμός φίλτρου'}>{E ? E.overBudget(filter.label) : `Σε υπέρβαση: ${filter.label}`}</ChipToggle>}
-        </div>
-      )}
-
       {/* Τα τρία νούμερα πρώτα, μετά η σύγκριση: το ανοιχτό και το ετήσιο
           είναι ό,τι ήρθε να δει ο χρήστης και κάθονταν κάτω από μια κάρτα
           πεντακοσίων εικονοστοιχείων. Η σύγκριση απαντά στο «γιατί». */}
-      {/* Με φίλτρο, η λίστα έρχεται αμέσως κάτω από τα νούμερα. */}
-      {!filter && <ExpenseCompare spends={spends} today={compareToday} />}
 
       {/* ── ΤΙ ΛΕΙΠΕΙ ────────────────────────────────────────────────────────
           Μία γραμμή, όχι πίνακας. Δεν είναι σφάλμα και δεν παρουσιάζεται ως
           τέτοιο: είναι παρατήρηση από το ιστορικό, με το τυπικό ποσό δίπλα ώστε
           ο χρήστης να ξέρει τι ψάχνει. Χωρίς χρώμα προειδοποίησης — ένας
           λογαριασμός που άργησε τρεις μέρες δεν είναι πρόβλημα. */}
-      {!loading && !filter && missing.length > 0 && (
+      {!loading && missing.length > 0 && (
         <div className="exp-note">
           {/* Εικονίδιο σε απαλό accent αντί για γκρι τελεία (17/11/2026): παρατήρηση, όχι προειδοποίηση. */}
           <span className="exp-note-ico"><CalendarClock size={15} aria-hidden="true" /></span>
@@ -788,7 +777,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
       {/* ── ΤΙ ΑΛΛΑΞΕ ΤΙΜΗ ─────────────────────────────────────────────────
           Ίδιο σχήμα με τη γραμμή «τι λείπει» από πάνω: μία παρατήρηση, χωρίς
           χρώμα προειδοποίησης. Μια αύξηση δεν είναι σφάλμα του χρήστη. */}
-      {!loading && !filter && changed.length > 0 && (
+      {!loading && changed.length > 0 && (
         <div className="exp-note">
           <span className="exp-note-ico"><TrendingUp size={15} aria-hidden="true" /></span>
           <div style={{ minWidth: 0 }}>
@@ -823,6 +812,21 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
           γεμάτα κουμπιά στην ίδια οθόνη — και δίπλα του ένα πεδίο αναζήτησης που
           θα έψαχνε σε τίποτα. Όσο η φόρμα είναι ανοιχτή η γραμμή μένει, γιατί
           κρατά την «Ακύρωση». */}
+      {/* ── ΦΙΛΤΡΑ: ΤΙ ΧΡΕΙΑΖΕΤΑΙ ΚΙΝΗΣΗ ─────────────────────────────────────
+          Το ληξιπρόθεσμο ήταν μία κίτρινη γραμμή βαθιά στη λίστα, χωρίς τρόπο
+          να το βρεις. Πλακίδια μόνο όταν υπάρχει κάτι απλήρωτο.
+          ΔΙΠΛΑ ΣΤΗ ΛΙΣΤΑ ΠΟΥ ΦΙΛΤΡΑΡΟΥΝ (αξιολόγηση 2, Υ7). Κάθονταν τρεις κάρτες
+          πιο πάνω: ο χρήστης πατούσε «Ληξιπρόθεσμες» και το αποτέλεσμα ήταν
+          900 εικονοστοιχεία πιο κάτω. Η σύγκριση πήγε κάτω από τη λίστα. */}
+      {(unpaid.length > 0 || filter) && (
+        <div role="group" aria-label={E ? E.filter : 'Φίλτρο δαπανών'} className="po-rail ledger-rail" style={{ marginBottom: T.sp.lg }}>
+          <ChipToggle shape="seg" on={!filter} onClick={() => setFilter(null)}>{E ? E.all : 'Όλες'}</ChipToggle>
+          {(overdueN > 0 || filter?.kind === 'overdue') && <ChipToggle shape="seg" on={filter?.kind === 'overdue'} onClick={() => setFilter(filter?.kind === 'overdue' ? null : { kind: 'overdue' })}>{E ? E.overdue(overdueN) : `${UNPAID_PARTS.overdueChip} ${overdueN}`}</ChipToggle>}
+          {(pendingN > 0 || filter?.kind === 'pending') && <ChipToggle shape="seg" on={filter?.kind === 'pending'} onClick={() => setFilter(filter?.kind === 'pending' ? null : { kind: 'pending' })}>{E ? E.pending(pendingN) : `${UNPAID_PARTS.notDueChip} ${pendingN}`}</ChipToggle>}
+          {filter?.kind === 'buckets' && <ChipToggle shape="seg" on onClick={() => setFilter(null)} title={E ? E.clearFilter : 'Καθαρισμός φίλτρου'}>{E ? E.overBudget(filter.label) : `Σε υπέρβαση: ${filter.label}`}</ChipToggle>}
+        </div>
+      )}
+
       {(entries.length > 0 || adding) && <div style={{ display: 'flex', gap: T.sp.sm, flexWrap: 'wrap', alignItems: 'center', marginBottom: T.sp.lg }}>
         {/* ΤΟ ΠΕΔΙΟ ΤΩΝ ΑΛΛΩΝ ΛΙΣΤΩΝ (17/11/2026): εικονίδιο, σχήμα χαπιού,
             εστίαση στο accent, όπως στους Ενοικιαστές και στο Αρχείο (`.po-search`).
@@ -1001,6 +1005,9 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
           )}
         </Card>
       )}
+
+      {/* Η ΑΝΑΛΥΣΗ ΜΕΤΑ ΤΗ ΛΙΣΤΑ: απαντά στο «γιατί», όχι στο «τι πληρώνω». */}
+      {!filter && <ExpenseCompare spends={spends} today={compareToday} />}
 
       {editingRow && (
         <EditExpense row={editingRow} userId={userId}

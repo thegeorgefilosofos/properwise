@@ -312,7 +312,7 @@ export default function AccountantWorkspace() {
     setPackBusy(path);
     const bytes = await fileBytes(supabase, path);
     setPackBusy('');
-    if (!bytes) { notifyError('Ο φάκελος δεν κατέβηκε. Αν ο πελάτης ανακάλεσε την πρόσβαση, δεν είναι πια διαθέσιμος· αλλιώς δοκίμασε ξανά.'); return; }
+    if (!bytes) { notifyError('Το πακέτο δεν κατέβηκε. Αν ο πελάτης ανακάλεσε την πρόσβαση, δεν είναι πια διαθέσιμο· αλλιώς δοκίμασε ξανά.'); return; }
     downloadFile(new Blob([bytes.slice().buffer as ArrayBuffer], { type: 'application/zip' }), `${c.name} · ${PACK_FILES.zip(year, afm)}`, 'application/zip');
   };
 
@@ -325,9 +325,9 @@ export default function AccountantWorkspace() {
     setPackBusy(k);
     const bytes = await fileBytes(supabase, path);
     setPackBusy('');
-    if (!bytes) { notifyError('Ο φάκελος δεν κατέβηκε. Αν ο πελάτης ανακάλεσε την πρόσβαση, δεν είναι πια διαθέσιμος· αλλιώς δοκίμασε ξανά.'); return; }
+    if (!bytes) { notifyError('Το πακέτο δεν κατέβηκε. Αν ο πελάτης ανακάλεσε την πρόσβαση, δεν είναι πια διαθέσιμο· αλλιώς δοκίμασε ξανά.'); return; }
     const sheet = readZipEntry(bytes, PACK_FILES.codes);
-    if (!sheet) { notifyError('Ο φάκελος στάλθηκε πριν μπει το φύλλο κωδικών. Ζήτησε από τον πελάτη να τον ξαναστείλει.'); return; }
+    if (!sheet) { notifyError('Το πακέτο στάλθηκε πριν μπει το φύλλο κωδικών. Ζήτησε από τον πελάτη να το ξαναστείλει.'); return; }
     downloadFile(new Blob([sheet.slice().buffer as ArrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
       `${c.name} · ${PACK_FILES.codesFile(year, afm)}`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   };
@@ -558,7 +558,7 @@ export default function AccountantWorkspace() {
               {packRefs.length > 0 && (
                 <Btn variant="secondary" onClick={() => void downloadAllPacks()} disabled={busy !== null}
                   title={bundleMode(packRefs) === 'one' ? undefined : 'Πολλοί ή βαριοί φάκελοι: κατεβαίνουν ένας ένας'}>
-                  {busy === 'packs' ? `Κατεβαίνουν${packProgress ? ` ${packProgress}` : '…'}` : packRefs.length === 1 ? 'Ο φάκελος' : `Οι ${packRefs.length} φάκελοι`}
+                  {busy === 'packs' ? `Κατεβαίνουν${packProgress ? ` ${packProgress}` : '…'}` : packRefs.length === 1 ? 'Το πακέτο' : `Τα ${packRefs.length} πακέτα`}
                 </Btn>
               )}
               <Btn variant="primary" onClick={() => void downloadEverything()} disabled={busy !== null}>

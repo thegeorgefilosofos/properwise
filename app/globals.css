@@ -9251,17 +9251,22 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
 .ct-tile-num { font-size: 20px; font-weight: 700; line-height: 1.1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: var(--text-primary); }
 .ct-tile-unit { font-size: var(--fs-xs); color: var(--text-tertiary); }
 .ct-tile-meta { margin-top: auto; font-size: var(--fs-xs); line-height: 1.5; color: var(--text-tertiary); }
-/* Το άθροισμα των παγίων στην κεφαλίδα: απαλό accent με εικονίδιο. */
 @media (max-width: 600px) {
   .ct-tile { min-height: 0; padding: 10px 14px; gap: 8px; }
   .ct-tile-ico { width: 28px; height: 28px; border-radius: 8px; }
 }
+/* Το άθροισμα των παγίων στην κεφαλίδα: απλό κείμενο με εικονίδιο. Ως γεμάτο
+   χάπι έμοιαζε με κουμπί που δεν πατιέται (αξιολόγηση 2, Μ7). */
 .ct-total {
-  display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 100px;
-  background: var(--accent-soft); border: 1px solid var(--accent-border); color: var(--accent);
-  font-size: var(--fs-xs); font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--text-secondary);
+  font-size: var(--fs-base); font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 .ct-total strong { font-weight: 700; color: var(--text-primary); }
+/* Οι άδειες κατηγορίες: μία σειρά κουμπιών «Πρόσθεσε», κάτω από τις κάρτες. */
+.ct-add-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.ct-add-row:first-child { margin-top: 0; }
+.ct-add-label { font-size: var(--fs-base); font-weight: 600; color: var(--text-secondary); margin-right: 4px; }
 
 /* ═══ .ov-year · Η ΧΡΟΝΙΑ ΣΤΗΝ ΕΠΙΣΚΟΠΗΣΗ (OverviewTab) ════════════════════════
    Ιδια κάρτα με το Χαρτοφυλάκιο (.pf-sum): το καθαρό ως κύριος αριθμός, τα
