@@ -179,6 +179,21 @@ export const OVERVIEW_EN = {
   } as Record<string, readonly [string, string]>,
   /** «Στείλε στον λογιστή σου» (accountantSend.ts): η κάρτα της Επισκόπησης και οι Ρυθμίσεις. */
   accountantSend: 'Send to your accountant',
+  /** Η ενημέρωση για τους Όρους (PolicyNotice.tsx). Το κείμενο των αλλαγών μένει ελληνικό, όπως οι ίδιοι οι Όροι. */
+  policyNotice: {
+    aria: 'What changed in the terms',
+    short: 'New Terms and Privacy Policy.',
+    open: 'What changed',
+    hide: 'Hide',
+    dismiss: 'Got it',
+    greekNote: 'This summary is in Greek.',
+    termsLink: 'See the Terms',
+    privacyLink: 'See the Privacy Policy',
+    firmTitle: 'New: access for your accounting firm',
+    firmBody: 'You can give your accounting firm access to your file: you choose the level, see each day what they recorded and revoke it whenever you want. That is why we updated the Privacy Policy.',
+    ok: 'OK',
+    whatChanged: 'See what changed',
+  },
   calendarFeed: 'Put the deadlines in your phone’s calendar. Once, then it updates by itself. Event titles are in Greek.',
   cash: {
     calm: 'Cash',

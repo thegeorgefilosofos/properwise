@@ -18,6 +18,7 @@
 
 import { sendToAccountant, ACCOUNTANT_SEND_LABEL } from './accountantSend'
 import { useAppEn } from '@/lib/i18n/appEn'
+import { localHref } from '@/lib/i18n/paths'
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { T, IconBtn, LinkBtn, Card, Btn } from '@/components/Theme';
@@ -28,8 +29,10 @@ import {
 } from '@/lib/legal/policyNotice';
 
 export default function PolicyNotice() {
-  // Το κουμπί της κάρτας στα αγγλικά όταν η εφαρμογή είναι στα αγγλικά (overview.ts).
+  // Στα αγγλικά όταν η εφαρμογή είναι στα αγγλικά (overview.ts). Η περίληψη των
+  // αλλαγών μένει ελληνική και το λέει· οι σύνδεσμοι πάνε στα αγγλικά κείμενα (Μ16, 23/11/2026).
   const O = useAppEn('overview');
+  const P = O?.policyNotice;
   const supabase = createClient();
   const [show, setShow] = useState(false);
   const [firm, setFirm] = useState(false);
@@ -85,18 +88,18 @@ export default function PolicyNotice() {
     <Card gap={false} style={{ marginBottom: T.sp.lg }}>
       <section aria-labelledby="firm-notice-title">
         <h2 id="firm-notice-title" style={{ fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans, lineHeight: 1.4, margin: 0 }}>
-          {FIRM_NOTICE_TITLE}
+          {P ? P.firmTitle : FIRM_NOTICE_TITLE}
         </h2>
         <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5, margin: `${T.sp.xs}px 0 0`, maxWidth: '72ch' }}>
-          {FIRM_NOTICE_BODY}
+          {P ? P.firmBody : FIRM_NOTICE_BODY}
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: T.sp.sm, marginTop: T.sp.md }}>
           {/* Η ΕΝΕΡΓΕΙΑ ΠΡΩΤΗ (17/11/2026). Η κάρτα ανήγγελλε την πρόσβαση
               λογιστή και το μόνο κουμπί πέρα από το «Εντάξει» άνοιγε την
               Πολιτική απορρήτου. Τώρα οδηγεί και εκεί όπου δίνεται η πρόσβαση. */}
           <Btn variant="primary" onClick={() => { dismissFirm(); sendToAccountant(); }}>{O ? O.accountantSend : ACCOUNTANT_SEND_LABEL}</Btn>
-          <Btn variant="secondary" onClick={dismissFirm}>Εντάξει</Btn>
-          <Btn variant="ghost" href={FIRM_NOTICE_HREF} newTab>Δες τι άλλαξε</Btn>
+          <Btn variant="secondary" onClick={dismissFirm}>{P ? P.ok : 'Εντάξει'}</Btn>
+          <Btn variant="ghost" href={P ? localHref('en', FIRM_NOTICE_HREF) : FIRM_NOTICE_HREF} newTab>{P ? P.whatChanged : 'Δες τι άλλαξε'}</Btn>
         </div>
       </section>
     </Card>
@@ -107,7 +110,7 @@ export default function PolicyNotice() {
     // Απόρρητο, ή μόνο Απόρρητο), το «Τι άλλαξε» ανοίγει από κάτω την πλήρη
     // πρόταση, την περίληψη και τον σύνδεσμο στο κείμενο. Ούτε κρυμμένη ούτε τρεις γραμμές
     // πάνω από το ποσό: κάθεται κάτω από την κεφαλίδα της Επισκόπησης.
-    <section aria-label="Τι άλλαξε στους όρους χρήσης" style={{
+    <section aria-label={P ? P.aria : 'Τι άλλαξε στους όρους χρήσης'} style={{
       display: 'flex', alignItems: 'flex-start', gap: 12,
       background: 'var(--bg-surface)', border: '1px solid var(--border-default)',
       borderRadius: T.radius.card, padding: '12px 16px', marginBottom: 16,
@@ -117,22 +120,23 @@ export default function PolicyNotice() {
       <span aria-hidden style={{ width: 6, height: 6, borderRadius: T.radius.pill, background: 'var(--text-tertiary)', flexShrink: 0, marginTop: 'calc((1.5 * var(--fs-base) - 6px) / 2)' }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5, margin: 0 }}>
-          <strong style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{copy.short}</strong>{' '}
+          <strong style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{P ? P.short : copy.short}</strong>{' '}
           {/* `po-tap-inline`: μέσα σε πρόταση, άρα τα 44 της αφής από ψευδοστοιχείο
               και όχι από δάπεδο ύψους που θα άνοιγε τη γραμμή (app/globals.css). */}
-          <LinkBtn className="po-tap-inline" onClick={() => setOpen(o => !o)}>{open ? 'Απόκρυψη' : 'Τι άλλαξε'}</LinkBtn>
+          <LinkBtn className="po-tap-inline" onClick={() => setOpen(o => !o)}>{open ? (P ? P.hide : 'Απόκρυψη') : (P ? P.open : 'Τι άλλαξε')}</LinkBtn>
         </p>
         {open && (
           <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.6, margin: '8px 0 0', maxWidth: '78ch' }}>
-            {copy.headline} {POLICY_NOTICE_LEDE} {copy.summary}{' '}
-            <a href={copy.href} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 3, textDecorationThickness: 1 }}>{copy.hrefLabel}</a>
+            {P && <span lang="en" style={{ display: 'block', marginBottom: 4 }}>{P.greekNote}</span>}
+            <span lang="el">{copy.headline} {POLICY_NOTICE_LEDE} {copy.summary}</span>{' '}
+            <a href={P ? localHref('en', copy.href) : copy.href} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 3, textDecorationThickness: 1 }}>{P ? (copy.href === '/terms' ? P.termsLink : P.privacyLink) : copy.hrefLabel}</a>
           </p>
         )}
       </div>
       {/* Το «×» κεντράρεται κι αυτό στην πρώτη γραμμή, με αρνητικό περιθώριο
           ίσο με τη διαφορά των υψών: το κουμπί κρατά τα 32 (44 στην αφή) χωρίς
           να ψηλώνει το πλαίσιο. */}
-      <IconBtn label="Το κατάλαβα" onClick={dismiss}
+      <IconBtn label={P ? P.dismiss : 'Το κατάλαβα'} onClick={dismiss}
         style={{ marginBlock: 'calc((1.5 * var(--fs-base) - var(--h-sm)) / 2)' }}>
         <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
       </IconBtn>

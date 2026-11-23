@@ -64,7 +64,11 @@ const ITEMS: RoadItem[] = [
 ];
 
 // `releaseFrom`: το ενεργό πακέτο (effectivePlan) για τη σειρά διάθεσης.
-export default function SettingsRoadmap({ userId, releaseFrom = 'free' }: { userId: string; releaseFrom?: PlanId }) {
+export default function SettingsRoadmap({ userId, releaseFrom = 'free', bare }: {
+  userId: string; releaseFrom?: PlanId;
+  /** Χωρίς τη δική του επικεφαλίδα: ζει σε γραμμή των Ρυθμίσεων, που τη γράφει ήδη. */
+  bare?: boolean;
+}) {
   const mobileEarly = hasEarlyAccess(releaseFrom);
   const supabase = createClient();
   const [confirmed, setConfirmed] = useState(false);
@@ -138,7 +142,7 @@ export default function SettingsRoadmap({ userId, releaseFrom = 'free' }: { user
   return (
     <div>
       {/* Επικεφαλίδα ενότητας */}
-      <div className="acc-section" style={{ marginBottom: 14 }}>
+      {!bare && <div className="acc-section" style={{ marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>
             Τι έρχεται
@@ -152,7 +156,7 @@ export default function SettingsRoadmap({ userId, releaseFrom = 'free' }: { user
         <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.5, marginTop: 4 }}>
           Χωρίς ημερομηνίες.
         </div>
-      </div>
+      </div>}
 
       {/* HERO, η εφαρμογή κινητού */}
       <div

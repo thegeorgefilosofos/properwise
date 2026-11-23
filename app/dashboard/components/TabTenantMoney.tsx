@@ -558,15 +558,20 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
   },[tenant,propertyId,userId,supabase,X,E]);
 
   // Lazy: όταν ανοίγει η προβολή και λείπουν δόσεις, δημιούργησέ τες μία φορά.
+  // ΤΟ ΚΟΥΜΠΙ ΕΜΦΑΝΙΖΕΤΑΙ ΜΟΝΟ ΑΝ ΑΥΤΟ ΑΠΟΤΥΧΕΙ (Μ10, 23/11/2026). Η οθόνη
+  // έγραφε «Λείπουν N δόσεις… Πάτησε «Δημιουργία δόσεων»» για δόσεις που
+  // έφτιαχνε ήδη μόνη της, εδώ και στην αποθήκευση της μίσθωσης: ζητούσε
+  // από τον χρήστη μια κίνηση που δεν χρειαζόταν.
   const didLazy=React.useRef(false);
+  const [lazyFailed,setLazyFailed]=useState(false);
   useEffect(()=>{
     if(didLazy.current) return;
-    if(missing.length>0){ didLazy.current=true; (async()=>{ await genForRows(missing); onRefresh(); })(); }
+    if(missing.length>0){ didLazy.current=true; (async()=>{ const ok=await genForRows(missing); if(ok===false) setLazyFailed(true); onRefresh(); })(); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[missing.length]);
 
   // Το μήνυμα λέει «δημιουργήθηκαν» ΜΟΝΟ αν όντως γράφτηκαν.
-  const generateNow=async()=>{ setBusy(true); const ok=await genForRows(missing); setBusy(false); onRefresh(); if(ok) notifyOk(W?(missing.length?W.created(missing.length):W.upToDate):missing.length?`Δημιουργήθηκαν ${missing.length} δόσεις`:'Οι δόσεις είναι ενημερωμένες'); };
+  const generateNow=async()=>{ setBusy(true); const ok=await genForRows(missing); setBusy(false); setLazyFailed(ok===false); onRefresh(); if(ok) notifyOk(W?(missing.length?W.created(missing.length):W.upToDate):missing.length?`Δημιουργήθηκαν ${missing.length} δόσεις`:'Οι δόσεις είναι ενημερωμένες'); };
 
   const sorted=useMemo(()=>[...payments].sort((a,b)=>b.period_year-a.period_year||b.period_month-a.period_month),[payments]);
   const open=useMemo(()=>payments.filter(p=>!p.paid),[payments]);
@@ -875,7 +880,6 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
                 και τα τρία δικά μας ζυγίζουν μαζί του. */}
             <Btn variant="secondary" onClick={()=>fileRef.current?.click()}>{W?W.scan:'Σάρωσε απόδειξη'}</Btn>
             <input ref={fileRef} type="file" accept="image/*,application/pdf" style={{ display:'none' }} onChange={e=>{const f=e.target.files?.[0];if(f)runScan(f);e.target.value='';}}/>
-            <Btn variant="secondary" onClick={generateNow} disabled={busy}>{busy?'…':W?W.generate:'Δημιουργία δόσεων'}</Btn>
             <ExportButton disabled={payments.length===0} onClick={exportPaymentsXlsx} label={W?W.export:undefined} title={W?W.exportTitle:undefined}/>
             <Btn variant="secondary" onClick={()=>setAddOpen(v=>!v)}>{W?(addOpen?W.close:W.add):addOpen?'Κλείσιμο':'+ Καταχώρηση'}</Btn>
           </div>
@@ -883,7 +887,12 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
         {/* Μόνο στα αγγλικά: τι μένει ελληνικό και γιατί. */}
         {W&&<div style={{ fontSize:'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.5, margin:'-6px 0 12px' }}>{W.greekNote}</div>}
 
-        {missing.length>0&&<InfoBanner tone="info">{W?W.missing(missing.length):<>Λείπουν {fn(missing.length)} μηνιαίες δόσεις βάσει της μίσθωσης. Πάτησε «Δημιουργία δόσεων» για αυτόματη συμπλήρωση.</>}</InfoBanner>}
+        {lazyFailed&&missing.length>0&&<InfoBanner tone="warning">
+          <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' as const }}>
+            <span style={{ flex:1, minWidth:200 }}>{W?W.missing(missing.length):<>Λείπουν {fn(missing.length)} μηνιαίες δόσεις της μίσθωσης και δεν δημιουργήθηκαν.</>}</span>
+            <Btn variant="secondary" onClick={generateNow} disabled={busy}>{busy?'…':W?W.generate:'Ξαναδοκίμασε'}</Btn>
+          </div>
+        </InfoBanner>}
 
         {declaredPending.length>0&&(
           <div style={{ background:'var(--accent-soft)', border:'1px solid var(--accent-border)', borderRadius:T.radius.inner, padding:'14px 16px', margin:'4px 0 8px' }}>
@@ -940,8 +949,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
           <EmptyState
             icon={<Banknote size={20}/>}
             title={W?W.empty:'Καμία δόση ακόμη'}
-            hint={W?(tenant.lease_start&&tenant.monthly_rent?W.emptyReady:W.emptyNeeds):tenant.lease_start&&tenant.monthly_rent?'Πάτησε «Δημιουργία δόσεων» για αυτόματη συμπλήρωση από τη μίσθωση.':'Όρισε έναρξη μίσθωσης και μηνιαίο μίσθωμα για αυτόματη δημιουργία δόσεων.'}
-            action={tenant.lease_start&&tenant.monthly_rent?<Btn variant="primary" onClick={generateNow} disabled={busy}>{W?W.generate:'Δημιουργία δόσεων'}</Btn>:undefined}
+            hint={W?(tenant.lease_start&&tenant.monthly_rent?W.emptyReady:W.emptyNeeds):tenant.lease_start&&tenant.monthly_rent?'Μπαίνουν μόνες τους από τη μίσθωση.':'Όρισε έναρξη μίσθωσης και μηνιαίο μίσθωμα για αυτόματη δημιουργία δόσεων.'}
           />
         ):(
           /* Ο ΠΙΝΑΚΑΣ ΤΟΥ ΠΡΟΪΟΝΤΟΣ, ΟΧΙ ΤΟ ΔΕΥΤΕΡΟ ΣΥΣΤΗΜΑ. Τα `s.th`/`s.td`/

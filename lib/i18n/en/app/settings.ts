@@ -9,6 +9,8 @@
 export const SETTINGS_EN = {
   title: 'Account',
   sub: 'Everything about you and your data',
+  /** «Γράψε μας» (WriteToUs.tsx): ο τίτλος και οι δύο επιλογές· οι φόρμες είναι ακόμη ελληνικές. */
+  writeUs: { title: 'Write to us', problem: 'Problem', idea: 'Idea' },
   sections: {
     org: ['Organization and team', 'Members and permissions'],
     notifications: ['Notifications', 'Reminders and messages'],
@@ -17,6 +19,7 @@ export const SETTINGS_EN = {
     security: ['Security', 'Password and two-step verification'],
     activity: ['Activity', 'The history of your actions'],
     data: ['Data and privacy', 'Import, export, accountant, deletion'],
+    roadmap: ['What’s coming', 'Mobile app, bank connection'],
   } as Record<string, readonly [string, string]>,
   language: {
     title: 'Language',

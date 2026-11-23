@@ -28,8 +28,7 @@ import Billing from './Billing';
 import ReportBranding from './ReportBranding';
 import { ThemeToggle } from './ThemeToggle';
 import SettingsRoadmap from './SettingsRoadmap';
-import Feedback from './Feedback';
-import SupportForm from './SupportForm';
+import WriteToUs from './WriteToUs';
 import PlanComparison from './PlanComparison';
 import SecuritySettings from './SecuritySettings';
 import InboundAddress from './InboundAddress';
@@ -48,7 +47,7 @@ import { athensToday } from '@/lib/core/time';
 import { notifyError } from '@/components/Toast';
 import { SAY, failed } from '@/lib/core/dbError';
 import { useLoad } from '@/app/hooks/useLoad';
-import { Users, Bell, Palette, Accessibility, ShieldCheck, History, Database, Mail, UserRound, BadgeCheck } from 'lucide-react';
+import { Users, Bell, Palette, Accessibility, ShieldCheck, History, Database, Mail, UserRound, BadgeCheck, Sparkles } from 'lucide-react';
 import { AccessibilitySettings } from './AccessibilitySettings';
 import { useBillingWords } from './useBillingWords';
 import { useAppEn } from '@/lib/i18n/appEn';
@@ -1104,24 +1103,23 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
         </SetList>
       </CollapsibleSection>
 
+      <CollapsibleSection {...sec('roadmap', { title: 'Τι έρχεται', hint: 'Εφαρμογή κινητού, σύνδεση με τράπεζα' })} icon={<Sparkles size={16} />}>
+        <SettingsRoadmap userId={userId} releaseFrom={releaseFrom} bare />
+      </CollapsibleSection>
+
       </Card>
 
-      {/* ── ΤΙ ΕΡΧΕΤΑΙ ΚΑΙ ΜΕΤΑ Η ΓΝΩΜΗ ΣΟΥ ─────────────────────────────
-          Στο τέλος, όχι επειδή μετρούν λιγότερο, αλλά επειδή δεν είναι
-          ρυθμίσεις: κοιτούν μπροστά, ενώ όλα τα παραπάνω ρυθμίζουν το τώρα. */}
-      <Card className="acc-section" style={{ animationDelay: '290ms' }}>
-        <SettingsRoadmap userId={userId} releaseFrom={releaseFrom} />
+      {/* ── ΓΡΑΨΕ ΜΑΣ ─────────────────────────────────────────────────────
+          ΜΙΑ ΦΟΡΜΑ, ΟΧΙ ΔΥΟ (Μ17, 23/11/2026). Η «Υποστήριξη» και το «Κάνε το
+          PROPERWISE καλύτερο» ήταν δύο κάρτες με πεδίο κειμένου και «Αποστολή»
+          η μία κάτω από την άλλη. Τώρα ο χρήστης λέει αν γράφει για πρόβλημα ή
+          για ιδέα και φεύγει από τον σωστό δρόμο (WriteToUs.tsx). Το «Τι
+          έρχεται» δεν είναι ρύθμιση ούτε διαφήμιση ανάμεσά τους: έγινε γραμμή
+          της λίστας, πιο πάνω. Η υποστήριξη στέλνει με τη συνεδρία, οπότε η
+          προτεραιότητα του πακέτου είναι εγγυημένη (app/api/support). */}
+      <Card className="acc-section" style={{ animationDelay: '290ms', marginBottom: T.sp.lg }}>
+        <WriteToUs plan={releaseFrom} en={E?.writeUs} />
       </Card>
-
-      {/* ΥΠΟΣΤΗΡΙΞΗ ΜΕ ΑΠΟΣΤΟΛΕΑ ΤΗ ΣΥΝΕΔΡΙΑ: η προτεραιότητα του πακέτου
-          είναι εγγυημένη εδώ, όχι στο email (app/api/support). */}
-      <Card className="acc-section" style={{ animationDelay: '305ms' }}>
-        <SupportForm plan={releaseFrom} />
-      </Card>
-
-      <div className="acc-section" style={{ animationDelay: '320ms', marginBottom: T.sp.lg }}>
-        <Feedback target="general" />
-      </div>
 
     </div>
   );

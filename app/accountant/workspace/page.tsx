@@ -23,7 +23,7 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { T, TT, Card, Btn, Skeleton, Chip, EmptyState } from '@/components/Theme';
-import { TextInput, CustomSelect } from '@/app/dashboard/components/UIComponents';
+import { TextInput, CustomSelect, Toggle } from '@/app/dashboard/components/UIComponents';
 import { ActionMenu } from '@/components/ActionMenu';
 import {
   myFirm, myFirmInvites, answerInvite, acceptFirmTerms, termsGap, clientLevels, assign, dropFirmClient, saveFirm,
@@ -81,10 +81,14 @@ const defaultYear = () => declarationYear(athensToday());
 const metaLine: React.CSSProperties = { fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: 0, lineHeight: 1.5, fontFamily: T.font.sans };
 
 /** Μία ενότητα της κάρτας του πελάτη: ετικέτα και γραμμές, με διαχωριστικό από πάνω. */
-function CardSection({ label, children }: { label: string; children: React.ReactNode }) {
+function CardSection({ label, action, children }: { label: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section style={{ marginTop: T.sp.md, paddingTop: T.sp.md, borderTop: '1px solid var(--border-subtle)' }}>
-      <h3 style={{ ...TT.label, color: 'var(--text-tertiary)', margin: 0 }}>{label}</h3>
+      {action
+        ? <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: T.sp.md, flexWrap: 'wrap' }}>
+            <h3 style={{ ...TT.label, color: 'var(--text-tertiary)', margin: 0 }}>{label}</h3>{action}
+          </div>
+        : <h3 style={{ ...TT.label, color: 'var(--text-tertiary)', margin: 0 }}>{label}</h3>}
       <ul className="po-item-rows" style={{ listStyle: 'none', padding: 0, margin: `${T.sp.xs}px 0 0` }}>{children}</ul>
     </section>
   );
@@ -278,8 +282,11 @@ export default function AccountantWorkspace() {
   // ιδιοκτήτη «λείπει δαπάνη» και τον λογιστή τον έστελνε στο τηλέφωνο για να
   // πει ποια, από πότε και γιατί τη θέλει τώρα. Το αίτημα γράφεται ΠΑΝΤΑ στην
   // εφαρμογή, όποιο κανάλι κι αν διαλέξει ο λογιστής στο παράθυρο.
-  const ask = async (t: AskTarget, note: string | undefined): Promise<boolean> => {
-    if (!await request(supabase, t.ownerId, t.item, note)) return false;
+  // Ένα αίτημα ανά στοιχείο: ο πελάτης τα βλέπει και τα κλείνει ένα ένα στη
+  // Λογιστική του, ακόμη κι όταν ο λογιστής τα ζήτησε με ένα μήνυμα.
+  const ask = async (t: AskTarget, note: string | undefined, items: AskTarget['items']): Promise<boolean> => {
+    const done = await Promise.all(items.map(i => request(supabase, t.ownerId, i.item, note)));
+    if (done.some(d => !d)) { await load(year); return false; }
     await load(year);
     return true;
   };
@@ -514,7 +521,7 @@ export default function AccountantWorkspace() {
 
   return (
     <div className="po-floor" style={{ background: 'var(--bg-base)', minHeight: '100vh', paddingBottom: 72 }}>
-      <PortalBar year={year} onYear={setYear} firmOnly={firm?.firmOnly} />
+      <PortalBar year={year} onYear={setYear} firmOnly={firm?.firmOnly} firmLink={firm ? (team ? 'Το γραφείο' : 'Το γραφείο μου') : undefined} />
       <main style={wrap}>
         {/* Η ΣΥΝΟΨΗ ΛΕΕΙ ΤΙ ΑΞΙΖΕΙ ΝΑ ΚΟΙΤΑΞΕΙΣ ΠΡΩΤΑ. Ο τίτλος έλεγε μόνο πόσοι
             είναι: με ογδόντα πελάτες, ο αριθμός «80» δεν οδηγεί σε καμία κίνηση,
@@ -536,29 +543,27 @@ export default function AccountantWorkspace() {
               )}
             </>
           }
-          right={ordered.length > 0 || firm ? (
+          right={ordered.length > 0 && actor ? (
             <>
-              {/* ΙΔΙΟ ΣΧΗΜΑ ΓΙΑ ΤΙΣ ΙΣΟΤΙΜΕΣ ΕΝΕΡΓΕΙΕΣ. Τα δύο πρώτα ήταν «ghost»,
-                  χωρίς περίγραμμα, δίπλα σε δύο με περίγραμμα: στο τηλέφωνο
-                  έμοιαζαν με λεζάντες που αιωρούνται πάνω από τα κουμπιά. */}
-              {firm && <Btn variant="secondary" href="/accountant/workspace?view=firm">{team ? 'Το γραφείο' : 'Το γραφείο μου'}</Btn>}
-              {ordered.length > 0 && actor && <>
-              <Btn variant="secondary" onClick={() => void toggleMoney()} disabled={busy === 'money'}>
-                {busy === 'money' ? 'Φόρτωση…' : showMoney ? 'Κρύψε ποσά' : 'Δείξε ποσά'}
-              </Btn>
-              <Btn variant="secondary" onClick={() => void downloadEverything()} disabled={busy !== null}>
-                {busy === 'zip' ? 'Ετοιμάζεται…' : 'Κατέβασε τα βιβλία'}
-              </Btn>
-              {/* ΟΙ ΦΑΚΕΛΟΙ ΚΑΙ ΟΧΙ ΤΑ ΒΙΒΛΙΑ. Το «Κατέβασε τα όλα» δίνει τις
-                  καταστάσεις εσόδων και δαπανών· αυτό δίνει ό,τι έστειλε κάθε
-                  πελάτης: Ε2, έλεγχο, παραστατικά και κωδικούς. */}
+              {/* ΜΙΑ ΚΥΡΙΑ ΕΝΕΡΓΕΙΑ, ΟΧΙ ΤΕΣΣΕΡΙΣ ΙΣΟΒΑΡΕΙΣ (Μ18, 23/11/2026). Ηταν
+                  «Το γραφείο», «Δείξε ποσά», «Κατέβασε τα βιβλία» και «Ο φάκελος»
+                  στο ίδιο σχήμα, δηλαδή 2 × 2 στο τηλέφωνο χωρίς να λέει ποιο
+                  μετρά. Το γραφείο πήγε στο μενού του λογαριασμού (το «D»), τα
+                  ποσά έγιναν διακόπτης, γιατί είναι κατάσταση της λίστας και όχι
+                  ενέργεια. Η λήψη των βιβλίων είναι η κύρια κίνηση. */}
+              <Toggle on={showMoney} onChange={() => { if (busy !== 'money') void toggleMoney(); }} label={busy === 'money' ? 'Φόρτωση…' : 'Ποσά'} />
+              {/* ΟΙ ΦΑΚΕΛΟΙ ΚΑΙ ΟΧΙ ΤΑ ΒΙΒΛΙΑ. Τα βιβλία δίνουν τις καταστάσεις
+                  εσόδων και δαπανών· αυτό δίνει ό,τι έστειλε κάθε πελάτης: Ε2,
+                  έλεγχο, παραστατικά και κωδικούς. */}
               {packRefs.length > 0 && (
                 <Btn variant="secondary" onClick={() => void downloadAllPacks()} disabled={busy !== null}
                   title={bundleMode(packRefs) === 'one' ? undefined : 'Πολλοί ή βαριοί φάκελοι: κατεβαίνουν ένας ένας'}>
                   {busy === 'packs' ? `Κατεβαίνουν${packProgress ? ` ${packProgress}` : '…'}` : packRefs.length === 1 ? 'Ο φάκελος' : `Οι ${packRefs.length} φάκελοι`}
                 </Btn>
               )}
-              </>}
+              <Btn variant="primary" onClick={() => void downloadEverything()} disabled={busy !== null}>
+                {busy === 'zip' ? 'Ετοιμάζεται…' : 'Κατέβασε τα βιβλία'}
+              </Btn>
             </>
           ) : undefined} />
 
@@ -875,17 +880,29 @@ export default function AccountantWorkspace() {
                     <Chip>{`Ζητήθηκε ${fd(at)}`}</Chip>
                   );
                   return <>
-                    {gapRows.length > 0 && (
-                      <CardSection label="Τι λείπει">
+                    {gapRows.length > 0 && (() => {
+                      // ΕΝΑ «ΖΗΤΗΣΕ ΟΛΑ», ΟΧΙ ΕΝΑ ΚΟΥΜΠΙ ΑΝΑ ΓΡΑΜΜΗ (Μ18, 23/11/2026).
+                      // Με δύο ή περισσότερα που δεν έχουν ζητηθεί, το κουμπί πάει
+                      // στην κεφαλίδα της ενότητας και στέλνει ένα μήνυμα· στο
+                      // παράθυρο ο λογιστής βγάζει όποιο δεν θέλει τώρα.
+                      const open = gapRows.filter(r => r.requests.length === 0).map(r => ({ key: r.gap.key, item: r.gap.item }));
+                      const together = act && open.length > 1;
+                      return (
+                      <CardSection label="Τι λείπει" action={together ? (
+                        <Btn className="po-noprint" variant="secondary" haspopup="dialog"
+                          onClick={() => setAskFor({ ownerId: c.ownerId, ownerName: c.name, items: open, contact: { email: c.email, phone: c.phone } })}>
+                          {`Ζήτησε όλα (${open.length})`}
+                        </Btn>
+                      ) : undefined}>
                         {gapRows.map(({ gap: g, requests: rq }) => (
                           <ItemRow key={g.key}
                             text={<span style={{ color: g.blocking ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: g.blocking ? 600 : 400 }}>{g.item}</span>}
                             note={rq[0]?.note ? `«${rq[0].note}»` : undefined}>
                             {rq.length > 0 && asked(rq[0].createdAt)}
                             {act && rq.length > 0 && withdraw(rq.map(r => r.id))}
-                            {act && rq.length === 0 && (
+                            {act && rq.length === 0 && !together && (
                               <Btn className="po-noprint" variant="secondary" haspopup="dialog"
-                                onClick={() => setAskFor({ ownerId: c.ownerId, ownerName: c.name, key: g.key, item: g.item, contact: { email: c.email, phone: c.phone } })}>
+                                onClick={() => setAskFor({ ownerId: c.ownerId, ownerName: c.name, items: [{ key: g.key, item: g.item }], contact: { email: c.email, phone: c.phone } })}>
                                 Ζήτησέ το
                               </Btn>
                             )}
@@ -895,7 +912,8 @@ export default function AccountantWorkspace() {
                           </ItemRow>
                         ))}
                       </CardSection>
-                    )}
+                      );
+                    })()}
 
                     {/* Ο ΠΕΛΑΤΗΣ ΠΟΥ ΕΡΧΕΤΑΙ ΕΤΟΙΜΟΣ: σύγκριση με την ΑΑΔΕ και φάκελος. */}
                     {(aadeLine || packs.length > 0) && (
@@ -950,7 +968,7 @@ export default function AccountantWorkspace() {
 
       {askFor && (
         <RequestSheet target={askFor} year={year} from={firm?.name} onClose={() => setAskFor(null)}
-          onSend={note => ask(askFor, note)} />
+          onSend={(note, items) => ask(askFor, note, items)} />
       )}
 
       {entry && (

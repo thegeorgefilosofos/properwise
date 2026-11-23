@@ -213,12 +213,12 @@ export interface TimeGroup<T> { key: string; label: string; items: T[] }
  * Ομάδες ανά μήνα, νεότερη πρώτη. Τα χαρτιά χωρίς ημερομηνία πάνε σε δική τους
  * ομάδα στο ΤΕΛΟΣ — δεν τα κρύβουμε και δεν τους δίνουμε ψεύτικη ημερομηνία.
  *
- * ΤΟ ΜΕΛΛΟΝ ΔΕΝ ΜΠΑΙΝΕΙ ΠΑΝΩ ΑΠΟ ΤΟ «ΑΥΤΟΝ ΤΟΝ ΜΗΝΑ». Λογαριασμός με λήξη τον
+ * ΤΟ ΜΕΛΛΟΝ ΔΕΝ ΜΠΑΙΝΕΙ ΠΑΝΩ ΑΠΟ ΤΟΝ ΤΡΕΧΟΝΤΑ ΜΗΝΑ. Λογαριασμός με λήξη τον
  * επόμενο μήνα έβγαινε πρώτη ομάδα, «Οκτώβριος 2026», πάνω από το σήμερα. Ό,τι
  * έχει ημερομηνία μετά τον τρέχοντα μήνα πάει σε μία ομάδα «Επερχόμενα», μετά
  * τα χρονολογημένα, με το πιο κοντινό πρώτο.
  *
- * Το `now` περνιέται ως όρισμα ώστε το «Αυτόν τον μήνα» να είναι ελέγξιμο.
+ * Το `now` περνιέται ως όρισμα ώστε ο τρέχων μήνας να είναι ελέγξιμος.
  */
 export function groupByMonth<T extends FacetableItem>(items: readonly T[], now: Date): TimeGroup<T>[] {
   const dated = items.filter(i => i.date)
@@ -231,8 +231,6 @@ export function groupByMonth<T extends FacetableItem>(items: readonly T[], now: 
   }
 
   const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-  const lastMonth = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`
 
   const upcoming = [...buckets.entries()].filter(([key]) => key > thisMonth).flatMap(([, arr]) => arr)
   const groups: TimeGroup<T>[] = [...buckets.entries()]
@@ -240,9 +238,11 @@ export function groupByMonth<T extends FacetableItem>(items: readonly T[], now: 
     .sort((a, b) => b[0].localeCompare(a[0]))
     .map(([key, arr]) => {
       const [y, m] = key.split('-')
-      const label = key === thisMonth ? 'Αυτόν τον μήνα'
-        : key === lastMonth ? 'Τον προηγούμενο μήνα'
-        : `${MONTHS_NOM[Number(m) - 1]} ${y}`
+      // ΠΑΝΤΑ ΑΠΟΛΥΤΟΣ ΜΗΝΑΣ (Χ5, 23/11/2026). Ηταν «Αυτόν τον μήνα» και «Τον
+      // προηγούμενο μήνα» πάνω από «Σεπτέμβριος 2026»: δύο τρόποι να ειπωθεί ο
+      // χρόνος στην ίδια λίστα και ο αναγνώστης έκανε αφαίρεση για να βρει
+      // ποιος μήνας είναι ο «προηγούμενος».
+      const label = `${MONTHS_NOM[Number(m) - 1]} ${y}`
       return {
         key, label,
         items: arr.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')),

@@ -1105,6 +1105,53 @@ export function vacancyCost(i: VacancyCostInput): VacancyCost {
   return { monthly, yearly, parts };
 }
 
+/** Ό,τι ξέρει ήδη η εφαρμογή για το ακίνητο, από τις ίδιες πηγές με την Επισκόπηση. */
+export interface VacancyKnownFacts {
+  /** Ο ΕΝΦΙΑ του έτους (`enfiaYear` του lib/facts). */
+  enfiaAnnual?: number | null;
+  /** Το μηνιαίο ασφάλιστρο της κάρτας ακινήτου (`insurance_amount`). */
+  insuranceMonthly?: number | null;
+  /** Τα κοινόχρηστα του μήνα, από τα Συμβόλαια (`contractOverview`). */
+  commonMonthly?: number | null;
+}
+
+/**
+ * Οι τιμές του κενού που η εφαρμογή ΗΔΗ ξέρει.
+ *
+ * ΤΑ ΠΑΓΙΑ ΡΕΥΜΑΤΟΣ ΚΑΙ ΝΕΡΟΥ ΔΕΝ ΜΠΑΙΝΟΥΝ. Ο μέσος λογαριασμός των Συμβολαίων
+ * περιέχει κατανάλωση, που στο κενό ακίνητο σχεδόν μηδενίζεται: γραμμένος ως
+ * «πάγιο» θα φούσκωνε το κόστος του μήνα. Αυτό το ξέρει μόνο ο χρήστης.
+ */
+export function knownVacancyCosts(f: VacancyKnownFacts): VacancyCostInput {
+  const out: VacancyCostInput = {};
+  if (num(f.enfiaAnnual) > 0) out.enfiaYear = cents(num(f.enfiaAnnual));
+  if (num(f.commonMonthly) > 0) out.commonMonthly = cents(num(f.commonMonthly));
+  if (num(f.insuranceMonthly) > 0) out.insuranceYear = cents(12 * num(f.insuranceMonthly));
+  return out;
+}
+
+const VACANCY_FIELDS = ['enfiaYear', 'commonMonthly', 'utilitiesMonthly', 'insuranceYear'] as const;
+
+/**
+ * Οι τιμές των πεδίων: ό,τι έγραψε ο χρήστης, αλλιώς ό,τι ξέρει η εφαρμογή.
+ *
+ * ΤΟ ΚΛΕΙΔΙ ΜΕΤΡΑ, ΟΧΙ Η ΤΙΜΗ. Πεδίο που ο χρήστης άδειασε υπάρχει στα δικά του
+ * με `undefined` και ΔΕΝ ξαναγεμίζει μπροστά του. Αποθηκεύονται μόνο τα δικά
+ * του· τα γνωστά ξαναδιαβάζονται κάθε φορά, οπότε ακολουθούν την πηγή τους.
+ */
+export function vacancyInputs(own: VacancyCostInput, known: VacancyCostInput): {
+  values: VacancyCostInput;
+  fromKnown: (keyof VacancyCostInput)[];
+} {
+  const values: VacancyCostInput = {};
+  const fromKnown: (keyof VacancyCostInput)[] = [];
+  for (const k of VACANCY_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(own, k)) { if (own[k] !== undefined) values[k] = own[k]; }
+    else if (known[k] !== undefined) { values[k] = known[k]; fromKnown.push(k); }
+  }
+  return { values, fromKnown };
+}
+
 export interface LoanEstimate { monthly: number; interest: number; total: number }
 
 /**

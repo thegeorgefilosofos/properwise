@@ -11,6 +11,7 @@ import { TRIAL_DAYS } from '@/lib/billing/plans';
 import { captureError, worthReporting } from '@/lib/observability/report';
 import { declarationYear } from '@/lib/core/declarationYear';
 import { athensToday } from '@/lib/core/time';
+import { APP_LANGUAGE_EN } from './appScreens';
 
 export const AUTH_EN = {
   or: 'or',
@@ -55,13 +56,12 @@ export const AUTH_EN = {
     title: 'Create your account',
     haveAccount: 'Already have an account?',
     login: 'Log in',
-    appLanguage: 'The app itself is in Greek for now. English is on the way.',
+    appLanguage: APP_LANGUAGE_EN,
     metaTitle: 'Sign up · PROPERWISE',
     metaDescription: (owner: string, trialPlan: string) => `Create an account on the “${owner}” plan, with no subscription. Every new account starts with a ${TRIAL_DAYS}-day trial of “${trialPlan}”.`,
     name: 'Full name', optional: '(optional)', namePlaceholder: 'First and last name',
     consent: ['I accept the ', ' and have read the ', '.'] as const,
-    legal: ['By continuing with email, you accept the ', ' and have read the ', '.'] as const,
-    legalGoogle: ['By continuing with Google, you accept the ', ' and have read the ', '.'] as const,
+    legal: ['By continuing, you accept the ', ' and have read the ', '.'] as const,
     value: 'Your properties, in order: bills, leases and deadlines on one screen.',
     emailEmpty: 'Enter your email.',
     emailInvalid: 'That email doesn’t look right. Check the @ and the ending (e.g. .com).',

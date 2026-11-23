@@ -7,15 +7,13 @@ import { T, Btn, Modal, fe, fn, pressable } from '@/components/Theme'
 import { useCoarsePointer } from '@/components/useCoarsePointer'
 import { User, RotateCcw } from 'lucide-react'
 import { holidayName, isWeekend } from '@/lib/calendar/greekHolidays'
-import { groupSeries } from '@/lib/calendar/series'
 import { staysOnDay, weekSegments, channelColor, type StaySpan } from '@/lib/calendar/stayBars'
 import { MONTHS_NOM, mondayFirst, monthGen } from '@/lib/core/months'
-import { type CalEvent, CATEGORIES, DAY_NAMES_GR, daysUntil, isOverdue, todayStr } from './model'
+import { type CalEvent, CATEGORIES, DAY_NAMES_GR, isOverdue, todayStr } from './model'
 import { Tooltip } from './Bits'
 import { EventDetails } from './EventDetails'
 import { grDate } from '@/lib/core/format'
 import { taxKindOfEventSource } from '@/lib/tax/greekTaxCalendar'
-import { dueTextStart } from '@/lib/facts/deadlines'
 
 // Ενιαίο drag με pointer events — δουλεύει σε ΠΟΝΤΙΚΙ ΚΑΙ ΑΦΗ (κινητό/tablet).
 // Στόχοι drop φέρουν data-drop-date (και προαιρετικά data-drop-time: «HH:00» για ώρα,
@@ -159,8 +157,8 @@ export function DaySheet({ date, events, onClose, onPick, onNew }: {
   )
 }
 
-export function MonthView({ events, currentDate, selectedDate, onDayClick, onDayOpen, onEventClick, upcomingAll, drag, stays=[] }: {
-  events: CalEvent[]; currentDate: Date; selectedDate?:string; onDayClick:(date:string)=>void; onDayOpen:(date:string)=>void; onEventClick:(e:CalEvent)=>void; upcomingAll:CalEvent[]; drag?:DragCtl; stays?:StaySpan[]
+export function MonthView({ events, currentDate, selectedDate, onDayClick, onDayOpen, onEventClick, drag, stays=[] }: {
+  events: CalEvent[]; currentDate: Date; selectedDate?:string; onDayClick:(date:string)=>void; onDayOpen:(date:string)=>void; onEventClick:(e:CalEvent)=>void; drag?:DragCtl; stays?:StaySpan[]
 }) {
   // ═══ ΔΥΟ ΣΤΟΧΟΙ ΟΝΤΑΣ Ο ΕΝΑΣ ΜΕΣΑ ΣΤΟΝ ΑΛΛΟ ΚΑΙ Ο ΕΣΩΤΕΡΙΚΟΣ 20 ΨΗΛΟΣ ═══
   // Το τσιπάκι του γεγονότος είχε δικό του `role="button"` μέσα σε κελί που
@@ -258,14 +256,6 @@ export function MonthView({ events, currentDate, selectedDate, onDayClick, onDay
   // Οι κρατήσεις φαίνονται ως ενιαία μπάρα διαμονής — κρύβουμε τα booking: chips
   // ώστε να μη διπλογράφονται.
   const eventsForDay=(day:number)=>{ const ds=`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`; return events.filter(e=>e.event_date===ds&&!(e.source||'').startsWith('booking:')) }
-  // Έπαιρνε τα ΕΠΤΑ ΠΡΩΤΑ εκκρεμή. Με δάνειο εικοσαετίας και τα επτά ήταν δόσεις
-  // του ίδιου δανείου: η ράγα «Επόμενα» έγραφε επτά φορές «Δόση δανείου 751,00€»
-  // και δεν έδειχνε ΠΟΤΕ τίποτε άλλο — ούτε λήξη μίσθωσης, ούτε φορολογική
-  // προθεσμία. Τώρα μαζεύεται πρώτα η σειρά και μετά κρατιούνται επτά ΘΕΣΕΙΣ.
-  const upcomingRows=groupSeries(
-    upcomingAll.filter(e=>e.status==='pending'&&daysUntil(e.event_date)>=0)
-               .sort((a,b)=>a.event_date.localeCompare(b.event_date))
-  ).slice(0,7)
   const monthPendingAmt=events.filter(e=>e.status==='pending').reduce((s,e)=>s+(e.amount||0),0)
   // ═══ Η ΜΕΤΡΗΣΗ ΜΕΤΡΑ Ο,ΤΙ ΔΕΙΧΝΕΙ ΤΟ ΠΛΕΓΜΑ ═════════════════════════════
   // Η κεφαλίδα έγραφε «1 γεγονός» πάνω από μήνα με δύο μπάρες κράτησης: μετρούσε
@@ -281,7 +271,7 @@ export function MonthView({ events, currentDate, selectedDate, onDayClick, onDay
   const monthPaid=events.filter(e=>e.status==='paid')
 
   return (
-    <div className="cal-layout" style={{ display:'flex', gap:12 }}>
+    <div style={{ display:'flex', gap:12 }}>
       <div style={{ flex:1, minWidth:0 }}>
         <div className="cal-bleed" style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, overflow:'hidden', boxShadow:'var(--shadow-sm)' }}>
           <div style={{ display:'flex', alignItems:'center', gap:16, padding:'8px 16px', borderBottom:'1px solid var(--border-subtle)', background:'var(--bg-elevated)' }}>
@@ -544,58 +534,12 @@ export function MonthView({ events, currentDate, selectedDate, onDayClick, onDay
           </div>
         </div>
       </div>
-      {/* ═══ ΚΑΜΙΑ ΛΩΡΙΔΑ ΓΙΑ ΤΟ ΤΙΠΟΤΑ ═══════════════════════════════════════
-          Η ράγα τύπωνε «Καμία εκκρεμότητα» μέσα σε κάρτα με περίγραμμα και σκιά,
-          δηλαδή ολόκληρη κάρτα για να πει ότι δεν έχει τίποτα. Σε ταμπλέτα και
-          κινητό (globals.css: .cal-rail γίνεται 100% κάτω από τα 768) αυτό
-          κατέβαινε ΚΑΤΩ από το πλέγμα σε πλήρες πλάτος, οπότε ο χρήστης κυλούσε
-          και διάβαζε δύο μπλοκ στη σειρά που και τα δύο έλεγαν «άδειο».
-
-          ΦΕΥΓΕΙ Ο ΠΕΡΙΕΚΤΗΣ, ΟΧΙ ΜΟΝΟ Η ΚΑΡΤΑ. Το `width:200` με `flexShrink:0`
-          θα άφηνε κενή λωρίδα 212 εικονοστοιχείων δίπλα στο πλέγμα σε επιτραπέζιο,
-          δηλαδή θα αντικαθιστούσε ένα ορατό κενό με ένα αόρατο. */}
-      {upcomingRows.length>0&&(
-      <div className="cal-rail" style={{ width:200, flexShrink:0, display:'flex', flexDirection:'column', gap:10 }}>
-        {/* Εδώ ζούσε ΤΡΙΤΗ εκδοχή του ίδιου υπομνήματος: κάρτα με τον μήνα
-            ως τίτλο και μία σειρά ανά κατηγορία με το πλήθος της. Με ένα
-            γεγονός στον μήνα, έγραφε «Αύγουστος / Οικονομικά 1» — δηλαδή
-            κατέλαβε μια ολόκληρη κάρτα για να πει «ένα», τη στιγμή που η
-            γραμμή σύνοψης το έλεγε ήδη και το ίδιο το γεγονός φαινόταν από
-            κάτω. */}
-        <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:12, boxShadow:'var(--shadow-sm)' }}>
-          {/* «ΑΠΟ ΣΗΜΕΡΑ», ΓΙΑΤΙ Η ΡΑΓΑ ΔΕΝ ΑΚΟΛΟΥΘΕΙ ΤΟΝ ΕΠΙΛΟΓΕΑ ΜΗΝΑ. Το πλέγμα
-              δίπλα της αλλάζει μήνα με τα βελάκια· η ράγα μετρά πάντα από
-              σήμερα και δεν κουνιέται. Δύο μονάδες χρόνου κολλητά, με τον
-              επιλογέα να κυβερνά μόνο τη μία: αυτό λέγεται, δεν μαντεύεται. */}
-          <p style={{ fontSize: 'var(--fs-base)', lineHeight: 1.3, fontFamily: T.font.sans, fontWeight: 600, color:'var(--accent)', marginBottom:10 }}>Επόμενα από σήμερα</p>
-          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-            {upcomingRows.map(row=>{
-              const ev=row.kind==='series'?row.lead:row.event
-              const d=daysUntil(ev.event_date); const cat=CATEGORIES[ev.category]
-              const when=dueTextStart(d)
-              const soon=d<=1
-              const more=row.kind==='series'?row.count-1:0
-              // ═══ ΜΙΑ ΓΡΑΜΜΗ ΤΙΤΛΟΣ, Η ΗΜΕΡΟΜΗΝΙΑ ΔΕΞΙΑ (21/10/2026) ═══════════
-              // Οι μακριοί τίτλοι («Τέλος ανθεκτικότητας κλιματικής κρίσης,
-              // απόδοση») έπιαναν τρεις σειρές στα 200 εικονοστοιχεία και το
-              // «Σε N ημέρες» άλλαζε θέση σε κάθε γραμμή. Τώρα ο τίτλος κόβεται σε
-              // μία σειρά (ολόκληρος στην επεξήγηση), η ημερομηνία κάθεται σε
-              // σταθερή στήλη δεξιά, απέναντι από το «σε N ημέρες»· το ποσό πάει
-              // στην τρίτη γραμμή μαζί με τον ρυθμό της σειράς.
-              return (
-                <div key={row.kind==='series'?row.key:ev.id} title={`${ev.title}, ${grDate(ev.event_date)}${ev.event_time?` ${ev.event_time}`:''}`} style={{ display:'grid', gridTemplateColumns:'3px minmax(0,1fr) auto', columnGap:12, rowGap:4, alignItems:'baseline' }}>
-                  <div style={{ gridRow:'1 / span 3', width:3, borderRadius:3, background:cat.color, alignSelf:'stretch', opacity:0.85 }}/>
-                  <p className="po-elide-lines" style={{ WebkitLineClamp:2, gridColumn:'2 / span 2', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, color:'var(--text-primary)', lineHeight:1.35, margin:0, minWidth:0 }}>{ev.title}</p>
-                  <span style={{ fontSize:12, fontFamily: T.font.sans, color:soon?'var(--text-primary)':'var(--text-tertiary)', fontWeight:soon?600:400, whiteSpace:'nowrap' }}>{when}</span>
-                  <span style={{ fontSize:12, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', color:'var(--text-tertiary)', whiteSpace:'nowrap' }}>{grDate(ev.event_date)}</span>
-                  {(more>0||ev.amount!=null)&&<p style={{ gridColumn:'2 / span 2', fontSize: 'var(--fs-xs)', fontFamily: T.font.sans, color:'var(--text-tertiary)', margin:0 }}>{ev.amount!=null&&<span style={{ color:'var(--text-secondary)', fontVariantNumeric:'tabular-nums' }}>{fe(ev.amount)}</span>}{ev.amount!=null&&more>0?' · ':''}{more>0?[row.kind==='series'?row.cadence:null, more===1?'άλλη 1 φορά':`άλλες ${more} φορές`].filter(Boolean).join(' · '):''}</p>}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-      )}
+      {/* ═══ Η ΡΑΓΑ «ΕΠΟΜΕΝΑ ΑΠΟ ΣΗΜΕΡΑ» ΕΦΥΓΕ (Υ8, 23/11/2026) ════════════
+          Έλεγε τα ίδια γεγονότα με το πλέγμα δίπλα της και με τη λίστα από
+          κάτω: η «Απεντόμωση 25/11» φαινόταν τρεις φορές στην ίδια οθόνη και το
+          ασφαλιστήριο που λήγει τέσσερις, μαζί με το πλαίσιο λήξεων. Το «από
+          σήμερα» το λέει η «Ατζέντα»· εδώ μένει μία λίστα, της ημέρας ή του
+          μήνα (lib/calendar/belowGrid.ts) και το πλέγμα παίρνει όλο το πλάτος. */}
     </div>
   )
 }

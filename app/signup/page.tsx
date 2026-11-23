@@ -439,7 +439,7 @@ export default function SignupPage() {
     // Όρων, που καθόταν ~450px πιο κάτω, κάτω από το όριο της οθόνης στο κινητό:
     // το πάτημα έκανε κύλιση αντί για Google. Στο χωνί, ένα πάτημα «google» και
     // καμία εγγραφή. Η αποδοχή δίνεται πλέον με το πάτημα, με τη γραμμή
-    // `googleLegal` ορατή ακριβώς κάτω από το κουμπί. Η απόδειξη γράφεται
+    // γραμμή της αποδοχής ορατή δίπλα στο κουμπί (`legalLine`). Η απόδειξη γράφεται
     // στην επιστροφή `oauth=1` (`oauthPatch`). Στη Σύνδεση δεν ισχύει το ίδιο:
     // εκεί η επιστροφή είναι `oauth=login` και ο νέος λογαριασμός περνά από το
     // «Ένα βήμα ακόμη» με κουτί, πριν γραφτεί οποιαδήποτε απόδειξη.
@@ -606,14 +606,19 @@ export default function SignupPage() {
   // Υπογραμμισμένοι, ίδια γραμμή με το `.po-link` και τη σύνδεση (20.10.2026):
   // το χρώμα μόνο του δεν λέει «πατιέται» σε όποιον δεν ξεχωρίζει τόνους.
   const consentLink: React.CSSProperties = { color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 3, textDecorationThickness: 1, fontWeight: 600, whiteSpace: 'nowrap' }
-  // Η ΑΠΟΔΟΧΗ ΚΑΤΩ ΑΠΟ ΤΟ «ΣΥΝΕΧΙΣΕ ΜΕ GOOGLE» (13.11.2026). Το πάτημα του
-  // κουμπιού γράφει την απόδειξη στην επιστροφή `oauth=1`, οπότε η γραμμή
-  // στέκεται ακριβώς από κάτω του, όπου κι αν βρίσκεται το κουμπί.
-  const googleLegal = (
-    <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '14px 0 0', lineHeight: 1.6, textAlign: 'center', textWrap: 'pretty' }}>
-      {S ? S.legalGoogle[0] : <>Συνεχίζοντας με Google, αποδέχεσαι τους{' '}</>}
-      <Link href={localHref(locale, '/terms')} className="lp-link po-tap-inline" style={consentLink}>{A ? A.terms : 'Όρους'}</Link>{S ? S.legalGoogle[1] : <> και έχεις διαβάσει την{' '}</>}
-      <Link href={localHref(locale, '/privacy')} className="lp-link po-tap-inline" style={consentLink}>{A ? A.privacy : 'Πολιτική απορρήτου'}</Link>{S ? S.legalGoogle[2] : '.'}
+  // ═══ Η ΑΠΟΔΟΧΗ, ΜΙΑ ΦΟΡΑ (Χ6, αξιολόγηση 23/11/2026) ════════════════════
+  // Ηταν δύο γραμμές με την ίδια πρόταση, «Συνεχίζοντας με Google…» κάτω από
+  // το Google και «Συνεχίζοντας με email…» κάτω από τη φόρμα. Τώρα μία, χωρίς
+  // τρόπο, ΑΝΑΜΕΣΑ στους δύο τρόπους: κάτω από όποιον έρχεται πρώτος και πάνω
+  // από τον δεύτερο, άρα ορατή πριν από κάθε πάτημα. Το πάτημα του Google
+  // γράφει την απόδειξη στην επιστροφή `oauth=1` (13.11.2026) και η γραμμή
+  // μένει δίπλα του: ακριβώς από κάτω όταν είναι πρώτο, ακριβώς από πάνω όταν
+  // πρώτη είναι η φόρμα. Στο γραφείο, που δεν έχει Google, κάτω από τη φόρμα.
+  const legalLine = (center: boolean, margin: string) => (
+    <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin, lineHeight: 1.6, textAlign: center ? 'center' : undefined, textWrap: 'pretty' }}>
+      {S ? S.legal[0] : <>Συνεχίζοντας, αποδέχεσαι τους{' '}</>}
+      <Link href={localHref(locale, '/terms')} className="lp-link po-tap-inline" style={consentLink}>{A ? A.terms : 'Όρους'}</Link>{S ? S.legal[1] : <> και έχεις διαβάσει την{' '}</>}
+      <Link href={localHref(locale, '/privacy')} className="lp-link po-tap-inline" style={consentLink}>{A ? A.privacy : 'Πολιτική απορρήτου'}</Link>{S ? S.legal[2] : '.'}
     </p>
   )
   // Τα κουτιά των ενημερωτικών, με το ίδιο ιδίωμα αφής με το πρώτο. Δύο, ένα
@@ -925,7 +930,7 @@ export default function SignupPage() {
 
               {!emailFirst && !firm && <>
                 <GoogleButton onClick={signInWithGoogle} funnel />
-                {googleLegal}
+                {legalLine(true, '14px 0 0')}
                 <OrDivider word={A ? A.or : undefined} />
               </>}
 
@@ -1045,25 +1050,20 @@ export default function SignupPage() {
                     Ηταν υποχρεωτικό κουτί πάνω από το κουμπί, το οποίο σε κινητό
                     κατέληγε στα y=764 και το κουμπί στα 1011, δηλαδή εκτός
                     οθόνης. Οι Όροι (/terms) λένε ήδη «Με τη δημιουργία
-                    λογαριασμού […] αποδέχεσαι τους παρόντες Όρους». Η ίδια
-                    γραμμή στέκεται και κάτω από το «Συνέχισε με Google»
-                    (`googleLegal`), ώστε να φαίνεται όπου φαίνεται το κουμπί.
+                    λογαριασμού […] αποδέχεσαι τους παρόντες Όρους». Η γραμμή
+                    είναι μία για τους δύο τρόπους (`legalLine`): εδώ όταν η φόρμα
+                    έρχεται πρώτη, αλλιώς κάτω από το «Συνέχισε με Google».
                     Στη Σύνδεση η γραμμή ΔΕΝ μετρά ως αποδοχή: ο νέος λογαριασμός
                     από εκεί περνά από το «Ένα βήμα ακόμη». Η απόδειξη (πότε, ποια
                     έκδοση) γράφεται στο `signupData` και στο `oauthPatch`.
                     Οι συγκαταθέσεις που ΔΕΝ είναι σύμβαση μένουν χωριστά κουτιά:
                     τα δύο ενημερωτικά (ατσεκάριστα) και οι όροι του γραφείου.
                     Η Πολιτική απορρήτου δεν «γίνεται αποδεκτή»: είναι ενημέρωση. */}
-                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '4px 0 0', lineHeight: 1.6, textWrap: 'pretty' }}>
-                  {S ? S.legal[0] : <>Συνεχίζοντας με email, αποδέχεσαι τους{' '}</>}
-                  <Link href={localHref(locale, '/terms')} className="lp-link po-tap-inline" style={consentLink}>{A ? A.terms : 'Όρους'}</Link>{S ? S.legal[1] : <> και έχεις διαβάσει την{' '}</>}
-                  <Link href={localHref(locale, '/privacy')} className="lp-link po-tap-inline" style={consentLink}>{A ? A.privacy : 'Πολιτική απορρήτου'}</Link>{S ? S.legal[2] : '.'}
-                </p>
+                {(emailFirst || firm) && legalLine(false, '4px 0 0')}
               </form>
               {emailFirst && !firm && <>
                 <OrDivider word={A ? A.or : undefined} />
                 <GoogleButton onClick={signInWithGoogle} funnel />
-                {googleLegal}
               </>}
               {!A && !firm && (
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '24px 0 0', lineHeight: 1.5 }}>
