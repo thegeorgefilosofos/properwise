@@ -4,7 +4,7 @@
 // Μπορεί να το πληκτρολογήσει, να το επικολλήσει από παλιό μήνυμα, ή να μείνει
 // από προηγούμενη έκδοση της εφαρμογής. Καμία τιμή δεν επιτρέπεται να ρίξει τον
 // πίνακα — και καμία δεν επιτρέπεται να μπει αυτούσια σε επόμενο σύνδεσμο.
-import { parseNavHash, formatNavHash, shouldPush, readLaunchShortcut } from './history'
+import { parseNavHash, formatNavHash, shouldPush, readLaunchShortcut, backTarget, navState } from './history'
 
 let pass = 0, fail = 0
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n) } }
@@ -124,6 +124,26 @@ ok('αφαίρεση ακινήτου → εγγραφή', shouldPush(L('a', 'p'
   ok('χωρίς action=enfia τα πεδία δεν διαβάζονται', e4.enfia === null && e4.scan && e4.search === '?tm=90')
   ok('κεφαλαία δεν είναι η ενέργεια', readLaunchShortcut('?action=ENFIA&tm=90', '', KNOWN).enfia === null)
   ok('συντόμευση χωρίς ενέργεια ΕΝΦΙΑ: καμία εκτίμηση', readLaunchShortcut('?tab=finances', '', KNOWN).enfia === null)
+}
+
+// ── ΤΟ «ΠΙΣΩ» ΓΥΡΝΑ ΑΠΟ ΟΠΟΥ ΗΡΘΕΣ (feedback χρήστη #1, A1 και A2) ───────
+// Ημερολόγιο → «Εκκρεμότητες» → «Πίσω» πήγαινε στην Επισκόπηση. Το κουμπί
+// μένει μόνο στις οθόνες που δεν έχουν γραμμή στην πλαϊνή μπάρα και γυρνά στην
+// καρτέλα της προηγούμενης εγγραφής του ιστορικού.
+{
+  ok('καρτέλα της πλαϊνής μπάρας → κανένα «πίσω»', backTarget('finances', null) === null)
+  ok('Ημερολόγιο → κανένα «πίσω»', backTarget('calendar', navState('overview')) === null)
+  ok('Επισκόπηση → κανένα «πίσω»', backTarget('overview', null) === null)
+  const fromCal = backTarget('checklist', navState('calendar'))
+  ok('Εκκρεμότητες από το Ημερολόγιο → πίσω στο Ημερολόγιο', fromCal?.tab === 'calendar')
+  ok('…μέσω του ιστορικού, ώστε να συμφωνεί με το πλήκτρο του περιηγητή', fromCal?.history === true)
+  const cold = backTarget('checklist', null)
+  ok('Εκκρεμότητες από σύνδεσμο → Επισκόπηση', cold?.tab === 'overview' && cold.history === false)
+  ok('Έπιπλα από σύνδεσμο → Φάκελος', backTarget('inventory', null)?.tab === 'documents')
+  ok('Έπιπλα από τον Φάκελο → ιστορικό', backTarget('inventory', navState('documents'))?.history === true)
+  ok('ξένη κατάσταση ιστορικού → γονέας', backTarget('checklist', { foo: 'calendar' })?.history === false)
+  ok('άκυρη καρτέλα στην κατάσταση → γονέας', backTarget('checklist', navState('<x>'))?.tab === 'overview')
+  ok('ίδια καρτέλα στην κατάσταση → γονέας', backTarget('checklist', navState('checklist'))?.tab === 'overview')
 }
 
 console.log(fail === 0 ? `✓ navHistory: ${pass} έλεγχοι πέρασαν` : `✗ navHistory: ${fail} απέτυχαν από ${pass + fail}`)

@@ -789,6 +789,25 @@ body {
   background: var(--bg-elevated); border-color: transparent;
   box-shadow: var(--shadow-sm); color: var(--accent);
 }
+/* ΤΟ «‹ ΕΠΙΣΚΟΠΗΣΗ» ΜΟΝΟ ΕΚΕΙ ΠΟΥ ΔΕΝ ΥΠΑΡΧΕΙ ΑΛΛΟΣ ΔΡΟΜΟΣ (feedback χρήστη #1).
+   Από 1025 η πλαϊνή μπάρα είναι μόνιμη, ως 768 η κάτω μπάρα ξεκινά από την
+   Επισκόπηση. Ενδιάμεσα η πλαϊνή είναι συρτάρι και η κάτω μπάρα δεν υπάρχει.
+   Το `!important` νικά το `display` που γράφει το ίδιο το κουμπί. */
+.dash-up-tablet { display: none !important; }
+@media (min-width: 769px) and (max-width: 1024px) {
+  .dash-up-tablet { display: inline-flex !important; }
+}
+/* Η ΡΑΓΑ ΤΩΝ ΔΑΠΑΝΩΝ (Δαπάνες · Προϋπολογισμός · Συμβόλαια): ΓΕΜΙΣΜΑ, ΟΧΙ ΣΚΙΑ.
+   Η ράγα είναι η ίδια `--bg-elevated` με το ενεργό πλακίδιο, οπότε η επιλογή
+   διαβαζόταν μόνο από τη σκιά και το χρώμα των γραμμάτων (feedback χρήστη #1,
+   23/11/2026: «δεν φωτίζει καλά»). Ιδιο γέμισμα με το `.po-tool-seg` στα
+   δύο θέματα, γιατί και τα δύο ορίζουν `--accent` και `--accent-text`. */
+.po-seg-strong .po-chip[data-shape="seg"][aria-pressed="true"] {
+  background: var(--accent); color: var(--accent-text); box-shadow: none;
+}
+@media (hover: hover) {
+  .po-seg-strong .po-chip[data-shape="seg"][aria-pressed="true"]:hover:not(:disabled) { color: var(--accent-text); }
+}
 .po-chip:disabled { opacity: .5; cursor: not-allowed; }
 /* Ιδια απόκριση αφής όπως στο .po-ico: το ΜΗ επιλεγμένο πλακίδιο απαντά στο
    άγγιγμα με το ίδιο περίγραμμα που δίνει η αιώρηση στο ποντίκι. Το ήδη

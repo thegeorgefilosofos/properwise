@@ -132,7 +132,7 @@ export const OVERVIEW_EN = {
     rentMissing: 'The rent is missing',
     addRent: 'Add the rent',
     notLoaded: 'Didn’t load',
-    netLine: (y: number, v: string) => `Net ${y} · ${v}`,
+    taxLine: (y: number, v: string) => `Rental income tax ${y} · ${v}`,
     scan: 'Scan a document',
     pdf: 'PDF report',
     pdfTitle: 'The report is in Greek, as your accountant and AADE use it.',
@@ -148,7 +148,7 @@ export const OVERVIEW_EN = {
     notAll: 'The new attempt didn’t load everything.',
   },
   agenda: {
-    title: 'What needs doing now',
+    title: 'To-dos',
     late: (n: number) => `${n} overdue`,
     byPriority: (n: number) => `${n} by priority`,
     items: (n: number) => `${n} ${n === 1 ? 'item' : 'items'}`,

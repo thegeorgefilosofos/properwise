@@ -46,8 +46,10 @@ import { itemDue, overdueCount, ENFIA_IMPORT_TAB, type AgendaItem, type DueParts
 import { openMyaadeImport } from './myaadeOpen';
 import { useAppEn } from '@/lib/i18n/appEn';
 
-/** Ο τίτλος της λίστας. Σταθερά, γιατί τον αναφέρουν οδηγίες άλλων οθονών (guard-dangling-refs). */
-const AGENDA_LABEL = 'Τι χρειάζεται τώρα';
+/** Ο τίτλος της λίστας. Σταθερά, γιατί τον αναφέρουν οδηγίες άλλων οθονών (guard-dangling-refs).
+ *  «Εκκρεμότητες», όπως λέγονται παντού αλλού στην εφαρμογή (feedback χρήστη #1, 23/11/2026):
+ *  ήταν «Τι χρειάζεται τώρα», δεύτερο όνομα για το ίδιο πράγμα. */
+const AGENDA_LABEL = 'Εκκρεμότητες';
 
 export default function AgendaPanel({ items, total, onNavigate, incomplete = false, footer }: {
   items: AgendaItem[];

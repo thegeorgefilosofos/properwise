@@ -25,6 +25,7 @@ import { type StayAmountLike } from '@/lib/clients/stayAmounts'
 import MonthlyFeedbackNudge from './MonthlyFeedbackNudge'
 import type { LegalForm } from '@/lib/accounting/dossier'
 import type { OpenerContext } from '@/lib/assistant/openers'
+import { canCompare } from '@/lib/property/visibility'
 import { navLabel } from '@/lib/nav/labels'
 import { mergeLedger } from '@/lib/expenses/ledger'
 import { contractOverview } from '@/lib/contracts/overview'
@@ -651,7 +652,6 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // ΧΩΡΙΣ ΠΟΣΟ, Ο ΕΝΦΙΑ ΛΕΕΙ ΤΙ ΛΕΙΠΕΙ (κριτική σχεδίασης r5), όπως το «Λείπει το
   // μίσθωμα»: όχι «Δαπάνες 0,00€» σε κάποιον που μόλις πέρασε το βήμα «ΕΝΦΙΑ».
   const enfiaMissing = firstNonRented && !enfiaHero;
-  const firstHero = taxHero || enfiaHero || enfiaMissing;
   // ΜΙΣΟ ΣΥΝΟΛΟ ΔΙΑΒΑΖΕΤΑΙ ΣΑΝ ΟΛΟΚΛΗΡΟ. Αν δεν διαβάστηκε έστω μία περιοχή με
   // ποσά, κανένα σύνολο της οθόνης δεν είναι αληθινό: το κεντρικό ποσό γίνεται
   // «—», το Ταμείο και η ζώνη της χρονιάς κρύβονται και το PDF περιμένει.
@@ -897,6 +897,13 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // Πέντε στην αρχική. Η πλήρης λίστα ζει στις «Εκκρεμότητες» — και η οθόνη το λέει.
   // Το ποσό της δόσης ΕΝΦΙΑ από τις ίδιες γραμμές με την κάρτα των 12 μηνών.
   const agenda = attachAmounts(agendaAll.slice(0, 5), forecast.months.flatMap(m => m.lines));
+  // Η ΝΟΑ ΤΗΣ ΕΠΙΣΚΟΠΗΣΗΣ ΡΩΤΑ ΓΙΑ ΟΣΑ ΕΧΕΙ Η ΟΘΟΝΗ (feedback χρήστη #1): την
+  // επόμενη προθεσμία της λίστας και σύγκριση μόνο όταν υπάρχουν ακίνητα που συγκρίνονται.
+  const stripCtx: OpenerContext | null = assistantCtx && {
+    ...assistantCtx,
+    comparable: canCompare(properties),
+    nextDeadline: EO ? undefined : agendaAll.find(it => it.due !== null)?.title,
+  };
 
   if (loading) return (
     <div>
@@ -933,9 +940,18 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           κατάσταση, η ώρα Ελλάδας και η ενέργεια στη σειρά της. */}
       <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',gap:16,flexWrap:'wrap',marginBottom:20}}>
         <div style={{minWidth:0}}>
+          {/* ═══ ΤΟ ΠΡΩΤΟ ΝΟΥΜΕΡΟ ΔΕΝ ΕΙΝΑΙ ΦΟΡΟΣ ΚΑΙ ΔΕΝ ΕΠΑΝΑΛΑΜΒΑΝΕΤΑΙ (feedback χρήστη #1, 23/11/2026) ═══
+              Η κορυφή έδειχνε στο πρώτο ακίνητο τον φόρο (ενοικίων ή ΕΝΦΙΑ) με
+              μεγάλα ψηφία και στο ακίνητο χωρίς έσοδα τις «Δαπάνες {έτος}», που η
+              ίδια οθόνη γράφει ξανά στο πλακίδιο «Δαπάνες έτους» της χρονιάς.
+              Τώρα: με έσοδα, το καθαρό της χρονιάς· χωρίς έσοδα, κανένα μεγάλο
+              ποσό (οι δαπάνες μένουν μία φορά, στο πλακίδιο). Ο φόρος του πρώτου
+              ακινήτου ΔΕΝ κρύβεται: ακολουθεί αμέσως, σε μικρή γραμμή, χωρίς κλικ. */}
+          {(heroIsNet || enfiaMissing) && (
           <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-note)',color:'var(--text-secondary)'}}>{EO
-            ? (taxHero ? EO.hero.tax(year) : enfiaHero || enfiaMissing ? EO.hero.enfia(enfiaNext?.year ?? year) : heroIsNet ? EO.hero.net(year) : EO.hero.expenses(year))
-            : taxHero ? `Φόρος ενοικίων ${year}` : enfiaHero || enfiaMissing ? `ΕΝΦΙΑ ${enfiaNext?.year ?? year}` : heroIsNet ? `Καθαρό ${year}, με ό,τι ξέρουμε σήμερα` : `Δαπάνες ${year}`}</div>
+            ? (enfiaMissing ? EO.hero.enfia(enfiaNext?.year ?? year) : EO.hero.net(year))
+            : enfiaMissing ? `ΕΝΦΙΑ ${enfiaNext?.year ?? year}` : `Καθαρό ${year}, με ό,τι ξέρουμε σήμερα`}</div>
+          )}
           {enfiaMissing
             ? <div style={{marginTop:4}}>
                 {/* ΕΝΕΡΓΕΙΑ ΣΤΗ ΘΕΣΗ ΤΟΥ ΠΟΣΟΥ, ΟΧΙ ΣΥΝΔΕΣΜΟΣ ΜΕΣΑ ΣΕ ΠΡΟΤΑΣΗ (κριτική σχεδίασης r6):
@@ -947,39 +963,41 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
                 </LinkBtn>
               </div>
             : rentMissing
-            // ΜΙΣΘΩΣΗ ΧΩΡΙΣ ΠΟΣΟ ΔΕΝ ΔΕΙΧΝΕΙ ΜΗΔΕΝ ΣΑΝ ΝΑ ΗΤΑΝ ΦΟΡΟΣ: λέει τι λείπει
+            // ΜΙΣΘΩΣΗ ΧΩΡΙΣ ΠΟΣΟ ΔΕΝ ΔΕΙΧΝΕΙ ΜΗΔΕΝ ΣΑΝ ΝΑ ΗΤΑΝ ΚΑΘΑΡΟ: λέει τι λείπει
             // και ανοίγει την επεξεργασία στο μίσθωμα. Η αποθήκευση γυρίζει εδώ.
             ? <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap',marginTop:4}}>
                 <span style={{fontFamily:T.font.sans,fontSize:'var(--fs-md)',fontWeight:600,color:'var(--text-primary)'}}>{EO ? EO.hero.rentMissing : 'Λείπει το μίσθωμα'}</span>
                 <Btn variant="secondary" onClick={()=>onNavigate('edit-rent')}>{EO ? EO.hero.addRent : 'Πρόσθεσε μίσθωμα'}</Btn>
               </div>
-            : enfiaUnissued
-            // ΕΤΟΣ ΠΟΥ ΔΕΝ ΕΧΕΙ ΕΚΔΟΘΕΙ ΣΤΟ ΗΜΕΡΟΛΟΓΙΟ (κριτική σχεδίασης r7): κανένα ποσό,
-            // ούτε το περσινό που γράφτηκε· μόνο ο μήνας, «ΕΝΦΙΑ 2027 / Μάρτιος 2027».
-            ? <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-md)',fontWeight:600,color:'var(--text-primary)',marginTop:4}}>{EO && enfiaNext!.next!.ob ? EO.enfiaRow(enfiaNext!.next!, { head: enfiaNext!.year, monthOnly: true }).split(' · ')[1] : enfiaNext!.next!.date}</div>
-            : <div style={{fontFamily:T.font.num,fontSize:enfiaPaidOff ? TT.kpi.fontSize : 'clamp(28px,calc(7vw / var(--zoom, 1)),40px)',fontWeight:700,letterSpacing:'-0.02em',color:'var(--text-primary)',fontVariantNumeric:'tabular-nums',lineHeight:1.15}}>{moneyGap
+            : heroIsNet && <div style={{fontFamily:T.font.num,fontSize:'clamp(28px,calc(7vw / var(--zoom, 1)),40px)',fontWeight:700,letterSpacing:'-0.02em',color:'var(--text-primary)',fontVariantNumeric:'tabular-nums',lineHeight:1.15}}>{moneyGap
             ? <span style={{fontFamily:T.font.sans,fontSize:'var(--fs-md)',fontWeight:600,color:'var(--text-secondary)',letterSpacing:0}}>{EO ? EO.hero.notLoaded : 'Δεν φορτώθηκε'}</span>
-            : (EO ? EO.f.fe : fmtEur)(taxHero ? estTax : enfiaHero ? enfiaPaid : heroValue)}</div>}
+            : (EO ? EO.f.fe : fmtEur)(heroValue)}</div>}
+          {/* Ο ΦΟΡΟΣ ΤΟΥ ΠΡΩΤΟΥ ΑΚΙΝΗΤΟΥ ΜΕΝΕΙ, ΑΠΟ ΚΑΤΩ: ο ίδιος αριθμός που είδε στον
+              οδηγό (ίδια `propertyRentTax`), όχι πια ως πρώτη εντύπωση. */}
           {taxHero && !rentMissing && !moneyGap && (
-            <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:'var(--text-secondary)',marginTop:4,fontVariantNumeric:'tabular-nums'}}>{EO ? EO.hero.netLine(year, EO.f.fe(heroValue)) : `Καθαρό ${year} · ${fmtEur(heroValue)}`}</div>
+            <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:'var(--text-secondary)',marginTop:4,fontVariantNumeric:'tabular-nums'}}>{EO ? EO.hero.taxLine(year, EO.f.fe(estTax)) : `Φόρος ενοικίων ${year} · ${fmtEur(estTax)}`}</div>
           )}
-          {/* Η ΩΡΑ ΕΛΛΑΔΑΣ ΚΑΤΩ ΑΠΟ ΤΟ ΠΟΣΟ, ΟΧΙ ΠΑΝΩ (κριτική σχεδίασης r2). Ηταν η
-              πρώτη γραμμή της οθόνης, σε έντονο βάρος· έσπρωχνε το ποσό κάτω.
-              Δίνει νόημα στο «ως σήμερα» των εισπράξεων, άρα μένει ως
-              υποσημείωση. ΟΧΙ ΣΤΗΝ ΠΡΩΤΗ ΕΠΙΣΚΟΠΗΣΗ (κριτική σχεδίασης r3): ο
-              φόρος της κορυφής είναι εκτίμηση της χρονιάς, όχι ποσό «ως σήμερα»·
-              η ώρα ήταν τέταρτη γραμμή χωρίς λόγο. */}
+          {/* Η ΩΡΑ ΕΛΛΑΔΑΣ ΚΑΤΩ ΑΠΟ ΤΟ ΠΟΣΟ, ΟΧΙ ΠΑΝΩ (κριτική σχεδίασης r2). Δίνει
+              νόημα στο «ως σήμερα» των εισπράξεων, άρα μένει ως υποσημείωση. Στο
+              ακίνητο χωρίς έσοδα είναι η πρώτη, ουδέτερη γραμμή, πριν από τον ΕΝΦΙΑ. */}
+          {!enfiaMissing && <AthensNow style={{fontFamily:T.font.sans,fontSize:'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:4,marginBottom:enfiaHero ? 4 : 0,minHeight:15}}/>}
+          {/* Ο ΕΝΦΙΑ ΤΟΥ ΠΡΩΤΟΥ ΑΚΙΝΗΤΟΥ ΧΩΡΙΣ ΕΣΟΔΑ, ΣΕ ΜΙΚΡΗ ΓΡΑΜΜΗ: το ποσό του
+              έτους (ίδια `enfiaYear` με τα στοιχεία), ή μόνο ο μήνας όσο το
+              εκκαθαριστικό δεν έχει εκδοθεί (r7). */}
+          {enfiaHero && !moneyGap && (
+            <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:'var(--text-secondary)',fontVariantNumeric:'tabular-nums'}}>{EO ? EO.hero.enfia(enfiaNext?.year ?? year) : `ΕΝΦΙΑ ${enfiaNext?.year ?? year}`}{' · '}{enfiaUnissued
+              ? (EO && enfiaNext!.next!.ob ? EO.enfiaRow(enfiaNext!.next!, { head: enfiaNext!.year, monthOnly: true }).split(' · ')[1] : enfiaNext!.next!.date)
+              : (EO ? EO.f.fe : fmtEur)(enfiaPaid)}</div>
+          )}
           {enfiaHero && enfiaNext?.row && !moneyGap && (
             // «9η δόση 26,66€ · 30/11/2026»: η δόση και το ποσό της, χωρίς δεύτερο «ΕΝΦΙΑ».
             // Εξοφλημένο (r7, r8): σβηστή, αμέσως κάτω από το ποσό του ίδιου έτους.
-            <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:enfiaPaidOff ? 'var(--text-tertiary)' : 'var(--text-secondary)',marginTop:4,fontVariantNumeric:'tabular-nums'}}>{EO && enfiaNext.row.ob ? EO.enfiaRow(enfiaNext.row, { paidOff: enfiaPaidOff, single: enfiaNext.count === 1 }) : `${enfiaNext.row.title} · ${enfiaNext.row.date}`}</div>
+            <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:enfiaPaidOff ? 'var(--text-tertiary)' : 'var(--text-secondary)',marginTop:2,fontVariantNumeric:'tabular-nums'}}>{EO && enfiaNext.row.ob ? EO.enfiaRow(enfiaNext.row, { paidOff: enfiaPaidOff, single: enfiaNext.count === 1 }) : `${enfiaNext.row.title} · ${enfiaNext.row.date}`}</div>
           )}
-          {/* ΤΟ ΕΠΟΜΕΝΟ ΕΚΚΑΘΑΡΙΣΤΙΚΟ ΣΤΟ ΤΕΛΟΣ, ΧΩΡΙΣ ΠΟΣΟ (κριτική σχεδίασης r8):
-              «ΕΝΦΙΑ 2027 · Μάρτιος 2027». Η σειρά δεν πηγαινοέρχεται ανάμεσα σε δύο έτη. */}
+          {/* ΤΟ ΕΠΟΜΕΝΟ ΕΚΚΑΘΑΡΙΣΤΙΚΟ ΣΤΟ ΤΕΛΟΣ, ΧΩΡΙΣ ΠΟΣΟ (κριτική σχεδίασης r8). */}
           {enfiaPaidOff && !moneyGap && (
             <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:'var(--text-secondary)',marginTop:2,fontVariantNumeric:'tabular-nums'}}>{EO && enfiaNext!.next!.ob ? EO.enfiaRow(enfiaNext!.next!, { head: enfiaNext!.year + 1 }) : `${enfiaNext!.next!.title} · ${enfiaNext!.next!.date}`}</div>
           )}
-          {!firstHero && <AthensNow style={{fontFamily:T.font.sans,fontSize:'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:4,minHeight:15}}/>}
           {/* Η ΤΑΥΤΟΤΗΤΑ ΤΟΥ ΑΚΙΝΗΤΟΥ ΛΕΓΕΤΑΙ ΜΙΑ ΦΟΡΑ ΚΑΙ ΤΗ ΛΕΕΙ Η ΜΠΑΡΑ.
               Εδώ γραφόταν ξανά, εξήντα εικονοστοιχεία κάτω από την ίδια
               πρόταση: όνομα, τύπος, κατάσταση, διεύθυνση — τα ίδια τέσσερα
@@ -1080,7 +1098,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
         footer={<CalendarQuickAdd userId={userId} />} />
 
       {/* Με μισά ποσά η Νόα θα έλεγε «βλέπω» για όσα δεν διάβασε. */}
-      {!moneyGap && <AssistantStrip ctx={assistantCtx} />}
+      {!moneyGap && <AssistantStrip ctx={stripCtx} />}
 
       {/* ΤΟ «ΣΟΥ ΟΦΕΙΛΟΥΝ» ΜΟΝΟ ΣΕ ΜΑΚΡΟΧΡΟΝΙΑ.
           Το `isLet` περιλαμβάνει και τη βραχυχρόνια, όπου όμως: το ποσό
@@ -1113,26 +1131,12 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       )}
 
 
-      {/* ΤΙ ΕΡΧΕΤΑΙ, ΜΕΤΑ ΑΠΟ ΤΟ ΤΙ ΧΡΕΙΑΖΕΤΑΙ ΤΩΡΑ. Με έστω μία ανάγνωση πεσμένη
-          η κάρτα δεν αποδίδεται: μισή πρόβλεψη θα έδειχνε λάθος «σφιχτό μήνα». */}
-      {failedReads.length === 0 && (
-        <ForecastCard key={prop.id} forecast={forecast} propertyId={prop.id} onNavigate={onNavigate}
-                      tabVisible={tabVisible} supabase={supabase} notes={forecastNotes} />
-      )}
-
-      {/* ═══ ΤΟ ΖΕΥΓΟΣ ΓΡΑΦΗΜΑΤΩΝ ΕΦΥΓΕ ΑΠΟ ΕΔΩ ══════════════════════════
-          Οι ίδιες δύο εικόνες — δαπάνες ανά μήνα και κατανομή ανά κατηγορία —
-          υπάρχουν στις Δαπάνες, στον Προϋπολογισμό, όπου ζουν και οι ΣΤΟΧΟΙ.
-          Εκεί η μπάρα του μήνα έχει κάτι να συγκριθεί μαζί του· εδώ ήταν μια
-          ωραία εικόνα χωρίς ερώτηση από πίσω της.
-
-          ΓΙΑΤΙ ΕΦΥΓΕ ΑΥΤΟ ΚΑΙ ΟΧΙ ΤΟ ΑΛΛΟ. Η δουλειά αυτής της οθόνης είναι
-          «τι χρειάζεται τώρα»: το Ταμείο και η ατζέντα. Ένα γράφημα δώδεκα
-          μηνών απαντά σε άλλη ερώτηση — «πώς πήγε η χρονιά» — που είναι
-          ερώτηση των Δαπανών. Και η περίληψή της μένει εδώ, στο πλακίδιο
-          «Δαπάνες»: σύνολο έτους και ποσό ως σήμερα, μία γραμμή αντί για δύο
-          κάρτες. Το βάθος είναι ένα κλικ μακριά, στη σωστή καρτέλα. */}
-
+      {/* ═══ ΤΟ ΑΚΙΝΗΤΟ ΠΡΙΝ ΑΠΟ ΤΙΣ ΑΝΑΛΥΣΕΙΣ (feedback χρήστη #1, 23/11/2026) ═══
+          «Στοιχεία ακινήτου» και «Λογαριασμοί ανά μήνα» ήταν κάτω από την
+          πρόβλεψη του επόμενου χρόνου και ο ιδιοκτήτης τα ήθελε ψηλά. Ανεβαίνουν πάνω
+          από τα γραφήματα, όχι πάνω από τις ενέργειες: πρώτα οι Εκκρεμότητες και
+          το Ταμείο (η δουλειά της οθόνης είναι «τι χρειάζεται τώρα»), μετά η
+          ενημέρωση, μετά οι αναλύσεις. */}
       <SecHdr label="Το ακίνητο" sub="Στοιχεία και πάγια κόστη" />
       <div className="grid-main">
         {/* ═══ ΔΕΚΑΤΡΕΙΣ ΣΕΙΡΕΣ ΔΙΠΛΑ ΣΕ ΠΕΝΤΕ ══════════════════════════════
@@ -1207,6 +1211,26 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           }
         </div>
       </div>
+
+      {/* ΤΙ ΕΡΧΕΤΑΙ, ΜΕΤΑ ΑΠΟ ΤΟ ΤΙ ΧΡΕΙΑΖΕΤΑΙ ΤΩΡΑ. Με έστω μία ανάγνωση πεσμένη
+          η κάρτα δεν αποδίδεται: μισή πρόβλεψη θα έδειχνε λάθος «σφιχτό μήνα». */}
+      {failedReads.length === 0 && (
+        <ForecastCard key={prop.id} forecast={forecast} propertyId={prop.id} onNavigate={onNavigate}
+                      tabVisible={tabVisible} supabase={supabase} notes={forecastNotes} />
+      )}
+
+      {/* ═══ ΤΟ ΖΕΥΓΟΣ ΓΡΑΦΗΜΑΤΩΝ ΕΦΥΓΕ ΑΠΟ ΕΔΩ ══════════════════════════
+          Οι ίδιες δύο εικόνες — δαπάνες ανά μήνα και κατανομή ανά κατηγορία —
+          υπάρχουν στις Δαπάνες, στον Προϋπολογισμό, όπου ζουν και οι ΣΤΟΧΟΙ.
+          Εκεί η μπάρα του μήνα έχει κάτι να συγκριθεί μαζί του· εδώ ήταν μια
+          ωραία εικόνα χωρίς ερώτηση από πίσω της.
+
+          ΓΙΑΤΙ ΕΦΥΓΕ ΑΥΤΟ ΚΑΙ ΟΧΙ ΤΟ ΑΛΛΟ. Η δουλειά αυτής της οθόνης είναι
+          «τι χρειάζεται τώρα»: το Ταμείο και η ατζέντα. Ένα γράφημα δώδεκα
+          μηνών απαντά σε άλλη ερώτηση — «πώς πήγε η χρονιά» — που είναι
+          ερώτηση των Δαπανών. Και η περίληψή της μένει εδώ, στο πλακίδιο
+          «Δαπάνες»: σύνολο έτους και ποσό ως σήμερα, μία γραμμή αντί για δύο
+          κάρτες. Το βάθος είναι ένα κλικ μακριά, στη σωστή καρτέλα. */}
 
       {/* ═══ ΤΟ ΕΤΟΣ, ΣΤΗΝ ΙΔΙΑ ΓΛΩΣΣΑ ΜΕ ΤΟ ΣΗΜΕΡΑ ══════════════════════════
           Εδώ ζούσε ΤΡΙΤΟ σύστημα πλακιδίων (.po-fig-card, κεντραρισμένο, 20px

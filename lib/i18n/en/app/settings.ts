@@ -39,7 +39,7 @@ export const SETTINGS_EN = {
   },
   horizon: {
     title: 'Deadline horizon',
-    desc: 'How far ahead the “What needs doing now” list looks. Anything further away lives in the Calendar; overdue items always show.',
+    desc: 'How far ahead the Overview “To-dos” list looks. Anything further away lives in the Calendar; overdue items always show.',
     /** Το όνομα κάθε ορίζοντα· οι ημέρες έρχονται από την τιμή της επιλογής. */
     options: { 30: 'Next month', 60: 'Two months', 90: 'Three months', 180: 'Six months', 365: 'A full year' } as Record<string, string>,
     days: (name: string, n: number) => `${name} (${n} days)`,
