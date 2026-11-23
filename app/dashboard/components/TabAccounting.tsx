@@ -1,11 +1,10 @@
 'use client'
-import { ACCOUNTANT_SEND_LABEL } from './accountantSend'
 import { track, PRODUCT_EVENTS } from '@/lib/analytics/events';
 import { collectionModeReason } from '@/lib/tax/rentCollectionMode';
 import { T, Btn, IconBtn, ChipToggle, LinkBtn, Skeleton, SkeletonKPIs, InfoBanner, fn } from '@/components/Theme'
 import { hy } from '@/components/Hyphen'
 import { ActionMenu, type ActionMenuItem } from '@/components/ActionMenu'
-import { ChevronLeft, ChevronRight, Download, ArrowUpRight } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, Download, ArrowUpRight } from 'lucide-react'
 import { InfoHint } from './InfoHint'
 import BankImport from './BankImport'
 import E2ReconcileCard from './E2ReconcileCard'
@@ -17,7 +16,7 @@ import { PLANS } from '@/lib/billing/plans'
 import EnfiaPanel from './EnfiaPanel';
 import AccountantDossier from './AccountantDossier'
 import { UNCOLLECTED_RENT_RULE as UNCOLLECTED_RULE } from '@/lib/accounting/dossier'
-import { readStatus, statusLabel, type StatusRow } from '@/lib/property/status'
+import { statusLabel, type StatusRow } from '@/lib/property/status'
 // Το λογιστικό πρόσημο: τυπογραφικό μείον, όχι ενωτικό και ποτέ «−0,00€».
 import { feSigned, fpRate, grDateOf } from '@/lib/core/format'
 import { AsOfNote } from '@/components/AsOfNote'
@@ -44,6 +43,14 @@ import {
   TaxScaleCard, ConsolidationCard, AdvisoryCard, ChangesCard, TransferCostCard, CashFlowFold,
   TrialBalanceFold,
 } from './accounting/AdvancedTools'
+import { PLATFORM_FEE_CATEGORY } from '@/lib/tax/shortTermTax'
+import { STAY_CHANNEL_LABELS } from '@/lib/clients/clients'
+
+// «ΠΡΟΜΗΘΕΙΑ ΑΛΛΟ» (αξιολόγηση 2, Μ15). Η κίνηση βγαίνει από το lib/tax/shortTermTax
+// (`Προμήθεια ${κανάλι}`), προστατευμένη διαδρομή. Για το κανάλι «Άλλο» η οθόνη
+// γράφει το όνομα της κατηγορίας, χωρίς να αλλάζει η πηγή ή το αρχείο του λογιστή.
+const OTHER_CHANNEL_FEE = `Προμήθεια ${STAY_CHANNEL_LABELS.other}`
+const moveLabel = (description: string): string => description === OTHER_CHANNEL_FEE ? PLATFORM_FEE_CATEGORY : description
 
 export default function TabAccounting({ propertyId, userId, profileType='individual', legalForm='individual', plan='free', status='rent_long', onNavigate, onAddExpense, onEditProperty }: AccountingProps & {
   /** Ανοίγει τη φόρμα νέας δαπάνης στις Δαπάνες, όχι μόνο την καρτέλα. */
@@ -125,9 +132,6 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   // μακροχρόνιο για κάθε ακίνητο που δεν είναι βραχυχρόνιο, οπότε ένα κενό
   // ακίνητο έβγαινε «Μακροχρόνια μίσθωση» και στο PDF του λογιστή.
   const regimeLabel = businessMode ? 'Επιχείρηση (ΕΛΠ)' : statusLabel(prop as StatusRow)
-  // Στον υπότιτλο το σκέτο «Κενό» διαβαζόταν ως «Κενό · έσοδα, φόρος…», δηλαδή
-  // σαν να είναι άδεια τα έσοδα. Το ουσιαστικό λέει ότι είναι το ακίνητο.
-  const subjectLabel = !businessMode && readStatus(prop as StatusRow)==='vacant' ? 'Κενό ακίνητο' : regimeLabel
   // Έχει το έτος πραγματική κίνηση; Αν όχι, αντί για τοίχο από «0€» δείχνουμε μια
   // ήρεμη, καθοδηγητική αφετηρία (τι θα ξεκλειδώσει μόλις μπουν δεδομένα).
   const hasActivity = grossIncome>0 || expensesTotal>0 || rentAccruedYear>0 || book.length>0
@@ -172,7 +176,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   const lockIcon = <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
   const accountantMore: ActionMenuItem[] = [
     { key:'excel', label:'Μόνο το Excel', icon:<Download size={14}/>, onClick:exportBundle,
-      description:'Κινήσεις και κατάσταση αποτελεσμάτων σε ένα αρχείο. Περιέχεται ήδη στον φάκελο.' },
+      description:'Κινήσεις και κατάσταση αποτελεσμάτων σε ένα αρχείο. Περιέχεται ήδη στο βιβλίο εργασίας ακινήτου.' },
     // Ο ΣΥΝΔΕΣΜΟΣ ΒΓΗΚΕ ΑΠΟ ΤΟ «⋯» (17/11/2026): είναι πια το ορατό κουμπί
     // «Στείλε στον λογιστή σου» δίπλα στον φάκελο (`accountantSend` πιο κάτω).
     // ΤΟ ΚΛΕΙΔΩΜΕΝΟ ΦΑΙΝΕΤΑΙ ΕΚΕΙ ΠΟΥ ΠΑΤΙΕΤΑΙ: το λουκέτο στη θέση του
@@ -189,7 +193,10 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   ]
   // Χωρίς πακέτο το πάτημα πηγαίνει στις Ρυθμίσεις (shareWithAccountant), όπως
   // έκανε και η γραμμή του μενού που αντικαθιστά.
-  const accountantSend = { label: acctLink ? 'Ο σύνδεσμος είναι έτοιμος' : ACCOUNTANT_SEND_LABEL, onClick: shareWithAccountant, busy: acctBusy,
+  // «ΣΥΝΔΕΣΜΟΣ» ΚΑΙ ΟΧΙ «ΣΤΕΙΛΕ» (αξιολόγηση 2, Υ5). Δίπλα του το πακέτο ανά ΑΦΜ
+  // έχει το δικό του «Στείλε», που στέλνει αρχείο. Αυτό εδώ δίνει πρόσβαση
+  // ανάγνωσης: δύο διαφορετικές πράξεις, δύο διαφορετικές λέξεις.
+  const accountantSend = { label: acctLink ? 'Ο σύνδεσμος είναι έτοιμος' : 'Σύνδεσμος για τον λογιστή', onClick: shareWithAccountant, busy: acctBusy,
     title: canAccountantPortal ? 'Σύνδεσμος χωρίς κωδικούς και χωρίς email, μόνο για ανάγνωση. Καλύπτει όλα τα ακίνητά σου.' : `Περιλαμβάνεται από το πακέτο «${PLANS[FEATURE_MIN_PLAN.e2_export].name}» και πάνω, όπως και η εξαγωγή Ε2.` }
   const accountantActions = acctLink ? (
     <>
@@ -275,7 +282,8 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               το δεύτερο επίπεδο. Η εμφάνιση δεν αλλάζει: ίδιο μέγεθος, ίδιο
               βάρος, ίδια απόσταση — αλλάζει μόνο τι ακούει ο αναγνώστης οθόνης. */}
           <h1 style={{ fontFamily: T.font.sans, fontSize:20, fontWeight:700, color:'var(--text-primary)', margin:0, letterSpacing:'0.1px' }}>Λογιστική</h1>
-          <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:'4px 0 0', fontFamily: T.font.sans }}>{subjectLabel} · έσοδα, φόρος και καθαρό αποτέλεσμα, με βάση τα πραγματικά σου δεδομένα.</p>
+          {/* Η ΚΑΤΑΣΤΑΣΗ ΦΑΙΝΕΤΑΙ ΗΔΗ ΣΤΗ ΜΠΑΡΑ (αξιολόγηση 2, Χ1): ο υπότιτλος λέει μόνο τι έχει η οθόνη. */}
+          <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:'4px 0 0', fontFamily: T.font.sans }}>{businessMode ? 'Επιχείρηση (ΕΛΠ) · έσοδα' : 'Έσοδα'}, φόρος και καθαρό αποτέλεσμα.</p>
           {/* ══════════════════════════════════════════════════════════════
               Ο ΣΥΝΙΔΙΟΚΤΗΤΗΣ ΠΡΕΠΕΙ ΝΑ ΞΕΡΕΙ ΤΙ ΚΟΙΤΑΖΕΙ
 
@@ -486,7 +494,10 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               : 'Χωρίς φόρο εισοδήματος: όλο το ποσό είναι φόροι και τέλη ακινήτου. ')
             : ''}
           {year===athensYear() ? 'Ενδεικτικά.' : `Ενδεικτικά. Το ένα δωδέκατο είναι ${eur(provision.monthly)} τον μήνα.`}
-          {!businessMode && year===athensYear() && rentTaxYear && <>
+          {/* Ο ΙΔΙΟΣ ΑΡΙΘΜΟΣ ΔΕΝ ΓΡΑΦΕΤΑΙ ΔΕΥΤΕΡΗ ΦΟΡΑ (αξιολόγηση 2, Μ2). Οταν η
+              εκτίμηση όλης της χρονιάς βγαίνει ίδια με τον φόρο εισοδήματος από
+              πάνω, η πρόταση έλεγε το ίδιο ποσό δεύτερη φορά. */}
+          {!businessMode && year===athensYear() && rentTaxYear && Math.abs(rentTaxYear.tax-(provision.annualTaxTotal-provision.propertyTaxes))>=0.005 && <>
             {' '}<strong style={{ fontWeight:600, color:'var(--text-secondary)' }}>{rentTaxBasisLabel(rentTaxYear.income.basis, year)}: {eur(rentTaxYear.tax)}</strong>
             {` φόρος ενοικίων${isCoOwned ? ' για όλο το ακίνητο' : ''}, ο ίδιος αριθμός με την ${navLabel('overview')}.`}
           </>}
@@ -769,7 +780,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               {(mode==='professional'?book.slice(-14).reverse():recentLedger).map((e,i,arr)=>(
                 <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 0', borderBottom:i<arr.length-1?'1px solid var(--border-subtle)':'none' }}>
                   <span style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', width:46, flexShrink:0 }}>{e.date.slice(8,10)}/{e.date.slice(5,7)}</span>
-                  <span className="po-elide" style={{ flex:1, minWidth:'8ch', fontSize: 'var(--fs-base)', color:'var(--text-primary)', fontFamily: T.font.sans }}>{e.description}</span>
+                  <span className="po-elide" style={{ flex:1, minWidth:'8ch', fontSize: 'var(--fs-base)', color:'var(--text-primary)', fontFamily: T.font.sans }}>{moveLabel(e.description)}</span>
                   <span style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-primary)', fontVariantNumeric:'tabular-nums', fontFamily: T.font.sans, width:92, textAlign:'right' }}>{e.type==='income'?'+':'−'}{eur(e.amount)}</span>
                   {mode==='professional'&&<span title="Υπόλοιπο μετά την κίνηση" style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', width:80, textAlign:'right' }}><span className="sr-only">Υπόλοιπο μετά την κίνηση </span>{feSigned(e.balance)}</span>}
                 </div>
@@ -791,11 +802,11 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           του ανθρώπου που θέλει μόνο να ξέρει πού βρίσκεται. */}
       <div style={card}>
         <button onClick={()=>setAdvancedOpen(o=>!o)} aria-expanded={advancedOpen} className="acc-toggle acc-row">
-          <ChevronRight size={16} style={{ color:'var(--text-tertiary)', flexShrink:0, transform:advancedOpen?'rotate(90deg)':'none', transition:'transform 0.18s' }}/>
           <div style={{ flex:1, minWidth:0 }}>
             <p style={{ ...cardTitle, margin:0 }}>Προχωρημένα εργαλεία</p>
             <p style={{ fontSize: 'var(--fs-note)', color:'var(--text-tertiary)', margin:'3px 0 0', fontFamily: T.font.sans, lineHeight:1.5 }}>{advancedSummary}</p>
           </div>
+          <ChevronDown size={18} aria-hidden style={{ color:'var(--text-tertiary)', flexShrink:0, transform:advancedOpen?'rotate(180deg)':'none', transition:'transform 0.18s' }}/>
         </button>
         {advancedOpen && (
         <div style={{ display:'flex', flexDirection:'column', gap:16, marginTop:16 }}>
