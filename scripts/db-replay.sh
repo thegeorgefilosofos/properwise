@@ -278,6 +278,14 @@ if ! ftout=$($PSQL -d posdb -f "$ROOT/scripts/db/firm-terms-probe.sql" 2>&1); th
   exit 1
 fi
 probes=$((probes + $(echo "$ftout" | grep -c 'probe:' || true)))
+# myDATA μέσω λογιστή (20261123100000): δύο λογιστές, δύο πελάτες, ένας ξένος.
+# Μετά το rls-probe (διαβάζει το `probe.uid`), σε συναλλαγή που αναιρείται.
+if ! mdout=$($PSQL -d posdb -f "$ROOT/scripts/db/mydata-probe.sql" 2>&1); then
+  echo "🔴 Η σύνδεση myDATA δεν κρατά όσα υπόσχεται:"
+  echo "$mdout" | grep -m3 -E 'ERROR|ΔΙΑΡΡΟΗ|ΑΝΟΙΧΤΗ ΠΟΡΤΑ|ΠΑΡΑΒΙΑΣΗ|ΚΛΕΙΔΙ|ΓΚΠΔ|ΑΚΡΙΒΕΙΑ' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$mdout" | grep -c 'probe:' || true)))
 # Η αναίρεση του ιδιοκτήτη: σήμερα και χθες, με τη μέρα της Αθήνας (20261109100000).
 if ! fuout=$($PSQL -d posdb -f "$ROOT/scripts/db/owner-undo-day-probe.sql" 2>&1); then
   echo "🔴 Η αναίρεση του ιδιοκτήτη δεν κρατά το σήμερα και το χθες της Αθήνας:"

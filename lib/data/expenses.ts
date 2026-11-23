@@ -374,6 +374,12 @@ export async function inWindow<T = Pick<ExpensesRow, 'amount' | 'date' | 'catego
   return { rows: (data as T[] | null) ?? [], error: error as DbError | null };
 }
 
+/** Το αναγνωριστικό της δαπάνης ενός αποτυπώματος, ΜΟΝΟ του χρήστη (myDATA: ένα ανά ΜΑΡΚ). */
+export async function idByDedup(db: Db, userId: string, dedupHash: string): Promise<{ id: string | null; error: DbError | null }> {
+  const { data, error } = await db.from(TABLE).select('id').eq('user_id', userId).eq('dedup_hash', dedupHash).maybeSingle();
+  return { id: (data as { id: string } | null)?.id ?? null, error: error as DbError | null };
+}
+
 /** Υπάρχει δαπάνη με αυτό το αποτύπωμα; (`null` όταν η ανάγνωση απέτυχε.) */
 export async function hasDedup(db: Db, userId: string, dedupHash: string): Promise<boolean | null> {
   const { data, error } = await db.from(TABLE).select('id').eq('user_id', userId).eq('dedup_hash', dedupHash).limit(1);

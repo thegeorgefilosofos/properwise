@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ResponseDoc xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <response>
+    <errors>
+      <error>
+        <message>Entity VAT number is not authorized for this user</message>
+        <code>101</code>
+      </error>
+    </errors>
+    <statusCode>ValidationError</statusCode>
+  </response>
+</ResponseDoc>
