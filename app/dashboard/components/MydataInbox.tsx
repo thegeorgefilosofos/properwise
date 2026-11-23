@@ -60,7 +60,8 @@ export default function MydataInbox({ propertyId, userId, properties = [], onFil
   const [alerts, setAlerts] = useState<mydata.PendingDoc[]>([]);
   const [auto, setAuto] = useState<mydata.PendingDoc[]>([]);
   const [notProperty, setNotProperty] = useState(0);
-  const [showAuto, setShowAuto] = useState(false);
+  // Χωρίς τίποτα για έλεγχο, όσα μπήκαν μόνα τους φαίνονται ανοιχτά.
+  const [showAuto, setShowAuto] = useState<boolean | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, { slug: string; propertyId: string }>>({});
   const [busy, setBusy] = useState<string | null>(null);
@@ -138,6 +139,8 @@ export default function MydataInbox({ propertyId, userId, properties = [], onFil
     setOpen(d.id);
     onFiled?.();
   };
+
+  const autoOpen = showAuto ?? !rows.length;
 
   const summary = [
     rows.length ? plural(rows.length, 'για έλεγχο', 'για έλεγχο') : null,
@@ -232,10 +235,10 @@ export default function MydataInbox({ propertyId, userId, properties = [], onFil
       </div>
       {auto.length > 0 && (
         <div style={{ marginTop: rows.length ? T.sp.md : 0 }}>
-          <Btn variant="ghost" onClick={() => setShowAuto(v => !v)} expanded={showAuto} controls="md-auto-list">
-            {showAuto ? 'Κρύψε όσα μπήκαν μόνα τους' : `Μπήκαν μόνα τους · ${auto.length.toLocaleString('el-GR')}`}
+          <Btn variant="ghost" onClick={() => setShowAuto(!autoOpen)} expanded={autoOpen} controls="md-auto-list">
+            {autoOpen ? 'Κρύψε όσα μπήκαν μόνα τους' : `Μπήκαν μόνα τους · ${auto.length.toLocaleString('el-GR')}`}
           </Btn>
-          {showAuto && (
+          {autoOpen && (
             <ul id="md-auto-list" style={{ listStyle: 'none', margin: `${T.sp.sm}px 0 0`, padding: 0, display: 'grid', gap: 8 }}>
               {auto.map(d => (
                 <li key={d.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 14px', borderRadius: T.radius.card, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
