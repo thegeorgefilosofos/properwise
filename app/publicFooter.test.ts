@@ -38,7 +38,7 @@ const ok = (name: string, cond: boolean, extra = '') => {
 };
 
 const ROWS = 5;
-// Πρώτα φεύγουν οι ετικέτες, ώσπου να μη μείνει καμία, και ΜΕΤΑ οι οντότητες,
+// Πρώτα φεύγουν οι ετικέτες, ώσπου να μη μείνει καμία και ΜΕΤΑ οι οντότητες,
 // με το &amp; τελευταίο: αλλιώς ένα «&amp;lt;» θα γινόταν «<» (CodeQL).
 const stripTags = (s: string) => { let prev; do { prev = s; s = s.replace(/<[^>]*>/g, ''); } while (s !== prev); return s; };
 const decode = (s: string) => stripTags(s).replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').trim();
