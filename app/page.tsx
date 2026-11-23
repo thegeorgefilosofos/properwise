@@ -29,7 +29,6 @@ import {
 } from './landingContent'
 import { FaqList, NoaFeature, SectionHead, OwnerPlanCard, PlanCard, WorksCell, WORKS_FIRST } from './LandingParts'
 import { LandingStyles } from './LandingStyles'
-import { ToolsAndGuides } from './LandingLinks'
 import { languageAlternates } from '@/lib/i18n/paths'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -439,13 +438,13 @@ export default async function Landing() {
       <section className="lp-reveal" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP }}>
         <SectionHead over="Δες το μόνος σου" title="Πόσο σου αποδίδει πραγματικά;" sub={`Ενδεικτικά, με την κλίμακα ενοικίων ${scaleYear} της εφαρμογής.`} />
         <LandingCalculator cta={signupCta()} />
-        {/* ── Εργαλεία και οδηγοί: σύνδεσμοι μέσα στη σελίδα, από τους καταλόγους (LandingLinks.tsx).
-              ΜΕΣΑ ΣΤΗΝ ΙΔΙΑ ΕΝΟΤΗΤΑ ΜΕ ΤΟΝ ΥΠΟΛΟΓΙΣΤΗ (17/11/2026). Ήταν χωριστή
-              ενότητα με δική της κεφαλίδα και έλεγε το ίδιο με την από πάνω: «δες
-              το μόνος σου, χωρίς εγγραφή». Ο υπολογιστής είναι ο ένας από αυτούς
-              τους υπολογισμούς· οι υπόλοιποι στέκονται ακριβώς από κάτω του, με
-              τους τίτλους «Υπολογισμοί» και «Οδηγοί» των δύο στηλών για κεφαλίδα. ── */}
-        <div style={{ marginTop: CARD_GAP }}><ToolsAndGuides /></div>
+        {/* ── ΟΙ ΚΑΡΤΕΣ «ΥΠΟΛΟΓΙΣΜΟΙ / ΟΔΗΓΟΙ» ΒΓΗΚΑΝ (23/11/2026). Από 14/11 στέκονταν
+              εδώ, κάτω από τον υπολογιστή, με τρεις υπολογισμούς, τρεις οδηγούς και
+              τα «Όλοι οι…»· οι ίδιοι σύνδεσμοι ξανάβγαιναν λίγο πιο κάτω, στο
+              υποσέλιδο. Ο ιδιοκτήτης: «γιατί επαναλαμβανόμαστε και πάνω και κάτω;
+              βάλ' το από κάτω». Το υποσέλιδο τα κρατά, με τους δύο κόμβους
+              (/ergaleia, /odigos) ως πέμπτη γραμμή, ώστε κάθε υπολογισμός και κάθε
+              οδηγός να απέχει ένα πάτημα από την αρχική. ── */}
       </section>
 
       {/* ── Security & trust ── */}
