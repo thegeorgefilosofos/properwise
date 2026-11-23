@@ -26,16 +26,22 @@
   #app { position: absolute; left: 0; overflow: hidden; background: var(--mkt-bg-base); }
   .shot { position: absolute; left: 0; top: 0; overflow: hidden; display: none; background: var(--mkt-bg-base); }
   .shot img { position: absolute; left: 0; top: 0; max-width: none; }
-  /* Η κάμερα της συσκευής (σχέδιο της ταινίας, όχι οθόνη της εφαρμογής): το χαρτί και το κλείστρο. */
-  #cam { background: var(--mkt-bg-base); }
-  #paper { position: absolute; background: var(--mkt-text-primary); border-radius: 6px; box-shadow: 0 20px 50px color-mix(in srgb, var(--mkt-bg-base) 80%, transparent); }
-  #paper .h { position: absolute; font-weight: 800; color: var(--mkt-bg-base); white-space: nowrap; }
-  #paper .ln { position: absolute; background: color-mix(in srgb, var(--mkt-bg-base) 78%, transparent); border-radius: 2px; }
-  .corner { position: absolute; border: 0 solid var(--mkt-accent); }
+  /* Η κάμερα της συσκευής (σχέδιο της ταινίας, όχι οθόνη της εφαρμογής): ένα χαρτί λογαριασμού επίδειξης και το κλείστρο. */
+  #paper { position: absolute; background: var(--mkt-text-primary); color: var(--mkt-bg-base); border-radius: 4px; overflow: hidden;
+    box-shadow: 0 24px 60px color-mix(in srgb, var(--mkt-bg-base) 85%, transparent); }
+  #paper .pv { position: absolute; font-weight: 800; letter-spacing: -0.01em; white-space: nowrap; }
+  #paper .t { position: absolute; font-weight: 500; white-space: nowrap; }
+  #paper .k { position: absolute; font-weight: 500; white-space: nowrap; color: color-mix(in srgb, var(--mkt-bg-base) 70%, transparent); }
+  #paper .v { position: absolute; font-weight: 700; white-space: nowrap; text-align: right; }
+  #paper .tot { position: absolute; font-weight: 800; white-space: nowrap; }
+  #paper .rule { position: absolute; height: 1px; background: color-mix(in srgb, var(--mkt-bg-base) 30%, transparent); }
+  #paper .fine { position: absolute; background: color-mix(in srgb, var(--mkt-bg-base) 16%, transparent); border-radius: 2px; }
+  #paper .band { position: absolute; left: 0; right: 0; top: 0; background: color-mix(in srgb, var(--mkt-accent) 55%, var(--mkt-text-primary)); }
+  .corner { position: absolute; border: 0 solid var(--mkt-text-primary); }
   #shutter { position: absolute; border-radius: 50%; border: 0 solid var(--mkt-text-primary); display: flex; align-items: center; justify-content: center; }
   #shutter .in { border-radius: 50%; background: var(--mkt-text-primary); display: flex; align-items: center; justify-content: center; }
   #shutter svg path, #shutter svg circle { fill: none; stroke: var(--mkt-bg-base); stroke-linecap: round; stroke-linejoin: round; }
-  #dimAcc { position: absolute; left: 0; right: 0; background: var(--mkt-bg-base); }
+  #flash { position: absolute; inset: 0; background: var(--mkt-text-primary); }
   #glass { position: absolute; inset: 0; pointer-events: none;
     background: linear-gradient(118deg, color-mix(in srgb, var(--mkt-text-primary) 5%, transparent) 0%, transparent 30%); }
   /* Προβολέας: σκιά στο υπόλοιπο, λεπτό περίγραμμα στο στοιχείο. Καμία θόλωση. */
@@ -55,16 +61,13 @@
     background: color-mix(in srgb, var(--mkt-accent) 16%, transparent); }
   #pack .row .ic svg path { fill: none; stroke: var(--mkt-accent); stroke-width: 1.7; stroke-linejoin: round; stroke-linecap: round; }
   #pack .row .nm { font-weight: 600; color: var(--mkt-text-primary); }
-  #pack .row .sub { color: var(--mkt-text-tertiary); font-weight: 500; }
+  #pack .row .sub { color: var(--mkt-text-secondary); font-weight: 500; }
   #zone, #band { position: absolute; left: 0; right: 0; }
   .txt { position: absolute; text-align: center; white-space: normal; text-wrap: balance; }
   .msg { font-weight: 760; letter-spacing: -0.025em; line-height: 1.02; }
   .cap { font-weight: 740; line-height: 1.08; letter-spacing: -0.02em; }
-  .pill { position: absolute; border-radius: 999px; white-space: nowrap; display: flex; align-items: center; box-sizing: border-box; }
-  #badge { color: var(--mkt-text-secondary); background: var(--mkt-bg-surface); border: 1.5px solid var(--mkt-border-default); font-weight: 600; }
-  /* Ο μετρητής πατημάτων: ανεβαίνει τη στιγμή κάθε πατήματος, με παλμό. */
-  #taps { color: var(--mkt-text-primary); background: var(--mkt-bg-surface); border: 2px solid var(--mkt-accent); font-weight: 650; transform-origin: 50% 50%; }
-  #taps span { color: var(--mkt-accent); font-weight: 780; margin-left: .28em; }
+  #badge { position: absolute; border-radius: 999px; white-space: nowrap; display: flex; align-items: center; box-sizing: border-box;
+    color: var(--mkt-text-secondary); background: var(--mkt-bg-surface); border: 1.5px solid var(--mkt-border-default); font-weight: 600; }
   #logo { position: absolute; transform-origin: 50% 50%; }
   #url { position: absolute; border: 2px solid var(--mkt-accent); border-radius: 999px; color: var(--mkt-accent); font-weight: 650; text-align: center; }
 </style>
@@ -77,19 +80,19 @@
     <div class="btn" id="b1"></div><div class="btn" id="b2"></div><div class="btn" id="b3"></div><div class="btn" id="b4"></div>
     <div id="screen">
       <div id="app">
-        <div class="shot" id="S_dead"><img id="overEmpty" src="work/shots8/overview-empty.png" alt=""></div>
-        <div class="shot" id="S_tiles"><img src="work/shots8/scan-tiles.png" alt=""></div>
+        <div class="shot" id="S_dead"></div>
+        <div class="shot" id="S_tiles"></div>
         <div class="shot" id="cam">
-          <div id="paper"><div class="h">Λογαριασμός</div></div>
+          <div id="paper"><div class="band"></div></div>
           <div class="corner" id="c1"></div><div class="corner" id="c2"></div><div class="corner" id="c3"></div><div class="corner" id="c4"></div>
           <div id="shutter"><div class="in"><svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div></div>
+          <div id="flash"></div>
         </div>
-        <div class="shot" id="S_form"><img id="formBlank" src="work/shots8/scan-blank.png" alt=""></div>
-        <div class="shot" id="S_save"><img src="work/shots8/scan-full.png" alt=""></div>
-        <div class="shot" id="S_docs"><img id="docsBefore" src="work/shots8/docs.png" alt=""><img id="docsAfter" src="work/shots8/docs-after.png" alt=""></div>
-        <div class="shot" id="S_acc">
-          <img id="acc" src="work/shots8/acc.png" alt=""><img id="accBusy" src="work/shots8/acc-busy.png" alt="">
-          <div id="dimAcc"></div>
+        <div class="shot" id="S_form"></div>
+        <div class="shot" id="S_save"></div>
+        <div class="shot" id="S_docs"></div>
+        <div class="shot" id="S_acc"></div>
+        <div class="shot" id="S_zip">
           <div id="pack"><div class="grab"></div><div class="title"></div></div>
         </div>
         <div id="spot"></div>
@@ -111,51 +114,48 @@
   <div id="zone"></div>
   <div id="band"></div>
   <div id="texts"></div>
-  <div class="pill" id="badge">Δεδομένα επίδειξης</div>
-  <div class="pill" id="taps">Πατήματα:<span id="tapN">0</span></div>
+  <div id="badge">Δεδομένα επίδειξης</div>
   <img id="logo" src="/brand/properwise-logotypo-lefko.svg" alt="PROPERWISE">
   <div id="url">properwise.gr</div>
 </div>
 
 <!-- ΤΟ ΧΡΟΝΟΛΟΓΙΟ, ΜΙΑ ΠΗΓΗ: η ταινία και ο ήχος (sound.ts). Χρόνοι σε δευτερόλεπτα.
-     Κάθε αλλαγή οθόνης είναι κοπή της κάμερας ή πάτημα που μετριέται: πέντε πατήματα σε όλη τη ροή
-     (Σάρωσε έγγραφο, Φωτογράφισε, κλείστρο, Καταχώρηση, Κατέβασε). -->
+     v9: χωρίς μετρητή πατημάτων. Κάθε αλλαγή πλάνου είναι καθαρή κοπή της κάμερας. -->
 <script id="timeline" type="application/json">
 {
-  "fps": 30, "dur": 20.0, "bpm": 120,
-  "cuts": [1.8, 4.5, 5.4, 6.3, 9.3, 10.6, 12.8, 16.4],
-  "rowsOver": [2.0, 2.25, 2.5, 2.75],
-  "taps": [4.15, 5.0, 5.9, 10.05, 13.4],
-  "fill": [6.45, 7.25],
-  "ticks": [7.3, 7.5, 7.9],
-  "dates": 7.7,
-  "dings": [7.95, 11.3, 15.0],
-  "filed": 11.3,
-  "packUp": 13.7,
-  "rowsPack": [14.2, 14.45, 14.7, 14.95],
-  "close": 16.4,
-  "msgClose": [17.1, 17.5, 17.9],
-  "url": 18.5,
-  "chords": [[0, ["A2", "E3", "A3", "C4", "E4"]], [1.8, ["F2", "C3", "F3", "A3", "C4"]], [6.3, ["C3", "G3", "C4", "E4", "G4"]], [10.6, ["G2", "D3", "G3", "B3", "D4"]], [12.8, ["A2", "E3", "A3", "C4", "E4"]], [16.4, ["F2", "C3", "F3", "A3", "E4"]]]
+  "fps": 30, "dur": 17.3, "bpm": 120,
+  "cuts": [2.2, 4.4, 5.3, 6.4, 8.6, 9.8, 11.9, 13.0, 15.3],
+  "rowsOver": [2.35, 2.55, 2.75, 2.95],
+  "taps": [4.95, 6.0, 9.3, 12.5],
+  "fields": [6.6, 6.75, 6.9, 7.05, 7.2],
+  "ticks": [6.6, 6.75, 7.05],
+  "dings": [7.4, 10.4, 13.9],
+  "filed": 10.4,
+  "packUp": 13.0,
+  "rowsPack": [13.4, 13.55, 13.7, 13.85],
+  "close": 15.3,
+  "chords": [[0, ["A2", "E3", "A3", "C4", "E4"]], [2.2, ["F2", "C3", "F3", "A3", "C4"]], [6.4, ["C3", "G3", "C4", "E4", "G4"]], [9.8, ["G2", "D3", "G3", "B3", "D4"]], [11.9, ["A2", "E3", "A3", "C4", "E4"]], [15.3, ["F2", "C3", "F3", "A3", "E4"]]]
 }
 </script>
 <script>
 (() => {
 const TL = JSON.parse(document.getElementById('timeline').textContent);
-const FPS = TL.fps;
 const fmt = new URLSearchParams(location.search).get('f') === '45' ? '45' : '916';
 const W = 1080, H = fmt === '45' ? 1350 : 1920;
 const px = Math.round, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const $ = (id) => document.getElementById(id);
 const ease = (u) => (u <= 0 ? 0 : u >= 1 ? 1 : u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
 const lin = (t, a, d) => clamp((t - a) / d, 0, 1);
-const BOXES = { overview: { scan: { x: 16, y: 206, w: 175, h: 36 }, rows: [[307, 67], [373, 109], [483, 87], [570, 87]] },
-  photo: { x: 25, y: 255, w: 340, h: 112 },
+const CUT = TL.cuts;
+// Τα κουτιά της εφαρμογής (px εφαρμογής, από το work/shots9/boxes.json).
+const B = {
+  rows: [[307, 67], [373, 109], [483, 87], [570, 87]], photo: { x: 25, y: 255, w: 340, h: 112 },
   prov: { x: 26, y: 297, w: 338, h: 37 }, afm: { x: 26, y: 374, w: 162, h: 39 }, amount: { x: 26, y: 493, w: 304, h: 38 },
   dates: [{ x: 216, y: 383, w: 83, h: 21 }, { x: 40, y: 580, w: 83, h: 21 }, { x: 40, y: 658, w: 83, h: 21 }, { x: 216, y: 658, w: 83, h: 21 }],
   save: { x: 25, y: 794, w: 340, h: 36 }, power: { x: 29, y: 577, w: 332, h: 53 },
-  accCropY: 460, download: { x: 38, y: 523, w: 119, h: 36 }, afmBlock: { x: 26, y: 462, w: 338, h: 104 } };
-const PROV_N = 22;
+  download: { x: 38, y: 523, w: 119, h: 36 }, acc: { x: 20, y: 453, w: 260, h: 120 }, afmBlock: { x: 34, y: 458, w: 228, h: 110 },
+  REG: { overview: [250, 594], tiles: [80, 764], form: [220, 440], save: [520, 324], docs: [350, 494] },
+};
 // Τα περιεχόμενα του zip: PACK_FILES του lib/accounting/meetingPack.ts, με τη σειρά του packEntries.
 // Δείχνονται τα 00 έως 03, συνεχόμενα (το 04 ΑΑΔΕ μπαίνει μόνο όταν έχει ανέβει το προσυμπληρωμένο Ε2).
 const ZIP = 'Φάκελος λογιστή 2026 ΑΦΜ 099123456.zip';
@@ -165,16 +165,23 @@ const PACK = [
   ['sheet', '02 Έλεγχος φακέλου.xlsx', ''],
   ['folder', '03 Παραστατικά', 'ένας φάκελος ανά ακίνητο'],
 ];
+// Το χαρτί της κάμερας: λογαριασμός επίδειξης με τα ίδια στοιχεία που διαβάζει μετά η εφαρμογή
+// (READ του capture.mjs). Πάροχος πλασματικός, χωρίς μάρκα υπαρκτής εταιρείας.
+const BILL = {
+  provider: 'Πάροχος Ενέργειας Α.Ε.', title: 'Λογαριασμός ρεύματος', afm: 'ΑΦΜ 090000045',
+  rows: [['Περίοδος', 'Οκτώβριος 2026'], ['Έκδοση', '05/11/2026'], ['Λήξη', '30/11/2026'], ['Κατανάλωση', '312 kWh']],
+  total: ['Σύνολο', '84,50€'],
+};
 
 // ── ΔΙΑΤΑΞΗ ───────────────────────────────────────────────────────────────
-// Ζώνη λεζάντας πάνω (συμπαγής ως zoneEnd, διαβάθμιση 60px), ζώνη ασφαλείας κάτω (από bandTop, διαβάθμιση 60px).
-// Το περιεχόμενο κάθε πλάνου πέφτει ανάμεσα: C0 ως C1.
+// Πάνω: λεζάντα στη ζώνη 250 έως 420 και η ετικέτα «Δεδομένα επίδειξης». Η ζώνη είναι συμπαγής ως το zoneEnd,
+// με διαβάθμιση 60 px. Κάτω: η εικόνα σβήνει ομαλά από το y 1536 ως το 1880 (καθαρό τελείωμα, χωρίς κενό).
 const L = fmt === '916'
-  ? { zoneEnd: 520, bandTop: 1500, capMid: 335, capSize: 66, capW: 980, pillY: 446, pillH: 66, tapsSize: 40, badgeSize: 30,
-      hookY: [790, 910], hookSize: 100, logoW: 660, logoY: 640, cMsgY: 820, cMsgSize: 84, cMsgGap: 100, urlY: 1160, urlSize: 46 }
-  : { zoneEnd: 300, bandTop: 1290, capMid: 120, capSize: 54, capW: 1000, pillY: 222, pillH: 58, tapsSize: 36, badgeSize: 26,
-      hookY: [560, 670], hookSize: 92, logoW: 600, logoY: 420, cMsgY: 590, cMsgSize: 76, cMsgGap: 90, urlY: 900, urlSize: 42 };
-const C0 = L.zoneEnd + 60, C1 = L.bandTop;
+  ? { zoneEnd: 512, C0: 572, C1: 1536, bandTo: 1880, capMid: 335, capSize: 66, capW: 980, badgeY: 446, badgeSize: 32,
+      hookY: [800, 920], hookSize: 100, logoW: 640, logoY: 720, cMsgY: 880, cMsgSize: 80, cMsgGap: 96, urlY: 1190, urlSize: 46 }
+  : { zoneEnd: 300, C0: 340, C1: 1290, bandTo: 1350, capMid: 120, capSize: 54, capW: 1000, badgeY: 222, badgeSize: 28,
+      hookY: [560, 670], hookSize: 92, logoW: 600, logoY: 430, cMsgY: 580, cMsgSize: 72, cMsgGap: 86, urlY: 880, urlSize: 42 };
+const C0 = L.C0, C1 = L.C1;
 // Η συσκευή σχεδιάζεται σε K px ανά px εφαρμογής· κάθε πλάνο τη μεγεθύνει σε s px κάδρου ανά px (Z = s/K).
 const K = 2, SB = 47, APPW = 390, APPH = 844;
 const SW = APPW * K, SH = (SB + APPH) * K, BEZ = 13, PW = SW + 2 * BEZ, PH = SH + 2 * BEZ, RAD = 54 * K, PRAD = RAD + BEZ;
@@ -193,40 +200,57 @@ ico('sig', 286, 18, 12); ico('wifi', 310, 16, 12); ico('batt', 332, 27, 13);
 Object.assign($('app').style, { top: SB * K + 'px', width: SW + 'px', height: APPH * K + 'px' });
 for (const l of document.querySelectorAll('.shot')) Object.assign(l.style, { width: SW + 'px', height: APPH * K + 'px' });
 const place = (el, r) => Object.assign(el.style, { left: r.x * K + 'px', top: r.y * K + 'px', width: r.w * K + 'px', height: r.h * K + 'px' });
-for (const im of document.querySelectorAll('#S_dead > img, #S_tiles img, #S_form > img, #S_save img, #S_docs img'))
-  Object.assign(im.style, { width: SW + 'px', height: APPH * K + 'px' });
-for (const id of ['acc', 'accBusy']) place($(id), { x: 0, y: BOXES.accCropY, w: 390, h: APPH - BOXES.accCropY });
-const addImg = (parent, src, r) => { const im = document.createElement('img'); im.src = src; place(im, r); im.style.visibility = 'hidden'; parent.appendChild(im); return im; };
+const addImg = (parent, src, r, hidden = true) => { const im = document.createElement('img'); im.src = src; place(im, r); if (hidden) im.style.opacity = '0'; parent.appendChild(im); return im; };
+const region = (parent, name, [y, h]) => addImg(parent, `work/shots9/${name}.png`, { x: 0, y, w: 390, h }, false);
 const pad2 = (r) => ({ x: r.x - 2, y: r.y - 2, w: r.w + 4, h: r.h + 4 });
-// Οι γραμμές των προθεσμιών (λήψεις της ίδιας οθόνης), η μία μετά την άλλη.
-const prows = BOXES.overview.rows.map(([y, h], i) => addImg($('S_dead'), `work/shots8/prow-${i}.png`, { x: 17, y, w: 356, h }));
-// Τα πεδία της σάρωσης: ο Πάροχος γράμμα γράμμα, μετά ΑΦΜ, ημερομηνίες και ποσό.
-const provs = Array.from({ length: PROV_N + 1 }, (_, i) => addImg($('S_form'), `work/shots8/prov-${String(i).padStart(2, '0')}.png`, pad2(BOXES.prov)));
-const afmIm = addImg($('S_form'), 'work/shots8/afm-1.png', pad2(BOXES.afm));
-const dateIms = BOXES.dates.map((r, i) => addImg($('S_form'), `work/shots8/date-${i}.png`, pad2(r)));
-const amountIm = addImg($('S_form'), 'work/shots8/amount-1.png', pad2(BOXES.amount));
-const TICKS = [[BOXES.prov, 't1', 32], [BOXES.afm, 't2', 32], [BOXES.amount, 't3', 32]];
-for (const [r, id, off] of TICKS) Object.assign($(id).style, { left: (r.x + r.w - off) * K + 'px', top: (r.y + r.h / 2 - 11) * K + 'px', width: 22 * K + 'px', height: 22 * K + 'px' });
-// Η κάμερα: το χαρτί του πάγκου (επικεφαλίδα «Λογαριασμός» και γραμμές χρεώσεων) και το κλείστρο.
+// Οι λήψεις της εφαρμογής, μόνο η περιοχή που δείχνει κάθε πλάνο.
+region($('S_dead'), 'overview-empty', B.REG.overview);
+const prows = B.rows.map(([y, h], i) => addImg($('S_dead'), `work/shots9/prow-${i}.png`, { x: 17, y, w: 356, h }));
+region($('S_tiles'), 'scan-tiles', B.REG.tiles);
+region($('S_form'), 'scan-blank', B.REG.form);
+// Τα πεδία της σάρωσης εμφανίζονται ολόκληρα, το ένα μετά το άλλο: Πάροχος, ΑΦΜ, έκδοση, Ποσό, λήξη.
+const fieldIms = [
+  addImg($('S_form'), 'work/shots9/prov-1.png', pad2(B.prov)), addImg($('S_form'), 'work/shots9/afm-1.png', pad2(B.afm)),
+  addImg($('S_form'), 'work/shots9/date-0.png', pad2(B.dates[0])), addImg($('S_form'), 'work/shots9/amount-1.png', pad2(B.amount)),
+  addImg($('S_form'), 'work/shots9/date-1.png', pad2(B.dates[1])),
+];
+region($('S_save'), 'scan-full', B.REG.save);
+region($('S_docs'), 'docs', B.REG.docs);
+const docsAfter = region($('S_docs'), 'docs-after', B.REG.docs); docsAfter.style.opacity = '0';
+const acc = addImg($('S_acc'), 'work/shots9/acc.png', B.acc, false), accBusy = addImg($('S_acc'), 'work/shots9/acc-busy.png', B.acc);
+const TICKS = [[B.prov, 't1'], [B.afm, 't2'], [B.amount, 't3']];
+for (const [r, id] of TICKS) Object.assign($(id).style, { left: (r.x + r.w - 32) * K + 'px', top: (r.y + r.h / 2 - 11) * K + 'px', width: 22 * K + 'px', height: 22 * K + 'px' });
+
+// Το χαρτί: πλάτος 250 px εφαρμογής, γράμματα 13 έως 20 px εφαρμογής (≥ 34 px στο κάδρο).
+const PAPER = { x: 66, y: 26, w: 258, h: 300 };
 {
-  const paper = $('paper'), P = { x: 82, y: 96, w: 226, h: 314 };
-  place(paper, P); paper.style.transform = 'rotate(-2.2deg)';
-  Object.assign(paper.querySelector('.h').style, { left: 18 * K + 'px', top: 22 * K + 'px', fontSize: 17 * K + 'px' });
-  for (let i = 0; i < 10; i++) { const d = document.createElement('div'); d.className = 'ln';
-    Object.assign(d.style, { left: 18 * K + 'px', top: (60 + i * 22) * K + 'px', width: (120 + (i * 37) % 90) * K + 'px', height: 6 * K + 'px' }); paper.appendChild(d); }
-  const G = { x: 60, y: 76, w: 270, h: 354 }, cl = 26, bw = 3 * K;
+  const paper = $('paper'); place(paper, PAPER);
+  const at = (cls, txt, x, y, size, extra = {}) => { const d = document.createElement('div'); d.className = cls; d.textContent = txt;
+    Object.assign(d.style, { left: x * K + 'px', top: y * K + 'px', fontSize: size * K + 'px', lineHeight: 1.15, ...extra }); paper.appendChild(d); return d; };
+  paper.querySelector('.band').style.height = 6 * K + 'px';
+  at('pv', BILL.provider, 16, 18, 16);
+  at('t', BILL.title, 16, 40, 13.5);
+  at('k', BILL.afm, 16, 60, 13);
+  const rule = (y) => { const d = document.createElement('div'); d.className = 'rule'; Object.assign(d.style, { left: 16 * K + 'px', right: 16 * K + 'px', top: y * K + 'px' }); paper.appendChild(d); };
+  rule(84);
+  BILL.rows.forEach(([k, v], i) => { at('k', k, 16, 94 + i * 26, 13); at('v', v, 0, 94 + i * 26, 13, { right: 16 * K + 'px', left: 'auto' }); });
+  rule(200);
+  at('tot', BILL.total[0], 16, 212, 17); at('tot', BILL.total[1], 0, 208, 22, { right: 16 * K + 'px', left: 'auto' });
+  for (let i = 0; i < 4; i++) { const d = document.createElement('div'); d.className = 'fine';
+    Object.assign(d.style, { left: 16 * K + 'px', top: (246 + i * 11) * K + 'px', width: (150 + (i * 41) % 70) * K + 'px', height: 4 * K + 'px' }); paper.appendChild(d); }
+  const G = { x: 52, y: 14, w: 286, h: 324 }, cl = 26, bw = 3 * K;
   [['c1', 0, 0, 'Top', 'Left'], ['c2', 1, 0, 'Top', 'Right'], ['c3', 0, 1, 'Bottom', 'Left'], ['c4', 1, 1, 'Bottom', 'Right']].forEach(([id, rx, ry, a, b]) => {
     Object.assign($(id).style, { left: (G.x + rx * (G.w - cl)) * K + 'px', top: (G.y + ry * (G.h - cl)) * K + 'px', width: cl * K + 'px', height: cl * K + 'px',
       ['border' + a + 'Width']: bw + 'px', ['border' + b + 'Width']: bw + 'px', ['border' + a + b + 'Radius']: 8 * K + 'px' });
   });
-  const sh = $('shutter'), SR0 = 36;
-  Object.assign(sh.style, { left: (195 - SR0) * K + 'px', top: (470 - SR0) * K + 'px', width: 2 * SR0 * K + 'px', height: 2 * SR0 * K + 'px', borderWidth: 3 * K + 'px' });
-  Object.assign(sh.querySelector('.in').style, { width: 58 * K + 'px', height: 58 * K + 'px' });
-  Object.assign(sh.querySelector('svg').style, { width: 26 * K + 'px', height: 26 * K + 'px' });
+  const sh = $('shutter'), SR0 = 34;
+  Object.assign(sh.style, { left: (195 - SR0) * K + 'px', top: (374 - SR0) * K + 'px', width: 2 * SR0 * K + 'px', height: 2 * SR0 * K + 'px', borderWidth: 3 * K + 'px' });
+  Object.assign(sh.querySelector('.in').style, { width: 54 * K + 'px', height: 54 * K + 'px' });
+  Object.assign(sh.querySelector('svg').style, { width: 24 * K + 'px', height: 24 * K + 'px' });
   sh.querySelectorAll('path, circle').forEach((e) => { e.style.strokeWidth = '1.7'; });
 }
-// Το φύλλο του πακέτου, μέσα στην οθόνη.
-const PACK_BOX = { x: 0, y: 440, w: 390, h: 404 };
+// Το φύλλο του πακέτου, μέσα στην οθόνη· το σκίαστρο πίσω του είναι αδιαφανές (καμία διεπαφή από πίσω).
+const PACK_BOX = { x: 0, y: 492, w: 390, h: 352 };
 const pack = $('pack'); place(pack, PACK_BOX);
 Object.assign(pack.style, { borderRadius: `${20 * K}px ${20 * K}px 0 0` });
 Object.assign(pack.querySelector('.grab').style, { left: (195 - 18) * K + 'px', top: 8 * K + 'px', width: 36 * K + 'px', height: 5 * K + 'px' });
@@ -236,83 +260,73 @@ titleEl.textContent = ZIP;
 const ICON = { doc: 'M6 3 H13 L17 7 V20 H6 Z M13 3 V7 H17', sheet: 'M5 4 H18 V19 H5 Z M5 9 H18 M5 14 H18 M10 4 V19', folder: 'M3 7 H9 L11 9 H20 V18 H3 Z' };
 const packRows = PACK.map(([kind, name, sub], i) => {
   const r = document.createElement('div'); r.className = 'row';
-  Object.assign(r.style, { left: 20 * K + 'px', top: (64 + i * 58) * K + 'px', width: 350 * K + 'px', height: 58 * K + 'px', gap: 12 * K + 'px' });
+  Object.assign(r.style, { left: 20 * K + 'px', top: (62 + i * 58) * K + 'px', width: 350 * K + 'px', height: 58 * K + 'px', gap: 12 * K + 'px' });
   r.innerHTML = `<div class="ic" style="width:${34 * K}px;height:${34 * K}px"><svg viewBox="0 0 23 23" width="${21 * K}" height="${21 * K}"><path d="${ICON[kind]}"/></svg></div>`
-    + `<div><div class="nm" style="font-size:${16 * K}px">${name}</div>${sub ? `<div class="sub" style="font-size:${13 * K}px;margin-top:${2 * K}px">${sub}</div>` : ''}</div>`;
+    + `<div><div class="nm" style="font-size:${16 * K}px">${name}</div>${sub ? `<div class="sub" style="font-size:${13.5 * K}px;margin-top:${2 * K}px">${sub}</div>` : ''}</div>`;
   pack.appendChild(r); return r;
 });
-$('dimAcc').style.top = '0px'; $('dimAcc').style.height = APPH * K + 'px';
 
-// ── ΠΛΑΝΑ: καθαρές κοπές, ένα κάδρο το καθένα ────────────────────────────
-// s: px κάδρου ανά px εφαρμογής· [ay, sy]: το σημείο ay της εφαρμογής πέφτει στο y κάδρου sy.
-// Κανένα πλάνο δεν δείχνει την κάτω μπάρα ή την «Καταχώρηση» κάτω από το C1.
-const CUT = TL.cuts;
+// ── ΠΛΑΝΑ: καθαρές κοπές ─────────────────────────────────────────────────
+// s: px κάδρου ανά px εφαρμογής· [ay, sy]: το y εφαρμογής ay πέφτει στο y κάδρου sy· cx: το x εφαρμογής στο κέντρο.
+// top, bottom: τα όρια κάρτας όπου αρχίζει και τελειώνει η οθόνη στο πλάνο· έξω από αυτά η οθόνη είναι κενή.
+// Κάθε πλάνο μπαίνει με μικρό πλησίασμα της κάμερας (1,025 → 1 σε 0,3″).
 const SHOTS = [
-  { id: 'S_dead', from: CUT[0], to: CUT[1], s: 1.95, ay: 196, sy: C0 + 10 },
-  { id: 'S_tiles', from: CUT[1], to: CUT[2], s: 2.2, ay: 90, sy: C0 + 10 },
-  { id: 'cam', from: CUT[2], to: CUT[3], s: 2.0, ay: 76, sy: C0 + 10 },
-  { id: 'S_form', from: CUT[3], to: CUT[4], s: 2.2, ay: 232, sy: C0 + 60 },
-  { id: 'S_save', from: CUT[4], to: CUT[5], s: 2.2, ay: 842, sy: C1 - 16 },
-  { id: 'S_docs', from: CUT[5], to: CUT[6], s: 2.2, ay: 357, sy: C0 + 10 },
-  { id: 'S_acc', from: CUT[6], to: CUT[7], s: 2.45, ay: 780, sy: C1 },
+  { id: 'S_dead', from: CUT[0], to: CUT[1], s: 2.6, ay: 264, sy: C0, top: 264, bottom: 658 },
+  { id: 'S_tiles', from: CUT[1], to: CUT[2], s: 2.6, ay: 86, sy: C0, top: 86 },
+  { id: 'cam', from: CUT[2], to: CUT[3], s: 2.6, ay: 14, sy: C0 - 10, top: 0 },
+  { id: 'S_form', from: CUT[3], to: CUT[4], s: 2.6, ay: 236, sy: C0, top: 236, bottom: 614 },
+  { id: 'S_save', from: CUT[4], to: CUT[5], s: 3.1, ay: 538, sy: C0, top: 538 },
+  { id: 'S_docs', from: CUT[5], to: CUT[6], s: 2.6, ay: 365, sy: C0, top: 365, bottom: 750 },
+  { id: 'S_acc', from: CUT[6], to: CUT[7], s: 4.4, ay: 513, sy: (C0 + C1) / 2, cx: 148, top: 453 },
+  { id: 'S_zip', from: CUT[7], to: CUT[8], s: 2.6, ay: 844, sy: C1 - 22, top: 0 },
 ];
 const shotAt = (t) => SHOTS.find((x) => t >= x.from && t < x.to) || null;
 
 // ── ΚΕΙΜΕΝΑ ──────────────────────────────────────────────────────────────
 const texts = $('texts'), T = [];
-// Είσοδος: fi δευτερόλεπτα· έξοδος: fo δευτερόλεπτα μετά το tout (διασταύρωση με το επόμενο, χωρίς κενό).
-function text(cls, s, style, tin, tout, fi = 0.25, fo = 0.25) {
+function text(cls, s, style, tin, tout) {
   const el = document.createElement('div'); el.className = 'txt ' + cls; el.textContent = s;
-  Object.assign(el.style, style); texts.appendChild(el); T.push({ el, tin, tout, fi, fo }); return el;
+  Object.assign(el.style, style); texts.appendChild(el); T.push({ el, tin, tout }); return el;
 }
 const centered = (top, w, size) => ({ left: px((W - w) / 2) + 'px', top: top + 'px', width: w + 'px', fontSize: size + 'px' });
-// Αγκίστρι: ολόκληρο από το καρέ 0 ως την πρώτη κοπή.
+// Αγκίστρι: ολόκληρο από το καρέ 0 ως την πρώτη κοπή (2,2″).
 const HOOK = ['Μία φωτογραφία.', 'Όλα στη θέση τους.'];
-const hookEls = HOOK.map((w, i) => text('msg', w, { ...centered(L.hookY[i] - L.hookSize / 2, 1060, L.hookSize), color: i === 1 ? 'var(--mkt-accent)' : '' }, -1, CUT[0], 0, 0));
+const hookEls = HOOK.map((w, i) => text('msg', w, { ...centered(L.hookY[i] - L.hookSize / 2, 1060, L.hookSize), color: i === 1 ? 'var(--mkt-accent)' : '' }, 0, CUT[0]));
+// Λεζάντες: αλλάζουν στην κοπή, στο ίδιο καρέ (κανένα κενό, καμία επικάλυψη).
 const CAPS = [
   [CUT[0], CUT[1], 'Οι προθεσμίες έρχονται μόνες τους.'],
   [CUT[1], CUT[5], 'Μία φωτογραφία συμπληρώνει τα στοιχεία.'],
   [CUT[5], CUT[6], 'Το παραστατικό μπαίνει στον φάκελό του.'],
-  [CUT[6], CUT[7], 'Ο φάκελος του λογιστή, σε ένα zip.'],
+  [CUT[6], CUT[8], 'Ο φάκελος του λογιστή, σε ένα zip.'],
 ];
-// Διασταύρωση στην κοπή: η παλιά σβήνει στα 0,15″ πριν, η νέα μπαίνει από τα 0,05″ πριν ως τα 0,15″ μετά.
-const capEls = CAPS.map(([a, b, s]) => text('cap', s, centered(0, L.capW, L.capSize), a === CUT[0] ? a : a - 0.05, b,
-  a === CUT[0] ? 0 : 0.2, b === CUT[7] ? 0 : 0.15));
+const capEls = CAPS.map(([a, b, s]) => text('cap', s, centered(0, L.capW, L.capSize), a, b));
+// Κλείσιμο: σήμα, μήνυμα και διεύθυνση μαζί, σε ένα χτύπημα.
 const MSG = ['Κάθε ακίνητο.', 'Κάθε υποχρέωση.', 'Ένα μέρος.'];
-MSG.forEach((m, i) => text('msg', m, { ...centered(L.cMsgY + i * L.cMsgGap, 1060, L.cMsgSize), color: i === 2 ? 'var(--mkt-accent)' : '' }, TL.msgClose[i], TL.dur + 1, 0.3, 0));
-function vis(t, { tin, tout, fi, fo }) {
-  if (tin < 0) return t < tout ? 1 : 0;
-  const a = fi > 0 ? lin(t, tin, fi) : t >= tin ? 1 : 0;
-  const b = fo > 0 ? 1 - lin(t, tout - fo, fo) : t < tout ? 1 : 0;
-  return Math.min(a, b);
-}
-const badge = $('badge'), tapsEl = $('taps'), logo = $('logo'), url = $('url'), zone = $('zone'), band = $('band');
-Object.assign(badge.style, { fontSize: L.badgeSize + 'px', height: L.pillH + 'px', padding: '0 24px', top: L.pillY + 'px' });
-Object.assign(tapsEl.style, { fontSize: L.tapsSize + 'px', height: L.pillH + 'px', padding: '0 26px', top: L.pillY + 'px', left: '56px' });
+const closeEls = MSG.map((m, i) => text('msg', m, { ...centered(L.cMsgY + i * L.cMsgGap, 1060, L.cMsgSize), color: i === 2 ? 'var(--mkt-accent)' : '' }, TL.close, TL.dur + 1));
+const badge = $('badge'), logo = $('logo'), url = $('url'), zone = $('zone'), band = $('band');
+Object.assign(badge.style, { fontSize: L.badgeSize + 'px', height: px(L.badgeSize * 1.7) + 'px', padding: '0 26px', top: L.badgeY + 'px' });
 Object.assign(logo.style, { width: L.logoW + 'px', left: (W - L.logoW) / 2 + 'px', top: L.logoY + 'px' });
 Object.assign(url.style, { fontSize: L.urlSize + 'px', width: '520px', left: (W - 520) / 2 + 'px', top: L.urlY + 'px', padding: '22px 0' });
 Object.assign(zone.style, { top: 0, height: L.zoneEnd + 60 + 'px',
   background: `linear-gradient(180deg, var(--mkt-bg-base) 0px, var(--mkt-bg-base) ${L.zoneEnd}px, transparent ${L.zoneEnd + 60}px)` });
-Object.assign(band.style, { top: L.bandTop - 60 + 'px', height: H - L.bandTop + 60 + 'px',
-  background: `linear-gradient(0deg, var(--mkt-bg-base) 0px, var(--mkt-bg-base) ${H - L.bandTop}px, transparent ${H - L.bandTop + 60}px)` });
+Object.assign(band.style, { top: C1 + 'px', height: H - C1 + 'px',
+  background: `linear-gradient(180deg, transparent 0px, color-mix(in srgb, var(--mkt-bg-base) 80%, transparent) ${(L.bandTo - C1) * 0.6}px, var(--mkt-bg-base) ${L.bandTo - C1}px)` });
 
 // Προβολέας ανά πλάνο: [από, ως, κουτί, σκιά]. Ο ΕΝΦΙΑ δεν φωτίζεται ποτέ: η σάρωση είναι λογαριασμός ρεύματος.
 const SPOTS = [
-  [10.75, CUT[6], BOXES.power, 0.65],
-  [CUT[6], TL.packUp + 0.25, BOXES.afmBlock, 1.0],   // σβήνει αφού το σκίαστρο του φύλλου γίνει αδιαφανές
+  [CUT[5] + 0.1, CUT[6], B.power, 0.65],
+  [CUT[6], CUT[7], B.afmBlock, 1.0],
 ];
 // Πατήματα: [χρόνος, σημείο εφαρμογής].
 const TAPS = [
-  [TL.taps[0], [BOXES.overview.scan.x + 88, BOXES.overview.scan.y + 18]],
-  [TL.taps[1], [BOXES.photo.x + 170, BOXES.photo.y + 50]],
-  [TL.taps[2], [195, 470]],
-  [TL.taps[3], [BOXES.save.x + 170, BOXES.save.y + 18]],
-  [TL.taps[4], [BOXES.download.x + 60, BOXES.download.y + 18]],
+  [TL.taps[0], [B.photo.x + 170, B.photo.y + 50]],
+  [TL.taps[1], [195, 374]],
+  [TL.taps[2], [B.save.x + 170, B.save.y + 18]],
+  [TL.taps[3], [B.download.x + 60, B.download.y + 18]],
 ];
 
 // ── render(t) ────────────────────────────────────────────────────────────
 const S = (el) => el.style;
-const stepCount = (t, list) => list.filter((b) => t >= b).length;
 window.render = function render(t) {
   const sig = [];
   Object.assign(S($('g1')), { width: '1300px', height: '1300px', left: px(-260 + 180 * Math.sin(t / 4.2)) + 'px', top: px(H * 0.2 + 120 * Math.cos(t / 5.3)) + 'px' });
@@ -321,59 +335,56 @@ window.render = function render(t) {
   S($('rig')).display = on ? 'block' : 'none';
   for (const x of SHOTS) S($(x.id)).display = sh && sh.id === x.id ? 'block' : 'none';
   if (sh) {
-    const Z = sh.s / K, fx = BEZ + 195 * K, fy = BEZ + (SB + sh.ay) * K;
-    const tr = `translate(${px(W / 2 - fx * Z)}px, ${px(sh.sy - fy * Z)}px) scale(${Z.toFixed(5)})`;
+    const push = 1 + 0.025 * (1 - ease(lin(t, sh.from, 0.3)));
+    const Z = sh.s * push / K, fx = BEZ + (sh.cx ?? 195) * K, fy = BEZ + (SB + sh.ay) * K;
+    const tr = `translate(${(W / 2 - fx * Z).toFixed(2)}px, ${(sh.sy - fy * Z).toFixed(2)}px) scale(${Z.toFixed(5)})`;
     S($('rig')).transform = tr; sig.push(sh.id, tr);
+    $(sh.id).style.clipPath = `inset(${sh.top * K}px 0 ${sh.bottom ? (APPH - sh.bottom) * K : 0}px 0)`;
   }
   // 1. Οι προθεσμίες εμφανίζονται μόνες τους, γραμμή γραμμή.
-  const np = stepCount(t, TL.rowsOver);
-  prows.forEach((im, i) => { im.style.visibility = i < np ? 'visible' : 'hidden'; });
-  // 3. Τα πεδία γεμίζουν από τη σάρωση.
-  const pi = Math.floor(lin(t, TL.fill[0], TL.fill[1] - TL.fill[0]) * PROV_N + 1e-6);
-  provs.forEach((im, i) => { im.style.visibility = i === pi ? 'visible' : 'hidden'; });
-  afmIm.style.visibility = t >= TL.ticks[1] - 0.05 ? 'visible' : 'hidden';
-  dateIms.forEach((im) => { im.style.visibility = t >= TL.dates ? 'visible' : 'hidden'; });
-  amountIm.style.visibility = t >= TL.ticks[2] - 0.05 ? 'visible' : 'hidden';
+  prows.forEach((im, i) => { im.style.opacity = lin(t, TL.rowsOver[i], 0.15).toFixed(3); });
+  // 3. Τα πεδία εμφανίζονται ολόκληρα, με fade 0,15″ και κλιμάκωση 0,15″.
+  fieldIms.forEach((im, i) => { im.style.opacity = lin(t, TL.fields[i], 0.15).toFixed(3); });
   TL.ticks.forEach((b, k) => {
-    const u = lin(t, b, 0.18), el = $('t' + (k + 1));
+    const u = lin(t, b + 0.05, 0.18), el = $('t' + (k + 1));
     el.style.display = u > 0 && sh && sh.id === 'S_form' ? 'block' : 'none';
-    el.style.opacity = u.toFixed(3); el.style.transform = `scale(${(0.6 + 0.4 * u).toFixed(3)})`;
+    el.style.opacity = u.toFixed(3); el.style.transform = `scale(${(0.6 + 0.4 * ease(u)).toFixed(3)})`;
   });
-  sig.push(np, pi, t >= TL.dates);
+  // Το κλείστρο βυθίζεται στο πάτημα· σύντομη λάμψη 0,1″.
+  const sd = Math.max(0, 1 - Math.abs(t - TL.taps[1]) / 0.12);
+  S($('shutter')).transform = `scale(${(1 - 0.08 * sd).toFixed(4)})`;
+  const fl = t >= TL.taps[1] ? Math.max(0, 0.35 * (1 - (t - TL.taps[1]) / 0.12)) : 0;
+  S($('flash')).opacity = fl.toFixed(3);
   // 4. Ο φάκελος «Ρεύμα»: 1 → 2 αρχεία τη στιγμή που φτάνει το παραστατικό (δύο λήψεις της εφαρμογής).
-  const fu = lin(t, TL.filed, 0.06);
-  S($('docsAfter')).opacity = fu.toFixed(3);
-  // 5. «Κατέβασε» → «Ετοιμάζεται». Μετά ανεβαίνει το πακέτο, πάνω σε πλήρως αδιαφανές σκίαστρο.
-  const busy = t >= TL.taps[4] + 0.06;
-  S($('acc')).visibility = busy ? 'hidden' : 'visible'; S($('accBusy')).visibility = busy ? 'visible' : 'hidden';
-  const pk = ease(lin(t, TL.packUp, 0.35));
-  S(pack).display = pk > 0 ? 'block' : 'none';
-  S($('dimAcc')).opacity = lin(t, TL.packUp, 0.08).toFixed(3);   // πλήρως αδιαφανές πριν ανέβει το φύλλο: κανένα φάντασμα
+  docsAfter.style.opacity = lin(t, TL.filed, 0.06).toFixed(3);
+  // 5. «Κατέβασε» → «Ετοιμάζεται».
+  const busy = t >= TL.taps[3] + 0.06;
+  acc.style.opacity = busy ? '0' : '1'; accBusy.style.opacity = busy ? '1' : '0';
+  // 6. Το φύλλο του zip ανεβαίνει στην αρχή του πλάνου του.
+  const pk = ease(lin(t, TL.packUp, 0.3));
   S(pack).transform = `translateY(${px((1 - pk) * (PACK_BOX.h + 20) * K)}px)`;
   packRows.forEach((r, i) => { r.style.opacity = lin(t, TL.rowsPack[i], 0.15).toFixed(3); });
-  sig.push(fu.toFixed(3), busy, pk.toFixed(4), stepCount(t, TL.rowsPack));
+  sig.push(fl.toFixed(3), busy, pk.toFixed(4));
   // Προβολέας.
   let sp = null, so = 0, dim = 0;
-  for (const [a, b, r, d] of SPOTS) if (t >= a && t < b) { sp = r; dim = d; so = Math.min(CUT.includes(a) ? 1 : lin(t, a, 0.2), 1 - lin(t, b - 0.15, 0.15)); }
+  for (const [a, b, r, d] of SPOTS) if (t >= a && t < b) { sp = r; dim = d; so = CUT.includes(a) ? 1 : lin(t, a, 0.2); }
   const spot = $('spot');
   Object.assign(S(spot), { display: sp && so > 0 ? 'block' : 'none', opacity: so.toFixed(3) });
   if (sp) {
-    // Παλμός του περιγράμματος τη στιγμή που αλλάζει ο μετρητής του φακέλου.
-    const pulse = sp === BOXES.power ? Math.sin(Math.PI * lin(t, TL.filed, 0.35)) : 0;
+    const pulse = sp === B.power ? Math.sin(Math.PI * lin(t, TL.filed, 0.35)) : 0;
     const g = 4 + 3 * pulse;
     Object.assign(S(spot), { left: (sp.x - g) * K + 'px', top: (sp.y - g) * K + 'px', width: (sp.w + 2 * g) * K + 'px', height: (sp.h + 2 * g) * K + 'px',
       boxShadow: `0 0 0 3000px color-mix(in srgb, var(--mkt-bg-base) ${Math.round(dim * 100)}%, transparent)` });
     sig.push(pulse.toFixed(3));
   }
   sig.push(so.toFixed(3));
-  // Δάχτυλο.
+  // Δάχτυλο, μόνο μέσα στο πλάνο του πατήματος.
   let fxy = null, press = 0, ring = -1;
   for (const [b, p] of TAPS) {
     const d = t - b;
     if (d > -0.18 && d < 0.12) { fxy = p; press = d < 0 ? clamp((d + 0.18) / 0.12, 0, 1) : clamp(1 - d / 0.12, 0, 1); }
     if (d >= 0 && d < 0.45) { ring = d / 0.45; fxy = fxy || p; }
   }
-  // Το δάχτυλο φαίνεται μόνο μέσα στο πλάνο του πατήματος.
   if (!sh) fxy = null;
   const tr = $('touch'), rg = $('touchRing');
   if (fxy && press > 0.01) {
@@ -386,39 +397,21 @@ window.render = function render(t) {
     Object.assign(rg.style, { display: 'block', left: (fxy[0] * K - r).toFixed(1) + 'px', top: (fxy[1] * K - r).toFixed(1) + 'px', width: 2 * r + 'px', height: 2 * r + 'px', opacity: (0.8 * (1 - ring)).toFixed(3) });
     sig.push(ring.toFixed(3));
   } else rg.style.display = 'none';
-  // Το κλείστρο βυθίζεται στο πάτημα.
-  const sd = Math.max(0, 1 - Math.abs(t - TL.taps[2]) / 0.12);
-  S($('shutter')).transform = `scale(${(1 - 0.08 * sd).toFixed(4)})`;
 
-  // Κείμενα. Η λεζάντα κεντράρεται κάθετα στη ζώνη της.
-  for (const e of T) {
-    const o = vis(t, e);
-    e.el.style.display = o > 0 ? 'block' : 'none'; e.el.style.opacity = o.toFixed(3); sig.push(o.toFixed(3));
-  }
+  for (const e of T) { const o = t >= e.tin && t < e.tout ? 1 : 0; e.el.style.display = o ? 'block' : 'none'; sig.push(o); }
   for (const el of capEls) if (el.style.display === 'block') el.style.top = px(L.capMid - el.offsetHeight / 2) + 'px';
   // Το αγκίστρι: πλήρες από το καρέ 0, με αργό πλησίασμα 3%.
   const hz = 1 + 0.03 * lin(t, 0, CUT[0]);
   hookEls.forEach((el) => { el.style.transform = `scale(${hz.toFixed(4)})`; });
-  sig.push(hz.toFixed(4));
-  // Πατήματα: ο μετρητής αλλάζει τη στιγμή κάθε πατήματος, με παλμό.
-  const nTaps = stepCount(t, TL.taps);
-  $('tapN').textContent = String(nTaps);
-  const lastTap = nTaps ? TL.taps[nTaps - 1] : -9, pu = lin(t, lastTap, 0.35);
-  const pillsOn = on ? 1 : 0;
-  Object.assign(tapsEl.style, { opacity: pillsOn, display: pillsOn ? 'flex' : 'none',
-    transform: pu < 1 ? `scale(${(1 + 0.22 * Math.sin(Math.PI * pu)).toFixed(4)})` : 'none',
-    boxShadow: pu < 1 ? `0 0 0 ${(10 * Math.sin(Math.PI * pu)).toFixed(1)}px color-mix(in srgb, var(--mkt-accent) 30%, transparent)` : 'none' });
-  sig.push(nTaps, pu.toFixed(3));
+  // Το κλείσιμο: όλα μαζί, με ένα μικρό κάθισμα 1,04 → 1 σε 0,25″.
+  const ck = 1 + 0.04 * (1 - ease(lin(t, TL.close, 0.25)));
+  const cOn = t >= TL.close;
+  for (const el of [logo, url]) { S(el).display = cOn ? 'block' : 'none'; S(el).transform = `scale(${ck.toFixed(4)})`; }
+  closeEls.forEach((el) => { el.style.transform = `scale(${ck.toFixed(4)})`; });
+  sig.push(hz.toFixed(4), ck.toFixed(4));
   S(zone).display = on ? 'block' : 'none'; S(band).display = on ? 'block' : 'none';
-  S(badge).display = pillsOn ? 'flex' : 'none';
-  S(badge).left = px(W - 56 - badge.offsetWidth) + 'px';
-  // Κλείσιμο: το λογότυπο ολόκληρο, από το κέντρο· μετά το μήνυμα και η διεύθυνση.
-  const co = ease(lin(t, TL.close, 0.45));
-  S(logo).display = co > 0 ? 'block' : 'none'; S(logo).opacity = co.toFixed(3);
-  S(logo).transform = co < 1 ? `scale(${(0.9 + 0.1 * co).toFixed(4)})` : 'none';
-  const uo = lin(t, TL.url, 0.3);
-  S(url).opacity = uo.toFixed(3); S(url).display = uo > 0 ? 'block' : 'none';
-  sig.push(co.toFixed(4), uo.toFixed(3));
+  S(badge).display = on ? 'flex' : 'none';
+  S(badge).left = px((W - badge.offsetWidth) / 2) + 'px';
   return sig.join('|');
 };
 window.ready = async () => {
@@ -426,7 +419,6 @@ window.ready = async () => {
   await document.fonts.load('700 50px Inter', 'ΑΒΓαβγ€0123'); await document.fonts.ready;
   // Το όνομα του zip σε μία γραμμή: αν δεν χωρά, μικραίνει.
   let fs = 15 * K;
-  S(pack).display = 'block';
   while (titleEl.scrollWidth > 350 * K && fs > 10 * K) { fs -= 0.5; titleEl.style.fontSize = fs + 'px'; }
   window.render(0); await document.fonts.ready;
   return true;

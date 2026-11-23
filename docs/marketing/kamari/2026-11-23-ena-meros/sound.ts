@@ -1,24 +1,23 @@
-// Ο ήχος της ταινίας (v8), συντεθειμένος με το scripts/marketing/synth.ts.
+// Ο ήχος της ταινίας (v9), συντεθειμένος με το scripts/marketing/synth.ts.
 // Οι χρόνοι έρχονται από το χρονολόγιο του film.html (μία πηγή), σε δευτερόλεπτα.
 //
 //   npx tsx docs/marketing/kamari/2026-11-23-ena-meros/sound.ts <έξοδος.wav>
 //
-// Δυναμική (LRA πάνω από 3): το αγκίστρι με χτύπημα και χωρίς ρυθμό, το σώμα με πλήρη ρυθμό,
-// το κλείσιμο μόνο με πατάκι και καμπάνα, πιο χαμηλά. Τα πατήματα τονίζονται: η μουσική
-// χαμηλώνει 0,12″ γύρω τους και το κλικ είναι 3,3 dB δυνατότερο από της v7 (0,38 αντί για 0,26).
+// Δυναμική (LRA πάνω από 3): χτύπημα στο καρέ 0 και αγκίστρι χωρίς ρυθμό, ήπιος ρυθμός ως την κάμερα, πλήρης από τη φόρμα,
+// κλείσιμο με ένα χτύπημα και μετά μόνο πατάκι, πιο χαμηλά. Τα πατήματα τονίζονται: η μουσική
+// χαμηλώνει γύρω τους και το κλικ είναι 3,3 dB δυνατότερο από της v7 (0,38 αντί για 0,26).
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Mix, n, ch } from '../../../../scripts/marketing/synth';
+import { Mix, n, ch, SR } from '../../../../scripts/marketing/synth';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const html = readFileSync(join(here, 'film.html'), 'utf8');
 const json = /<script id="timeline" type="application\/json">([\s\S]*?)<\/script>/.exec(html);
 if (!json) throw new Error('Λείπει το χρονολόγιο από το film.html');
 const TL = JSON.parse(json[1]) as {
-  dur: number; bpm: number; cuts: number[]; rowsOver: number[]; taps: number[]; fill: [number, number]; ticks: number[];
-  dates: number; dings: number[]; filed: number; packUp: number; rowsPack: number[]; close: number; msgClose: number[]; url: number;
-  chords: [number, string[]][];
+  dur: number; bpm: number; cuts: number[]; rowsOver: number[]; taps: number[]; fields: number[]; ticks: number[];
+  dings: number[]; filed: number; packUp: number; rowsPack: number[]; close: number; chords: [number, string[]][];
 };
 const out = process.argv[2];
 if (!out) throw new Error('Δώσε αρχείο εξόδου');
@@ -34,37 +33,44 @@ m.bass(chords, START, END, .05);
 const kicks: number[] = [];
 for (let t = START; t < END - 1e-6; t += BEAT) {
   const k = Math.round((t - START) / BEAT);
-  m.kick(t, .9); kicks.push(t);
-  m.hat(t + BEAT / 2, .03, k % 2 ? .35 : -.35);
-  m.hat(t + BEAT / 4, .012, .5); m.hat(t + 3 * BEAT / 4, .012, -.5);
-  if (k % 2 === 1) m.clap(t, .055);
-  m.pluck(t + BEAT / 2, n(chordAt(t)[0]) + 12, .03, 0, .05);
+  // Πρώτο μέρος (προθεσμίες, σάρωση ως την κάμερα): μόνο κρουστό και μεταλλικό, πιο ήπια. Από τη φόρμα και μετά: πλήρης ρυθμός.
+  const full = t >= TL.cuts[3] - 1e-6;
+  m.kick(t, full ? .9 : .5); kicks.push(t);
+  m.hat(t + BEAT / 2, full ? .03 : .016, k % 2 ? .35 : -.35);
+  if (full) { m.hat(t + BEAT / 4, .012, .5); m.hat(t + 3 * BEAT / 4, .012, -.5); }
+  if (full && k % 2 === 1) m.clap(t, .055);
+  if (full) m.pluck(t + BEAT / 2, n(chordAt(t)[0]) + 12, .03, 0, .05);
 }
-// Αγκίστρι: χτύπημα στο καρέ 0. Κάθε κοπή: σύντομο φύσημα.
+// Χτύπημα στο καρέ 0 και στο κλείσιμο. Κάθε κοπή μέσα στο σώμα: σύντομο φύσημα.
 m.boom(0, .22); m.clap(0, .07);
+m.boom(END, .16); m.clap(END, .05);
 for (const c of TL.cuts.slice(0, -1)) m.whoosh(c - .12, .3, .028, true);
-m.whoosh(END - .1, .4, .03, false);
 // Οι γραμμές που εμφανίζονται μόνες τους.
 for (const list of [TL.rowsOver, TL.rowsPack]) list.forEach((t, i) => {
   const notes = chordAt(t); m.pluck(t, n(notes[i % notes.length]) + 12, .024, i % 2 ? .25 : -.25);
 });
-// Τα πεδία που γεμίζουν: λεπτά κλικ πληκτρολόγησης στον Πάροχο, ένα για κάθε ✓.
-for (let t = TL.fill[0]; t < TL.fill[1]; t += (TL.fill[1] - TL.fill[0]) / 11) m.click(t, 3200, .045, .2);
-for (const t of [...TL.ticks, TL.dates]) m.click(t, 2600, .07, -.15);
+// Τα πεδία που εμφανίζονται: ένα λεπτό κλικ το καθένα.
+for (const t of TL.fields) m.click(t, 2600, .07, -.15);
 m.sweep(TL.packUp, .35, 330, 700, .016);
 // «Ding»: πεδία γεμάτα, φάκελος ενημερωμένος, zip έτοιμο.
 for (const t of TL.dings) { m.bell(t, n('B5'), .05, .1); m.bell(t + .09, n('E6'), .035, -.1); }
-// Κλείσιμο: πιο χαμηλά, χωρίς ρυθμό.
-m.bell(END, n('E5'), .045);
-TL.msgClose.forEach((t, i) => m.pluck(t, n(chordAt(t)[2 + i % 3]) + 12, .022, -.2 + .2 * i));
+m.bell(END + .05, n('E5'), .045);
 
 m.duck(kicks, .28);
+// Καμπύλη έντασης ανά μέρος: αγκίστρι −2,5 dB, πρώτο μέρος −4,4 dB, φόρμα ως zip πλήρες (ράμπες 0,15″).
+const LEVELS: [number, number][] = [[0, .75], [START, .6], [TL.cuts[3], 1], [END, 1]];
+const levelAt = (t: number) => {
+  let g = LEVELS[0][1];
+  for (let k = 1; k < LEVELS.length; k++) g += (LEVELS[k][1] - LEVELS[k - 1][1]) * Math.min(1, Math.max(0, (t - LEVELS[k][0]) / .15));
+  return g;
+};
+for (let i = 0; i < m.idx(END); i++) { const g = levelAt(i / SR); m.L[i] *= g; m.R[i] *= g; }
 // Τονισμός των πατημάτων: η μουσική χαμηλώνει γύρω τους, μετά γράφεται το κλικ, πιο δυνατά.
 m.duck(TL.taps.map((t) => t - .02), .45);
 for (const t of TL.taps) { m.click(t, 2200, .38, .1); m.click(t + .03, 1100, .14, .1); m.kick(t, .25); }
 
-// Το κλείσιμο πιο χαμηλά από το σώμα: μείωση περίπου 8 dB μετά το END.
-for (let i = m.idx(END); i < m.N; i++) { const g = 1 - .62 * Math.min(1, (i - m.idx(END)) / m.idx(.6)); m.L[i] *= g; m.R[i] *= g; }
+// Το κλείσιμο πιο χαμηλά από το σώμα: μείωση περίπου 12 dB μετά το πρώτο 0,4″ του.
+for (let i = m.idx(END + .4); i < m.N; i++) { const g = 1 - .75 * Math.min(1, (i - m.idx(END + .4)) / m.idx(.5)); m.L[i] *= g; m.R[i] *= g; }
 m.reverb(.5);
-m.write(out, .8);
+m.write(out, .6);
 console.log(`✓ ${out} · ${TL.dur.toFixed(2)}″`);
