@@ -29,14 +29,21 @@
 // χαρακτηρισμοί, διευθύνσεις): ελαχιστοποίηση, άρθρο 5§1(γ) ΓΚΠΔ.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { MYDATA_API_DEV, MYDATA_API_PROD, MYDATA_INVOICE_NS } from '../../../lib/mydata/endpoints.ts'
+import { MYDATA_API_DEV, MYDATA_API_PROD, MYDATA_INVOICE_NS } from '../../../lib/tax/aade.ts'
 import { shouldAutoSync, AUTO_SYNC_HOURS } from '../../../lib/mydata/autoSync.ts'
 
-/** Ο χώρος ονομάτων του σχήματος παραστατικών της ΑΑΔΕ (lib/mydata/endpoints.ts). */
+/** Ο χώρος ονομάτων του σχήματος παραστατικών της ΑΑΔΕ (lib/tax/aade.ts). */
 export const INV_NS = MYDATA_INVOICE_NS
 
 /** Ανώτατο μέγεθος απάντησης που διαβάζουμε. Μία σελίδα της ΑΑΔΕ είναι πολύ μικρότερη. */
 export const MAX_XML_BYTES = 5 * 1024 * 1024
+
+/**
+ * Η έκδοση του αναγνώστη. Ανέβα την όταν αλλάζει τι δέχεται η ανάγνωση (νέος
+ * τύπος, νέο πεδίο): οι πελάτες σε καραντίνα ξαναζητούνται αμέσως, αντί να
+ * περιμένουν τη μία φορά την εβδομάδα (mydata_sync_targets).
+ */
+export const PARSER_VERSION = 'erp-2.0.2-r1'
 const MAX_DEPTH = 64
 const MAX_ELEMENTS = 250_000
 

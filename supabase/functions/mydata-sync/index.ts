@@ -26,7 +26,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.119.0'
 import { authorizeCron, cronDenial } from '../_shared/auth.ts'
 import { reportEdgeError } from '../_shared/report.ts'
-import { mydataBase, probeUrl, aadeHeaders, classifyHttp, athensIso } from '../_shared/mydata.ts'
+import { mydataBase, probeUrl, aadeHeaders, classifyHttp, athensIso, PARSER_VERSION } from '../_shared/mydata.ts'
 import { runAccountant, type Store, type SyncKind, type EngineDeps } from '../_shared/mydataEngine.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
@@ -62,7 +62,7 @@ const store: Store = {
     return row ? { aadeUserId: String(row.aade_user_id), key: String(row.api_key) } : null
   },
   async targets(accountantId, lease, kind) {
-    const { data, error } = await admin.rpc('mydata_sync_targets', { p_accountant: accountantId, p_lease: lease, p_kind: kind })
+    const { data, error } = await admin.rpc('mydata_sync_targets', { p_accountant: accountantId, p_lease: lease, p_kind: kind, p_parser: PARSER_VERSION })
     if (error) throw new Error('db_targets')
     return ((data ?? []) as { consent_id: string; afm: string; window_from: string; last_mark: number | string; resume: unknown }[])
       .map(r => ({

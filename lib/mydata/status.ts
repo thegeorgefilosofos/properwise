@@ -65,6 +65,8 @@ export interface ClientRow {
   afmConfirmed?: boolean;
   /** Παραστατικά σε καραντίνα: η ανάγνωση δεν τα δέχτηκε, ξαναζητούνται. */
   quarantined?: number;
+  /** Ο πελάτης άλλαξε το ΑΦΜ του προφίλ μετά τη σύνδεση (μόνο η ώρα, ποτέ η τιμή). */
+  afmChangedAt?: string | null;
 }
 
 export type Tone = 'ok' | 'wait' | 'warn' | 'off';
@@ -82,8 +84,11 @@ const DOWN = new Set(['rate', 'server', 'empty', 'network', 'timeout']);
 
 /** Τι λέει η γραμμή του πελάτη και τι κάνει ο λογιστής γι' αυτό. */
 export function rowState(r: ClientRow): RowState {
+  if (!r.consent && r.afmChangedAt) {
+    return { label: 'Χωρίς άδεια', fix: 'Ο πελάτης άλλαξε ΑΦΜ μετά τη σύνδεση. Έλεγξέ το στο myAADE σου πριν το επιβεβαιώσεις.', tone: 'warn', rank: 0 };
+  }
   if (!r.consent && r.afmConfirmed === false) {
-    return { label: 'Χωρίς άδεια', fix: 'Επιβεβαίωσε πρώτα το ΑΦΜ του πελάτη.', tone: 'off', rank: 3 };
+    return { label: 'Χωρίς άδεια', fix: 'Επιβεβαίωσε πρώτα το ΑΦΜ του πελάτη από το myAADE σου.', tone: 'off', rank: 3 };
   }
   if (!r.consent) return { label: 'Χωρίς άδεια', fix: 'Ο πελάτης πατά «Επιτρέπω» στον Λογαριασμό του.', tone: 'off', rank: 3 };
   if (r.status === 'paused') {
@@ -236,4 +241,5 @@ export const LOG_ACTION: Record<string, string> = {
   invalid_quarantined: 'Κάποια παραστατικά δεν διαβάστηκαν και ξαναζητούνται',
   cancel_flagged: 'Ακυρώθηκε στην ΑΑΔΕ παραστατικό που είχες καταχωρήσει',
   cancel_removed_expense: 'Ακυρώθηκε στην ΑΑΔΕ· η δαπάνη αφαιρέθηκε',
+  key_read: 'Ο λογιστής χρησιμοποίησε το κλειδί του myDATA',
 };

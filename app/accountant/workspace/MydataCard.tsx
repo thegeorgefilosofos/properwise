@@ -147,7 +147,9 @@ export default function MydataCard({ db, userId }: { db: SupabaseClient; userId:
     if (busy) return;
     const r = await mydata.confirmAfm(db, ownerId, afmVal);
     if (!r.ok) {
-      setAfmSay(r.reason === 'bad_afm' ? 'Το ΑΦΜ δεν είναι σωστό. Έλεγξε τα 9 ψηφία.' : 'Δεν αποθηκεύτηκε. Ξαναδοκίμασε.');
+      setAfmSay(r.reason === 'bad_afm' ? 'Το ΑΦΜ δεν είναι σωστό. Έλεγξε τα 9 ψηφία.'
+        : r.reason === 'afm_taken' ? 'Αυτό το ΑΦΜ το έχεις ήδη επιβεβαιώσει για άλλον πελάτη. Έλεγξέ το στο myAADE σου.'
+        : 'Δεν αποθηκεύτηκε. Ξαναδοκίμασε.');
       return;
     }
     setAfmFor(null); setAfmVal(''); setAfmSay('');
@@ -276,11 +278,14 @@ export default function MydataCard({ db, userId }: { db: SupabaseClient; userId:
                         )}
                         {!r.consent && afmFor === r.ownerId && (
                           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'end', gap: 8, marginTop: 6 }}>
-                            <div style={{ maxWidth: 180 }}>
-                              <TextInput label={`ΑΦΜ του πελάτη ${r.name}`} value={afmVal} inputMode="numeric" mono
+                            <div style={{ maxWidth: 240 }}>
+                              <TextInput label="ΑΦΜ από το myAADE σου" value={afmVal} inputMode="numeric" mono
                                 onChange={v => { setAfmVal(v); setAfmSay(''); }}
                                 onKeyDown={e => { if (e.key === 'Enter') void saveAfm(r.ownerId, r.name); if (e.key === 'Escape') setAfmFor(null); }} />
                             </div>
+                            <p style={{ ...TT.bodySm, margin: 0, flexBasis: '100%', color: 'var(--text-tertiary)' }}>
+                              Γράψε το από τις εξουσιοδοτήσεις σου στο myAADE, όχι από το προφίλ του πελάτη.
+                            </p>
                             <Btn variant="primary" onClick={() => void saveAfm(r.ownerId, r.name)} disabled={!afmVal.trim()}>Αποθήκευση</Btn>
                             <Btn variant="ghost" onClick={() => setAfmFor(null)}>Άκυρο</Btn>
                             {afmSay && <p role="alert" style={{ ...TT.bodySm, margin: 0, flexBasis: '100%', color: 'var(--warning-on-container)' }}>{afmSay}</p>}

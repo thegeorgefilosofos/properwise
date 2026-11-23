@@ -23,7 +23,7 @@ import { ACCOUNTANT_INVITE_RETENTION_DAYS } from '@/supabase/functions/_shared/a
 import { FIRM_ACCESS_LOG_MONTHS, FIRM_UNDO_DAYS } from '@/lib/legal/firms';
 import { LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE } from '@/lib/i18n/locale';
 import { MYDATA_ON } from '@/lib/mydata/flag';
-import { MYDATA_LOG_MONTHS, MYDATA_DECIDED_DAYS } from '@/lib/mydata/retention';
+import { MYDATA_LOG_MONTHS, MYDATA_DECIDED_DAYS, MYDATA_PAUSE_DAYS } from '@/lib/mydata/retention';
 import { identityPendingEn, subprocessorLineEn, subprocessorNameEn, TRANSFER_SAFEGUARDS_EN } from './common';
 
 export const PRIVACY_EN = {
@@ -130,7 +130,7 @@ export function privacySectionsEn(): LegalSection[] {
       'Legal basis: your consent (Article 6(1)(a) GDPR). You withdraw it at any time from your Account, under “Data and privacy”, with one tap (Article 7(3)).',
       'Your VAT number: your accountant confirms your VAT number from their own workspace. The permission is granted only if it matches the VAT number in your “Billing details”. If either changes, the permission is withdrawn. One VAT number has one permission at a time.',
       'When you withdraw: your accountant stops fetching documents at once and the documents that arrived and you did not record are erased. Expenses you recorded stay. The same happens at once when you change accountant, cut the link with them or create a new link, when they remove you from their clients or when they leave the firm that serves you.',
-      'Pause: if the link with your accountant expires or their firm has not accepted the current terms, no new documents arrive until it is renewed. Nothing is erased during a pause.',
+      `Pause: if the link with your accountant expires or their firm has not accepted the current terms, no new documents arrive until it is renewed. Nothing is erased during a pause. If it lasts more than ${MYDATA_PAUSE_DAYS}\u00a0days, the permission is withdrawn and the documents that arrived and you did not record are erased.`,
       'If the issuer cancels on AADE a document you had already recorded, the expense is not erased on its own: we ask you in your Inbox. Documents that cannot be read correctly are kept only as a MARK and a reason code until they are requested again.',
       `Access log: we keep who requested how many documents, when and for which VAT number, for ${MYDATA_LOG_MONTHS}\u00a0months, and you see it under “Access history”. Documents you recorded or dismissed are kept for ${MYDATA_DECIDED_DAYS}\u00a0days so they do not come back; those waiting for your decision stay until you decide.`,
       'Your accountant’s key is stored encrypted and is never shown again to anyone, including them. AADE is the source of the data, not a processor acting for us.',

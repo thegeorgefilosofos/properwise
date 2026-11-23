@@ -48,6 +48,11 @@ ok('H1: καραντίνα χωρίς σφάλμα στη γραμμή φαίν�
 const sP = rowState(row({ status: 'paused' }));
 ok('H2: παύση: «Σε παύση» με λύση ανανέωσης', sP.label === 'Σε παύση' && /ανανέωση/.test(sP.fix));
 ok('B1: χωρίς επιβεβαιωμένο ΑΦΜ: ο λογιστής ξέρει τι κάνει πρώτα', /ΑΦΜ/.test(rowState(row({ consent: false, status: null, afmConfirmed: false })).fix));
+// Δεύτερη αξιολόγηση: ο πελάτης άλλαξε ΑΦΜ μετά τη σύνδεση.
+const sAfm = rowState(row({ consent: false, status: null, afmConfirmed: false, afmChangedAt: '2026-11-22T10:00:00Z' }));
+ok('N1: αλλαγή ΑΦΜ μετά τη σύνδεση: προειδοποίηση με λύση από το myAADE', sAfm.tone === 'warn' && /myAADE/.test(sAfm.fix));
+ok('N1: η επιβεβαίωση λέει «από το myAADE σου»', /myAADE/.test(rowState(row({ consent: false, status: null, afmConfirmed: false })).fix));
+ok('N7: η ανάγνωση του κλειδιού έχει λέξεις', !!LOG_ACTION.key_read);
 ok('M4: κάθε νέα ενέργεια του αρχείου έχει λέξεις', ['consent_paused', 'afm_confirmed', 'sync_done', 'page_rejected', 'invalid_quarantined', 'cancel_flagged'].every(a => !!LOG_ACTION[a]));
 for (const e of ['forbidden', 'server', 'rate', 'no_afm', 'parse', 'unknown', 'network']) {
   const st = rowState(row({ status: e === 'forbidden' ? 'forbidden' : 'error', error: e }));

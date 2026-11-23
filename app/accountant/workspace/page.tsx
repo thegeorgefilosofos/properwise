@@ -182,6 +182,21 @@ export default function AccountantWorkspace() {
   const [inviteTerms, setInviteTerms] = useState<Record<string, boolean>>({});
   const [termsTick, setTermsTick] = useState(false);
   const [termsBusy, setTermsBusy] = useState(false);
+  // myDATA: ο πελάτης άλλαξε το ΑΦΜ του προφίλ ΜΕΤΑ τη σύνδεση. Η κάρτα του το
+  // σημαδεύει, ώστε το ΑΦΜ που φαίνεται εδώ να μη γίνει «επιβεβαίωση» χωρίς
+  // έλεγχο στο myAADE. Μόνο ημερομηνία από τη βάση, καμία τιμή.
+  const [afmChanged, setAfmChanged] = useState<Map<string, string>>(new Map());
+  useEffect(() => {
+    if (!MYDATA_ON || !me) return;
+    let alive = true;
+    void Promise.all([import('@/lib/data/mydata'), import('@/lib/mydata/status')]).then(async ([data, st]) => {
+      const { rows: list } = await data.clientsStatus(supabase);
+      if (!alive) return;
+      // dd/mm/yyyy, ώρα Αθήνας.
+      setAfmChanged(new Map(list.filter(r => r.afmChangedAt).map(r => [r.ownerId, st.athensStamp(r.afmChangedAt as string).slice(0, 10)])));
+    });
+    return () => { alive = false; };
+  }, [supabase, me]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -804,6 +819,11 @@ export default function AccountantWorkspace() {
                       {c.properties === 1 ? '1\u00a0ακίνητο' : `${c.properties}\u00a0ακίνητα`}
                       {c.afm ? ` · ΑΦΜ ${c.afm}` : ''}
                     </p>
+                    {afmChanged.has(c.ownerId) && (
+                      <p style={{ ...metaLine, color: 'var(--warning-on-container)', fontWeight: 600 }}>
+                        Ο πελάτης άλλαξε το ΑΦΜ του {afmChanged.get(c.ownerId)}. Για το myDATA έλεγξέ το στο myAADE σου.
+                      </p>
+                    )}
                     {/* ΠΟΤΕ ΚΙΝΗΘΗΚΕ ΤΕΛΕΥΤΑΙΑ ΦΟΡΑ. Δύο πελάτες με τα ίδια κενά
                         είναι εντελώς διαφορετική δουλειά όταν ο ένας καταχώρησε
                         χθες και ο άλλος τον Μάρτιο. */}

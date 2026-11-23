@@ -76,6 +76,15 @@ export const MYAADE = 'https://www.myaade.gov.gr';
 export const AADE_CALENDAR = 'https://www.aade.gr/eforologiko-imerologio';
 /** Η επίσημη εφαρμογή χάρτη για τιμή ζώνης και αντικειμενική αξία. */
 export const OBJECTIVE_VALUES = 'https://www.valuemaps.gov.gr';
+/**
+ * myDATA REST API για χρήστες ERP: οι δύο βάσεις των κλήσεων και ο χώρος ονομάτων
+ * του σχήματος παραστατικών. ΠΗΓΗ: ΑΑΔΕ, «myDATA REST API, Τεκμηρίωση για χρήστες
+ * ERP» v2.0.2 (09/2026), §4 (διευθύνσεις δοκιμαστικού και παραγωγής) και
+ * requestedInvoicesDoc-v2.0.2.xsd (targetNamespace). Εγκριση ιδιοκτήτη 23/11/2026.
+ */
+export const MYDATA_API_DEV = 'https://mydataapidev.aade.gr';
+export const MYDATA_API_PROD = 'https://mydatapi.aade.gr/myDATA';
+export const MYDATA_INVOICE_NS = 'http://www.aade.gr/myDATA/invoice/v1.0';
 /** Η βραχυχρόνια μίσθωση έχει σελίδα στο gov.gr, με τις ισχύουσες υποχρεώσεις. */
 export const GOV_SHORT_TERM =
   'https://www.gov.gr/el/services/1001521/brakhukhronia-misthose-akineton';

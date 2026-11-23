@@ -11,3 +11,6 @@ export const MYDATA_LOG_MONTHS = 24;
 
 /** Τα παραστατικά που κρίθηκαν (καταχωρήθηκαν, απορρίφθηκαν, ακυρώθηκαν). */
 export const MYDATA_DECIDED_DAYS = 400;
+
+/** Πόσο κρατά μια παύση (σύνδεσμος που έληξε, όροι γραφείου) πριν η άδεια ανακληθεί. */
+export const MYDATA_PAUSE_DAYS = 90;
