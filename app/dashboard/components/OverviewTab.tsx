@@ -20,6 +20,7 @@ import * as inventory from '@/lib/data/inventory'
 import { readStatus, statusLabel as statusLabelOf, isShortTerm, isLet } from '@/lib/property/status'
 import { enfiaDeadline, enfiaOutsidePlan } from '@/lib/onboarding/firstTax'
 import { taxpayerScope } from '@/lib/facts/taxpayer'
+import { FIXED_MONTHLY_LABEL } from '@/lib/facts/labels'
 import { ownershipPctOf } from '@/lib/accounting/taxpayerIncome'
 import { type StayAmountLike } from '@/lib/clients/stayAmounts'
 import MonthlyFeedbackNudge from './MonthlyFeedbackNudge'
@@ -1195,7 +1196,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
             των δεκατριών στοιχείων δίπλα της: τρεις γραμμές λογαριασμών και από
             κάτω διακόσια εικονοστοιχεία άδειας κάρτας. */}
         <div className="card" style={{alignSelf:'start'}}>
-          <h3 className="section-label"><Receipt size={15} aria-hidden="true" className="section-ico" />Λογαριασμοί ανά μήνα</h3>
+          <h3 className="section-label"><Receipt size={15} aria-hidden="true" className="section-ico" />{FIXED_MONTHLY_LABEL}</h3>
           {ledgerGap
             ? <EmptyState icon={<FileText size={20}/>} title="Δεν φορτώθηκαν οι λογαριασμοί" hint="Πάτησε «Δοκίμασε ξανά» στην ειδοποίηση πιο πάνω."/>
             : billAverages.length===0

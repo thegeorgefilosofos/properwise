@@ -130,7 +130,7 @@ const src = (f: string) => readFileSync(join(here, f), 'utf8');
   eq('φίλτρο ληξιπρόθεσμων', rows.filter(r => matchesLedgerFilter(r, { kind: 'overdue' }, '2026-11-13')).length, 1);
   eq('φίλτρο κουβά', rows.filter(r => matchesLedgerFilter(r, { kind: 'buckets', buckets: ['maintenance'], month: '2026-11', label: '' }, '2026-11-13')).length, 1);
   eq('λέξεις', [overdueWord(1), overdueWord(3), pendingWord(1), pendingWord(2), overWord(1), overWord(4)],
-    ['1 ληξιπρόθεσμη', '3 ληξιπρόθεσμες', '1 εκκρεμεί', '2 εκκρεμούν', '1 κατηγορία σε υπέρβαση', '4 κατηγορίες σε υπέρβαση'].map(x => x.replace(' ', '\u00a0')));
+    ['1 ληξιπρόθεσμη', '3 ληξιπρόθεσμες', '1 δεν έληξε', '2 δεν έληξαν', '1 κατηγορία σε υπέρβαση', '4 κατηγορίες σε υπέρβαση'].map(x => x.replace(' ', '\u00a0')));
 }
 
 // ── 9. Η ΣΕΙΡΑ ΤΩΝ ΚΑΤΗΓΟΡΙΩΝ ────────────────────────────────────────────────

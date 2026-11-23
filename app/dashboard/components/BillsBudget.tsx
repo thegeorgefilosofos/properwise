@@ -85,7 +85,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
     adjAvailable, _prevLabel, isCurMonth, viewYm, viewActuals, viewActualTotal, viewRecordedTotal, viewMonthLabel, viewItems,
     canGoNewer, canGoOlder, committedBills, monthlyCost, hasIncome, insights, dismissSuggestion,
     targetSuggestions, notifyOn, isSTR, strPlatformPct, strMgmtPct, strTaxPct, waterfall, incomeDeductions, safeRaw,
-    isShortfall, loadError, attention, ytdActual, monthsElapsed, isOverCat, retry, exclAmtDraft, setExclAmtDraft,
+    loadError, attention, ytdActual, monthsElapsed, isOverCat, retry, exclAmtDraft, setExclAmtDraft,
     monthTotals,
   } = b;
 
@@ -205,20 +205,29 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
   const hero = (
     <Card gap={false}>
       <div className="bud-hero-top">
-        <span style={{ ...TT.label }}>Ξόδεψες</span>
+        {/* ΤΟ ΠΟΣΟ ΜΕ ΕΚΤΙΜΗΣΕΙΣ ΔΕΝ ΛΕΓΕΤΑΙ «ΞΟΔΕΨΕΣ» (αξιολόγηση 2, Μ5). Στον
+            τρέχοντα μήνα μπαίνει και το μηνιαίο μερίδιο όσων δεν καταχωρήθηκαν
+            (ΕΝΦΙΑ, ασφάλιστρο, συνδρομές από τις ρυθμίσεις). Δίπλα στο
+            «Νοέμβριος 0,00€» των Δαπανών, το «Ξόδεψες 12,95€» έμοιαζε με λάθος. */}
+        <span style={{ ...TT.label }}>{withEstimates ? 'Αναλογεί στον μήνα' : 'Ξόδεψες'}</span>
         {masterBudget != null && <button type="button" className="bud-textbtn" onClick={() => setTargetOpen(true)}>Αλλαγή στόχου</button>}
       </div>
       <div className="bud-hero-fig">
         <span className="bud-big">{feAuto(viewActualTotal)}</span>
         <span style={{ ...TT.body, color: 'var(--text-secondary)' }}>{masterBudget != null ? <>από <span className="bud-num">{feAuto(masterBudget)}</span></> : 'χωρίς στόχο'}</span>
       </div>
+      {withEstimates && (
+        <div style={{ ...TT.caption, marginTop: T.sp.xs }}>
+          Καταχωρημένες <span className="bud-num">{feAuto(viewRecordedTotal)}</span> · μηνιαίο μερίδιο όσων δεν καταχωρήθηκαν <span className="bud-num">{feAuto(viewActualTotal - viewRecordedTotal)}</span>
+        </div>
+      )}
       {prog ? (
         <>
           <div className="bud-bar bud-bar-lg" aria-hidden="true">
             <span style={{ width: `${prog.bar}%`, background: prog.over ? 'var(--negative)' : BAR_FILL }} />
           </div>
           <div className="bud-hero-cap">
-            <span className="bud-num">{fpRate(prog.pct)} του στόχου{withEstimates ? ', με εκτιμήσεις παρόχων' : ''}</span>
+            <span className="bud-num">{fpRate(prog.pct)} του στόχου</span>
             <span className="bud-num" style={{ color: prog.over ? 'var(--negative)' : 'var(--text-secondary)', fontWeight: 600 }}>
               {prog.over ? `Υπέρβαση ${feAuto(-prog.left)}` : `Μένουν ${feAuto(prog.left)}`}
             </span>
@@ -258,7 +267,8 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
           </span>
         </div>
       )}
-      {isShortfall && <div style={{ ...TT.caption, color: 'var(--negative)', marginTop: T.sp.sm }}>Οι υποχρεώσεις του μήνα ξεπερνούν τα έσοδα κατά {feAuto(-safeRaw)}.</div>}
+      {/* Το έλλειμμα το λέει ήδη το αρνητικό ποσό σε --negative από πάνω· η
+          κόκκινη πρόταση το ξανάγραφε (αξιολόγηση 2, Μ6). */}
     </Card>
   );
 

@@ -26,7 +26,7 @@ import { useState, useEffect, useMemo, useRef, useCallback, useId } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { T, TT, SelectBox, Bar, Btn, ChipToggle } from '@/components/Theme'
 import { ActionMenu, type ActionMenuItem } from '@/components/ActionMenu'
-import { ChevronDown, ChevronRight, Download } from 'lucide-react'
+import { ChevronDown, ChevronRight, Download, FileSpreadsheet } from 'lucide-react'
 import { InfoHint } from './InfoHint'
 import { CustomSelect } from './UIComponents'
 import {
@@ -44,8 +44,11 @@ import { failed } from '@/lib/core/dbError';
 import { openRequests, answerRequest, type OpenRequest } from '@/lib/data/accountant';
 import { aadeTitle } from '@/components/AadeLink';
 import { aadePath, AADE_DESTINATIONS } from '@/lib/tax/aade';
-import MeetingPackCard from './MeetingPackCard';
+import MeetingPackCard, { PACK_CONTENTS } from './MeetingPackCard';
 import AccountantInvites from './AccountantInvites';
+
+/** Το αρχείο ενός ακινήτου. «Φάκελος» λέγεται μόνο η καρτέλα των αρχείων (Μ3). */
+const BOOK_LABEL = 'Βιβλίο εργασίας ακινήτου'
 
 /** Σύντομη ετικέτα που δεν σπάει στη γραμμή: τα κενά της γίνονται αδιάσπαστα. */
 const nb = (s: string) => s.replace(/ /g, '\u00a0')
@@ -457,6 +460,9 @@ export default function AccountantDossier({
   const [listOpen, setListOpen] = useState(false)
   const [sections, toggleSection] = useSections(userId)
   const [downloaded, setDownloaded] = useState(false)
+  // Πόσα ΑΦΜ βρήκε το πακέτο: 'some' όσο φορτώνει, για να μη χοροπηδά η κάρτα.
+  // Χωρίς ΑΦΜ (ή χωρίς ανάγνωση) το βιβλίο εργασίας μένει ορατό κουμπί.
+  const [packOwners, setPackOwners] = useState<'some' | 'none'>('some')
 
   // ══ ΕΝΑΣ ΜΕΤΡΗΤΗΣ, ΙΔΙΟΣ ΜΕ ΤΟ ΑΡΧΕΙΟ ΚΑΙ ΤΗ ΣΥΝΑΝΤΗΣΗ (lib/facts/completeness) ══
   // Το ΑΤΑΚ και ο ΑΜΑ κρίνονται από τα στοιχεία των ακινήτων, όχι από το κουτάκι·
@@ -544,6 +550,16 @@ export default function AccountantDossier({
 
   const pct = counts.total > 0 ? Math.round((counts.done / counts.total) * 100) : 0
 
+  // Το βιβλίο εργασίας του ανοιχτού ακινήτου: ορατό μόνο όταν δεν υπάρχει πακέτο
+  // ανά ΑΦΜ να κατέβει, αλλιώς πρώτη γραμμή του «⋯».
+  const bookVisible = !userId || packOwners === 'none'
+  const menu: ActionMenuItem[] = bookVisible ? more : [
+    { key: 'book', label: BOOK_LABEL, icon: <FileSpreadsheet size={14} aria-hidden="true" />, onClick: () => { void download() },
+      busy: preparing, busyLabel: 'Ετοιμάζεται',
+      description: 'Τα λογιστικά του ανοιχτού ακινήτου σε ένα αρχείο Excel, με τα παραστατικά του αριθμημένα.' },
+    ...more,
+  ]
+
   // Η επικεφαλίδα βγαίνει από τη μηχανή (lib/accounting/dossier.ts), ίδια
   // στην οθόνη και στο αρχείο που κατεβαίνει.
   const headline = ready.message
@@ -566,8 +582,10 @@ export default function AccountantDossier({
 
         {/* Πρόοδος: μία λεπτή γραμμή, χωρίς ποσοστά σε μεγάλα γράμματα. */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0 0' }}>
+          {/* ΕΝΑΣ ΜΕΤΡΗΤΗΣ (αξιολόγηση 2, Μ1): τον αριθμό τον λέει η φράση από
+              πάνω. Το «2/8» δίπλα στη μπάρα και το «0/6» της λίστας από κάτω
+              διαβάζονταν ως αντιφατικά. Η μπάρα μένει, με το κλάσμα στο όνομά της. */}
           <Bar pct={pct} height={4} track="var(--bg-elevated)" label={`Έτοιμα για τη δήλωση: ${counts.done} από ${counts.total}`} style={{ flex: 1 }} />
-          <span style={{ ...num, fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }} aria-hidden="true">{counts.done}/{counts.total}</span>
         </div>
 
         {/* ΠΟΙΟΣ ΚΑΝΕΙ ΤΙ: τα έτοιμα ΜΕΤΡΟΥΝ ήδη στο «x / y» από πάνω· όσα
@@ -586,22 +604,40 @@ export default function AccountantDossier({
           return (
             <p className="acd-head-note">
               {summary.slice(0, cut + 1)}
-              <span style={{ whiteSpace: 'nowrap' }}>{summary.slice(cut + 1)}{'\u00a0'}<InfoHint label="Τι περιέχει ο φάκελος">
-                Φάκελος του ακινήτου: τα λογιστικά του ανοιχτού ακινήτου σε ένα βιβλίο εργασίας, με τα παραστατικά του αριθμημένα.
+              <span style={{ whiteSpace: 'nowrap' }}>{summary.slice(cut + 1)}{'\u00a0'}<InfoHint label="Τι περιέχει το πακέτο">
+                {PACK_CONTENTS} Το βιβλίο εργασίας ακινήτου, στο «⋯», έχει μόνο το ανοιχτό ακίνητο, με τα παραστατικά του αριθμημένα.
               </InfoHint></span>
             </p>
           )
         })()}
 
+        {/* ── ΤΟ ΠΑΚΕΤΟ ΑΝΑ ΑΦΜ, ΜΕΣΑ ΣΤΗΝ ΙΔΙΑ ΚΑΡΤΑ (αξιολόγηση 2, Υ5) ──────
+            Ηταν δεύτερη κάρτα από κάτω, «Ο φάκελος για τον λογιστή», με
+            «Κατέβασε» και «Στείλε στον λογιστή» δίπλα σε αυτή εδώ με «Φάκελος
+            του ακινήτου» και «Στείλε στον λογιστή σου». Τέσσερα κουμπιά για δύο
+            πράξεις. Τώρα μία γραμμή ανά ΑΦΜ με «Κατέβασε» και «Στείλε». Το βιβλίο
+            εργασίας ενός ακινήτου πάει στο «⋯» (Μ3: «φάκελος» λέγεται μόνο η
+            καρτέλα των αρχείων). */}
+        {userId && (
+          <MeetingPackCard bare userId={userId} year={year} ownerName={exportSource.ownerName ?? null} onEditProperty={onEditProperty}
+            onOwners={n => setPackOwners(n ? 'some' : 'none')}
+            dossier={{
+              form: profile.form, books: profile.books, hasRenovation: profile.hasRenovation,
+              hasLoan: profile.hasLoan, ownershipChanged: profile.ownershipChanged, have, properties, data,
+            }} />
+        )}
+
         <div className="acd-head-actions">
-          <Btn variant="primary" onClick={download} disabled={preparing}>
-            <Download size={14} aria-hidden="true" />{preparing ? 'Ετοιμάζεται' : downloaded ? 'Κατέβηκε' : 'Φάκελος του ακινήτου'}
-          </Btn>
+          {bookVisible && (
+            <Btn variant="primary" onClick={download} disabled={preparing}>
+              <Download size={14} aria-hidden="true" />{preparing ? 'Ετοιμάζεται' : downloaded ? 'Κατέβηκε' : BOOK_LABEL}
+            </Btn>
+          )}
           {send && <span id={ACCOUNTANT_SEND_ID}><Btn variant="secondary" onClick={send.onClick} disabled={send.busy} title={send.title}>{send.busy ? 'Δημιουργία…' : send.label}</Btn></span>}
           {/* «⋯» ΚΑΙ ΟΧΙ ΛΕΞΗ: με λεκτικό τα δύο δεν χωρούσαν σε μία σειρά στα 375 και
               το «Περισσότερα» έπεφτε μόνο του από κάτω. Το όνομα το ακούει ο
               αναγνώστης οθόνης και το δείχνει το `title`. */}
-          {more.length > 0 && <ActionMenu iconOnly label="Περισσότερα" title="Περισσότερα: άλλες εξαγωγές για τον λογιστή" items={more} align="right" />}
+          {menu.length > 0 && <ActionMenu iconOnly label="Περισσότερα" title="Περισσότερα: άλλες εξαγωγές για τον λογιστή" items={menu} align="right" />}
         </div>
 
         {/* Η κάρτα του συνδέσμου, όταν υπάρχει (TabAccounting). */}
@@ -638,22 +674,12 @@ export default function AccountantDossier({
         )}
       </div>
 
-      {/* Ο ΦΑΚΕΛΟΣ ΤΗΣ ΣΥΝΑΝΤΗΣΗΣ, ΑΝΑ ΑΦΜ: αυτό που πάει στον λογιστή. */}
-      {userId && (
-        <MeetingPackCard userId={userId} year={year} ownerName={exportSource.ownerName ?? null} onEditProperty={onEditProperty}
-          dossier={{
-            form: profile.form, books: profile.books, hasRenovation: profile.hasRenovation,
-            hasLoan: profile.hasLoan, ownershipChanged: profile.ownershipChanged, have, properties, data,
-          }} />
-      )}
-
       {(!compact || listOpen) && (<>
 
       {/* ── Οι ομάδες: πρώτα τα δικά σου ──────────────────────────────────── */}
       {groups.filter(g => g.who !== 'app').map(g => {
-        const t = counts.byWho[g.who]
         return (
-          <Section key={g.who} title={g.label} count={t.total > 0 ? `${t.done}/${t.total}` : undefined} open={!!sections[g.who]} onToggle={() => toggleSection(g.who)}>
+          <Section key={g.who} title={g.label} open={!!sections[g.who]} onToggle={() => toggleSection(g.who)}>
             <p className="acd-sec-sub">
               {g.who === 'owner' ? 'Σημείωσε ό,τι έχεις ήδη βρει.' : 'Τα ετοιμάζει ο λογιστής από όσα του δίνεις. Σημείωσε ό,τι έχει ήδη γίνει.'}
             </p>
@@ -667,7 +693,7 @@ export default function AccountantDossier({
 
       {/* ── Παγίδες: συμβουλή, όχι κατηγορία ──────────────────────────────── */}
       {warnings.length > 0 && (
-        <Section title="Πριν τον στείλεις" count={String(warnings.length)} open={!!sections.traps} onToggle={() => toggleSection('traps')}>
+        <Section title="Πριν τον στείλεις" count={`${warnings.length} ${warnings.length === 1 ? 'έλεγχος' : 'έλεγχοι'}`} open={!!sections.traps} onToggle={() => toggleSection('traps')}>
           <p className="acd-sec-sub">
             {warnings.length === 1 ? 'Ένα σημείο που κοστίζει όταν πάει στραβά.' : `${warnings.length} σημεία που κοστίζουν όταν πάνε στραβά.`}
           </p>
@@ -686,8 +712,8 @@ export default function AccountantDossier({
 
       {/* ── Οι παραδοχές: κλειστές, γιατί σπάνια αλλάζουν ─────────────────── */}
       <div style={card}>
+        {/* ΒΕΛΟΣ ΔΕΞΙΑ, ΟΠΩΣ ΚΑΘΕ ΑΝΟΙΓΟΚΛΕΙΣΤΟ ΤΗΣ ΚΑΡΤΕΛΑΣ (αξιολόγηση 2, Χ2). */}
         <button onClick={() => setAssumptionsOpen(o => !o)} aria-expanded={assumptionsOpen} className="acc-toggle acc-row">
-          <ChevronRight size={16} style={{ color: 'var(--text-tertiary)', flexShrink: 0, transform: assumptionsOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.18s' }} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={eyebrow}>Από τι βγαίνει αυτή η λίστα</p>
             <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '4px 0 0', fontFamily: T.font.sans }}>
@@ -697,6 +723,7 @@ export default function AccountantDossier({
               {properties.length > 0 && `\u00a0· ${properties.length === 1 ? '1 ακίνητο' : `${properties.length} ακίνητα`}`}
             </p>
           </div>
+          <ChevronDown size={18} aria-hidden="true" style={{ color: 'var(--text-tertiary)', flexShrink: 0, transform: assumptionsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.18s' }} />
         </button>
 
         {assumptionsOpen && (

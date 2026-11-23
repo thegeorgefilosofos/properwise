@@ -4,7 +4,7 @@
 // ΠΛΑΚΙΔΙΟ, ΣΥΝΔΕΣΜΟΣ ΠΡΟΣ ΤΑ ΕΞΩ
 // ═══════════════════════════════════════════════════════════════════════════
 import { T, TT } from '@/components/Theme'
-import { ChevronRight, ArrowUpRight } from 'lucide-react'
+import { ChevronDown, ArrowUpRight } from 'lucide-react'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Ο ΣΥΝΔΕΣΜΟΣ ΠΡΟΣ ΤΑ ΕΞΩ, ΓΡΑΜΜΕΝΟΣ ΜΙΑ ΦΟΡΑ
@@ -73,15 +73,19 @@ export function Fold({ open, onToggle, title, sub, right, children }: {
         {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: το `aria-expanded` δεν περνά σε κανένα πρωτογενές. Το
             ChipToggle λέει `aria-pressed` («πατημένο»), που είναι άλλη πληροφορία:
             ο αναγνώστης οθόνης θα έπαυε να ακούει αν η ενότητα είναι ανοιχτή. */}
+        {/* ΒΕΛΟΣ ΔΕΞΙΑ, ΙΔΙΟ ΜΕ ΤΙΣ ΕΝΟΤΗΤΕΣ ΤΟΥ ΦΑΚΕΛΟΥ (αξιολόγηση 2, Χ2). Η
+            καρτέλα είχε βέλος αριστερά εδώ και δεξιά στο «Πριν τον στείλεις»:
+            δύο σήματα για την ίδια πράξη. Το δεξί στοιχείο κατεβαίνει κάτω από
+            τον τίτλο, ώστε το βέλος να μένει στην άκρη σε κάθε πλάτος. */}
         <button type="button" onClick={onToggle} aria-expanded={open} className="acc-toggle"
           style={{ display:'flex', alignItems:'center', gap: 8, flex:'1 1 190px', minWidth:'min(100%, 190px)', background:'none', border:'none', padding:0, cursor:'pointer', textAlign:'left', fontFamily: T.font.sans }}>
-          <ChevronRight size={16} aria-hidden style={{ color:'var(--text-tertiary)', flexShrink:0, transform:open?'rotate(90deg)':'none', transition:'transform 0.18s' }}/>
-          <span style={{ minWidth:0 }}>
+          <span style={{ minWidth:0, flex:1 }}>
             <span style={{ ...cardTitle, margin:0, display:'block' }}>{title}</span>
             {sub&&<span style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans, fontWeight:400, display:'block', marginTop: 4 }}>{sub}</span>}
+            {right&&<span style={{ display:'block', marginTop: 4 }}>{right}</span>}
           </span>
+          <ChevronDown size={18} aria-hidden style={{ color:'var(--text-tertiary)', flexShrink:0, transform:open?'rotate(180deg)':'none', transition:'transform 0.18s' }}/>
         </button>
-        {right}
       </div>
       {open&&<div style={{ marginTop:14 }}>{children}</div>}
     </div>

@@ -7,12 +7,16 @@
 // ανά ακίνητο, βραχυχρόνια, τι λείπει και τα παραστατικά ανά ακίνητο.
 //
 // ΔΥΟ ΚΙΝΗΣΕΙΣ, ΟΧΙ ΜΙΑ. «Κατέβασε» για να τον έχει ο ίδιος ή να τον στείλει
-// όπως θέλει. «Στείλε στον λογιστή» για να τον βρει ο συνδεδεμένος λογιστής
-// στη λίστα του. Ο λογιστής δεν φτιάχνει ποτέ φάκελο από τα δεδομένα του
+// όπως θέλει. «Στείλε» για να τον βρει ο συνδεδεμένος λογιστής στη λίστα του.
+//
+// ΜΕΣΑ ΣΤΗΝ ΚΑΡΤΑ «ΓΙΑ ΤΟΝ ΛΟΓΙΣΤΗ», ΟΧΙ ΔΙΠΛΑ ΤΗΣ (αξιολόγηση 2, Υ5). Ηταν
+// δεύτερη κάρτα αμέσως κάτω από την πρώτη, με τις ίδιες δύο ενέργειες σε λίγο
+// άλλες λέξεις: τέσσερα κουμπιά για δύο πράξεις. Με `bare` αποδίδονται μόνο οι
+// γραμμές ανά ΑΦΜ και η κάρτα του φακέλου (AccountantDossier) τις φιλοξενεί. Ο λογιστής δεν φτιάχνει ποτέ φάκελο από τα δεδομένα του
 // ιδιοκτήτη· βλέπει ΜΟΝΟ ό,τι του έστειλε ο ίδιος, όσο ισχύει η σύνδεση.
 // ═══════════════════════════════════════════════════════════════════════════
 import { EditDetailsLink } from './EditDetailsLink';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Download, Send } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { T, TT, Btn, fd } from '@/components/Theme';
@@ -24,10 +28,16 @@ import type { DossierContext } from '@/lib/accounting/dossier';
 import type { CompletenessProperty, YearData } from '@/lib/facts/completeness';
 
 const card: React.CSSProperties = { background: 'var(--surface-raised)', borderRadius: T.radius.card, padding: T.sp.lg, boxShadow: 'var(--elev-1)' };
+/** Τι έχει μέσα το πακέτο: η ίδια φράση στην κάρτα και στο ⓘ της Λογιστικής. */
+export const PACK_CONTENTS = 'Ένα πακέτο ανά ΑΦΜ: σύνοψη σε μία σελίδα, το Ε2, η σύγκριση με το προσυμπληρωμένο της ΑΑΔΕ, τα ποσά και τα παραστατικά ανά ακίνητο, η βραχυχρόνια και τι λείπει.';
 const eyebrow: React.CSSProperties = { fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', fontFamily: T.font.sans, margin: 0 };
 
-export default function MeetingPackCard({ userId, year, ownerName, dossier, onEditProperty }: {
+export default function MeetingPackCard({ userId, year, ownerName, dossier, onEditProperty, bare = false, onOwners }: {
   userId: string;
+  /** Μόνο οι γραμμές ανά ΑΦΜ, χωρίς δική τους κάρτα και τίτλο. */
+  bare?: boolean;
+  /** Πόσα ΑΦΜ βρέθηκαν (`null` όταν η ανάγνωση απέτυχε): η κάρτα δείχνει τότε το βιβλίο εργασίας. */
+  onOwners?: (n: number | null) => void;
   /** Ανοίγει τον οδηγό του ακινήτου στο ΑΦΜ του ιδιοκτήτη (EditDetailsLink). */
   onEditProperty?: (propertyId: string) => void;
   year: number;
@@ -40,12 +50,15 @@ export default function MeetingPackCard({ userId, year, ownerName, dossier, onEd
   // από αποτυχία, γιατί η οθόνη θα έστελνε τον χρήστη να ορίσει ό,τι έχει ήδη.
   const [owners, setOwners] = useState<{ afm: string; properties: number }[] | null>(null);
   const [ownersFailed, setOwnersFailed] = useState(false);
+  // Ειδοποίηση προς την κάρτα, όχι εξάρτηση της ανάγνωσης: ζει σε ref.
+  const onOwnersRef = useRef(onOwners);
+  useEffect(() => { onOwnersRef.current = onOwners; });
   const [busy, setBusy] = useState<{ afm: string; kind: 'download' | 'share' } | null>(null);
 
   useEffect(() => {
     let alive = true;
     void packStatuses(supabase, userId, year).then(r => { if (alive && !r.failed) setStatus(r.rows); });
-    void ownerAfms(supabase, userId).then(r => { if (!alive) return; setOwners(r); setOwnersFailed(r === null); });
+    void ownerAfms(supabase, userId).then(r => { if (!alive) return; setOwners(r); setOwnersFailed(r === null); onOwnersRef.current?.(r === null ? null : r.length); });
     return () => { alive = false; };
   }, [supabase, userId, year]);
 
@@ -61,10 +74,10 @@ export default function MeetingPackCard({ userId, year, ownerName, dossier, onEd
       const pack = await build(afm);
       if (!pack) { notifyError('Δεν βρέθηκαν ακίνητα για αυτό το ΑΦΜ.'); return; }
       downloadFile(new Blob([pack.zip], { type: 'application/zip' }), pack.fileName, 'application/zip');
-      notify(`Ο φάκελος του ${year} κατέβηκε · ${pack.entries} αρχεία`);
+      notify(`Το πακέτο του ${year} κατέβηκε · ${pack.entries} αρχεία`);
     } catch (e) {
       console.error('[MeetingPackCard] λήψη:', e);
-      notifyError('Ο φάκελος δεν ετοιμάστηκε. Δοκίμασε ξανά.');
+      notifyError('Το πακέτο δεν ετοιμάστηκε. Δοκίμασε ξανά.');
     } finally { setBusy(null); }
   };
 
@@ -75,33 +88,33 @@ export default function MeetingPackCard({ userId, year, ownerName, dossier, onEd
       const pack = await build(afm);
       if (!pack) { notifyError('Δεν βρέθηκαν ακίνητα για αυτό το ΑΦΜ.'); return; }
       const res = await sharePack(supabase, userId, year, afm, pack.zip, pack.status);
-      if (!res.ok) { notifyError('Ο φάκελος δεν στάλθηκε. Δοκίμασε ξανά.'); return; }
+      if (!res.ok) { notifyError('Το πακέτο δεν στάλθηκε. Δοκίμασε ξανά.'); return; }
       setStatus(s => [...s.filter(x => x.ownerAfm !== afm), {
         ownerAfm: afm, aadeDifferences: pack.status.aadeDifferences, aadeCheckedAt: res.sharedAt,
         missingCount: pack.status.missingCount, missingTop: pack.status.missingTop,
         filePath: `${userId}/accountant-pack/${year}/${afm}.zip`, sizeBytes: pack.zip.length, sharedAt: res.sharedAt,
       }]);
-      notify('Ο φάκελος στάλθηκε. Ο λογιστής σου τον βρίσκει στη λίστα του.');
+      notify('Το πακέτο στάλθηκε. Ο λογιστής σου το βρίσκει στη λίστα του.');
     } catch (e) {
       console.error('[MeetingPackCard] αποστολή:', e);
-      notifyError('Ο φάκελος δεν στάλθηκε. Δοκίμασε ξανά.');
+      notifyError('Το πακέτο δεν στάλθηκε. Δοκίμασε ξανά.');
     } finally { setBusy(null); }
   };
 
   return (
-    <div style={card}>
-      <p style={eyebrow}>Ο φάκελος για τον λογιστή · {year}</p>
-      <p style={{ ...TT.bodySm, margin: '8px 0 0' }}>
-        Ένας φάκελος ανά ΑΦΜ: σύνοψη σε μία σελίδα, το Ε2, η σύγκριση με το προσυμπληρωμένο της ΑΑΔΕ, τα ποσά και τα παραστατικά ανά ακίνητο, η βραχυχρόνια και τι λείπει.
-      </p>
+    <div style={bare ? { marginTop: 14 } : card}>
+      {!bare && <>
+        <p style={eyebrow}>Πακέτο για τον λογιστή · {year}</p>
+        <p style={{ ...TT.bodySm, margin: '8px 0 0' }}>{PACK_CONTENTS}</p>
+      </>}
       {ownersFailed ? (
         <p role="alert" style={{ ...TT.caption, color: 'var(--negative)', margin: '12px 0 0' }}>Τα ΑΦΜ των ακινήτων δεν διαβάστηκαν. Άνοιξε ξανά τη Λογιστική σε λίγο.</p>
       ) : owners === null ? null : owners.length === 0 ? (
         <p style={{ ...TT.caption, margin: '12px 0 0' }}>
-          Ο φάκελος βγαίνει ανά ΑΦΜ υπόχρεου. Όρισε το ΑΦΜ του ιδιοκτήτη στην <EditDetailsLink properties={dossier.properties} onEdit={onEditProperty} />.
+          Το πακέτο βγαίνει ανά ΑΦΜ υπόχρεου. Όρισε το ΑΦΜ του ιδιοκτήτη στην <EditDetailsLink properties={dossier.properties} onEdit={onEditProperty} />.
         </p>
       ) : (
-        <div style={{ marginTop: 6 }}>
+        <div style={{ marginTop: bare ? 0 : 6 }}>
           {owners.map(o => {
             const st = status.find(s => s.ownerAfm === o.afm);
             const running = busy?.afm === o.afm;
@@ -120,7 +133,7 @@ export default function MeetingPackCard({ userId, year, ownerName, dossier, onEd
                     <Download size={14} />{running && busy?.kind === 'download' ? 'Ετοιμάζεται' : 'Κατέβασε'}
                   </Btn>
                   <Btn variant="secondary" onClick={() => void share(o.afm)} disabled={!!busy}>
-                    <Send size={14} />{running && busy?.kind === 'share' ? 'Αποστέλλεται' : st?.sharedAt ? 'Ξαναστείλε' : 'Στείλε στον λογιστή'}
+                    <Send size={14} />{running && busy?.kind === 'share' ? 'Αποστέλλεται' : st?.sharedAt ? 'Ξαναστείλε' : 'Στείλε'}
                   </Btn>
                 </div>
               </div>

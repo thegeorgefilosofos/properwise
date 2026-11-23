@@ -20,7 +20,7 @@
 
 import { EditDetailsLink } from './EditDetailsLink';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FileUp } from 'lucide-react';
+import { FileUp, Search } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { T, TT, EmptyState, Btn, ChipToggle, StatStrip, fe, fd } from '@/components/Theme';
 import { loadE2Rows } from './sheets';
@@ -36,6 +36,7 @@ import { listPrefilled, declRefsByProperty, savePackStatus, fileUrl, type Stored
 import { afmGroups, compareGroup, type E2Loaded } from './e2Compare';
 import type { ReconLine } from '@/lib/billing/e2Reconcile';
 import E2PrefilledImport from './E2PrefilledImport';
+import { openMyaadeImport } from './myaadeOpen';
 
 // Χρώμα ΜΟΝΟ όπου υπάρχει κάτι να γίνει. Η συμφωνία είναι η αναμενόμενη
 // κατάσταση και γράφεται με τον τόνο του κειμένου.
@@ -46,6 +47,9 @@ const STATUS: Record<ReconLine['status'], { color: string; label: string }> = {
   missing_in_app: { color: 'var(--negative)', label: 'Λείπει από την εφαρμογή' },
   vacant: { color: 'var(--text-tertiary)', label: 'Κενό ή χωρίς ποσό' },
 };
+
+/** Πόσα πεδία ΑΤΑΚ φαίνονται πριν από το «+N ακίνητα χωρίς ΑΤΑΚ». */
+const ATAK_VISIBLE = 3;
 
 const SOURCE_LABEL: Record<StoredE2Row['source'], string> = { pdf: 'από PDF', paste: 'με επικόλληση', manual: 'με το χέρι' };
 
@@ -75,6 +79,9 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
   const [exporting, setExporting] = useState(false);
   const [atakDraft, setAtakDraft] = useState<Record<string, string>>({});
   const [savingAtak, setSavingAtak] = useState('');
+  // Τα πεδία ΑΤΑΚ μαζεύονται: τρία ορατά, τα υπόλοιπα πίσω από ένα πάτημα με αναζήτηση.
+  const [atakAll, setAtakAll] = useState(false);
+  const [atakQ, setAtakQ] = useState('');
   const [reload, setReload] = useState(0);
 
   // ── ΤΟ ΑΡΧΕΙΟ ΠΟΥ ΠΟΥΛΙΕΤΑΙ ──────────────────────────────────────────────
@@ -328,11 +335,35 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
       )}
 
       {/* Ο ΑΤΑΚ ΓΡΑΦΕΤΑΙ ΕΔΩ, ΟΧΙ ΤΕΣΣΕΡΑ ΠΑΤΗΜΑΤΑ ΜΑΚΡΙΑ. Χωρίς αυτόν, η μίσθωση
-          ταιριάζει μόνο με ΑΦΜ μισθωτή ή αριθμό δήλωσης. */}
-      {noAtak.length > 0 && (
+          ταιριάζει μόνο με ΑΦΜ μισθωτή ή αριθμό δήλωσης.
+          ΤΡΙΑ ΠΕΔΙΑ ΚΑΙ ΟΧΙ ΔΙΑΚΟΣΙΑ (αξιολόγηση 2, Υ6). Σε διαχειριστή με 200
+          ακίνητα η λίστα έπιανε 9.000 εικονοστοιχεία και έσπρωχνε φόρο,
+          κατάσταση αποτελεσμάτων και ΕΝΦΙΑ στο τέλος της σελίδας. Τα υπόλοιπα
+          ανοίγουν με αναζήτηση. Και ο δρόμος χωρίς πληκτρολόγηση: ο ΑΤΑΚ είναι
+          στο Ε9 και η εισαγωγή του (myAADE) συμπληρώνει τα κενά πεδία των
+          ακινήτων που ήδη υπάρχουν (lib/myaade/commit.ts, `fillOnlyEmpty`). */}
+      {noAtak.length > 0 && (() => {
+        const q = atakQ.trim().toLocaleLowerCase('el');
+        const list = atakAll
+          ? noAtak.filter(p => !q || `${p.name || ''} ${p.address || ''}`.toLocaleLowerCase('el').includes(q))
+          : noAtak.slice(0, ATAK_VISIBLE);
+        const hidden = noAtak.length - ATAK_VISIBLE;
+        return (
         <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
           <p style={{ ...TT.caption, margin: '0 0 8px' }}>Χωρίς ΑΤΑΚ η ταύτιση με την ΑΑΔΕ γίνεται μόνο με ΑΦΜ μισθωτή. {ATAK_SOURCE}</p>
-          {noAtak.map(p => (
+          {noAtak.length > 1 && (
+            <div style={{ margin: '0 0 8px' }}>
+              <Btn variant="secondary" onClick={() => openMyaadeImport()}><FileUp size={15} />Συμπλήρωσε από το Ε9</Btn>
+            </div>
+          )}
+          {atakAll && noAtak.length > ATAK_VISIBLE && (
+            <div className="po-search" style={{ margin: '4px 0 6px' }}>
+              <Search size={15} aria-hidden="true" className="po-search-icon" />
+              <input type="search" value={atakQ} onChange={ev => setAtakQ(ev.target.value)}
+                placeholder="Όνομα ή διεύθυνση" className="po-search-input" aria-label="Αναζήτηση ακινήτου χωρίς ΑΤΑΚ" />
+            </div>
+          )}
+          {list.map(p => (
             <div key={p.id} className="atak-row" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '6px 0' }}>
               <label htmlFor={`atak-${p.id}`} style={{ ...TT.bodySm, flex: 1, minWidth: 160 }}>{p.name || p.address || 'Ακίνητο'}</label>
               <input id={`atak-${p.id}`} inputMode="numeric" autoComplete="off" style={inp}
@@ -344,8 +375,15 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
               </Btn>
             </div>
           ))}
+          {atakAll && q && list.length === 0 && <p style={{ ...TT.caption, margin: '6px 0 0' }}>{`Κανένα ακίνητο δεν ταιριάζει με «${atakQ.trim()}».`}</p>}
+          {hidden > 0 && (
+            <Btn variant="ghost" onClick={() => { setAtakAll(v => !v); setAtakQ(''); }} expanded={atakAll}>
+              {atakAll ? 'Λιγότερα' : `+${hidden} ${hidden === 1 ? 'ακίνητο' : 'ακίνητα'} χωρίς ΑΤΑΚ`}
+            </Btn>
+          )}
         </div>
-      )}
+        );
+      })()}
 
       <p style={{ ...TT.caption, marginTop: 14 }}>
         Όπου τα στοιχεία δεν λένε ποιο νούμερο είναι σωστό, το αποφασίζεις με τον λογιστή σου. Εδώ φαίνεται πού διαφέρουν, γιατί και πού διορθώνεται.

@@ -31,10 +31,11 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Zap, Flame, Droplet, Wifi, ShieldCheck, Building2, Repeat, Landmark, Plus, type LucideIcon } from 'lucide-react';
+import { FIXED_MONTHLY_LABEL } from '@/lib/facts/labels';
 import { createClient } from '@/lib/supabase/client';
 import * as expenseStore from '@/lib/data/expenses'
 import * as billStore from '@/lib/data/bills'
-import { T, fe, fixedCols, Skeleton, Btn, PageTitle } from '@/components/Theme';
+import { T, fe, fixedCols, Skeleton, Btn, ChipToggle, PageTitle } from '@/components/Theme';
 import { navLabel } from '@/lib/nav/labels';
 import { mergeLedger, type LedgerEntry } from '@/lib/expenses/ledger';
 import { cadenceLabel } from '@/lib/expenses/expected';
@@ -114,6 +115,13 @@ const KIND_ICON: Record<ContractKind, LucideIcon> = {
  * αέριο», ενώ η αλήθεια είναι «δεν ξέρω ακόμη». Η κενή κάρτα λέει τι λείπει και
  * πώς μπαίνει.
  */
+/**
+ * Στήλες για τις κάρτες με ποσό: πλήθος που διαιρεί τις κάρτες, ώστε καμία σειρά
+ * να μη μένει μισή. Με όλες τις οκτώ ήταν πάντα τέσσερις· τώρα οι άδειες
+ * κατηγορίες φεύγουν στη σειρά «Πρόσθεσε» και οι κάρτες είναι από μία ως οκτώ.
+ */
+const knownCols = (k: number): number => (k <= 5 ? Math.max(k, 1) : k === 6 ? 3 : 4);
+
 function ContractTile({ card, active, onOpen }: { card: ContractCard; active: boolean; onOpen: () => void }) {
   const period = card.everyMonths === 1 ? '' : cadenceLabel(card.everyMonths);
   const meta = card.known
@@ -232,11 +240,12 @@ export default function TabBills({
           {showSkeleton
             ? <Skeleton w={110} h={24} r={T.radius.pill} />
             : strip.recurringPerMonth !== null && strip.recurringPerMonth > 0 && (
+              // ΚΕΙΜΕΝΟ, ΟΧΙ ΧΑΠΙ (αξιολόγηση 2, Μ7): ως γεμάτο χάπι έμοιαζε με
+              // κουμπί που δεν πατιέται. Το όνομα είναι το ίδιο με την Επισκόπηση.
               <span className="ct-total" title="Το άθροισμα των καρτών από κάτω. Κάθε κατηγορία μετριέται από το ιστορικό της με διάμεσο και ο διμηνιαίος λογαριασμός μοιράζεται στους μήνες του. Κατηγορία χωρίς αρκετό ιστορικό δεν μπαίνει στο άθροισμα.">
                 <Repeat size={14} aria-hidden="true" />
-                <span>Πάγια</span>
+                <span>{FIXED_MONTHLY_LABEL}</span>
                 <strong>{fe(strip.recurringPerMonth)}</strong>
-                <span>τον μήνα</span>
               </span>
             )}
         </div>
@@ -259,13 +268,35 @@ export default function TabBills({
           χωρούσαν: στα 1.440 έβγαζε πέντε, δηλαδή 5+3, με τρεις κάρτες στη
           δεύτερη σειρά και κενό δίπλα τους όσο δύο. Τέσσερις στήλες δίνουν 4+4,
           δύο δίνουν 2+2+2+2: καμία σειρά μισή, σε κανένα πλάτος. */}
-      <div ref={toolsRef} {...fixedCols(4, 10, 'stretch')}>
-        {showSkeleton
-          ? [0, 1, 2, 3, 4, 5, 6, 7].map(i => <Skeleton key={i} h={128} r={T.radius.card} />)
-          : strip.cards.map(c => (
-            <ContractTile key={c.kind} card={c} active={tool === c.kind}
-              onOpen={() => openTool(c.kind)} />
-          ))}
+      {/* ΟΙ ΑΔΕΙΕΣ ΚΑΤΗΓΟΡΙΕΣ ΣΕ ΜΙΑ ΓΡΑΜΜΗ (αξιολόγηση 2, Μ7). Πέντε διακεκομμένες
+          κάρτες με δύο σειρές οδηγιών η καθεμία έπιαναν τη μισή οθόνη στα 390,
+          για πράγματα που ο ιδιοκτήτης δεν έχει. Κάρτα παίρνει ό,τι έχει ποσό· τα
+          άλλα γίνονται κουμπιά «Πρόσθεσε», με την οδηγία στο `title`. */}
+      <div ref={toolsRef}>
+        {showSkeleton ? (
+          <div {...fixedCols(4, 10, 'stretch')}>
+            {[0, 1, 2, 3].map(i => <Skeleton key={i} h={128} r={T.radius.card} />)}
+          </div>
+        ) : (<>
+          {strip.cards.some(c => c.known) && (
+            <div {...fixedCols(knownCols(strip.cards.filter(c => c.known).length), 10, 'stretch')}>
+              {strip.cards.filter(c => c.known).map(c => (
+                <ContractTile key={c.kind} card={c} active={tool === c.kind}
+                  onOpen={() => openTool(c.kind)} />
+              ))}
+            </div>
+          )}
+          {strip.cards.some(c => !c.known) && (
+            <div role="group" aria-label="Πρόσθεσε συμβόλαιο" className="ct-add-row">
+              <span className="ct-add-label">Πρόσθεσε</span>
+              {strip.cards.filter(c => !c.known).map(c => (
+                <ChipToggle key={c.kind} on={tool === c.kind} onClick={() => openTool(c.kind)} title={CONTRACT_EMPTY_HINT[c.kind]}>
+                  <Plus size={14} aria-hidden="true" />{c.label}
+                </ChipToggle>
+              ))}
+            </div>
+          )}
+        </>)}
       </div>
 
       {tool && (

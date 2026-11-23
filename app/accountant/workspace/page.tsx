@@ -334,7 +334,7 @@ export default function AccountantWorkspace() {
     setPackBusy(path);
     const bytes = await fileBytes(supabase, path);
     setPackBusy('');
-    if (!bytes) { notifyError('Ο φάκελος δεν κατέβηκε. Αν ο πελάτης ανακάλεσε την πρόσβαση, δεν είναι πια διαθέσιμος· αλλιώς δοκίμασε ξανά.'); return; }
+    if (!bytes) { notifyError('Το πακέτο δεν κατέβηκε. Αν ο πελάτης ανακάλεσε την πρόσβαση, δεν είναι πια διαθέσιμο· αλλιώς δοκίμασε ξανά.'); return; }
     downloadFile(new Blob([bytes.slice().buffer as ArrayBuffer], { type: 'application/zip' }), `${c.name} · ${PACK_FILES.zip(year, afm)}`, 'application/zip');
   };
 
@@ -347,9 +347,9 @@ export default function AccountantWorkspace() {
     setPackBusy(k);
     const bytes = await fileBytes(supabase, path);
     setPackBusy('');
-    if (!bytes) { notifyError('Ο φάκελος δεν κατέβηκε. Αν ο πελάτης ανακάλεσε την πρόσβαση, δεν είναι πια διαθέσιμος· αλλιώς δοκίμασε ξανά.'); return; }
+    if (!bytes) { notifyError('Το πακέτο δεν κατέβηκε. Αν ο πελάτης ανακάλεσε την πρόσβαση, δεν είναι πια διαθέσιμο· αλλιώς δοκίμασε ξανά.'); return; }
     const sheet = readZipEntry(bytes, PACK_FILES.codes);
-    if (!sheet) { notifyError('Ο φάκελος στάλθηκε πριν μπει το φύλλο κωδικών. Ζήτησε από τον πελάτη να τον ξαναστείλει.'); return; }
+    if (!sheet) { notifyError('Το πακέτο στάλθηκε πριν μπει το φύλλο κωδικών. Ζήτησε από τον πελάτη να το ξαναστείλει.'); return; }
     downloadFile(new Blob([sheet.slice().buffer as ArrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
       `${c.name} · ${PACK_FILES.codesFile(year, afm)}`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   };
@@ -603,7 +603,7 @@ export default function AccountantWorkspace() {
                   «Το γραφείο», «Δείξε ποσά», «Κατέβασε τα βιβλία» και «Ο φάκελος»
                   στο ίδιο σχήμα. Το γραφείο πήγε στο μενού του λογαριασμού (το «D»).
 
-                  ΚΑΙ Ο ΔΙΑΚΟΠΤΗΣ ΚΑΙ Ο ΦΑΚΕΛΟΣ ΣΤΟ «⋯» (αξιολόγηση σχεδίασης 3).
+                  ΚΑΙ Ο ΔΙΑΚΟΠΤΗΣ ΚΑΙ ΤΑ ΠΑΚΕΤΑ ΣΤΟ «⋯» (αξιολόγηση σχεδίασης 3).
                   Διακόπτης, δευτερεύον και κύριο στην ίδια σειρά ήταν τρία σχήματα
                   για τρία πράγματα που ο λογιστής κάνει σπάνια. Στο «⋯» μπαίνει και
                   η προσθήκη πελάτη, που καθόταν μόνιμα πάνω από τη λίστα. Στην
@@ -616,7 +616,7 @@ export default function AccountantWorkspace() {
                 // έλεγχο, παραστατικά και κωδικούς.
                 ...(packRefs.length > 0 ? [{
                   key: 'packs',
-                  label: packRefs.length === 1 ? 'Ο φάκελος' : `Οι ${packRefs.length} φάκελοι`,
+                  label: packRefs.length === 1 ? 'Το πακέτο' : `Τα ${packRefs.length} πακέτα`,
                   description: bundleMode(packRefs) === 'one' ? undefined : 'Πολλοί ή βαριοί φάκελοι: κατεβαίνουν ένας ένας',
                   busy: busy === 'packs', busyLabel: `Κατεβαίνουν${packProgress ? ` ${packProgress}` : '…'}`,
                   disabled: busy !== null,
