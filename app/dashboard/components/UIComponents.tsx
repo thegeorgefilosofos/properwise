@@ -1034,6 +1034,157 @@ interface DatePickerProps {
   placeholder?: string;
 }
 
+// ══ Η ΧΡΟΝΙΑ ΑΛΛΑΖΕΙ ΑΠΟ ΤΗΝ ΚΕΦΑΛΙΔΑ (feedback χρήστη, 23/11/2026) ══════════
+// Η ημερομηνία αγοράς ενός σπιτιού του 2015 ήθελε 130 πατήματα «προηγούμενος
+// μήνας». Η κεφαλίδα «Σεπ 2026» είναι πλέον κουμπί: ανοίγει δώδεκα χρονιές,
+// η χρονιά ανοίγει τους μήνες της και ο μήνας τις μέρες του. Τέσσερα πατήματα
+// για όποια ημερομηνία της δεκαετίας. Τα βέλη μένουν όπως ήταν: ένας μήνας τη
+// φορά στις μέρες, μία χρονιά στους μήνες, δώδεκα χρονιές στις χρονιές.
+//
+// Χωρίς ντόπιο <select> για μήνα και χρονιά: ο φύλακας των ντόπιων πεδίων τα
+// απαγορεύει, γιατί το άνοιγμά τους το ζωγραφίζει το λειτουργικό, με άλλα
+// χρώματα και, στη χρονιά, με λίστα εκατό γραμμών.
+export type DpView = 'days' | 'months' | 'years';
+export interface DpState { view: DpView; year: number; month: number }
+
+/** Οι δώδεκα χρονιές της σελίδας: οκτώ πίσω, τρεις μπροστά. Οι ημερομηνίες ενός ακινήτου είναι συνήθως παλιές. */
+export const yearPage = (anchor: number): number[] => Array.from({ length: 12 }, (_, i) => anchor - 8 + i);
+export const dpTitle = (s: DpState): DpState => ({ ...s, view: s.view === 'days' ? 'years' : s.view === 'months' ? 'years' : 'days' });
+const dpStep = (s: DpState, dir: 1 | -1): DpState => {
+  if (s.view === 'years') return { ...s, year: s.year + 12 * dir };
+  if (s.view === 'months') return { ...s, year: s.year + dir };
+  const m = s.month + dir;
+  return m < 0 ? { ...s, year: s.year - 1, month: 11 } : m > 11 ? { ...s, year: s.year + 1, month: 0 } : { ...s, month: m };
+};
+export const dpPrev = (s: DpState) => dpStep(s, -1);
+export const dpNext = (s: DpState) => dpStep(s, 1);
+export const dpPickYear = (s: DpState, year: number): DpState => ({ ...s, view: 'months', year });
+export const dpPickMonth = (s: DpState, month: number): DpState => ({ ...s, view: 'days', month });
+
+const DP_STEP_LABEL: Record<DpView, { prev: [string, string]; next: [string, string] }> = {
+  days:   { prev: ['Προηγούμενος μήνας', 'Previous month'], next: ['Επόμενος μήνας', 'Next month'] },
+  months: { prev: ['Προηγούμενο έτος', 'Previous year'], next: ['Επόμενο έτος', 'Next year'] },
+  years:  { prev: ['Προηγούμενες χρονιές', 'Earlier years'], next: ['Επόμενες χρονιές', 'Later years'] },
+};
+
+/** Το περιεχόμενο του ημερολογίου: κεφαλίδα, πλέγμα της όψης και τα δύο κουμπιά. */
+export function DatePickerPanel({ value, today, initialView = 'days', onPick, onClear, onToday }: {
+  value: string; today: string; initialView?: DpView;
+  onPick: (iso: string) => void; onClear: () => void; onToday: () => void;
+}) {
+  const appEn = useAppIsEn();
+  const L = (pair: [string, string]) => (appEn ? pair[1] : pair[0]);
+  // ΤΟ ΗΜΕΡΟΛΟΓΙΟ ΑΝΟΙΓΕ ΣΕ ΛΑΘΟΣ ΜΗΝΑ. Εδώ γραφόταν `new Date(value).getMonth()`:
+  // η αποθηκευμένη τιμή «2026-01-15» διαβάζεται σε UTC και ρωτιέται σε τοπική
+  // ώρα. Για τιμή της 1ης του μήνα, σε ζώνη με αρνητική απόκλιση, ο επιλογέας
+  // άνοιγε στον ΠΡΟΗΓΟΥΜΕΝΟ μήνα. Το `new Date()` χωρίς όρισμα μένει: εκεί
+  // κατασκευή και ανάγνωση είναι και οι δύο τοπικές, άρα συμφωνούν.
+  const [s, setS] = useState<DpState>(() => ({
+    view: initialView,
+    year: isoYear(value) ?? new Date().getFullYear(),
+    month: (isoMonth(value) ?? new Date().getMonth() + 1) - 1,
+  }));
+  const { view, year, month } = s;
+  const selYear = isoYear(value);
+  const selMonth = isoMonth(value);
+  const firstDay = (new Date(year, month, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const page = yearPage(year);
+  const title = view === 'days' ? `${MONTHS_SHORT[month]} ${year}` : view === 'months' ? String(year) : `${page[0]}-${page[page.length - 1]}`;
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <IconBtn label={L(DP_STEP_LABEL[view].prev)} onClick={() => setS(dpPrev)}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
+        </IconBtn>
+        {/* Η κεφαλίδα δείχνει πού είσαι και πατιέται για να πας πιο πάνω. */}
+        <button type="button" className="dp-title" onClick={() => setS(dpTitle)}
+          aria-label={view === 'days' ? L(['Αλλαγή μήνα και έτους', 'Change month and year']) : view === 'months' ? L(['Αλλαγή έτους', 'Change year']) : L(['Πίσω στις μέρες', 'Back to days'])}>
+          {title}
+        </button>
+        <IconBtn label={L(DP_STEP_LABEL[view].next)} onClick={() => setS(dpNext)}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+        </IconBtn>
+      </div>
+      {view === 'years' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 4 }}>
+          {page.map(y => (
+            <button key={y} type="button" className="dp-cell" aria-pressed={y === selYear} onClick={() => setS(st => dpPickYear(st, y))}
+              data-now={String(y) === today.slice(0, 4) || undefined}>{y}</button>
+          ))}
+        </div>
+      )}
+      {view === 'months' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 4 }}>
+          {MONTHS_SHORT.map((m, i) => {
+            const on = year === selYear && i + 1 === selMonth;
+            return (
+              <button key={m} type="button" className="dp-cell" aria-pressed={on} onClick={() => setS(st => dpPickMonth(st, i))}
+                data-now={`${year}-${String(i + 1).padStart(2, '0')}` === today.slice(0, 7) || undefined}>{m}</button>
+            );
+          })}
+        </div>
+      )}
+      {view === 'days' && (<>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 0, marginBottom: 4 }}>
+          {WEEKDAYS_SHORT.map(d => (
+            <div key={d} style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 500, color: 'var(--text-secondary)', textAlign: 'center', padding: '4px 0', letterSpacing: '0.5px' }}>{d}</div>
+          ))}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 0 }}>
+          {Array(firstDay).fill(null).map((_,i) => <div key={`b${i}`}/>)}
+          {Array(daysInMonth).fill(null).map((_,i) => {
+            const day = i + 1;
+            const iso = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+            const isSelected = value === iso;
+            const isToday = today === iso;
+            return (
+              /* ═══ ΤΟ ΚΕΛΙ ΗΜΕΡΑΣ ΗΤΑΝ 35 ΕΠΙ 35 ΣΕ ΔΑΧΤΥΛΟ ═══════════════
+                 Το αναδυόμενο είναι 280 πλατύ με περιθώριο 16: μένουν 248 για
+                 επτά στήλες, δηλαδή 35,4 η καθεμιά· και το `aspect-ratio: 1`
+                 τα κάνει και 35 ψηλά. Η κλάση δίνει στο φύλλο στυλ τη λαβή να
+                 το διορθώσει μόνο όπου ο δείκτης είναι δάχτυλο. */
+              <button
+                key={day}
+                className="dp-day"
+                onClick={() => onPick(iso)}
+                aria-label={localDay(iso).toLocaleDateString('el-GR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                aria-current={isToday ? 'date' : undefined}
+                aria-pressed={isSelected}
+                style={{
+                  width: '100%', aspectRatio: '1',
+                  borderRadius: '50%',
+                  border: 'none',
+                  background: isSelected ? 'var(--accent)' : 'transparent',
+                  color: isSelected ? 'var(--accent-text)' : isToday ? 'var(--accent)' : 'var(--text-primary)',
+                  fontFamily: T.font.sans,
+                  fontSize: 'var(--fs-base)',
+                  fontWeight: isToday ? 700 : 400,
+                  cursor: 'pointer',
+                  position: 'relative',
+                  transition: 'background 0.1s',
+                }}
+              >
+                {day}
+                {isToday && !isSelected && (
+                  <div style={{ position: 'absolute', bottom: 2, left: '50%', transform: 'translateX(-50%)', width: 4, height: 4, borderRadius: '50%', background: 'var(--accent)' }}/>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </>)}
+      <div style={{ borderTop: '1px solid var(--border-subtle)', marginTop: 8, paddingTop: 8, display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
+        {/* ghost και όχι secondary: η εκκαθάριση ήταν χωρίς φόντο και χωρίς
+            περίγραμμα δίπλα στο γεμάτο «Σήμερα». Το accent μελάνι της γίνεται
+            text-secondary, που είναι ακριβώς η ιεραρχία της δευτερεύουσας εξόδου. */}
+        <Btn variant="ghost" onClick={onClear}>Εκκαθάριση</Btn>
+        <Btn variant="primary" onClick={onToday}>Σήμερα</Btn>
+      </div>
+    </>
+  );
+}
+
 // ══ ΤΟ ΠΡΟΕΠΙΛΕΓΜΕΝΟ ΚΕΙΜΕΝΟ ΗΤΑΝ ΜΑΚΡΥΤΕΡΟ ΑΠΟ ΤΗ ΣΤΗΛΗ ΤΟΥ ════════════════
 // Το «Επιλογή ημερομηνίας» θέλει 140 εικονοστοιχεία. Σε σειρά τεσσάρων πεδίων
 // μέσα σε παράθυρο η στήλη είναι 169 και το ωφέλιμο, μετά το εικονίδιο και τα
@@ -1055,15 +1206,6 @@ export function DatePicker({ label, labelInfo, ariaLabel, value, onChange, disab
   const placeholder = givenPlaceholder ?? (appEn ? 'Choose…' : 'Επιλογή…');
   const [open, setOpen] = useState(false);
   const [focused, setFocused] = useState(false);
-  // ΤΟ ΗΜΕΡΟΛΟΓΙΟ ΑΝΟΙΓΕ ΣΕ ΛΑΘΟΣ ΜΗΝΑ. Εδώ γραφόταν `new Date(value).getMonth()`:
-  // η αποθηκευμένη τιμή «2026-01-15» διαβάζεται σε UTC και ρωτιέται σε τοπική
-  // ώρα. Για τιμή της 1ης του μήνα, σε ζώνη με αρνητική απόκλιση, ο επιλογέας
-  // άνοιγε στον ΠΡΟΗΓΟΥΜΕΝΟ μήνα — δηλαδή δεν έδειχνε την ημερομηνία που ήδη
-  // είχε ο χρήστης και έπρεπε να πατήσει «επόμενος» για να τη δει.
-  // Το `new Date()` χωρίς όρισμα μένει: εκεί κατασκευή και ανάγνωση είναι και
-  // οι δύο τοπικές, άρα συμφωνούν.
-  const [month, setMonth] = useState(() => (isoMonth(value) ?? new Date().getMonth() + 1) - 1);
-  const [year, setYear] = useState(() => isoYear(value) ?? new Date().getFullYear());
   const ref = useRef<HTMLDivElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   // Το ημερολόγιο ζωγραφίζεται μέσω portal στο body ώστε να μην «κόβεται» από modal
@@ -1105,10 +1247,16 @@ export function DatePicker({ label, labelInfo, ariaLabel, value, onChange, disab
     document.addEventListener('mousedown', handler);
     window.addEventListener('scroll', onScroll, true);
     window.addEventListener('resize', onScroll);
+    // Οι όψεις χρονιών και μηνών είναι πιο κοντές από τις μέρες: όταν το
+    // ημερολόγιο ανοίγει προς τα πάνω, η κάτω του άκρη μένει δίπλα στο πεδίο.
+    // Ξαναμετρά μόνο θέση, ποτέ μέγεθος, οπότε δεν γεννά δεύτερη μέτρηση.
+    const ro = typeof ResizeObserver !== 'undefined' && popupRef.current ? new ResizeObserver(onScroll) : null;
+    if (ro && popupRef.current) ro.observe(popupRef.current);
     return () => {
       document.removeEventListener('mousedown', handler);
       window.removeEventListener('scroll', onScroll, true);
       window.removeEventListener('resize', onScroll);
+      ro?.disconnect();
     };
   }, [open]);
 
@@ -1117,17 +1265,7 @@ export function DatePicker({ label, labelInfo, ariaLabel, value, onChange, disab
     return localDay(d).toLocaleDateString('el-GR', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
-  const firstDay = (new Date(year, month, 1).getDay() + 6) % 7;
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today = athensToday();
-
-  const pick = (day: number) => {
-    const d = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-    onChange(d); setOpen(false);
-  };
-
-  const prevMonth = () => month === 0 ? (setMonth(11), setYear(y => y-1)) : setMonth(m => m-1);
-  const nextMonth = () => month === 11 ? (setMonth(0), setYear(y => y+1)) : setMonth(m => m+1);
 
   // Ποιος γράφει το όνομα: η ρητή ετικέτα του γονιού, αλλιώς η δική μας. Η τιμή
   // μπαίνει πάντα από πίσω, ώστε το όνομα να λέει και τι ρυθμίζει και τι δείχνει.
@@ -1202,76 +1340,10 @@ export function DatePicker({ label, labelInfo, ariaLabel, value, onChange, disab
           width: 280,
           boxShadow: 'var(--shadow-lg)',
         }} className="dp-pop">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <IconBtn label="Προηγούμενος μήνας" onClick={prevMonth}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
-            </IconBtn>
-            <span style={{ fontFamily: T.font.sans, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '0.1px' }}>
-              {MONTHS_SHORT[month]} {year}
-            </span>
-            <IconBtn label="Επόμενος μήνας" onClick={nextMonth}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
-            </IconBtn>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 0, marginBottom: 4 }}>
-            {WEEKDAYS_SHORT.map(d => (
-              <div key={d} style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 500, color: 'var(--text-secondary)', textAlign: 'center', padding: '4px 0', letterSpacing: '0.5px' }}>{d}</div>
-            ))}
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 0 }}>
-            {Array(firstDay).fill(null).map((_,i) => <div key={`b${i}`}/>)}
-            {Array(daysInMonth).fill(null).map((_,i) => {
-              const day = i + 1;
-              const iso = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-              const isSelected = value === iso;
-              const isToday = today === iso;
-              return (
-                /* ═══ ΤΟ ΚΕΛΙ ΗΜΕΡΑΣ ΗΤΑΝ 35 ΕΠΙ 35 ΣΕ ΔΑΧΤΥΛΟ ═══════════════
-                   Το αναδυόμενο είναι 280 πλατύ με περιθώριο 16: μένουν 248 για
-                   επτά στήλες, δηλαδή 35,4 η καθεμιά· και το `aspect-ratio: 1`
-                   τα κάνει και 35 ψηλά. Εννέα εικονοστοιχεία κάτω από το όριο,
-                   σε ένα πλέγμα όπου οι στόχοι ΑΓΓΙΖΟΝΤΑΙ μεταξύ τους: το λάθος
-                   πάτημα δεν είναι απροσεξία, είναι το αναμενόμενο.
-                   Η κλάση δίνει στο φύλλο στυλ τη λαβή να το διορθώσει μόνο
-                   όπου ο δείκτης είναι δάχτυλο. */
-                <button
-                  key={day}
-                  className="dp-day"
-                  onClick={() => pick(day)}
-                  aria-label={localDay(iso).toLocaleDateString('el-GR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                  aria-current={isToday ? 'date' : undefined}
-                  aria-pressed={isSelected}
-                  style={{
-                    width: '100%', aspectRatio: '1',
-                    borderRadius: '50%',
-                    border: 'none',
-                    background: isSelected ? 'var(--accent)' : 'transparent',
-                    color: isSelected ? 'var(--accent-text)' : isToday ? 'var(--accent)' : 'var(--text-primary)',
-                    fontFamily: T.font.sans,
-                    fontSize: 'var(--fs-base)',
-                    fontWeight: isToday ? 700 : 400,
-                    cursor: 'pointer',
-                    position: 'relative',
-                    transition: 'background 0.1s',
-                  }}
-                  onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--bg-hover)'; }}
-                  onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
-                >
-                  {day}
-                  {isToday && !isSelected && (
-                    <div style={{ position: 'absolute', bottom: 2, left: '50%', transform: 'translateX(-50%)', width: 4, height: 4, borderRadius: '50%', background: 'var(--accent)' }}/>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          <div style={{ borderTop: '1px solid var(--border-subtle)', marginTop: 8, paddingTop: 8, display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
-            {/* ghost και όχι secondary: η εκκαθάριση ήταν χωρίς φόντο και χωρίς
-                περίγραμμα δίπλα στο γεμάτο «Σήμερα». Το accent μελάνι της γίνεται
-                text-secondary, που είναι ακριβώς η ιεραρχία της δευτερεύουσας εξόδου. */}
-            <Btn variant="ghost" onClick={() => { onChange(''); setOpen(false); }}>Εκκαθάριση</Btn>
-            <Btn variant="primary" onClick={() => { onChange(today); setOpen(false); }}>Σήμερα</Btn>
-          </div>
+          <DatePickerPanel value={value} today={today}
+            onPick={d => { onChange(d); setOpen(false); }}
+            onClear={() => { onChange(''); setOpen(false); }}
+            onToday={() => { onChange(today); setOpen(false); }} />
         </div>,
         document.body
       )}

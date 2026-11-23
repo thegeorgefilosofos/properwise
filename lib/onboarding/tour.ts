@@ -129,3 +129,32 @@ export function placeCard(target: Box, card: { width: number; height: number }, 
   const left = Math.min(Math.max(edge, cx - width / 2), vw - width - edge);
   return vertical(width, left);
 }
+
+/**
+ * Η θέση της κάρτας ΕΝΟΣ βήματος, που δεν ταλαντεύεται.
+ *
+ * ΤΟ ΠΑΡΑΘΥΡΟ ΤΡΕΜΟΠΑΙΖΕ ΚΑΙ ΚΟΛΛΟΥΣΕ (feedback χρήστη, 23/11/2026, λάπτοπ με
+ * Windows, εφαρμογή εγκατεστημένη). Το ύψος της κάρτας εξαρτάται από το πλάτος
+ * που της δίνει το `placeCard`: στη στήλη της πλαϊνής μπάρας το κείμενο σπάει
+ * σε περισσότερες γραμμές. Σε χαμηλό παράθυρο ο χώρος κάτω από τον στόχο
+ * χωρούσε την κάρτα στο φαρδύ της ύψος αλλά όχι στο στενό: κάτω → στενεύει →
+ * ψηλώνει → δεν χωρά → δεξιά → φαρδαίνει → κονταίνει → ξαναχωρά κάτω. Ο
+ * ResizeObserver της κάρτας ξαναμετρούσε σε κάθε αλλαγή, οπότε η θέση άλλαζε
+ * σε κάθε καρέ, για πάντα.
+ *
+ * Η ΔΙΟΡΘΩΣΗ: η απόφαση παίρνεται με το ΜΕΓΑΛΥΤΕΡΟ ύψος που έχει δει η κάρτα σε
+ * αυτό το βήμα. Το ύψος αυτό μόνο ανεβαίνει και οι δυνατές τιμές του είναι
+ * λίγες, άρα η θέση ηρεμεί σε μία ή δύο μετρήσεις. Το κόστος είναι ότι η κάρτα
+ * κρατά την ασφαλέστερη θέση ακόμη κι όταν θα χωρούσε στην άλλη. Νέο βήμα,
+ * `reset()`.
+ */
+export function cardPlacer() {
+  let tallest = 0;
+  return {
+    place(target: Box, measuredHeight: number, vw: number, vh: number, gap?: number): CardPlace {
+      tallest = Math.max(tallest, measuredHeight);
+      return placeCard(target, { width: 360, height: tallest }, vw, vh, gap);
+    },
+    reset() { tallest = 0; },
+  };
+}

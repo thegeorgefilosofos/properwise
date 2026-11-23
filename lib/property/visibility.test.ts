@@ -83,13 +83,16 @@ for (const [status, mode] of [['vacant', null], ['disputed', null], ['for_sale',
 // ακίνητα που δεν αποδίδουν απαντιέται στην καρτέλα Σχέδιο, με πραγματικούς
 // άξονες αντί για ένα ποσοστό χωρίς έσοδο από πίσω.
 {
-  for (const st of ['own_use', 'renovation'] as const) {
+  // ΑΜΦΙΣΒΗΤΟΥΜΕΝΟ (feedback χρήστη, 23/11/2026): η καρτέλα έλεγε μόνο «Γιατί
+  // δεν υπάρχει απόδοση». Σε νομική εκκρεμότητα δεν είναι ερώτηση της ημέρας,
+  // είναι θόρυβος στο μενού· η Αξιοποίηση μένει και λέει τι γίνεται τώρα.
+  for (const st of ['own_use', 'renovation', 'disputed'] as const) {
     const p = flat({ status_detail: st, rental_mode: null });
     ok(`${st}: ΚΑΜΙΑ απόδοση`, !visibleTabs(ALL, ctxOf([p]), p).includes('roi'));
   }
-  // Κενό, αμφισβητούμενο, προς πώληση (05.10.2026): η καρτέλα υπάρχει και εξηγεί
-  // γιατί δεν υπολογίζεται. Τα νούμερα τα κρύβει η ίδια η καρτέλα (isLease).
-  for (const st of ['vacant', 'for_sale', 'disputed'] as const) {
+  // Κενό και προς πώληση (05.10.2026): η καρτέλα υπάρχει και εξηγεί γιατί δεν
+  // υπολογίζεται. Τα νούμερα τα κρύβει η ίδια η καρτέλα (isLease).
+  for (const st of ['vacant', 'for_sale'] as const) {
     const p = flat({ status_detail: st, rental_mode: null });
     ok(`${st}: η καρτέλα μένει, με εξήγηση`, visibleTabs(ALL, ctxOf([p]), p).includes('roi'));
   }
@@ -207,8 +210,8 @@ eq('τύπος με τόνους και κεφαλαία', normType('ΔΙΑΜΕ�
   for (const s of STATUSES) {
     const row = { id: 'p', ...writeStatus(s.key) } as unknown as PropertyLike;
     // Η καρτέλα φαίνεται σε κάθε μίσθωση· έξω από μίσθωση φαίνεται μόνο ως
-    // εξήγηση, χωρίς νούμερα. Ιδιοχρησία και ανακαίνιση δεν τη βλέπουν.
-    const explains = s.key === 'vacant' || s.key === 'disputed' || s.key === 'for_sale';
+    // εξήγηση, χωρίς νούμερα. Ιδιοχρησία, ανακαίνιση και αμφισβητούμενο δεν τη βλέπουν.
+    const explains = s.key === 'vacant' || s.key === 'for_sale';
     eq(`${s.key}: το isLet συμφωνεί με την ορατότητα των Αποδόσεων`,
        isLet(row as never) || explains, tabDecision('roi', ctx, row).visible);
   }
