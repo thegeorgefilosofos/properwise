@@ -30,6 +30,10 @@ export const SCENES = [
   'firmWorkspaceEmpty', 'firmQuiet', 'firmAsk', 'firmAskChannels', 'firmAskSent', 'firmBulkPick', 'firmAccount',
   // Η Επισκόπηση με την ενημέρωση των γραφείων (ΑΠ-11, lib/legal/policyNotice.ts).
   'overviewFirmNotice',
+  // myDATA μέσω λογιστή (scripts/perf-bench/mydata.tsx): η κάρτα του λογιστή σε
+  // πέντε όψεις, η άδεια του πελάτη σε τρεις, τα Εισερχόμενα «Από το myDATA».
+  'mydataNone', 'mydataRejected', 'mydataSyncing', 'mydataReady', 'mydataDown',
+  'mydataConsentNone', 'mydataConsent', 'mydataConsentDenied', 'mydataInbox',
 ];
 
 // ═══ ΟΙ ΣΚΗΝΕΣ ΤΗΣ ΠΥΛΗΣ ΤΟΥ ΛΟΓΙΣΤΗ ════════════════════════════════════════
@@ -42,6 +46,8 @@ export const PORTAL_SCENES = new Set([
   'firmEntryDocument', 'firmEntryBill', 'firmEntryTax', 'firmEntryLoan', 'firmEntryRent', 'firmEntryTenant',
   'firmSecondStep', 'firmClientGone', 'firmClientSecondStep',
   'firmWorkspaceEmpty', 'firmQuiet', 'firmAsk', 'firmAskChannels', 'firmAskSent', 'firmBulkPick', 'firmAccount',
+  // Η κάρτα «Σύνδεση myDATA» ζει στον χώρο του λογιστή.
+  'mydataNone', 'mydataRejected', 'mydataSyncing', 'mydataReady', 'mydataDown',
 ]);
 
 /** Οι σκηνές που ζητά η `E2E_ONLY`, αλλιώς όλες. */

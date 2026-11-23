@@ -74,6 +74,25 @@ end $$;
 create schema if not exists vault;
 create table if not exists vault.decrypted_secrets (id uuid default gen_random_uuid(), name text, decrypted_secret text);
 create table if not exists vault.secrets (id uuid default gen_random_uuid(), name text, secret text);
+-- Οι δύο συναρτήσεις του Vault που καλούν οι μεταναστεύσεις (υπογραφές του
+-- supabase_vault). Εδώ τίποτα δεν κρυπτογραφείται: γράφουν και στους δύο
+-- πίνακες, ώστε το `decrypted_secrets` να δίνει ό,τι θα έδινε η όψη της
+-- πλατφόρμας. Και το σβήσιμο από το `secrets` φτάνει στο `decrypted_secrets`.
+create or replace function vault.create_secret(new_secret text, new_name text default null, new_description text default '', new_key_id uuid default null)
+returns uuid language plpgsql as $$
+declare v uuid := gen_random_uuid(); begin
+  insert into vault.secrets(id, name, secret) values (v, new_name, new_secret);
+  insert into vault.decrypted_secrets(id, name, decrypted_secret) values (v, new_name, new_secret);
+  return v; end $$;
+create or replace function vault.update_secret(secret_id uuid, new_secret text default null, new_name text default null, new_description text default null, new_key_id uuid default null)
+returns void language plpgsql as $$ begin
+  update vault.secrets set secret = coalesce(new_secret, secret), name = coalesce(new_name, name) where id = secret_id;
+  update vault.decrypted_secrets set decrypted_secret = coalesce(new_secret, decrypted_secret), name = coalesce(new_name, name) where id = secret_id;
+end $$;
+create or replace function vault.stub_secrets_gone() returns trigger language plpgsql as $$
+begin delete from vault.decrypted_secrets where id = old.id; return old; end $$;
+drop trigger if exists stub_secrets_gone on vault.secrets;
+create trigger stub_secrets_gone after delete on vault.secrets for each row execute function vault.stub_secrets_gone();
 
 -- storage: οι βοηθοί που χρησιμοποιούν οι πολιτικές.
 create or replace function storage.foldername(name text) returns text[] language sql immutable as $$ select string_to_array(name, '/') $$;

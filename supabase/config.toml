@@ -39,6 +39,11 @@ verify_jwt = true
 enabled = true
 verify_jwt = false
 
+# Ο λογιστής (JWT, ελέγχεται μέσα) και το cron (x-cron-secret): όπως το ical-sync.
+[functions.mydata-sync]
+enabled = true
+verify_jwt = false
+
 [functions.ical-sync]
 enabled = true
 verify_jwt = false

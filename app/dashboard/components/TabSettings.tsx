@@ -53,10 +53,13 @@ import { AccessibilitySettings } from './AccessibilitySettings';
 import { useBillingWords } from './useBillingWords';
 import { useAppEn } from '@/lib/i18n/appEn';
 import LanguageSetting from './LanguageSetting';
+import { MYDATA_ON } from '@/lib/mydata/flag';
 import MsgLanguageSetting from './MsgLanguageSetting';
 
 // Φαίνεται μόνο σε όποιον έχει δώσει πρόσβαση σε γραφείο· φορτώνεται στον περιηγητή.
 const FirmAccess = dynamic(() => import('./FirmAccess').then(m => m.FirmAccess), { ssr: false });
+// Η άδεια myDATA προς τον λογιστή (σημαία ως την απόφαση πακέτου): μόνο με τη σημαία ανοιχτή.
+const MydataConsent = MYDATA_ON ? dynamic(() => import('./MydataConsent'), { ssr: false }) : null;
 
 type ProfileType = 'individual' | 'professional';
 
@@ -1088,6 +1091,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
             {sheetNote && <div style={{ ...TT.bodySm }}>{sheetNote}</div>}
           </SetRow>
           <AccountantAccess userId={userId} />
+          {MydataConsent && <MydataConsent userId={userId} />}
           <FirmAccess />
           <MarketDataSharing userId={userId} />
           {/* Η εμπιστοσύνη δεν είναι μόνο για τη σελίδα πωλήσεων: ο υπάρχων χρήστης

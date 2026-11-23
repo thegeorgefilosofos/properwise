@@ -49,6 +49,11 @@ import E2PrefilledImport, { type KnownProperty } from '@/app/dashboard/component
 import { loadStatements, downloadAll, downloadPacks, bundleMode, lastMove, type BulkClient, type ClientStatement, type PackRef } from '../bulk';
 import { readZipEntry } from '@/lib/accounting/zip';
 import BulkInvite from './BulkInvite';
+import dynamic from 'next/dynamic';
+import { MYDATA_ON } from '@/lib/mydata/flag';
+
+// «Σύνδεση myDATA» (σημαία ως την απόφαση πακέτου): μόνο με τη σημαία ανοιχτή.
+const MydataCard = MYDATA_ON ? dynamic(() => import('./MydataCard'), { ssr: false }) : null;
 import { foldName } from '@/lib/contacts/alpha';
 import { notify, notifyError } from '@/components/Toast';
 import { confirmDialog } from '@/components/confirmBus';
@@ -645,6 +650,7 @@ export default function AccountantWorkspace() {
           γραφείου δεν έχει πακέτο ούτε βλέπει οθόνη αγοράς. Μένει για όσους
           λογιστές την είχαν πριν από τα γραφεία. */}
       {!firm?.firmOnly && <BulkInvite db={supabase} label={label} />}
+      {MydataCard && me && <MydataCard db={supabase} userId={me.id} />}
       </>}
 
       {/* ΤΑ ΦΙΛΤΡΑ ΤΟΥ ΓΡΑΦΕΙΟΥ. Τρία dropdown σε μία γραμμή, ίδια με της

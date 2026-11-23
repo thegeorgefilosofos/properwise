@@ -28,6 +28,12 @@ import { T, Btn, ChipToggle, PageTitle } from '@/components/Theme';
 import ExpenseLedger from './ExpenseLedger';
 import { useAppEn } from '@/lib/i18n/appEn';
 import InboundInbox from './InboundInbox';
+import dynamic from 'next/dynamic';
+import { MYDATA_ON } from '@/lib/mydata/flag';
+
+// Τα παραστατικά του myDATA (σημαία ως την απόφαση πακέτου): το κομμάτι
+// κατεβαίνει μόνο όταν η σημαία είναι ανοιχτή, αλλιώς δεν υπάρχει καν.
+const MydataInbox = MYDATA_ON ? dynamic(() => import('./MydataInbox'), { ssr: false }) : null;
 import { BankLinkRow } from './BankLink';
 import TabBills from './TabBills';
 import { type LegalForm } from '@/lib/accounting/dossier';
@@ -208,6 +214,8 @@ export default function TabFinances({
               inbox={<>
                 <InboundInbox propertyId={propertyId} userId={userId} propertyName={propertyName} properties={properties}
                   onFiled={() => setLedgerKey(k => k + 1)} />
+                {MydataInbox && <MydataInbox propertyId={propertyId} userId={userId} properties={properties}
+                  onFiled={() => setLedgerKey(k => k + 1)} />}
                 <BankLinkRow />
               </>} />
           // Η «Νέα δαπάνη» και στον Προϋπολογισμό: ίδια φόρμα, ίδια θέση. Η
