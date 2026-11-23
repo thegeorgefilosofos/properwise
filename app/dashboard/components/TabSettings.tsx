@@ -830,7 +830,10 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Btn variant={showManage ? 'secondary' : 'primary'} onClick={() => showManage ? setShowManage(false) : openManage()}>
+            {/* ΔΕΥΤΕΡΕΥΟΝ (αξιολόγηση σχεδίασης 3). Ηταν το μόνο γεμάτο κουμπί της
+                σελίδας, πάνω από τις ρυθμίσεις που ανοίγει κανείς συχνότερα. Οι
+                Ρυθμίσεις δεν έχουν μία κύρια κίνηση, οπότε δεν έχουν γεμάτο κουμπί. */}
+            <Btn variant="secondary" onClick={() => showManage ? setShowManage(false) : openManage()}>
               {showManage ? 'Κλείσιμο' : 'Διαχείριση συνδρομής'}
             </Btn>
           </div>

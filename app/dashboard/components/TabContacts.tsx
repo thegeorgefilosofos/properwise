@@ -9,7 +9,7 @@ import { ensureDpa } from '@/lib/legal/dpa'
 import { alphaBucket, buildAlphaIndex, compareNames, initialsOf } from '@/lib/contacts/alpha'
 import { Phone, Mail, X, Search, Globe, FileText, Users, Building2, Trash2, UserPlus, Camera, SearchX } from 'lucide-react'
 import { DatePicker, CustomSelect, Toggle } from './UIComponents'
-import { T, PageTitle, fieldRow, SecHdr, Btn, ChipToggle, LinkBtn, EmptyState, fn, Skeleton, SkeletonKPIs, SelectBox, Modal, pressable, pageShell, RuntimeImg } from '@/components/Theme'
+import { T, PageTitle, fieldRow, SecHdr, Btn, ChipToggle, Segmented, EmptyState, fn, Skeleton, SkeletonKPIs, SelectBox, Modal, pressable, pageShell, RuntimeImg } from '@/components/Theme'
 import { showTool, SHOW_FROM } from '@/lib/ui/thresholds'
 import { ActionMenu } from '@/components/ActionMenu'
 import { notify, notifyOk, notifyError } from '@/components/Toast'
@@ -345,6 +345,20 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
   const cf = (id: string) => contactById.get(id)
   const detail = detailId ? (contacts.find(c => c.id === detailId) || null) : null   // ζωντανό (ανανεώνεται μετά από edit/refresh)
 
+  // Ενα σημείο για τα chips προσοχής: μπαίνουν στη σειρά των ομάδων όταν
+  // υπάρχει, αλλιώς σε δική τους.
+  const attentionChips = needsAttention.map(a => {
+            const on = attention === a.id
+            return (
+              <ChipToggle key={a.id} on={on} onClick={() => setAttention(on ? null : a.id)}>
+                {a.label}
+                {/* Ιδιο με τα φίλτρα του Αρχείου: η διαφάνεια έριχνε τον μετρητή στο
+                    3,46:1. Το βάρος το δίνει το χρώμα, όχι το ξεθώριασμα. */}
+                <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-xs)', color: on ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{fn(a.count)}</span>
+              </ChipToggle>
+            )
+          })
+
   return (
     <div style={pageShell('wide')}>
 
@@ -395,26 +409,26 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
       // πλακιδίου «Καταχώρησε» της κενής κατάστασης. Δύο κουμπιά για το ίδιο.
       // Μόλις υπάρχει κατάλογος, το πλακίδιο φεύγει και το μενού επιστρέφει με
       // όλες του τις ενέργειες: εκεί δεν υπάρχει πια τίποτα διπλό.
+      // ── «ΝΕΑ ΕΠΑΦΗ» ΚΥΡΙΟ, Η ΣΑΡΩΣΗ ΜΕΣΑ ΣΤΗ ΦΟΡΜΑ (αξιολόγηση σχεδίασης 3) ──
+      // Το γεμάτο κουμπί ήταν η «Σάρωση κάρτας» και η χειροκίνητη καταχώρηση
+      // κρυβόταν στο «Περισσότερα»: όποιος δεν είχε κάρτα μπροστά του έκανε δύο
+      // πατήματα για την πιο απλή κίνηση της οθόνης. Τώρα, όπως στις Επαφές του
+      // iPhone, ένα κύριο «Νέα επαφή» ανοίγει τη φόρμα, με τη «Σάρωση κάρτας»
+      // στην κορυφή της. Το «⋯» κρατά τις εξαγωγές και την πολλαπλή επιλογή.
       const actions = <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          {contacts.length > 0 && <ActionMenu label="Περισσότερα" items={[
-            { key: 'add', label: 'Νέα επαφή χειροκίνητα', description: 'Χωρίς κάρτα: συμπληρώνεις εσύ τα πεδία.', onClick: openAdd },
+          {contacts.length > 0 && <ActionMenu iconOnly label="Περισσότερα" items={[
             { key: 'xlsx', label: 'Κατάλογος σε Excel', description: 'Όλα τα πεδία, για υπολογιστικό φύλλο.', onClick: () => exportContactsExcel(contacts) },
             { key: 'pdf', label: 'Κατάλογος σε PDF', description: 'Έτοιμος για εκτύπωση ή αποστολή.', onClick: () => exportContactsPDF(contacts, branding) },
             { key: 'vcf', label: 'Επαφές στο κινητό', description: 'Αρχείο vCard για το τηλεφωνικό σου ευρετήριο.', onClick: () => downloadVcf(contacts, 'epafes.vcf') },
+            ...(!bulkMode && showTool('bulk', processed.length)
+              ? [{ key: 'bulk', label: 'Επιλογή πολλαπλών', onClick: () => { setBulkMode(true); setSelected(new Set()) } }]
+              : []),
           ]} />}
-          {/* Η ΙΔΙΑ ΚΥΡΙΑ ΕΝΕΡΓΕΙΑ ΔΥΟ ΦΟΡΕΣ ΚΑΙ ΟΙ ΔΥΟ ΜΠΛΕ, ΣΤΗΝ ΙΔΙΑ ΟΘΟΝΗ.
-              Με άδειο κατάλογο, ο χρήστης έβλεπε «Σάρωση κάρτας» πάνω δεξιά ΚΑΙ
-              «Φωτογράφισε κάρτα» στο κέντρο — δύο γεμάτα γαλάζια κουμπιά που
-              καλούν το ΙΔΙΟ `cardRef.current?.click()`. Το μάτι δεν ξέρει πού να
-              πάει και το σχόλιο τρεις γραμμές πιο πάνω υπόσχεται ρητά «μένει
-              ΜΙΑ κύρια ενέργεια».
-
-              Όταν δεν υπάρχει τίποτα, η κενή κατάσταση ΕΙΝΑΙ η πρόσκληση: δίνει
-              και τους δύο δρόμους, με εξήγηση τι διαβάζεται από την κάρτα. Το
-              κουμπί της κεφαλίδας εμφανίζεται μόλις υπάρχει κατάλογος, όπου
-              πραγματικά χρειάζεται συντόμευση. */}
+          {/* Με άδειο κατάλογο η κενή κατάσταση ΕΙΝΑΙ η πρόσκληση, με τους δύο
+              δρόμους της. Το κουμπί της κεφαλίδας εμφανίζεται μόλις υπάρχει
+              κατάλογος, ώστε να μη στέκονται δύο γεμάτα κουμπιά για το ίδιο. */}
           {contacts.length > 0 && (
-            <Btn variant="primary" onClick={() => cardRef.current?.click()}>{scanning ? 'Σάρωση…' : 'Σάρωση κάρτας'}</Btn>
+            <Btn variant="primary" onClick={openAdd}><UserPlus size={15} />Νέα επαφή</Btn>
           )}
         </div>;
       return embedded
@@ -434,19 +448,11 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
           πάτημα σε πηγαίνει στις συγκεκριμένες επαφές αντί να σε αφήνει να τις
           ψάξεις. Όταν δεν υπάρχει τίποτα εκκρεμές, η ζώνη δεν υπάρχει — η
           απουσία προβλήματος δεν χρειάζεται ανακοίνωση. */}
-      {!loading && needsAttention.length > 0 && (
+      {/* Τα φίλτρα «Χωρίς ΑΦΜ» και «Ληγμένο ραντεβού» ζουν στη σειρά των ομάδων
+          πιο κάτω: μία σειρά φίλτρων αντί για δύο (αξιολόγηση σχεδίασης 3). */}
+      {!loading && needsAttention.length > 0 && groupsPresent.length < SHOW_FROM.filter && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-          {needsAttention.map(a => {
-            const on = attention === a.id
-            return (
-              <ChipToggle key={a.id} on={on} onClick={() => setAttention(on ? null : a.id)}>
-                {a.label}
-                {/* Ιδιο με τα φίλτρα του Αρχείου: η διαφάνεια έριχνε τον μετρητή στο
-                    3,46:1. Το βάρος το δίνει το χρώμα, όχι το ξεθώριασμα. */}
-                <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-xs)', color: on ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{fn(a.count)}</span>
-              </ChipToggle>
-            )
-          })}
+          {attentionChips}
         </div>
       )}
 
@@ -539,19 +545,12 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
         {/* Ταξινόμηση: δύο επιλογές, ορατές. Ένα αναδυόμενο μενού για δύο τιμές
             κρύβει τη μισή πληροφορία πίσω από ένα κλικ, χωρίς λόγο. */}
         {showTool('sort', contacts.length) && (
-        <div style={{ display: 'flex', border: '1px solid var(--border-subtle)', borderRadius: T.radius.pill, overflow: 'hidden', background: 'var(--bg-elevated)', padding: 4, gap: 2 }}>
-          {([['recent', 'Πρόσφατες'], ['alpha', 'Αλφαβητικά']] as const).map(([m, label]) => (
-            /* `seg` επειδή η πίλλα γύρω έχει ήδη περίγραμμα: δεύτερο ανά πλακίδιο θα έδινε διπλή γραμμή. */
-            <ChipToggle key={m} on={sortMode === m} onClick={() => setSortMode(m)} shape="seg">{label}</ChipToggle>
-          ))}
-        </div>
+        <Segmented label="Ταξινόμηση" value={sortMode} onChange={setSortMode}
+          options={[{ value: 'recent', label: 'Πρόσφατες' }, { value: 'alpha', label: 'Αλφαβητικά' }]} />
         )}
         {showTool('view', contacts.length) && (
-        <div style={{ display: 'flex', border: '1px solid var(--border-subtle)', borderRadius: T.radius.pill, overflow: 'hidden', background: 'var(--bg-elevated)', padding: 4, gap: 2 }}>
-          {(['cards', 'compact'] as ViewMode[]).map(v => (
-            <ChipToggle key={v} on={viewMode === v} onClick={() => setViewMode(v)} shape="seg">{v === 'cards' ? 'Κάρτες' : 'Λίστα'}</ChipToggle>
-          ))}
-        </div>
+        <Segmented label="Προβολή" value={viewMode} onChange={setViewMode}
+          options={[{ value: 'cards', label: 'Κάρτες' }, { value: 'compact', label: 'Λίστα' }]} />
         )}
       </div>
       )}
@@ -585,6 +584,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
           μόνο ομάδα, η σειρά είναι ετικέτα μεταμφιεσμένη σε χειριστήριο. */}
       {groupsPresent.length >= SHOW_FROM.filter && (
       <div style={{ display: 'flex', gap: 8, marginBottom: T.sp.xl, flexWrap: 'wrap' }}>
+        {needsAttention.length > 0 && attentionChips}
         {groupsPresent.map(g => {
             const count = contacts.filter(c => roleMeta(c.role).groupId === g.id).length; const active = filterGroup === g.id; const GroupIcon = g.Icon
             return (
@@ -606,9 +606,6 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
             ? `${fn(contacts.length)} ${contacts.length === 1 ? 'επαφή' : 'επαφές'}`
             : `${fn(processed.length)} από ${fn(contacts.length)}`}
         </span>
-        {!bulkMode && showTool('bulk', processed.length) && (
-          <LinkBtn onClick={() => { setBulkMode(true); setSelected(new Set()) }}>Επιλογή πολλαπλών</LinkBtn>
-        )}
       </div>
       </>)}
 
@@ -674,7 +671,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
           {GROUPS.filter(g => groupedFiltered[g.id]?.length).map(g => (
             <div key={g.id}>
-              <GroupDivider group={g} count={groupedFiltered[g.id].length} />
+              <GroupDivider group={g} />
               <div data-list style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 310px), 1fr))', gap: 14 }}>
                 {groupedFiltered[g.id].map(c => (
                   <ContactCard key={c.id} contact={c} onOpen={() => setDetailId(c.id)} onEdit={() => openEdit(c)} onDelete={() => askDelete(c)} onQuickExpense={() => setQuickExpense(c)} onQuickCalendar={() => setQuickCalendar(c)} onShowHistory={() => setHistoryContact(c)} onShowQR={() => setQrContact(c)} selected={selected.has(c.id)} onSelect={() => toggleSelect(c.id)} bulkMode={bulkMode} branding={branding} scopeLabel={scopeLabelFor(c)} scopePortfolio={scopeIsPortfolio(c)} />
@@ -720,6 +717,13 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
             </Btn>
           </>}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {/* Η ΓΡΗΓΟΡΗ ΔΙΑΔΡΟΜΗ ΠΑΝΩ ΑΠΟ ΤΑ ΠΕΔΙΑ (αξιολόγηση σχεδίασης 3). Η κάρτα
+                διαβάζεται και συμπληρώνει τα ίδια πεδία από κάτω, για έλεγχο. */}
+            {!editContact && (
+              <div>
+                <Btn onClick={() => cardRef.current?.click()} disabled={scanning}><Camera size={15} />{scanning ? 'Σάρωση…' : 'Σάρωση κάρτας'}</Btn>
+              </div>
+            )}
 
             {/* ── Στοιχεία ──
                 Ποια πεδία υπάρχουν εδώ το ορίζει το CONTACT_FIELDS και κάθε ένα

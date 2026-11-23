@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback, useMemo, useRef, useSyncExternalStore
 import { createClient } from '@/lib/supabase/client';
 import * as expenses from '@/lib/data/expenses';
 import * as billStore from '@/lib/data/bills';
-import { T, fd, fe, fn, Modal, Skeleton, EmptyState, InfoBanner, PageTitle, SecHdr, SelectBox, Chip, Btn, IconBtn, ChipToggle, ExportButton, ABSENT_DATE, pressable, CloseButton, RuntimeImg } from '@/components/Theme';
+import { T, fd, fe, fn, Modal, Skeleton, EmptyState, InfoBanner, PageTitle, SecHdr, SelectBox, Chip, Btn, IconBtn, Segmented, ABSENT_DATE, pressable, CloseButton, RuntimeImg } from '@/components/Theme';
 import { useCoarsePointer } from '@/components/useCoarsePointer';
 import { showTool } from '@/lib/ui/thresholds';
 import { fmtBytes } from '@/lib/core/bytes';
@@ -185,8 +185,6 @@ const enrich = (raw: RawItem): Item => {
 };
 /** Οι σύνδεσμοι κάτω από την προεπισκόπηση (Άνοιγμα, Λήψη): ένα σχήμα για δύο. */
 const LB_LINK: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: T.sp.sm, height: T.h.sm, fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--on-media)', textDecoration: 'none', padding: `0 ${T.sp.lg}px`, borderRadius: T.radius.pill, background: 'rgba(255,255,255,0.14)' };
-/** Η ομάδα δύο κουμπιών ύψους 40: ένα σχήμα για τους τρεις διακόπτες. */
-const SEG: React.CSSProperties = { display: 'flex', gap: 0, height: T.h.lg, alignItems: 'stretch', border: '1px solid var(--border-subtle)', borderRadius: T.radius.badge, overflow: 'hidden', boxSizing: 'border-box' };
 const parseLayout = (raw: string | null): 'columns' | 'list' => (raw === 'list' ? 'list' : 'columns');
 /** Το όνομα που βλέπει ο χρήστης: το κοινό για όσα είναι αρχεία, ο τίτλος για τα υπόλοιπα. */
 const shownName = (i: Item) => (i.raw || i.url ? i.fileName : i.title);
@@ -843,12 +841,22 @@ export default function TabDocuments({
   // ΧΩΡΙΣ ΠΕΡΙΤΥΛΙΓΜΑ. Το PageTitle δίνει ήδη flex, κενό 8 και αναδίπλωση στις
   // ενέργειές του· σε τηλέφωνο τις στήνει σε πλέγμα δύο στηλών. Ενα δεύτερο
   // flex από μέσα ακύρωνε το πλέγμα, γιατί τα κουμπιά έπαυαν να είναι παιδιά του.
-  const headerActions = (
+  // ΕΝΑ ΚΥΡΙΟ, ΤΑ ΥΠΟΛΟΙΠΑ ΣΤΟ «⋯» (αξιολόγηση σχεδίασης 3). «Εξαγωγή Excel» και
+  // «Νέο αρχείο» είχαν το ίδιο πλάτος, μισό μισό στα 390: η εξαγωγή διαβαζόταν
+  // ως ισότιμη επιλογή με την καταχώρηση. Μαζί της πάει και η εναλλαγή πλέγμα
+  // ή λίστα, που ήταν τρίτη ράγα με εικονίδια στη σειρά των εργαλείων.
+  const moreItems = [
+    { key: 'xlsx', label: 'Εξαγωγή σε Excel', onClick: exportCsv },
+    ...(showTool('view', items.length) && arrange === 'month'
+      ? [{ key: 'view', label: view === 'grid' ? 'Προβολή σε λίστα' : 'Προβολή σε πλέγμα', onClick: () => setView(view === 'grid' ? 'list' : 'grid') }]
+      : []),
+  ];
+  const headerActions = items.length > 0 ? (
     <>
-      {items.length > 0 && <ExportButton onClick={exportCsv} />}
-      {items.length > 0 && uploadBtn}
+      <ActionMenu iconOnly label="Περισσότερα" items={moreItems} />
+      {uploadBtn}
     </>
-  );
+  ) : null;
   const fileActions = (showFolder: boolean): FileActions => ({
     view, showFolder, selected,
     onToggleSel: toggleSel, onOpenLightbox: setLightbox,
@@ -986,30 +994,17 @@ export default function TabDocuments({
             onClear={k => setSel(s => (k ? clearFacet(s, k as FacetKey) : clearAll()))}/>
         )}
         <div className="ad-toggles">
+          {/* ΤΟ ΕΝΙΑΙΟ `Segmented` (αξιολόγηση σχεδίασης 3). Ηταν δύο ράγες χαπιού
+              δίπλα δίπλα, η μία με εικονίδια, σε τρία πλάτη. Το πλέγμα ή η λίστα
+              ζει πια στο «⋯» της κεφαλίδας. */}
           {showTool('view', items.length) && (
-          <div role="group" aria-label="Οργάνωση αρχείων" style={SEG}>
-            {([['month', 'Μήνες'], ['folder', 'Φάκελοι']] as const).map(([k, label]) => (
-              <ChipToggle key={k} on={arrange === k} onClick={() => setArrange(k)} shape="seg">{label}</ChipToggle>
-            ))}
-          </div>
+          <Segmented label="Οργάνωση αρχείων" value={arrange} onChange={setArrange}
+            options={[{ value: 'month', label: 'Μήνες' }, { value: 'folder', label: 'Φάκελοι' }]} />
           )}
           {/* Στήλες ή λίστα: μόνο στους φακέλους και μόνο όπου χωρούν στήλες (≥1280). */}
           {showTool('view', items.length) && arrange === 'folder' && (
-          <div role="group" aria-label="Προβολή φακέλων" className="ad-wide-only" style={SEG}>
-            {([['columns', 'Στήλες'], ['list', 'Λίστα']] as const).map(([k, label]) => (
-              <ChipToggle key={k} on={fbLayout === k} onClick={() => setFbLayout(k)} shape="seg">{label}</ChipToggle>
-            ))}
-          </div>
-          )}
-          {showTool('view', items.length) && arrange === 'month' && (
-          <div role="group" aria-label="Εμφάνιση" style={SEG}>
-            {([['grid', 'Πλέγμα', <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>],
-               ['list', 'Λίστα', <><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></>]] as const).map(([k, title, ic]) => (
-              <ChipToggle key={k} on={view === k} onClick={() => setView(k)} title={title} shape="seg">
-                <svg aria-hidden="true" {...S} width={15} height={15}>{ic}</svg>
-              </ChipToggle>
-            ))}
-          </div>
+          <Segmented label="Προβολή φακέλων" className="ad-wide-only" value={fbLayout} onChange={setFbLayout}
+            options={[{ value: 'columns', label: 'Στήλες' }, { value: 'list', label: 'Λίστα' }]} />
           )}
         </div>
         {embedded && headerActions}

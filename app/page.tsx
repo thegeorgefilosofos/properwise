@@ -8,7 +8,7 @@ import { partnerWelcomeTier } from '@/lib/referral/referral';
 import { fe } from '@/lib/core/format';
 import { SITE, PRODUCT_NAME, PRODUCT_TAGLINE, SHARE_IMAGE, HOME_TITLE, HOME_TITLE_LINES } from '@/lib/core/site';
 import { appNode, organizationNode, websiteNode } from '@/lib/seo/organization';
-import { billingWords, PRICES_VAT, NO_COMMITMENT } from '@/lib/legal/billingWords';
+import { billingWords, PRICES_VAT, NO_COMMITMENT, TRIAL_LINE } from '@/lib/legal/billingWords';
 import { createClient } from '@/lib/supabase/server';
 import LandingShowcase from './LandingShowcase';
 import ScrollStory from './ScrollStory';
@@ -19,7 +19,6 @@ import { FaqPlus } from './FaqPlus';
 import { PublicFooter, PublicNav, JsonLd } from './PublicChrome';
 import { T } from '@/components/tokens';
 import { hy } from '@/components/Hyphen';
-import { ASSISTANT_ACC } from '@/lib/assistant/identity';
 import { FIRST_YEAR_NEW_BRACKETS, RENTAL_TAX_BRACKETS_2026 } from '@/lib/billing/greekTax';
 import { ratePct } from '@/app/odigos/taxText';
 import { athensParts } from '@/lib/core/time';
@@ -144,7 +143,9 @@ const STATS = [
   { n: '7',  u: 'είδη εγγράφων',           l: 'Λογαριασμοί, μισθωτήρια, κρατικά έγγραφα.' },
   { n: '13', u: 'πάροχοι ρεύματος',        l: 'Τα τιμολόγιά τους, με τον μήνα του τελευταίου ελέγχου.' },
   { n: '8',  u: 'ασφαλιστικές',            l: 'Κατοικία και επαγγελματική στέγη, σύγκριση ανά κάλυψη.' },
-  { n: '4',  u: 'κλιμάκια φόρου',          l: `Στα ενοίκια, ${SCALE_LOW} ως ${SCALE_HIGH} (ν. 5246/2025).` },
+  // Το πλήθος από την ίδια κλίμακα που δίνει τα άκρα, όχι γραμμένο με το χέρι
+  // (αξιολόγηση σχεδίασης 3). Ο guard-landing-stats δέχεται εδώ μόνο αυτή τη μορφή.
+  { n: String(RENTAL_TAX_BRACKETS_2026.length), u: 'κλιμάκια φόρου',          l: `Στα ενοίκια, ${SCALE_LOW} ως ${SCALE_HIGH} (ν. 5246/2025).` },
 ];
 
 export default async function Landing() {
@@ -320,9 +321,13 @@ export default async function Landing() {
               κάρτα θα ζητείται στην εγγραφή και για το δωρεάν πακέτο, ώστε η
               αναβάθμιση να μη χρειάζεται δεύτερο βήμα. Υπόσχεση που θα έπαυε να
               ισχύει την ημέρα του λανσαρίσματος δεν μπαίνει στην πρώτη οθόνη. */}
+          {/* ΟΙ ΛΕΞΕΙΣ ΤΗΣ ΔΟΚΙΜΗΣ ΑΠΟ ΤΟ billingWords.ts (αξιολόγηση σχεδίασης 3,
+              απόφαση ιδιοκτήτη 23/11/2026). Ηταν δύο γραμμές γραμμένες εδώ. Η
+              πρώτη, «Χωρίς συνδρομή για ένα ακίνητο», επαναλάμβανε το κουμπί από
+              πάνω (`signupCta()`) και έφυγε. Η δεύτερη είναι η `TRIAL_LINE`, με
+              τις ημέρες από το `TRIAL_DAYS`. */}
           <ul className="lp-rise-4 lp-facts" aria-label="Χωρίς ρίσκο">
-            <li>Χωρίς συνδρομή για ένα ακίνητο</li>
-            <li>Δοκιμή {TRIAL_DAYS} ημερών με {ASSISTANT_ACC}</li>
+            <li>{TRIAL_LINE.many.replace('{n}', String(TRIAL_DAYS))}</li>
           </ul>
 
           <LandingShowcase />

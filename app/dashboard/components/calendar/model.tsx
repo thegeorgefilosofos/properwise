@@ -176,6 +176,10 @@ export function isPastNotice(e: CalEvent) { const s=pastStateOf(e); return s==='
 // είκοσι τρεις, το άθροισμά τους τριάντα· η «Αργότερα» παίρνει ό,τι περισσεύει.
 export function isThisWeek(e: CalEvent) { const d=daysUntil(e.event_date); return e.status==='pending'&&d>=0&&d<=6 }
 export function isThisMonth(e: CalEvent){ const d=daysUntil(e.event_date); return e.status==='pending'&&d>6&&d<=29 }
-export function isExpiring(e: CalEvent) { const d=daysUntil(e.event_date); return e.category==='contract'&&e.status==='pending'&&d>=0&&d<=60 }
+// ΤΟ ΠΑΡΑΘΥΡΟ ΤΗΣ ΛΗΞΗΣ ΕΙΝΑΙ ΕΝΑ ΝΟΥΜΕΡΟ, ΟΧΙ ΔΥΟ. Το μπάνερ του Ημερολογίου
+// έγραφε «εντός 60 ημερών» με το χέρι δίπλα σε αυτό το φίλτρο: αν άλλαζε το
+// όριο εδώ, το κείμενο θα έλεγε άλλο από τη λίστα (αξιολόγηση σχεδίασης 3).
+export const EXPIRING_WINDOW_DAYS = 60
+export function isExpiring(e: CalEvent) { const d=daysUntil(e.event_date); return e.category==='contract'&&e.status==='pending'&&d>=0&&d<=EXPIRING_WINDOW_DAYS }
 export function todayStr() { return athensToday() }
 export function addDaysStr(date:string, days:number) { const [y,m,d]=date.split('-').map(Number); const dt=new Date(Date.UTC(y,m-1,d+days)); return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth()+1).padStart(2,'0')}-${String(dt.getUTCDate()).padStart(2,'0')}` }

@@ -26,7 +26,7 @@ import * as properties from '@/lib/data/properties';
 import * as billing from '@/lib/data/billing';
 import { nameDaysLeft, nameLockedError, NAME_LOCK_DAYS, NAME_LOCKED_TEXT } from './nameLock';
 import { TextInput, CustomSelect, FIELD_LABEL_ROW } from './UIComponents';
-import { T, Btn, LinkBtn, InfoBanner, Spinner, Card, SecHdr, ChipToggle, fixedCols, fe, fd } from '@/components/Theme';
+import { T, Btn, LinkBtn, InfoBanner, Spinner, Card, SecHdr, Chip, Segmented, fixedCols, fe, fd } from '@/components/Theme';
 import { PLANS, PLAN_ORDER, normalizePlan, annualPerMonth, type PlanId, type BillingCycle } from '@/lib/billing/plans';
 // Η ΦΑΣΗ ΤΗΣ ΣΥΝΔΡΟΜΗΣ ΔΕΝ ΚΡΙΝΕΤΑΙ ΕΔΩ. Οι καταστάσεις τις ονομάζει ο
 // έμπορος και τις γράφει ο webhook· η οθόνη τις διαβάζει από την ίδια πηγή.
@@ -600,13 +600,12 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
       {/* ΟΛΑ ΤΑ ΠΑΚΕΤΑ, ΧΩΡΙΣ ΦΡΑΓΜΟ ΤΥΠΟΥ ΠΡΟΦΙΛ. Ο δοκιμαστής δεν αγοράζει:
           δοκιμάζει. Το να του κλείσουμε τα μισά θα ακύρωνε τον λόγο που του
           δώσαμε τον κωδικό. */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
-        {PLAN_ORDER.filter(id => PLANS[id].priceMonthly > 0).map(id => (
-          <Btn key={id} variant={current === id ? 'primary' : 'secondary'}
-            onClick={() => switchPlan(id)} disabled={busy || current === id}>
-            {PLANS[id].name}
-          </Btn>
-        ))}
+      {/* ΕΠΙΛΟΓΗ, ΟΧΙ ΣΕΙΡΑ ΚΟΥΜΠΙΩΝ (αξιολόγηση σχεδίασης 3). Το τρέχον πακέτο
+          ήταν γεμάτο κουμπί ανάμεσα σε περιγραμμένα: η κατάσταση έμοιαζε με
+          κύρια ενέργεια. Ιδιο σχήμα με κάθε άλλο επιλογέα της εφαρμογής. */}
+      <div style={{ marginTop: 16 }}>
+        <Segmented stack label="Πακέτο" value={current} onChange={id => { if (!busy && id !== current) void switchPlan(id); }}
+          options={PLAN_ORDER.filter(id => PLANS[id].priceMonthly > 0).map(id => ({ value: id, label: PLANS[id].name, disabled: busy }))} />
       </div>
       <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.55, marginTop: 14 }}>
         Η ιδιότητα δόθηκε στις {fd(d.tester_since)}. Όταν τελειώσει η δοκιμή θα σου το πούμε πριν αλλάξει οτιδήποτε.
@@ -616,7 +615,16 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
 
   return (
     <Card>
-      <SecHdr label="Συνδρομή" />
+      {/* Η ΚΑΤΑΣΤΑΣΗ ΔΕΝ ΕΙΝΑΙ ΕΙΔΟΠΟΙΗΣΗ (αξιολόγηση σχεδίασης 3). Το «Ενεργή
+          συνδρομή» ήταν πλαίσιο πλήρους πλάτους, ίδιο με το μήνυμα αποτυχημένης
+          πληρωμής από κάτω: δύο πλαίσια ίδιου ύφους με εντελώς άλλο βάρος. Τώρα
+          είναι σήμα δίπλα στον τίτλο και η ανανέωση γραμμή από κάτω του. Τα
+          πλαίσια μένουν για ό,τι ζητά προσοχή. */}
+      <SecHdr label="Συνδρομή"
+        sub={(tone === 'trial' || tone === 'active') && renewsAt ? `Ανανέωση στις ${fd(renewsAt)}` : undefined}
+        right={tone === 'trial' || tone === 'active'
+          ? <Chip tone={tone === 'active' ? 'positive' : 'info'}>{tone === 'trial' ? 'Σε δοκιμή' : 'Ενεργή'}</Chip>
+          : undefined} />
       {/* Η ΑΚΥΡΩΣΗ ΕΙΝΑΙ ΔΕΔΟΜΕΝΟ, ΟΧΙ ΚΑΤΑΣΤΑΣΗ. Οσο τρέχει η πληρωμένη περίοδος
           η συνδρομή μένει ενεργή στον πάροχο· εκείνο που αλλάζει είναι ότι
           υπάρχει ημερομηνία λήξης αντί για ημερομηνία ανανέωσης. */}
@@ -624,11 +632,6 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
         <InfoBanner tone="warning">Η συνδρομή έχει ακυρωθεί και ισχύει ως τις <strong>{fd(endsAt)}</strong>. Μετά την ημερομηνία αυτή ο λογαριασμός συνεχίζει στο δωρεάν πακέτο «{PLANS.free.name}».</InfoBanner>
       ) : tone === 'cancelled-over' ? (
         <InfoBanner tone="warning">Η συνδρομή έληξε στις <strong>{fd(endsAt)}</strong>. Ο λογαριασμός συνεχίζει στο δωρεάν πακέτο «{PLANS.free.name}»· διάλεξε πακέτο για να ξαναπάρεις ό,τι είχες.</InfoBanner>
-      ) : tone === 'trial' || tone === 'active' ? (
-        <InfoBanner tone="info">
-          {tone === 'trial' ? 'Σε δοκιμή' : `Ενεργή συνδρομή, ${plan.name}`}
-          {renewsAt ? `. Ανανέωση στις ${fd(renewsAt)}.` : '.'}
-        </InfoBanner>
       ) : tone === 'retrying' && notices && graceUntil ? (
         <InfoBanner tone="warning">{withDate(notices.pastDue, graceUntil)}</InfoBanner>
       ) : tone === 'retrying-over' && notices ? (
@@ -658,25 +661,23 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
           εφαρμογής δεν εμφανίζεται, οπότε τα «κουμπιά πακέτου» άλλαζαν μόνο την
           τιμή από κάτω. Τότε η επιλογή είναι ό,τι πράγματι κάνει: διακόπτης
           που δείχνει την τιμή κάθε πακέτου. */}
-      {running && (live === true ? (
-        <div className="bill-plans">
-          {choices.map(id => (
-            <Btn key={id} variant={target === id ? 'primary' : 'secondary'}
-              onClick={() => setPick(id)} disabled={busy}>
-              {PLANS[id].name}
-            </Btn>
-          ))}
+      {/* ΕΝΑΣ ΕΠΙΛΟΓΕΑΣ ΓΙΑ ΤΗΝ ΙΔΙΑ ΑΠΟΦΑΣΗ (αξιολόγηση σχεδίασης 3). Τα πακέτα
+          ήταν κουμπιά (με ζωντανό ταμείο, γεμάτο το επιλεγμένο) ή πλακίδια
+          (χωρίς) και ο κύκλος από κάτω τρίτο σχήμα. Τώρα και τα δύο είναι το
+          ενιαίο `Segmented`. Τα τέσσερα ονόματα δεν χωρούν δίπλα δίπλα στο
+          τηλέφωνο, οπότε μπαίνουν ένα ανά γραμμή με την τιμή του κύκλου δεξιά,
+          όπως η λίστα πακέτων του Linear. Οι τιμές έρχονται από το `PLANS`. */}
+      {running && (
+        // Ιδιο πλάτος με τον κύκλο από κάτω (`.bill-cycle`): μία δεξιά άκρη για
+        // τα δύο χειριστήρια της ίδιας απόφασης και στο τηλέφωνο όλο το πλάτος.
+        <div className="bill-cycle" style={{ marginBottom: 8 }}>
+          <Segmented stack label="Πακέτο" value={target} onChange={setPick}
+            options={choices.map(id => ({
+              value: id, disabled: busy,
+              label: <><span>{PLANS[id].name}</span><span className="po-seg-aside">{fe(cycle === 'annual' ? annualPerMonth(id) : PLANS[id].priceMonthly)}</span></>,
+            }))} />
         </div>
-      ) : (
-        // ΠΛΑΚΙΔΙΑ ΠΟΥ ΑΝΑΔΙΠΛΩΝΟΝΤΑΙ, ΟΧΙ ΤΜΗΜΑΤΙΚΟΣ ΔΙΑΚΟΠΤΗΣ. Με τέσσερα πακέτα
-        // ο διακόπτης δεν χωρούσε σε τηλέφωνο: στα 320-440 οι ετικέτες έπεφταν η
-        // μία πάνω στην άλλη (σαρωτής διάταξης, 28.09.2026).
-        <div className="bill-plans">
-          {choices.map(id => (
-            <ChipToggle key={id} on={target === id} onClick={() => setPick(id)}>{PLANS[id].name}</ChipToggle>
-          ))}
-        </div>
-      ))}
+      )}
 
       {/* Ο ΔΙΑΚΟΠΤΗΣ ΠΑΝΩ ΑΠΟ ΤΗΝ ΤΙΜΗ: πρώτα η αιτία, μετά το αποτέλεσμα. Δίπλα
           στον μεγάλο αριθμό διαβαζόταν ως διακόσμηση και δεν φαινόταν ότι είναι
@@ -698,7 +699,9 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
       {/* Η ΤΙΜΗ ΛΕΕΙ ΤΗ ΜΟΝΑΔΑ ΤΗΣ. Το ετήσιο δείχνεται ανά μήνα, όπως και στη
           σύγκριση πακέτων, ώστε τα δύο νούμερα να συγκρίνονται μεταξύ τους. */}
       <div style={{ marginTop: 16 }}>
-        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>{plan.name}</div>
+        {/* Το όνομα του πακέτου μόνο όταν δεν το λέει ο επιλογέας από πάνω: ήταν
+            τρίτη φορά στην ίδια κάρτα (αξιολόγηση σχεδίασης 3). */}
+        {!running && <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>{plan.name}</div>}
         <div style={{ fontFamily: T.font.num, fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', lineHeight: 1.1, marginTop: 4 }}>{fe(price)}</div>
         <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, marginTop: 2 }}>
           {/* ΜΕ ΦΠΑ ΜΟΝΟ ΟΠΟΥ ΙΣΧΥΕΙ. Οι τιμές του τιμοκαταλόγου είναι για
@@ -731,7 +734,10 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
               αλλαγή κάρτας. Χωρίς αυτό, οι Οροι δέσμευαν σε κάτι που δεν
               υπήρχε πουθενά στην εφαρμογή. */}
           {hasCustomer && (
-            <Btn variant={running ? 'primary' : 'secondary'} onClick={manage} disabled={busy}>
+            // ΔΕΥΤΕΡΕΥΟΝ ΠΑΝΤΑ (αξιολόγηση σχεδίασης 3). Με τρέχουσα συνδρομή ήταν
+            // γεμάτο δίπλα στο γεμάτο «Αλλαγή σε…»: δύο κύρια στην ίδια σειρά. Η
+            // πύλη του εμπόρου είναι διαχείριση, όχι η κίνηση της οθόνης.
+            <Btn variant="secondary" onClick={manage} disabled={busy}>
               {busy ? 'Ανοίγει…' : 'Διαχείριση συνδρομής'}
             </Btn>
           )}
