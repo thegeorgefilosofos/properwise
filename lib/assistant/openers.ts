@@ -55,6 +55,14 @@ export interface OpenerContext {
   /** Πλήθος ακινήτων του χρήστη. */
   propertyCount?: number;
   /**
+   * Υπάρχουν ακίνητα που συγκρίνονται (lib/property/visibility.ts, canCompare).
+   * `false`: καμία ερώτηση σύγκρισης, όσα ακίνητα κι αν έχει. Χωρίς τιμή μένει
+   * ο παλιός κανόνας, «πάνω από ένα».
+   */
+  comparable?: boolean;
+  /** Ο τίτλος της επόμενης προθεσμίας της ατζέντας (π.χ. «ΕΝΦΙΑ, 9η δόση»). */
+  nextDeadline?: string;
+  /**
    * Δεν υπάρχει ακόμη ακίνητο (λειτουργία πρώτου βήματος). Διαφέρει από το
    * άδειο ακίνητο: εκεί λείπουν στοιχεία, εδώ λείπει το ίδιο το ακίνητο.
    */
@@ -115,6 +123,10 @@ export function suggestedOpeners(ctx: OpenerContext | null = {}): string[] {
   if (has(ctx.overdueRent)) {
     out.push(`Μου χρωστάει ${eur(ctx.overdueRent)} ενοίκιο· τι κάνω;`);
   }
+  // Η ΕΠΟΜΕΝΗ ΠΡΟΘΕΣΜΙΑ ΜΕ ΤΟ ΟΝΟΜΑ ΤΗΣ (feedback χρήστη #1): ερώτηση για κάτι
+  // που υπάρχει ήδη στην οθόνη, χωρίς ποσό.
+  const deadline = (ctx.nextDeadline || '').trim();
+  if (deadline) out.push(`Τι πρέπει να κάνω για «${deadline}»;`);
   // Ο ΑΡΙΘΜΟΣ ΛΕΕΙ ΠΟΙΑ ΛΙΣΤΑ ΜΕΤΡΑ. Σκέτο «3 εκκρεμότητες» διαβαζόταν δίπλα σε
   // «4 εκκρεμότητες» των ταμειακών και «4 σε σειρά προθεσμίας» της ατζέντας,
   // στην ίδια οθόνη. Μετρά μόνο την καρτέλα του μενού, οπότε την ονομάζει.
@@ -123,6 +135,11 @@ export function suggestedOpeners(ctx: OpenerContext | null = {}): string[] {
     const tab = `στην καρτέλα «${navLabel('checklist')}»`;
     out.push(n === 1 ? `Τι έχω ανοιχτό ${tab} και πότε λήγει;` : `Έχω ${n} ανοιχτά ${tab}· ποιο είναι το πιο επείγον;`);
   }
+
+  // ΤΙ ΛΕΙΠΕΙ ΑΠΟ ΤΟ ΑΚΙΝΗΤΟ, ΠΡΙΝ ΑΠΟ ΤΑ ΧΡΗΜΑΤΑ (feedback χρήστη #1). Χωρίς
+  // αξία δεν βγαίνει απόδοση ούτε σύγκριση, οπότε αυτή είναι η χρήσιμη ερώτηση.
+  const missing = 'Τι στοιχεία λείπουν από το ακίνητό μου;';
+  if (!has(ctx.propertyValue)) out.push(missing);
 
   // 2. ΧΡΗΜΑ — το νούμερο που τον απασχολεί πραγματικά.
   if (has(ctx.monthlyRent)) {
@@ -149,7 +166,8 @@ export function suggestedOpeners(ctx: OpenerContext | null = {}): string[] {
     // η τιμολόγηση βραχυχρόνιας στηρίζεται σε εμπειρικούς κανόνες (δεύτερο κύμα).
     out.push('Πόσα εισέπραξα από διαμονές φέτος και πόσα δηλώνω;');
   }
-  if ((ctx.propertyCount ?? 0) > 1) {
+  // ΣΥΓΚΡΙΣΗ ΜΟΝΟ ΟΤΑΝ ΥΠΑΡΧΕΙ ΤΙ ΝΑ ΣΥΓΚΡΙΘΕΙ (feedback χρήστη #1).
+  if ((ctx.propertyCount ?? 0) > 1 && ctx.comparable !== false) {
     out.push('Ποιο από τα ακίνητά μου αποδίδει καλύτερα;');
   }
 
@@ -160,7 +178,6 @@ export function suggestedOpeners(ctx: OpenerContext | null = {}): string[] {
     const fallbacks: string[] = [];
     if (!has(ctx.monthlyRent)) fallbacks.push('Τι χρειάζεσαι για να υπολογίσεις τον φόρο μου;');
     if (!has(ctx.expensesYtd)) fallbacks.push('Πώς καταχωρώ μια δαπάνη με μια φωτογραφία;');
-    if (!has(ctx.propertyValue)) fallbacks.push('Τι στοιχεία λείπουν από το ακίνητό μου;');
     fallbacks.push('Τι μπορείς να κάνεις με τα δικά μου δεδομένα;');
     for (const f of fallbacks) { if (out.length >= MAX) break; out.push(f); }
   }

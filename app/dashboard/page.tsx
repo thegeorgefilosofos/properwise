@@ -34,6 +34,7 @@ import { tabDecision, canCompare } from '@/lib/property/visibility';
 import AmaStrip from './components/AmaStrip';
 import { ASSISTANT_NAME } from '@/lib/assistant/identity';
 import { navLabel } from '@/lib/nav/labels';
+import { backTarget } from '@/lib/nav/history';
 import StartPanel from './components/StartPanel';
 import DemoPreview from './components/DemoPreview';
 import { CommandPalette, type CommandItem } from './components/CommandPalette';
@@ -222,31 +223,24 @@ export default function Dashboard() {
   // την παλιά οθόνη.
   const navSafe = navVisible(nav) ? nav : 'overview';
 
-  // ── ΤΟ «ΠΙΣΩ» ΔΕΙΧΝΕΙ ΠΑΝΩ, ΟΧΙ ΠΙΣΩ ────────────────────────────────────
+  // ── ΤΟ «ΠΙΣΩ» ΜΟΝΟ ΟΠΟΥ ΔΕΝ ΦΤΑΝΕΙ Η ΠΛΑΪΝΗ ΜΠΑΡΑ (feedback χρήστη #1) ─────
   //
-  // Έδειχνε την ΠΡΟΗΓΟΥΜΕΝΗ καρτέλα που είχε επισκεφθεί ο χρήστης και αυτό
-  // παρήγαγε πινγκ-πονγκ: από το Αρχείο ανοίγεις τα Έπιπλα, γυρνάς στο Αρχείο,
-  // και το «πίσω» σου προτείνει ξανά τα Έπιπλα — δηλαδή εκεί που μόλις ήσουν και
-  // έφυγες. Δύο καρτέλες που παραπέμπουν η μία στην άλλη κλειδώνουν τον χρήστη
-  // σε κύκλο, χωρίς έξοδο προς τα πάνω.
+  // Ηταν «‹ Επισκόπηση» πάνω από τον τίτλο σχεδόν κάθε καρτέλας, ενώ η πλαϊνή
+  // μπάρα έχει ήδη γραμμή «Επισκόπηση». Μένει μόνο στις οθόνες που δεν έχουν
+  // δική τους γραμμή (Εκκρεμότητες, Έπιπλα) και γυρνά από όπου ήρθε ο χρήστης,
+  // όπως το πλήκτρο του περιηγητή: Ημερολόγιο → Εκκρεμότητες → πίσω στο
+  // Ημερολόγιο. Ο κανόνας και οι γονείς ζουν στο lib/nav/history.ts (backTarget).
+  // Η κατάσταση του ιστορικού διαβάζεται στην απόδοση: αλλάζει μόνο μαζί με το
+  // hash, που ξαναποδίδει ήδη την οθόνη (useNavHistory).
   //
-  // Το «πίσω» δεν είναι ιστορικό — αυτό το κάνει ήδη ο περιηγητής. Είναι ΕΞΟΔΟΣ
-  // προς το επίπεδο από πάνω και το επίπεδο από πάνω είναι πάντα ένα: η
-  // Επισκόπηση. Ένας κανόνας, καμία κατάσταση να συντηρηθεί, κανένας κύκλος.
-  //
-  // ΜΙΑ ΕΞΑΙΡΕΣΗ ΚΑΙ ΔΕΝ ΕΙΝΑΙ ΙΣΤΟΡΙΚΟ: ΤΑ ΕΠΙΠΛΑ ΖΟΥΝ ΜΕΣΑ ΣΤΟΝ ΦΑΚΕΛΟ.
-  // Ο κανόνας παραπάνω λέει «το πίσω δείχνει προς τα πάνω» και για τα Έπιπλα το
-  // επίπεδο από πάνω ΔΕΝ είναι η Επισκόπηση: είναι ο Φάκελος ακινήτου, από όπου
-  // και ανοίγουν. Πηγαίνοντας στην Επισκόπηση ο χρήστης έχανε δύο επίπεδα με μία
-  // κίνηση και ξαναέμπαινε από την αρχή για να δει το επόμενο χαρτί.
-  //
-  // ΚΑΙ ΔΕΝ ΞΑΝΑΝΟΙΓΕΙ Ο ΚΥΚΛΟΣ ΠΟΥ ΕΚΛΕΙΣΕ. Ο κύκλος γεννιόταν από ΙΣΤΟΡΙΚΟ:
-  // δύο καρτέλες που η καθεμία θυμόταν την άλλη. Εδώ η σχέση είναι σταθερή και
-  // μονόδρομη — τα Έπιπλα δείχνουν στον Φάκελο, ο Φάκελος στην Επισκόπηση, η
-  // Επισκόπηση πουθενά. Αλυσίδα, όχι βρόχος.
-  const PARENT_TAB: Record<string, string> = { inventory: 'documents' };
-  const backTab = PARENT_TAB[navSafe] ?? 'overview';
-  const backLabel = tabName(backTab);
+  // ΣΤΟ TABLET ΜΕΝΕΙ ΜΙΚΡΟ (αξιολόγηση του feedback). Από 769 ως 1024 η πλαϊνή
+  // μπάρα είναι συρτάρι και η κάτω μπάρα του κινητού δεν υπάρχει: εκεί το
+  // «‹ Επισκόπηση» είναι ο μόνος ορατός δρόμος πίσω, οπότε φαίνεται μόνο εκεί
+  // (`.dash-up-tablet`, globals.css). Στον υπολογιστή υπάρχει η πλαϊνή μπάρα,
+  // στο κινητό η κάτω μπάρα ξεκινά από την Επισκόπηση.
+  const back = backTarget(navSafe, typeof window === 'undefined' ? null : window.history.state);
+  const up = back ?? (navSafe !== 'overview' && navSafe !== 'portfolio' ? { tab: 'overview', history: false } : null);
+  const backLabel = up ? tabName(up.tab) : '';
 
   // ── ΑΛΛΑΓΗ ΑΚΙΝΗΤΟΥ ΧΩΡΙΣ ΝΑ ΧΑΝΕΤΑΙ Η ΘΕΣΗ ────────────────────────────────
   //
@@ -679,21 +673,12 @@ export default function Dashboard() {
               {/* Πέρα πέρα, με ενωτικό, σε κάθε παράγραφο της καρτέλας (26.09.2026). */}
               <Typesetter />
               <CookieConsent inline />
-              {/* Ο κανόνας ήταν ήδη γραμμένη αρχή — «η έξοδος είναι πάντα ένα
-                  επίπεδο πάνω, δηλαδή η Επισκόπηση» — αλλά εφαρμοζόταν σε πέντε
-                  καρτέλες από τις είκοσι δύο, γραμμένες με το χέρι. Δηλαδή στην
-                  Αξιοποίηση, στη Λογιστική, στο Δάνειο, στις Δαπάνες, στην
-                  Πρόσκληση και στον Λογαριασμό ο μόνος δρόμος πίσω ήταν η πλαϊνή
-                  μπάρα — που σε κινητό είναι κλειστή.
-                  Τώρα το ερώτημα δεν είναι «ποια καρτέλα το δείχνει» αλλά
-                  «υπάρχει επίπεδο από πάνω;». Δεν υπάρχει σε δύο: στην ίδια την
-                  Επισκόπηση και στο Χαρτοφυλάκιο που στέκει πάνω από αυτήν. */}
-              {navSafe !== 'overview' && navSafe !== 'portfolio' && (
+              {up && (
                 // ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ. Το γέμισμα «4px 4px 4px 0» ακουμπά το βελάκι
                 // στο αριστερό όριο του κειμένου της σελίδας· το `Btn` γράφει
                 // «9px 18px» και θα το έσπρωχνε δεκαοκτώ μέσα, δηλαδή το «Πίσω»
                 // θα έπαυε να στοιχίζεται με τον τίτλο από κάτω του.
-                <button onClick={()=>setNav(backTab)} title={E ? E.back(backLabel) : `Πίσω: ${backLabel}`} aria-label={E ? E.back(backLabel) : `Πίσω: ${backLabel}`}
+                <button className={back ? undefined : 'dash-up-tablet'} onClick={()=>{ if (up.history) window.history.back(); else setNav(up.tab); }} title={E ? E.back(backLabel) : `Πίσω: ${backLabel}`} aria-label={E ? E.back(backLabel) : `Πίσω: ${backLabel}`}
                   style={{display:'inline-flex',alignItems:'center',gap:6,marginBottom:14,padding:'4px 4px 4px 0',border:'none',background:'transparent',color:'var(--text-tertiary)',fontFamily: T.font.sans,fontSize: 'var(--fs-base)',fontWeight:600,cursor:'pointer'}}
                   onMouseEnter={e=>e.currentTarget.style.color='var(--text-primary)'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-tertiary)'}>
                   <svg aria-hidden="true" width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>

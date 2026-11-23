@@ -6,7 +6,8 @@
 // Τα ποσά τα βγάζει το lib/home/forecast12.ts από τις μηχανές που ήδη υπάρχουν·
 // εδώ ζει μόνο η εικόνα. Τρία πράγματα, με αυτή τη σειρά:
 //
-//   1. ΤΟ ΣΥΜΠΕΡΑΣΜΑ ΠΡΩΤΟ. Ο πιο σφιχτός μήνας, το καθαρό του και οι χρεώσεις
+//   1. ΤΟ ΣΥΜΠΕΡΑΣΜΑ ΠΡΩΤΟ. Ο μήνας που σου μένουν τα λιγότερα (ήταν «ο πιο
+//      σφιχτός», που ο χρήστης δεν καταλάβαινε· feedback #1), το καθαρό του και οι χρεώσεις
 //      που πέφτουν μαζί. Αυτό ήρθε να μάθει ο ιδιοκτήτης· το γράφημα το
 //      αποδεικνύει, δεν το αντικαθιστά.
 //   2. ΤΟ ΓΡΑΦΗΜΑ. Δώδεκα στήλες σε κοινή κλίμακα, ο άξονας του μηδενός εκεί που
@@ -144,7 +145,7 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
   const tight = tightest ? months[tightest.index] : null;
   const tightVacant = tight ? !!vacancyOf(tight) : false;
   const summary = tight
-    ? `Ο πιο σφιχτός μήνας είναι ο ${monthAcc(tight.month - 1)} ${tight.year}, με καθαρό ${feSigned(tight.net)}.`
+    ? `Ο μήνας που σου μένουν τα λιγότερα είναι ο ${monthAcc(tight.month - 1)} ${tight.year}, με καθαρό ${feSigned(tight.net)}.`
     : 'Καμία εκροή μέσα στους επόμενους 12 μήνες.';
 
   const steps = EMPTY_STEPS.filter(s => tabVisible(s.tab));
@@ -164,7 +165,7 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
       {isEmpty ? (
       <div className="fc-body">
         <EmptyState title="Καμία προγραμματισμένη χρέωση ακόμη"
-          hint="Με τη μίσθωση, το δάνειο και τον ΕΝΦΙΑ, εδώ φαίνεται από τώρα ποιος μήνας θα είναι ο πιο σφιχτός και γιατί."
+          hint="Με τη μίσθωση, το δάνειο και τον ΕΝΦΙΑ, εδώ φαίνεται από τώρα ποιος μήνας σού αφήνει τα λιγότερα και γιατί."
           action={steps.length > 0 ? <div className="fc-empty-acts">{steps.map(s => <Btn key={s.tab} onClick={() => onNavigate(s.tab)}>{s.label}</Btn>)}</div> : undefined} />
       </div>
       ) : (
@@ -172,7 +173,7 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
         {/* ═══ ΤΟ ΣΥΜΠΕΡΑΣΜΑ ═══════════════════════════════════════════════ */}
         <div className="fc-top">
           <div className="fc-lead">
-            <span className="fc-kicker">{tight ? 'Ο πιο σφιχτός μήνας' : 'Οι επόμενοι μήνες'}</span>
+            <span className="fc-kicker">{tight ? 'Ο μήνας που σου μένουν τα λιγότερα' : 'Οι επόμενοι μήνες'}</span>
             {tight ? (
               <>
                 <div className="fc-lead-row">
@@ -201,7 +202,7 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
             <li><span className="sw sw-out" aria-hidden />Εκροές</li>
             <li><span className="sw sw-exp" aria-hidden />Αναμενόμενο</li>
             {anyVac && <li><span className="sw sw-vac" aria-hidden />Πιθανό κενό μετά τη λήξη</li>}
-            {tight && <li><span className="sw-dot" aria-hidden />Ο πιο σφιχτός μήνας</li>}
+            {tight && <li><span className="sw-dot" aria-hidden />Ο μήνας που σου μένουν τα λιγότερα</li>}
             {/* Το σημάδι του «λείπει» κάτω από τις εκροές μοιάζει με αναμενόμενο ποσό·
                 χωρίς δική του γραμμή στο υπόμνημα διαβαζόταν ως τέτοιο. */}
             {months.some(x => x.gaps.some(g => g.kind === 'missing' && g.flow !== 'rent')) && <li><span className="sw sw-miss" aria-hidden />Λείπει ποσό</li>}

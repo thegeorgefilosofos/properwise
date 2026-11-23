@@ -81,6 +81,29 @@ ok('μακροχρόνια → καμία διανυκτέρευση', !suggeste
 ok('πολλά ακίνητα → σύγκριση', suggestedOpeners({ propertyCount: 3, monthlyRent: 500 }).some(s => /αποδίδει καλύτερα/.test(s)))
 ok('ένα ακίνητο → καμία σύγκριση', !suggestedOpeners({ propertyCount: 1, monthlyRent: 500 }).join(' ').includes('αποδίδει καλύτερα'))
 
+// ── ΠΡΟΣΑΡΜΟΣΜΕΝΕΣ ΣΤΗΝ ΕΠΙΣΚΟΠΗΣΗ (feedback χρήστη #1, A4, 23/11/2026) ─────
+// «Ποιο από τα ακίνητά μου αποδίδει καλύτερα;» σε ιδιοκτήτη που δεν έχει τι να
+// συγκρίνει. Η σύγκριση θέλει ακίνητα που συγκρίνονται (`comparable`), όχι
+// απλώς δύο. Η επόμενη προθεσμία και ό,τι λείπει από το ακίνητο έρχονται πρώτα.
+ok('δύο ακίνητα που δεν συγκρίνονται → καμία σύγκριση',
+  !suggestedOpeners({ propertyCount: 2, comparable: false, monthlyRent: 500 }).join(' ').includes('αποδίδει καλύτερα'))
+ok('δύο ακίνητα που συγκρίνονται → σύγκριση',
+  suggestedOpeners({ propertyCount: 2, comparable: true, monthlyRent: 500 }).some(s => /αποδίδει καλύτερα/.test(s)))
+ok('ένα ακίνητο, ακόμη και «comparable» → καμία σύγκριση',
+  !suggestedOpeners({ propertyCount: 1, comparable: true, monthlyRent: 500 }).join(' ').includes('αποδίδει καλύτερα'))
+{
+  const s = suggestedOpeners({ propertyCount: 1, nextDeadline: 'ΕΝΦΙΑ, 9η δόση', openTasks: 3, monthlyRent: 500 })
+  ok('η επόμενη προθεσμία μπαίνει πρώτη, με το όνομά της', s[0].includes('«ΕΝΦΙΑ, 9η δόση»'))
+  ok('η προθεσμία δεν φέρνει ποσό', !/€/.test(s[0]))
+}
+{
+  // Η γραμμή της Επισκόπησης δείχνει δύο: χωρίς αξία, το «τι λείπει» είναι μέσα
+  // σε αυτές, πριν από τις ερωτήσεις για χρήματα.
+  const s = suggestedOpeners({ propertyCount: 2, comparable: true, openTasks: 8, monthlyRent: 500 }).slice(0, 2)
+  ok('χωρίς αξία → «τι λείπει» στις δύο πρώτες', s.some(q => /λείπουν/.test(q)))
+  ok('χωρίς αξία → η σύγκριση όχι στις δύο πρώτες', !s.some(q => /αποδίδει καλύτερα/.test(q)))
+}
+
 // ── Το όνομα του ακινήτου μπαίνει όπου έχει νόημα ──────────────────────────
 ok('χρησιμοποιεί το όνομα ακινήτου', suggestedOpeners({ propertyName: 'Μεζονέτα Βούλας', monthlyRent: 500, propertyValue: 150000 }).join(' ').includes('Μεζονέτα Βούλας'))
 ok('κενό όνομα δεν αφήνει κενά', !suggestedOpeners({ propertyName: '   ', expensesYtd: 900 }).join(' ').includes('  '))

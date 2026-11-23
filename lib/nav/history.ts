@@ -127,3 +127,48 @@ export function readLaunchShortcut(
     : '';
   return { hash: next || null, scan: action === 'scan', enfia, search: rest ? `?${rest}` : '', consumed };
 }
+
+// ═══ ΤΟ «ΠΙΣΩ» ΓΥΡΝΑ ΑΠΟ ΟΠΟΥ ΗΡΘΕΣ (feedback χρήστη #1, 23/11/2026) ════════
+//
+// Το κουμπί «‹ Επισκόπηση» στεκόταν πάνω από τον τίτλο κάθε καρτέλας, ενώ η
+// πλαϊνή μπάρα έδειχνε ήδη τον ίδιο δρόμο. Και εκεί όπου χρειαζόταν, έκανε
+// λάθος: Ημερολόγιο → «Εκκρεμότητες» → «Πίσω» έβγαζε στην Επισκόπηση, ενώ το
+// πλήκτρο του περιηγητή γύριζε στο Ημερολόγιο. Δύο «πίσω» με δύο προορισμούς.
+//
+// Τώρα το κουμπί μένει μόνο στις οθόνες που ΔΕΝ έχουν γραμμή στην πλαϊνή μπάρα
+// (SUB_SCREEN_PARENT) και γυρνά εκεί που γυρνά και ο περιηγητής: στην καρτέλα
+// της προηγούμενης εγγραφής. Ο γονέας μένει μόνο για την ψυχρή είσοδο (σύνδεσμος,
+// ανανέωση χωρίς ιστορικό), όπου δεν υπάρχει προηγούμενη οθόνη της εφαρμογής.
+
+/** Οθόνες χωρίς γραμμή στην πλαϊνή μπάρα και η οθόνη από την οποία ανοίγουν. */
+export const SUB_SCREEN_PARENT: Readonly<Record<string, string>> = {
+  checklist: 'overview',
+  inventory: 'documents',
+};
+
+/** Το κλειδί που γράφει ο πίνακας στην κατάσταση κάθε εγγραφής ιστορικού. */
+const FROM = 'pwNavFrom';
+
+/** Η κατάσταση της εγγραφής που γράφει το `setNav`: από ποια καρτέλα ήρθε. */
+export function navState(fromTab: string): Record<string, string> {
+  return { [FROM]: fromTab };
+}
+
+export interface BackTarget {
+  tab: string;
+  /** `true`: η προηγούμενη εγγραφή είναι αυτή η καρτέλα, άρα `history.back()`. */
+  history: boolean;
+}
+
+/**
+ * Πού πάει το «πίσω» της οθόνης `tab`, με την κατάσταση της τρέχουσας εγγραφής
+ * (`history.state`). `null`: η οθόνη έχει γραμμή στην πλαϊνή μπάρα, άρα κουμπί
+ * δεν χρειάζεται.
+ */
+export function backTarget(tab: string, state: unknown): BackTarget | null {
+  const parent = SUB_SCREEN_PARENT[tab];
+  if (!parent) return null;
+  const from = state && typeof state === 'object' ? (state as Record<string, unknown>)[FROM] : undefined;
+  if (typeof from === 'string' && SAFE.test(from) && from !== tab) return { tab: from, history: true };
+  return { tab: parent, history: false };
+}

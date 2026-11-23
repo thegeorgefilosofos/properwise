@@ -148,7 +148,7 @@ export default function TabFinances({
           η εφαρμογή βάζει παντού την κύρια ενέργεια. Είναι ορατή πάντα, με ή
           χωρίς δαπάνες. */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: T.sp.xl }}>
-      <div style={{
+      <div className="po-seg-strong" style={{
         display: 'inline-flex', padding: 4, gap: 2,
         background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
         borderRadius: T.radius.pill, maxWidth: '100%', overflowX: 'auto',

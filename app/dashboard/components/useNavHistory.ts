@@ -34,7 +34,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { useCallback, useSyncExternalStore } from 'react';
-import { parseNavHash, formatNavHash, shouldPush } from '@/lib/nav/history';
+import { parseNavHash, formatNavHash, shouldPush, navState } from '@/lib/nav/history';
 
 // Ο React καλεί το `subscribe` μία φορά· η συνάρτηση πρέπει να είναι σταθερή.
 function subscribe(onChange: () => void): () => void {
@@ -66,7 +66,9 @@ export function useNavHistory(fallback: string): [string, (tab: string) => void]
     if (!shouldPush(from, to)) return;
     const hash = formatNavHash(to);
     if (!hash) return;
-    window.history.pushState(null, '', hash);
+    // Η εγγραφή θυμάται από ποια καρτέλα ήρθε: έτσι το «πίσω» της οθόνης
+    // (lib/nav/history.ts, backTarget) πάει εκεί που πάει και ο περιηγητής.
+    window.history.pushState(navState(from.tab), '', hash);
     // Το `pushState` ΔΕΝ εκπέμπει popstate — είναι ρητό στην προδιαγραφή. Χωρίς
     // αυτό το χειροκίνητο γεγονός, η διεύθυνση θα άλλαζε και η οθόνη όχι.
     window.dispatchEvent(new PopStateEvent('popstate'));
