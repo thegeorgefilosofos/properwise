@@ -3,7 +3,7 @@
 // Η περιήγηση είναι το πρώτο κείμενο που διαβάζει ο νέος χρήστης μετά τον
 // φόρο του. Εδώ κλειδώνουν ο αριθμός των βημάτων, οι κανόνες γραφής και η
 // θέση της κάρτας, που πρέπει να μένει μέσα στο παράθυρο από τα 320 και πάνω.
-import { TOUR_STEPS, TOUR_TOP, placeCard, isVisibleRect } from './tour';
+import { TOUR_STEPS, TOUR_TOP, placeCard, isVisibleRect, cardPlacer } from './tour';
 
 let pass = 0, fail = 0;
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n); } };
@@ -77,6 +77,38 @@ ok('στόχος της πλαϊνής μπάρας ψηλά: η κάρτα απ
 ok('αόρατο στοιχείο: μηδενικές διαστάσεις', !isVisibleRect({ width: 0, height: 0, left: 0, right: 0 }, 375));
 ok('αόρατο στοιχείο: έξω αριστερά', !isVisibleRect({ width: 200, height: 40, left: -260, right: -60 }, 375));
 ok('ορατό στοιχείο', isVisibleRect({ width: 200, height: 40, left: 10, right: 210 }, 375));
+
+// ══ Η ΚΑΡΤΑ ΤΡΕΜΟΠΑΙΖΕ ΣΕ ΧΑΜΗΛΟ ΠΑΡΑΘΥΡΟ (feedback χρήστη, 23/11/2026) ══════
+// Σε παράθυρο λάπτοπ ο στόχος της πλαϊνής μπάρας είχε από κάτω του χώρο για
+// την κάρτα στο φαρδύ της πλάτος, όχι στο στενό. Η κάρτα πήγαινε από κάτω,
+// στένευε στη στήλη της μπάρας, ψήλωνε, δεν χωρούσε πια, πήγαινε δεξιά,
+// φάρδαινε, κόνταινε, ξαναχωρούσε από κάτω: ο ResizeObserver της κάρτας
+// ξαναμετρούσε σε κάθε αλλαγή και η θέση άλλαζε σε κάθε καρέ, για πάντα.
+{
+  const target = { top: 400, left: 12, width: 232, height: 44 };
+  // Το ύψος της κάρτας εξαρτάται από το πλάτος της: στενή, το κείμενο σπάει.
+  const heightAt = (w: number) => (w < 300 ? 260 : 190);
+  const vw = 1280, vh = 700;
+  const sides = (place: (h: number) => ReturnType<typeof placeCard>) => {
+    let h = heightAt(360);
+    const seen: string[] = [];
+    for (let k = 0; k < 8; k++) { const p = place(h); seen.push(p.caret.edge + ':' + p.width); h = heightAt(p.width); }
+    return seen;
+  };
+  // Η αιτία, γραμμένη: με το ύψος της τελευταίας μέτρησης η θέση ταλαντεύεται.
+  const naive = sides(h => placeCard(target, { width: 360, height: h }, vw, vh, 16));
+  ok('η αιτία: η απλή μέτρηση ταλαντεύεται ανάμεσα σε δύο θέσεις', new Set(naive.slice(-4)).size === 2);
+  // Η διόρθωση: η θέση ενός βήματος ηρεμεί και δεν ξανακουνιέται.
+  const placer = cardPlacer();
+  const steady = sides(h => placer.place(target, h, vw, vh, 16));
+  ok('η κάρτα ηρεμεί σε μία θέση μέσα σε δύο μετρήσεις', new Set(steady.slice(2)).size === 1);
+  ok('και η θέση που κρατά χωρά ολόκληρη στο παράθυρο',
+     (() => { const p = placer.place(target, heightAt(360), vw, vh, 16); return p.top + heightAt(p.width) <= vh; })());
+  // Νέο βήμα, νέα μνήμη: το ύψος του προηγούμενου δεν κρατιέται.
+  placer.reset();
+  const fresh = placer.place({ top: 100, left: 12, width: 232, height: 44 }, 190, vw, vh, 16);
+  ok('νέο βήμα: η κάρτα ξεκινά από το δικό της ύψος', fresh.caret.edge === 'top');
+}
 
 console.log(`${pass} πέρασαν, ${fail} απέτυχαν`);
 if (fail) process.exit(1);

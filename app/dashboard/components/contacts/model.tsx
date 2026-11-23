@@ -282,7 +282,17 @@ export const EMPTY_EXTRA: ContactExtra = {
   specialty: '', tags: [], avatar_url: '', notes_log: [], files: [],
   scope: 'property', scope_property_id: '',
 }
-export const EMPTY_FORM = { full_name: '', role: 'other', phone: '', email: '', freeNotes: '', extra: { ...EMPTY_EXTRA } }
+// ΚΑΜΙΑ ΠΡΟΕΠΙΛΕΓΜΕΝΗ ΕΙΔΙΚΟΤΗΤΑ (feedback χρήστη, 23/11/2026). Ηταν «Άλλο»,
+// η τελευταία από εξήντα επιλογές: η λίστα ανοίγει στην επιλεγμένη τιμή, άρα
+// στον πάτο της. Ο χρήστης ανέβαινε για να βρει την αρχή. Ζήτησε το «Άλλο»
+// πρώτο. Το «Άλλο» όμως μένει τελευταίο, όπως σε κάθε λίστα της εφαρμογής:
+// φεύγει μόνο η προεπιλογή. Κενό σημαίνει «δεν διάλεξες» και αποθηκεύεται ως
+// «Άλλο», όπως πριν (`roleToSave`).
+export const EMPTY_FORM = { full_name: '', role: '', phone: '', email: '', freeNotes: '', extra: { ...EMPTY_EXTRA } }
+export const isOtherRole = (r: string) => r === 'other' || r.endsWith('_other')
+/** Ο ρόλος που γράφεται: το κείμενο του «Άλλο» αν υπάρχει, αλλιώς η επιλογή, αλλιώς «Άλλο». */
+export const roleToSave = (role: string, other: string): string =>
+  isOtherRole(role) && other.trim() ? other.trim() : (role || 'other')
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 export const fmtDate = (d: string) => fdOr(d)

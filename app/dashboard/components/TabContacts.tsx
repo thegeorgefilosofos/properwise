@@ -26,7 +26,7 @@ import { toggleIn } from '@/lib/core/toggleSet';
 import {
   supabase, type ContactExtra, type Contact, type TabContactsProps, type SortMode,
   type ViewMode, GROUPS, ROLE_META, roleMeta, ROLE_SELECT_OPTIONS, parseContact, serializeNotes,
-  EMPTY_EXTRA, EMPTY_FORM, isOverdue, digitsOf,
+  EMPTY_EXTRA, EMPTY_FORM, isOverdue, digitsOf, isOtherRole, roleToSave,
 } from './contacts/model'
 import {
   iStyle, Inp, Txt, CField, SecHead, TagEditor,
@@ -101,7 +101,6 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
   }, [propertyId, userId])
   useLoad(fetchContacts)
 
-  const isOtherRole = (r: string) => r === 'other' || r.endsWith('_other')
   const openAdd = () => { setEditContact(null); setForm({ ...EMPTY_FORM, extra: { ...EMPTY_EXTRA } }); setRoleOther(''); setError(null); setShowMore(false); setShowModal(true) }
 
   // Σάρωση επαγγελματικής κάρτας ή τιμολογίου με AI: εξάγει στοιχεία, προσυμπληρώνει
@@ -189,7 +188,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
   const persist = async (mode: 'update' | 'insert' | 'merge', target?: Contact) => {
     setSaving(true); setError(null)
     const name = form.full_name.trim()
-    const finalRole = isOtherRole(form.role) && roleOther.trim() ? roleOther.trim() : form.role
+    const finalRole = roleToSave(form.role, roleOther)
     if (mode === 'merge' && target) {
       const mergedExtra = { ...(target._extra || {}), ...cleanExtra(form.extra) }
       const mergedNotes = [target._freeNotes, form.freeNotes].filter(Boolean).join('\n').trim()
@@ -389,15 +388,20 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
       // όνομα, τηλέφωνο, email και ΑΦΜ μόνη της. Η χειροκίνητη καταχώρηση και οι
       // τρεις εξαγωγές πάνε στο κοινό μενού «Περισσότερα» — το ίδιο που
       // χρησιμοποιεί ήδη η Απογραφή, ώστε οι δύο οθόνες να διαβάζονται σαν μία.
+      //
+      // ΜΕ ΑΔΕΙΟ ΚΑΤΑΛΟΓΟ ΤΟ ΜΕΝΟΥ ΔΕΝ ΕΜΦΑΝΙΖΕΤΑΙ (feedback χρήστη, 23/11/2026).
+      // Χωρίς επαφές οι εξαγωγές δεν έχουν τι να εξαγάγουν και το μενού κρατούσε
+      // ΜΟΝΟ τη «Νέα επαφή χειροκίνητα», δηλαδή ακριβώς το `openAdd` του
+      // πλακιδίου «Καταχώρησε» της κενής κατάστασης. Δύο κουμπιά για το ίδιο.
+      // Μόλις υπάρχει κατάλογος, το πλακίδιο φεύγει και το μενού επιστρέφει με
+      // όλες του τις ενέργειες: εκεί δεν υπάρχει πια τίποτα διπλό.
       const actions = <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <ActionMenu label="Περισσότερα" items={[
+          {contacts.length > 0 && <ActionMenu label="Περισσότερα" items={[
             { key: 'add', label: 'Νέα επαφή χειροκίνητα', description: 'Χωρίς κάρτα: συμπληρώνεις εσύ τα πεδία.', onClick: openAdd },
-            ...(contacts.length > 0 ? [
-              { key: 'xlsx', label: 'Κατάλογος σε Excel', description: 'Όλα τα πεδία, για υπολογιστικό φύλλο.', onClick: () => exportContactsExcel(contacts) },
-              { key: 'pdf', label: 'Κατάλογος σε PDF', description: 'Έτοιμος για εκτύπωση ή αποστολή.', onClick: () => exportContactsPDF(contacts, branding) },
-              { key: 'vcf', label: 'Επαφές στο κινητό', description: 'Αρχείο vCard για το τηλεφωνικό σου ευρετήριο.', onClick: () => downloadVcf(contacts, 'epafes.vcf') },
-            ] : []),
-          ]} />
+            { key: 'xlsx', label: 'Κατάλογος σε Excel', description: 'Όλα τα πεδία, για υπολογιστικό φύλλο.', onClick: () => exportContactsExcel(contacts) },
+            { key: 'pdf', label: 'Κατάλογος σε PDF', description: 'Έτοιμος για εκτύπωση ή αποστολή.', onClick: () => exportContactsPDF(contacts, branding) },
+            { key: 'vcf', label: 'Επαφές στο κινητό', description: 'Αρχείο vCard για το τηλεφωνικό σου ευρετήριο.', onClick: () => downloadVcf(contacts, 'epafes.vcf') },
+          ]} />}
           {/* Η ΙΔΙΑ ΚΥΡΙΑ ΕΝΕΡΓΕΙΑ ΔΥΟ ΦΟΡΕΣ ΚΑΙ ΟΙ ΔΥΟ ΜΠΛΕ, ΣΤΗΝ ΙΔΙΑ ΟΘΟΝΗ.
               Με άδειο κατάλογο, ο χρήστης έβλεπε «Σάρωση κάρτας» πάνω δεξιά ΚΑΙ
               «Φωτογράφισε κάρτα» στο κέντρο — δύο γεμάτα γαλάζια κουμπιά που
