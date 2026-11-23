@@ -18,7 +18,7 @@ import {
 } from './TabTenantHelpers';
 import {
   RENT_INDEX, RENT_INDEX_LATEST, CPI_SOURCE_URL, rentIndexFor, rentAdjustmentPct,
-  indexMonthLabel, indexPeriodLabel, cpiConfirmedLabel,
+  indexMonthLabel, indexPeriodLabel, cpiConfirmedLabel, cpiConfirmedDate,
 } from '@/lib/market/cpi';
 import { rentCapPct, computeRentAdjustment, COMMERCIAL_RENT_CAP_2026 } from '@/lib/documents/rentAdjustment';
 import { monthYearLabel, monthAcc } from '@/lib/core/months';
@@ -154,7 +154,14 @@ const indexMonthGenYear = (ym: string) => { const [y, m] = ym.split('-').map(Num
 export function RentAdjustView({ tenant, userId, initialYm }:{ tenant:Tenant; userId:string; /** Μήνας ισχύος στην πρώτη απόδοση· για τις δοκιμές. */ initialYm?:string }) {
   const branding = useReportBranding(userId);
   const fmtE = fe;
-  const fmtDate=(d:string|null)=>d?new Date(d+'T00:00:00').toLocaleDateString('el-GR',{day:'2-digit',month:'long',year:'numeric'}):ABSENT_DATE;
+  // Τα αγγλικά του υπολογιστή, ή `null` στα ελληνικά. Η ειδοποίηση προς τον
+  // μισθωτή (genLetter) μένει ελληνική: είναι έγγραφο που κρατά εκείνος.
+  const E=useAppEn('tenants');
+  const A=E?.adjust;
+  const fmtDate=(d:string|null)=>A&&E?(d?E.longDate(d):E.noDate):d?new Date(d+'T00:00:00').toLocaleDateString('el-GR',{day:'2-digit',month:'long',year:'numeric'}):ABSENT_DATE;
+  const srcLabel=()=>A?A.source(cpiConfirmedDate()):cpiConfirmedLabel();
+  const idxLabel=(m:string)=>A?A.monthYear(m):indexMonthLabel(m);
+  const capPhraseL=(pct:number)=>A?A.capPhrase(fpRate(pct),COMMERCIAL_RENT_CAP_LAW,COMMERCIAL_RENT_CAP_2026.from.slice(0,4)):commercialCapPhrase(pct);
   const rent=tenant.monthly_rent||0;
   const daysExp=tenant.lease_end?(daysUntil(tenant.lease_end) ?? 0):null;
   // ═══ ΙΔΙΟΣ ΔΕΙΚΤΗΣ ΜΕ ΤΟ ΠΑΡΑΘΥΡΟ ΤΗΣ ΑΝΑΠΡΟΣΑΡΜΟΓΗΣ (03/11/2026) ═══════
@@ -183,6 +190,8 @@ export function RentAdjustView({ tenant, userId, initialYm }:{ tenant:Tenant; us
   // το μισθωτήριο· από πάνω μόνο το όριο της υφιστάμενης επαγγελματικής μίσθωσης,
   // που δείχνεται όταν ισχύει ή όταν το είδος της μίσθωσης δεν είναι γνωστό.
   const capIfCommercial=rentCapPct({ leaseCategory:'commercial', leaseStart:tenant.lease_start, effectiveDate:`${ym}-01` });
+  const capNoteL=capIfCommercial===null||tenant.lease_category==='residential'||!A ? ''
+    : A.capNote(tenant.lease_category==='commercial', capPhraseL(capIfCommercial));
   const capNote=capIfCommercial===null||tenant.lease_category==='residential' ? ''
     : tenant.lease_category==='commercial' ? ` Στην υφιστάμενη επαγγελματική μίσθωση ισχύει επιπλέον ${commercialCapPhrase(capIfCommercial)}.`
     : ` Για υφιστάμενη επαγγελματική μίσθωση ισχύει επιπλέον ${commercialCapPhrase(capIfCommercial)}.`;
@@ -203,6 +212,9 @@ export function RentAdjustView({ tenant, userId, initialYm }:{ tenant:Tenant; us
   const diff=res.increase;
   const basisWord=hasCustom?'Ποσοστό σύμβασης':share75?'75% ΔΤΚ':'ΔΤΚ';
   const capLine=res.capped ? capAppliedLine(basisWord, pct, res.pctApplied) : '';
+  const basisL=A?A.basis[hasCustom?'custom':share75?'cpi75':'cpi']:basisWord;
+  const capLineOf=(applied:number)=>A?A.capLine(basisL, fp(pct), capPhraseL(applied)):capAppliedLine(basisWord, pct, applied);
+  const capLineL=res.capped ? capLineOf(res.pctApplied) : '';
   const isExpired=daysExp!==null&&daysExp<0;
   const isExpiring=daysExp!==null&&daysExp>=0&&daysExp<=60;
   // Μήνες ισχύος: όσοι έχουν δημοσιευμένο δείκτη, συν ο τρέχων και οι δύο
@@ -263,12 +275,12 @@ export function RentAdjustView({ tenant, userId, initialYm }:{ tenant:Tenant; us
     <div>
       {/* Εξήγηση ΔΤΚ */}
       <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24, marginBottom:16 }}>
-        <SectionTitle>Τι είναι ο Δείκτης Τιμών Καταναλωτή (ΔΤΚ)</SectionTitle>
+        <SectionTitle>{A?A.whatTitle:'Τι είναι ο Δείκτης Τιμών Καταναλωτή (ΔΤΚ)'}</SectionTitle>
         <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', lineHeight:1.8, fontFamily:T.font.sans, marginBottom:14 }}>
-          Ο <strong style={{ color:'var(--text-primary)' }}>Δείκτης Τιμών Καταναλωτή (ΔΤΚ)</strong> είναι ο επίσημος δείκτης που χρησιμοποιεί η ΕΛΣΤΑΤ για να μετρήσει τη μεταβολή του κόστους ζωής σε ετήσια βάση. Το μίσθωμα αναπροσαρμόζεται όπως και όποτε ορίζει ο όρος αναπροσαρμογής του μισθωτηρίου, που λέει το ποσοστό ή τον δείκτη και τη συχνότητα.{capNote}
+          {A?<>{A.what[0]}<strong style={{ color:'var(--text-primary)' }}>{A.what[1]}</strong>{A.what[2]}{capNoteL}</>:<>Ο <strong style={{ color:'var(--text-primary)' }}>Δείκτης Τιμών Καταναλωτή (ΔΤΚ)</strong> είναι ο επίσημος δείκτης που χρησιμοποιεί η ΕΛΣΤΑΤ για να μετρήσει τη μεταβολή του κόστους ζωής σε ετήσια βάση. Το μίσθωμα αναπροσαρμόζεται όπως και όποτε ορίζει ο όρος αναπροσαρμογής του μισθωτηρίου, που λέει το ποσοστό ή τον δείκτη και τη συχνότητα.{capNote}</>}
         </p>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap:10 }}>
-          {[{label:'Νομική βάση',value:'Όρος μισθωτηρίου'},{label:'Συχνότητα',value:'Όπως ορίζει το μισθωτήριο'},{label:'Τελευταίος δείκτης',value:indexMonthLabel(RENT_INDEX_LATEST)}].map((item,i)=>(
+          {(A?A.facts.map(([label,value],i)=>({label,value:i===2?idxLabel(RENT_INDEX_LATEST):value})):[{label:'Νομική βάση',value:'Όρος μισθωτηρίου'},{label:'Συχνότητα',value:'Όπως ορίζει το μισθωτήριο'},{label:'Τελευταίος δείκτης',value:indexMonthLabel(RENT_INDEX_LATEST)}]).map((item,i)=>(
             <div key={i} style={{ background:'var(--bg-elevated)', borderRadius:T.radius.inner, padding:'12px 14px' }}>
               <div style={{ fontSize:14, fontWeight:700, color:'var(--accent)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', marginBottom:4 }}>{item.value}</div>
               <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', lineHeight: 1.3, color:'var(--text-secondary)', fontFamily:T.font.sans }}>{item.label}</div>
@@ -277,13 +289,13 @@ export function RentAdjustView({ tenant, userId, initialYm }:{ tenant:Tenant; us
         </div>
         {/* Η προέλευση του νούμερου, στην οθόνη — το ίδιο κείμενο μπαίνει και στο έγγραφο */}
         <div style={{ marginTop:12, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
-          {cpiConfirmedLabel()}. <a href={CPI_SOURCE_URL} target="_blank" rel="noopener noreferrer" style={{ color:'var(--accent)' }}>Έλεγχος στην πηγή</a>
+          {srcLabel()}. <a href={CPI_SOURCE_URL} target="_blank" rel="noopener noreferrer" style={{ color:'var(--accent)' }}>{A?A.check:'Έλεγχος στην πηγή'}</a>
         </div>
       </div>
 
       {(isExpired||isExpiring)&&(
         <AlertBar
-          text={isExpired?`Το μισθωτήριο έληξε στις ${fmtDate(tenant.lease_end)}. Ανανέωσέ το πριν από οποιαδήποτε αναπροσαρμογή.`:`Το μισθωτήριο λήγει ${daysExp===0?'σήμερα':daysExp===1?'αύριο':`σε ${daysExp} ημέρες`} (${fmtDate(tenant.lease_end)}).`}
+          text={A?(isExpired?A.expired(fmtDate(tenant.lease_end)):A.expiring(daysExp??0,fmtDate(tenant.lease_end))):isExpired?`Το μισθωτήριο έληξε στις ${fmtDate(tenant.lease_end)}. Ανανέωσέ το πριν από οποιαδήποτε αναπροσαρμογή.`:`Το μισθωτήριο λήγει ${daysExp===0?'σήμερα':daysExp===1?'αύριο':`σε ${daysExp} ημέρες`} (${fmtDate(tenant.lease_end)}).`}
           level={isExpired?'critical':'warning'}
         />
       )}
@@ -300,18 +312,18 @@ export function RentAdjustView({ tenant, userId, initialYm }:{ tenant:Tenant; us
           καθόλου: στα 320, 390, 430 μετρήθηκε ταυτόσημο με πριν. */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', gap:16 }}>
         <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
-          <SectionTitle>Υπολογιστής αναπροσαρμογής</SectionTitle>
+          <SectionTitle>{A?A.calc:'Υπολογιστής αναπροσαρμογής'}</SectionTitle>
 
           <div style={{ background:'var(--bg-elevated)', borderRadius:T.radius.inner, padding:'16px 18px', marginBottom:T.sp.lg }}>
-            <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', lineHeight: 1.3, color:'var(--text-secondary)', fontFamily:T.font.sans, marginBottom:6 }}>Τρέχον μηνιαίο μίσθωμα</div>
+            <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', lineHeight: 1.3, color:'var(--text-secondary)', fontFamily:T.font.sans, marginBottom:6 }}>{A?A.current:'Τρέχον μηνιαίο μίσθωμα'}</div>
             <div style={{ fontSize:28, fontWeight:700, color:'var(--text-primary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', lineHeight:1 }}>{fmtE(rent)}</div>
-            {tenant.lease_end&&<div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, marginTop:4 }}>Λήξη: {fmtDate(tenant.lease_end)}</div>}
+            {tenant.lease_end&&<div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, marginTop:4 }}>{A?A.ends(fmtDate(tenant.lease_end)):<>Λήξη: {fmtDate(tenant.lease_end)}</>}</div>}
           </div>
 
           <div style={{ marginBottom:16 }}>
-            <div style={{ ...labelStyle, marginBottom:8 }}>Μήνας ισχύος</div>
-            <SelectField ariaLabel="Μήνας ισχύος" value={ym} onChange={v=>{ setYm(v); setUseCustom(rentIndexFor(v)===null); }}
-              options={months.map(m=>{ const i=rentIndexFor(m); return { value:m, label:`${monthYearLabel(m)}${i===null?', χωρίς δείκτη':`, ΔΤΚ ${indexMonthLabel(i.ym)}: ${i.pct>=0?'+':''}${fpSigned(i.pct)}`}` }; })}/>
+            <div style={{ ...labelStyle, marginBottom:8 }}>{A?A.month:'Μήνας ισχύος'}</div>
+            <SelectField ariaLabel={A?A.month:'Μήνας ισχύος'} value={ym} onChange={v=>{ setYm(v); setUseCustom(rentIndexFor(v)===null); }}
+              options={months.map(m=>{ const i=rentIndexFor(m); if(A) return { value:m, label:A.monthOpt(A.monthYear(m), i===null?null:`${A.monthYear(i.ym)}: ${i.pct>=0?'+':''}${fpSigned(i.pct)}`) }; return { value:m, label:`${monthYearLabel(m)}${i===null?', χωρίς δείκτη':`, ΔΤΚ ${indexMonthLabel(i.ym)}: ${i.pct>=0?'+':''}${fpSigned(i.pct)}`}` }; })}/>
           </div>
 
           {/* Έτος χωρίς δείκτη: το λέμε, δεν το μπαλώνουμε */}
@@ -323,35 +335,35 @@ export function RentAdjustView({ tenant, userId, initialYm }:{ tenant:Tenant; us
                Τώρα κλείνουν και δεξιά· τα μαλακά ενωτικά του hy() κρατούν τα
                κενά στο φυσικό τους μέγεθος αντί να τα τεντώσει η στοίχιση. */
             <div className="po-just" style={{ background:'var(--warning-dim)', border:'1px solid color-mix(in srgb, var(--warning) 26%, transparent)', borderLeft:'3px solid var(--warning)', borderRadius:T.radius.inner, padding:'11px 14px', marginBottom:16, fontSize:12, color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
-              {hy(<>Για ισχύ τον {monthAccYear(ym)} δεν έχουμε δημοσιευμένο δείκτη. Ο τελευταίος που έχουμε είναι του {indexMonthGenYear(RENT_INDEX_LATEST)}. Δώσε το ποσοστό που προβλέπει η σύμβασή σου. Θα γραφτεί στο έγγραφο ως ποσοστό που όρισες εσύ, όχι ως στοιχείο της ΕΛΣΤΑΤ.</>)}
+              {A?A.noIndex(A.monthYear(ym),A.monthYear(RENT_INDEX_LATEST)):hy(<>Για ισχύ τον {monthAccYear(ym)} δεν έχουμε δημοσιευμένο δείκτη. Ο τελευταίος που έχουμε είναι του {indexMonthGenYear(RENT_INDEX_LATEST)}. Δώσε το ποσοστό που προβλέπει η σύμβασή σου. Θα γραφτεί στο έγγραφο ως ποσοστό που όρισες εσύ, όχι ως στοιχείο της ΕΛΣΤΑΤ.</>)}
             </div>
           )}
 
           <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16, padding:'12px 14px', background:'var(--bg-elevated)', borderRadius:T.radius.inner }}>
-            <Toggle on={useCustom} onChange={setUseCustom} label="Ποσοστό της σύμβασης"/>
+            <Toggle on={useCustom} onChange={setUseCustom} label={A?A.custom:'Ποσοστό της σύμβασης'}/>
           </div>
           {!useCustom&&idx&&(
             <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16, padding:'12px 14px', background:'var(--bg-elevated)', borderRadius:T.radius.inner }}>
-              <Toggle on={share75} onChange={setShare75} label="75% της μεταβολής (επαγγελματική μίσθωση)"/>
+              <Toggle on={share75} onChange={setShare75} label={A?A.share75:'75% της μεταβολής (επαγγελματική μίσθωση)'}/>
             </div>
           )}
           {useCustom&&(
             <div style={{ marginBottom:16 }}>
-              <div style={{ ...labelStyle, marginBottom:8 }}>Ποσοστό αναπροσαρμογής (%)</div>
+              <div style={{ ...labelStyle, marginBottom:8 }}>{A?A.pct:'Ποσοστό αναπροσαρμογής (%)'}</div>
               {/* ΤΟ ΠΕΔΙΟ ΔΕΧΟΤΑΝ ΑΡΝΗΤΙΚΟ ΠΟΣΟΣΤΟ. Το ποσοστό είναι αυτό που
                   γράφει η σύμβαση και σύμβαση δεν ορίζει αρνητική
                   αναπροσαρμογή· ένα «-3» θα κατέβαζε σιωπηλά το ενοίκιο σε κάθε
                   υπολογισμό. Και η υπόδειξη έγραφε «3.5» με αγγλική υποδιαστολή,
                   μέσα σε εφαρμογή που γράφει παντού ελληνικό κόμμα. Το κενό
                   πεδίο μένει κενό και η υπόδειξη πάει από κάτω, με λέξεις. */}
-              <input aria-label="Ποσοστό αναπροσαρμογής" type="number" min={0} value={customPct} onChange={e=>setCustomPct(e.target.value)} placeholder="" step="0.1"
+              <input aria-label={A?A.pctAria:'Ποσοστό αναπροσαρμογής'} type="number" min={0} value={customPct} onChange={e=>setCustomPct(e.target.value)} placeholder="" step="0.1"
                 style={{ ...selectStyle, border:'1px solid var(--border-default)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontSize:14 }}/>
-              <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, marginTop: 4 }}>Όπως το γράφει η σύμβαση, για παράδειγμα τρία και μισό.</div>
+              <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, marginTop: 4 }}>{A?A.pctHint:'Όπως το γράφει η σύμβαση, για παράδειγμα τρία και μισό.'}</div>
             </div>
           )}
 
           {/* Ιστορικό ΔΤΚ */}
-          <div title="ΔΤΚ: Δείκτης Τιμών Καταναλωτή, βάση αναπροσαρμογής ενοικίου" style={{ ...labelStyle, marginBottom:10 }}>Ιστορικό ΔΤΚ</div>
+          <div title={A?A.historyTitle:'ΔΤΚ: Δείκτης Τιμών Καταναλωτή, βάση αναπροσαρμογής ενοικίου'} style={{ ...labelStyle, marginBottom:10 }}>{A?A.history:'Ιστορικό ΔΤΚ'}</div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 105px), 1fr))', gap: 4 }}>
             {Object.entries(RENT_INDEX).sort(([a],[b])=>b.localeCompare(a)).map(([m,rate])=>{
               const active=!!idx&&idx.ym===m;
@@ -359,7 +371,7 @@ export function RentAdjustView({ tenant, userId, initialYm }:{ tenant:Tenant; us
                 <div key={m} {...pressable(()=>{setYm(m);setUseCustom(false);})}
                   style={{ background:active?'var(--accent-dim)':'var(--bg-elevated)', border:`1px solid ${active?'var(--accent)':'var(--border-subtle)'}`, borderRadius:T.radius.badge, padding:'7px 4px', textAlign:'center' as const, cursor:'pointer', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
                   <div style={{ fontSize: 'var(--fs-xs)', fontWeight:700, color:active?'var(--accent)':'var(--text-secondary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{rate>=0?'+':''}{fpSigned(rate)}</div>
-                  <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, marginTop:2 }}>{monthYearLabel(m)}</div>
+                  <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, marginTop:2 }}>{A?A.monthYear(m):monthYearLabel(m)}</div>
                 </div>
               );
             })}
@@ -371,43 +383,43 @@ export function RentAdjustView({ tenant, userId, initialYm }:{ tenant:Tenant; us
             <>
               <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap:10, marginBottom:14 }}>
                 <div style={{ background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:'18px 16px' }}>
-                  <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-secondary)', fontFamily:T.font.sans, marginBottom:6 }}>Τρέχον μίσθωμα</div>
+                  <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-secondary)', fontFamily:T.font.sans, marginBottom:6 }}>{A?A.currentShort:'Τρέχον μίσθωμα'}</div>
                   <div style={{ fontSize:18, fontWeight:700, color:'var(--text-primary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fmtE(rent)}</div>
                 </div>
                 <div style={{ background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:'18px 16px' }}>
-                  <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-secondary)', fontFamily:T.font.sans, marginBottom:6 }}>Νέο μίσθωμα</div>
+                  <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-secondary)', fontFamily:T.font.sans, marginBottom:6 }}>{A?A.newRent:'Νέο μίσθωμα'}</div>
                   <div style={{ fontSize:18, fontWeight:700, color:'var(--accent)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fmtE(newRent)}</div>
                 </div>
               </div>
 
               <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:T.sp.lg, marginBottom:14 }}>
-                {[{label:hasCustom?'Ποσοστό σύμβασης':`ΔΤΚ ${idx?indexMonthLabel(idx.ym):''}${share75?' (75%)':''}`,value:`${pct>=0?'+':''}${fpSigned(pct)}`},
-                  ...(res.capped?[{label:'Εφαρμόζεται (νόμιμο όριο)',value:`+${fpSigned(res.pctApplied)}`}]:[]),
-                  {label:'Μεταβολή ανά μήνα',value:`${diff>=0?'+':''}${feSigned(diff)}`},
-                  {label:'Μεταβολή ανά έτος',value:`${diff>=0?'+':''}${feSigned(diff*12)}`}
+                {[{label:A?A.rowPct(hasCustom,idx?A.monthYear(idx.ym):'',share75):hasCustom?'Ποσοστό σύμβασης':`ΔΤΚ ${idx?indexMonthLabel(idx.ym):''}${share75?' (75%)':''}`,value:`${pct>=0?'+':''}${fpSigned(pct)}`},
+                  ...(res.capped?[{label:A?A.applied:'Εφαρμόζεται (νόμιμο όριο)',value:`+${fpSigned(res.pctApplied)}`}]:[]),
+                  {label:A?A.perMonth:'Μεταβολή ανά μήνα',value:`${diff>=0?'+':''}${feSigned(diff)}`},
+                  {label:A?A.perYear:'Μεταβολή ανά έτος',value:`${diff>=0?'+':''}${feSigned(diff*12)}`}
                 ].map((row,i)=>(
                   <DataRow key={i} label={row.label} value={<span style={{ color:'var(--text-primary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{row.value}</span>}/>
                 ))}
                 <div style={{ marginTop:10, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
-                  {hasCustom?'Ποσοστό που όρισες εσύ βάσει της σύμβασης. Το έγγραφο θα το αναφέρει ως τέτοιο.':cpiConfirmedLabel()}
+                  {hasCustom?(A?A.customNote:'Ποσοστό που όρισες εσύ βάσει της σύμβασης. Το έγγραφο θα το αναφέρει ως τέτοιο.'):srcLabel()}
                 </div>
                 {res.capped&&(
                   <div className="po-just" style={{ marginTop:10, fontSize:12, color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
-                    {hy(<>{`${capLine}. Το νέο μίσθωμα είναι ${fe(newRent)} αντί για ${fe(res.uncappedRent)}. Το ίδιο γράφει και η ειδοποίηση.`}</>)}
+                    {A?A.capped(capLineL,fe(newRent),fe(res.uncappedRent)):hy(<>{`${capLine}. Το νέο μίσθωμα είναι ${fe(newRent)} αντί για ${fe(res.uncappedRent)}. Το ίδιο γράφει και η ειδοποίηση.`}</>)}
                   </div>
                 )}
               </div>
 
               {needsType&&ifCommercial&&(
                 <div className="po-just" style={{ background:'var(--warning-dim)', border:'1px solid color-mix(in srgb, var(--warning) 26%, transparent)', borderLeft:'3px solid var(--warning)', borderRadius:T.radius.inner, padding:'11px 14px', marginBottom:14, fontSize:12, color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
-                  {hy(<>{`Δεν έχει οριστεί αν η μίσθωση είναι κατοικίας ή επαγγελματική. Για κατοικία το νέο μίσθωμα είναι ${fe(newRent)}. Αν είναι υφιστάμενη επαγγελματική, ${capAppliedLine(basisWord, pct, ifCommercial.pctApplied)} και το νέο μίσθωμα είναι ${fe(ifCommercial.newRent)}. Όρισε τον τύπο μίσθωσης στα στοιχεία του ενοικιαστή για να εκτυπωθεί η ειδοποίηση.`}</>)}
+                  {A?A.needsType(fe(newRent),capLineOf(ifCommercial.pctApplied),fe(ifCommercial.newRent)):hy(<>{`Δεν έχει οριστεί αν η μίσθωση είναι κατοικίας ή επαγγελματική. Για κατοικία το νέο μίσθωμα είναι ${fe(newRent)}. Αν είναι υφιστάμενη επαγγελματική, ${capAppliedLine(basisWord, pct, ifCommercial.pctApplied)} και το νέο μίσθωμα είναι ${fe(ifCommercial.newRent)}. Όρισε τον τύπο μίσθωσης στα στοιχεία του ενοικιαστή για να εκτυπωθεί η ειδοποίηση.`}</>)}
                 </div>
               )}
               {/* Το περιτύλιγμα κρατά ΜΟΝΟ την απόσταση από τα επόμενα: το Btn δεν δέχεται style. */}
               <div style={{ marginBottom:12 }}>
                 {needsType
-                  ? <Btn variant="secondary" field disabled title="Όρισε πρώτα τον τύπο μίσθωσης">Εκτύπωση ειδοποίησης αναπροσαρμογής</Btn>
-                  : <Btn variant="primary" field onClick={genLetter}>Εκτύπωση ειδοποίησης αναπροσαρμογής</Btn>}
+                  ? <Btn variant="secondary" field disabled title={A?A.setTypeFirst:'Όρισε πρώτα τον τύπο μίσθωσης'}>{A?A.print:'Εκτύπωση ειδοποίησης αναπροσαρμογής'}</Btn>
+                  : <Btn variant="primary" field onClick={genLetter}>{A?A.print:'Εκτύπωση ειδοποίησης αναπροσαρμογής'}</Btn>}
               </div>
             </>
           )}
@@ -415,7 +427,7 @@ export function RentAdjustView({ tenant, userId, initialYm }:{ tenant:Tenant; us
           {rent>0&&!hasPct&&(
             <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:T.sp.lg, marginBottom:14 }}>
               {/* Δευτερεύον, όχι κύριο: η ανενεργή όψη είναι διάφανη με περίγραμμα — το ίδιο που δίνει το secondary. */}
-              <Btn variant="secondary" field disabled title="Δώσε πρώτα το ποσοστό αναπροσαρμογής">Εκτύπωση ειδοποίησης αναπροσαρμογής</Btn>
+              <Btn variant="secondary" field disabled title={A?A.pctFirst:'Δώσε πρώτα το ποσοστό αναπροσαρμογής'}>{A?A.print:'Εκτύπωση ειδοποίησης αναπροσαρμογής'}</Btn>
               {/* ΤΕΣΣΕΡΙΣ ΓΡΑΜΜΕΣ ΠΟΥ ΕΞΗΓΟΥΝ ΓΙΑΤΙ ΤΟ ΚΟΥΜΠΙ ΑΠΟ ΠΑΝΩ ΔΕΝ ΠΑΤΙΕΤΑΙ.
                   Το κουτί μετρήθηκε 347 ωφέλιμα στα 430 της οθόνης και 423 στα 1024
                   (στήλη 457,5 μείον 32 γέμισμα μείον 2 περίγραμμα): 190 γράμματα
@@ -423,13 +435,13 @@ export function RentAdjustView({ tenant, userId, initialYm }:{ tenant:Tenant; us
                   τα ενωτικά του hy(), ώστε το κείμενο να κάθεται στο ίδιο ορθογώνιο
                   με το πλαίσιο που το κρατά. */}
               <div className="po-just" style={{ marginTop:10, fontSize:12, color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
-                {hy(<>Η ειδοποίηση φεύγει σε άλλον άνθρωπο και μένει στα χαρτιά του. Δεν την εκτυπώνουμε με νούμερο που δεν έχει προέλευση. Συμπλήρωσε το ποσοστό της σύμβασης ή επίλεξε μήνα ισχύος με δημοσιευμένο δείκτη.</>)}
+                {A?A.noOrigin:hy(<>Η ειδοποίηση φεύγει σε άλλον άνθρωπο και μένει στα χαρτιά του. Δεν την εκτυπώνουμε με νούμερο που δεν έχει προέλευση. Συμπλήρωσε το ποσοστό της σύμβασης ή επίλεξε μήνα ισχύος με δημοσιευμένο δείκτη.</>)}
               </div>
             </div>
           )}
 
           <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:T.sp.lg }}>
-            <SectionTitle>Υποχρεώσεις και σύνδεσμοι</SectionTitle>
+            <SectionTitle>{A?A.links:'Υποχρεώσεις και σύνδεσμοι'}</SectionTitle>
             {/* ΤΕΣΣΕΡΑ ΛΑΘΗ ΣΕ ΤΡΕΙΣ ΓΡΑΜΜΕΣ ΚΑΙ ΤΑ ΤΕΣΣΕΡΑ ΟΡΑΤΑ ΣΤΗΝ ΟΘΟΝΗ:
              *
              * 1. «ΑΑΑΔΕ» με τρία άλφα. Δύο φορές.
@@ -449,7 +461,7 @@ export function RentAdjustView({ tenant, userId, initialYm }:{ tenant:Tenant; us
              * των υπηρεσιών της όχι. Το «Πρότυπο Σύμβασης» έφυγε: η
              * εφαρμογή παράγει ήδη μισθωτήριο, δεν στέλνει τον χρήστη αλλού
              * για να κατεβάσει άλλο. */}
-            <AadeLinks actions={['lease','income']}/>
+            <AadeLinks actions={['lease','income']} en={E?.aade}/>
           </div>
         </div>
       </div>
@@ -1211,6 +1223,11 @@ export function DepositView({ tenant, payments, damages, onReturned }:{ tenant:T
 // ═══════════════════════════════════════════════════════════════════════════
 
 export function RenewalView({ tenant, userId, comps, sqm }:{ tenant:Tenant; userId:string; comps:RentComp[]; sqm:number|null }) {
+  // Τα αγγλικά της ανανέωσης, ή `null` στα ελληνικά. Το κείμενο της πρότασης
+  // μένει ελληνικό: το διαβάζει ο ενοικιαστής.
+  const E=useAppEn('tenants');
+  const N=E?.renewal;
+  const S=useAppEn('shell');
   const rent=tenant.monthly_rent||0;
   const rentComps=comps.filter(c=>(c.listing_type||'rent')==='rent'&&(c.rent||0)>0);
   // Τιμή ανά τ.μ. ανά αγγελία: από τη στήλη αν υπάρχει, αλλιώς ενοίκιο/τ.μ. της ίδιας
@@ -1220,7 +1237,7 @@ export function RenewalView({ tenant, userId, comps, sqm }:{ tenant:Tenant; user
     .filter(v=>v>0);
   const avgPerSqm=perSqmValues.length?perSqmValues.reduce((a,v)=>a+v,0)/perSqmValues.length:0;
   const compSqms=rentComps.map(c=>c.sqm||0).filter(v=>v>0);
-  const variance=compsVarianceWarning(compSqms, sqm);
+  const variance=compsVarianceWarning(compSqms, sqm, N);
   // Η πρόταση αγοράς υπάρχει ΜΟΝΟ όταν ξέρουμε και τα δικά μας τ.μ. και τιμή ανά τ.μ.
   const marketRent=(sqm&&sqm>0&&avgPerSqm>0)?avgPerSqm*sqm:0;
   const hasMarket=marketRent>0;
@@ -1257,11 +1274,11 @@ export function RenewalView({ tenant, userId, comps, sqm }:{ tenant:Tenant; user
           πάει από 250,5 σε 377 · το ύψος κύλισης του φύλλου από 4634 σε 4761. */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', gap:16, marginBottom:16 }}>
         <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
-          <SectionTitle>Με βάση τον ΔΤΚ</SectionTitle>
-          <DataRow label="Τρέχον μίσθωμα" value={<span style={{ fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{fmt(rent)}</span>}/>
+          <SectionTitle>{N?N.cpiTitle:'Με βάση τον ΔΤΚ'}</SectionTitle>
+          <DataRow label={N?N.current:'Τρέχον μίσθωμα'} value={<span style={{ fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{fmt(rent)}</span>}/>
           {legalNew!==null&&cpiPct!==null
-            ?<DataRow label={`Με ΔΤΚ ${idxNow?indexMonthLabel(idxNow.ym):''} (${cpiPct>=0?'+':''}${fpSigned(cpiPct)})`} value={<span style={{ color:'var(--accent)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{fmt(legalNew)}</span>}/>
-            :<DataRow label="Με ΔΤΚ" value="δεν υπάρχει επιβεβαιωμένος δείκτης"/>}
+            ?<DataRow label={E&&N?N.withCpi(idxNow?E.adjust.monthYear(idxNow.ym):'',`${cpiPct>=0?'+':''}${fpSigned(cpiPct)}`):`Με ΔΤΚ ${idxNow?indexMonthLabel(idxNow.ym):''} (${cpiPct>=0?'+':''}${fpSigned(cpiPct)})`} value={<span style={{ color:'var(--accent)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{fmt(legalNew)}</span>}/>
+            :<DataRow label={N?N.cpiLabel:'Με ΔΤΚ'} value={N?N.noIndex:'δεν υπάρχει επιβεβαιωμένος δείκτης'}/>}
           {/* ΤΡΕΙΣ ΓΡΑΜΜΕΣ ΟΡΙΣΜΟΥ ΣΕ ΣΤΗΛΗ 409. Το πάνελ δίνει 333 ωφέλιμα στα 430
               της οθόνης και 409 στα 1024 (στήλη 457,5 μείον 48 γέμισμα): τα ~200
               γράμματα στα 11 πιάνουν τρεις με τέσσερις γραμμές. Στοίχιση πέρα
@@ -1269,19 +1286,19 @@ export function RenewalView({ tenant, userId, comps, sqm }:{ tenant:Tenant; user
               να το πειράξει. Το ίδιο λεκτικό της πηγής πάει και στο έγγραφο PDF από
               άλλο σημείο κλήσης — εκεί δεν μπαίνει ενωτικό. */}
           <div className="po-just" style={{ marginTop:10, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
-            {hy(<>Ετήσια αναπροσαρμογή βάσει ΔΤΚ, <strong>εφόσον προβλέπεται στη σύμβαση</strong>. Δεν είναι πλαφόν: για το 2026 δεν ισχύει γενικό κρατικό όριο στα ενοίκια κατοικίας. {cpiConfirmedLabel()}.</>)}
+            {E&&N?<>{N.cpiNote[0]}<strong>{N.cpiNote[1]}</strong>{N.cpiNote[2]}{E.adjust.source(cpiConfirmedDate())}.</>:hy(<>Ετήσια αναπροσαρμογή βάσει ΔΤΚ, <strong>εφόσον προβλέπεται στη σύμβαση</strong>. Δεν είναι πλαφόν: για το 2026 δεν ισχύει γενικό κρατικό όριο στα ενοίκια κατοικίας. {cpiConfirmedLabel()}.</>)}
           </div>
         </div>
         <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
-          <SectionTitle>Με βάση την αγορά / περιοχή</SectionTitle>
+          <SectionTitle>{N?N.marketTitle:'Με βάση την αγορά / περιοχή'}</SectionTitle>
           {hasMarket?(
             <>
-              <DataRow label={`Μέση τιμή ανά τ.μ. (${fn(perSqmValues.length)} συγκρίσιμα)`} value={<span style={{ fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fmt(avgPerSqm)}</span>}/>
-              <DataRow label={`× ${fn(sqm||0)} τ.μ. δικά σου`} value={<span style={{ color:'var(--accent)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{fmt(marketRent)}</span>}/>
-              <DataRow label="Απόκλιση τρέχοντος" value={<span style={{ color:marketDiff>0?'var(--positive)':marketDiff<0?'var(--warning)':'var(--text-secondary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{marketDiff>0?'+':''}{feSigned(marketDiff)} ({fpSigned(marketDiffPct)})</span>}/>
+              <DataRow label={N?N.avg(perSqmValues.length):`Μέση τιμή ανά τ.μ. (${fn(perSqmValues.length)} συγκρίσιμα)`} value={<span style={{ fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fmt(avgPerSqm)}</span>}/>
+              <DataRow label={N?N.mine(fn(sqm||0)):`× ${fn(sqm||0)} τ.μ. δικά σου`} value={<span style={{ color:'var(--accent)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{fmt(marketRent)}</span>}/>
+              <DataRow label={N?N.gap:'Απόκλιση τρέχοντος'} value={<span style={{ color:marketDiff>0?'var(--positive)':marketDiff<0?'var(--warning)':'var(--text-secondary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{marketDiff>0?'+':''}{feSigned(marketDiff)} ({fpSigned(marketDiffPct)})</span>}/>
               {variance&&<div style={{ marginTop:12 }}><AlertBar text={variance} level="warning"/></div>}
               <div style={{ marginTop:10, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
-                {marketDiff<0?'Το τρέχον μίσθωμα είναι κάτω από την εκτίμηση της περιοχής για το μέγεθός σου. Οποιαδήποτε αύξηση σε ενεργή μίσθωση κατοικίας γίνεται μόνο με όρο αναπροσαρμογής ή νέα συμφωνία.':'Το τρέχον μίσθωμα είναι στο ή πάνω από την εκτίμηση της περιοχής για το μέγεθός σου.'}
+                {N?(marketDiff<0?N.below:N.above):marketDiff<0?'Το τρέχον μίσθωμα είναι κάτω από την εκτίμηση της περιοχής για το μέγεθός σου. Οποιαδήποτε αύξηση σε ενεργή μίσθωση κατοικίας γίνεται μόνο με όρο αναπροσαρμογής ή νέα συμφωνία.':'Το τρέχον μίσθωμα είναι στο ή πάνω από την εκτίμηση της περιοχής για το μέγεθός σου.'}
               </div>
             </>
           ):(
@@ -1292,7 +1309,7 @@ export function RenewalView({ tenant, userId, comps, sqm }:{ tenant:Tenant; user
                Η κλάση πάει στο κείμενο μέσω του className που δέχεται πλέον το
                InfoBanner, όχι σε δικό μας περιτύλιγμα που θα έσπαγε τον τόνο. */
             <InfoBanner tone="info" className="po-just">
-              {hy(<>
+              {N?<>{rentComps.length===0?N.noComps(S?S.nav.roi:navLabel('roi')):!sqm||sqm<=0?N.noSqm(rentComps.length):N.compsNoSqm(rentComps.length)}{N.untilThen}</>:hy(<>
                 {rentComps.length===0
                   ?`Δεν υπάρχουν καταχωρημένα συγκρίσιμα ενοίκια για την περιοχή, οπότε δεν προτείνουμε ποσό. Τι πιάνει η περιοχή σου το βλέπεις στην καρτέλα «${navLabel('roi')}».`
                   :!sqm||sqm<=0
@@ -1307,19 +1324,20 @@ export function RenewalView({ tenant, userId, comps, sqm }:{ tenant:Tenant; user
 
       {/* Πρόταση ανανέωσης προς αποστολή */}
       <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24, marginBottom:16 }}>
-        <SectionTitle>Πρόταση ανανέωσης προς αποστολή</SectionTitle>
+        <SectionTitle>{N?N.proposal:'Πρόταση ανανέωσης προς αποστολή'}</SectionTitle>
         {suggested===null?(
-          <InfoBanner tone="neutral">Δεν υπάρχει βάση για πρόταση ποσού: ούτε τιμή ανά τ.μ. από συγκρίσιμα, ούτε επιβεβαιωμένος ΔΤΚ. Δώσε ποσοστό στον υπολογιστή πιο κάτω για να συντάξεις ειδοποίηση.</InfoBanner>
+          N?<InfoBanner tone="neutral">{N.noBasis}</InfoBanner>:<InfoBanner tone="neutral">Δεν υπάρχει βάση για πρόταση ποσού: ούτε τιμή ανά τ.μ. από συγκρίσιμα, ούτε επιβεβαιωμένος ΔΤΚ. Δώσε ποσοστό στον υπολογιστή πιο κάτω για να συντάξεις ειδοποίηση.</InfoBanner>
         ):(
           <>
-            <div style={{ background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:'14px 16px', fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.7, marginBottom:14 }}>{proposalText}</div>
+            <div style={{ background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:'14px 16px', fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.7, marginBottom:14 }} lang={N?'el':undefined}>{proposalText}</div>
+            {N&&<div style={{ fontSize:'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, margin:'-6px 0 12px' }}>{N.greekNote}</div>}
             <div style={{ display:'flex', gap:8, flexWrap:'wrap' as const }}>
               {/* Ιδια σειρά, ίδια όψη: οι τρεις προορισμοί κρατούν το `href` του Btn
                   ώστε να μη μείνουν χαμηλότεροι από το κουμπί της αντιγραφής. */}
               {tenant.phone&&<Btn variant="secondary" href={whatsappLink(phoneDigits,proposalText)} newTab>WhatsApp</Btn>}
               {tenant.phone&&<Btn variant="secondary" href={viberLink(proposalText)} newTab>Viber</Btn>}
-              <Btn variant="secondary" onClick={async()=>{ if(await copyText(proposalText)) notifyOk('Το κείμενο αντιγράφηκε'); else notifyError('Δεν έγινε η αντιγραφή. Επίλεξε και αντίγραψε το κείμενο χειροκίνητα.'); }}>Αντιγραφή</Btn>
-              {tenant.email&&<Btn variant="secondary" href={`mailto:${tenant.email}?subject=${encodeURIComponent('Πρόταση ανανέωσης μίσθωσης')}&body=${encodeURIComponent(proposalText)}`}>Ηλεκτρονικό ταχυδρομείο</Btn>}
+              <Btn variant="secondary" onClick={async()=>{ if(await copyText(proposalText)) notifyOk(E?E.pay.textCopied:'Το κείμενο αντιγράφηκε'); else notifyError(E?E.pay.textCopyFail:'Δεν έγινε η αντιγραφή. Επίλεξε και αντίγραψε το κείμενο χειροκίνητα.'); }}>{N?N.copy:'Αντιγραφή'}</Btn>
+              {tenant.email&&<Btn variant="secondary" href={`mailto:${tenant.email}?subject=${encodeURIComponent('Πρόταση ανανέωσης μίσθωσης')}&body=${encodeURIComponent(proposalText)}`}>{N?N.email:'Ηλεκτρονικό ταχυδρομείο'}</Btn>}
             </div>
           </>
         )}

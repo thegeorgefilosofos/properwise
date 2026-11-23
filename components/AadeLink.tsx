@@ -45,8 +45,26 @@ export function aadeTitle(action: AadeAction): string {
  * Το `emphasis` σηκώνει μόνο την αριστερή γραμμή — καμία αλλαγή χρώματος
  * κειμένου, καμία σημασιολογία σε πράσινο ή κόκκινο.
  */
-export function AadeLink({ action, emphasis = false }: { action: AadeAction; emphasis?: boolean }) {
+/**
+ * Τα αγγλικά μιας κάρτας ΑΑΔΕ: το όνομα της ενέργειας και η σημείωση σύνδεσης.
+ * Η διαδρομή στο myAADE μένει ελληνική (`lang="el"`): είναι τα μενού που θα
+ * πατήσει ο χρήστης στην ελληνική πύλη (docs/i18n/GLOSSARY-EN.md §4.1).
+ */
+export interface AadeLinkEn { labels: Partial<Record<AadeAction, string>>; path: string; login: string }
+
+export function AadeLink({ action, emphasis = false, en }: { action: AadeAction; emphasis?: boolean; en?: AadeLinkEn }) {
   const d = AADE_DESTINATIONS[action];
+  if (en) return (
+    <a href={d.url} target="_blank" rel="noopener noreferrer" title={`${en.labels[action] ?? action}${d.login ? ` · ${en.login}` : ''}`}
+      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', marginBottom: 8, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderLeft: `3px solid ${emphasis ? 'var(--border-strong)' : 'var(--border-subtle)'}`, borderRadius: T.radius.inner, textDecoration: 'none' }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans, marginBottom: 2 }}>{en.labels[action] ?? action}</div>
+        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
+          {en.path}<span lang="el">{aadePath(action)}</span>{d.login ? ` · ${en.login}` : ''}
+        </div>
+      </div>
+    </a>
+  );
   return (
     <a href={d.url} target="_blank" rel="noopener noreferrer" title={aadeTitle(action)}
       style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', marginBottom: 8, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderLeft: `3px solid ${emphasis ? 'var(--border-strong)' : 'var(--border-subtle)'}`, borderRadius: T.radius.inner, textDecoration: 'none' }}>
@@ -61,8 +79,8 @@ export function AadeLink({ action, emphasis = false }: { action: AadeAction; emp
 }
 
 /** Πολλοί προορισμοί στη σειρά. Ο πρώτος παίρνει τον τόνο. */
-export function AadeLinks({ actions }: { actions: readonly AadeAction[] }) {
-  return <>{actions.map((a, i) => <AadeLink key={a} action={a} emphasis={i === 0} />)}</>;
+export function AadeLinks({ actions, en }: { actions: readonly AadeAction[]; en?: AadeLinkEn }) {
+  return <>{actions.map((a, i) => <AadeLink key={a} action={a} emphasis={i === 0} en={en} />)}</>;
 }
 
 /**

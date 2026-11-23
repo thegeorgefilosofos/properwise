@@ -254,17 +254,17 @@ export const hasMoreData = (f:ReturnType<typeof blank>):boolean => !!(
  * σχήμα ακινήτου, όχι αγγελίας. Ίδιο κατώφλι 1,6× και ίδια λογική «προειδοποιούμε
  * αντί να κρύβουμε». Αν το `varianceWarning` γίνει export, αυτή η συνάρτηση φεύγει.
  */
-export function compsVarianceWarning(sqms:number[], mySqm:number|null):string|null {
+import type { TenantsEn } from '@/lib/i18n/en/app/tenants';
+export function compsVarianceWarning(sqms:number[], mySqm:number|null, en?:TenantsEn['renewal']):string|null {
+  // Τα μεγέθη μία φορά· τα δύο κείμενα (ελληνικά, αγγλικά) λένε τα ίδια ευρήματα.
+  const min=sqms.length?Math.min(...sqms):0, max=sqms.length?Math.max(...sqms):0;
+  const avg=sqms.length?sqms.reduce((a,n)=>a+n,0)/sqms.length:0;
+  const wide=sqms.length>=2&&max/min>=1.6;
+  const unlike=!!mySqm&&sqms.length>0&&Math.max(avg/mySqm, mySqm/avg)>=1.6;
+  if(!wide&&!unlike) return null;
+  if(en) return en.variance(wide?en.range(Math.round(min),Math.round(max)):null, unlike&&mySqm?en.mineVs(Math.round(mySqm),Math.round(avg)):null);
   const reasons:string[]=[];
-  if(sqms.length>=2){
-    const min=Math.min(...sqms), max=Math.max(...sqms);
-    if(max/min>=1.6) reasons.push(`τα συγκρίσιμα έχουν μεγέθη από ${Math.round(min)} έως ${Math.round(max)} τ.μ.`);
-  }
-  if(mySqm&&sqms.length){
-    const avg=sqms.reduce((a,n)=>a+n,0)/sqms.length;
-    const ratio=Math.max(avg/mySqm, mySqm/avg);
-    if(ratio>=1.6) reasons.push(`το ακίνητό σου είναι ${Math.round(mySqm)} τ.μ. ενώ ο μέσος όρος τους είναι ${Math.round(avg)} τ.μ.`);
-  }
-  if(!reasons.length) return null;
+  if(wide) reasons.push(`τα συγκρίσιμα έχουν μεγέθη από ${Math.round(min)} έως ${Math.round(max)} τ.μ.`);
+  if(unlike&&mySqm) reasons.push(`το ακίνητό σου είναι ${Math.round(mySqm)} τ.μ. ενώ ο μέσος όρος τους είναι ${Math.round(avg)} τ.μ.`);
   return `Προσοχή στη σύγκριση: ${reasons.join(' και ')}. Η τιμή ανά τ.μ. δεν είναι γραμμική στο μέγεθος· έλεγξε τις αγγελίες πριν στείλεις πρόταση.`;
 }
