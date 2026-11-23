@@ -8,6 +8,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** Τα μέρη των δαπανών του έτους. Το σύνολο είναι ΠΑΝΤΑ το άθροισμά τους. */
+import type { TaxIncomeBasis } from './taxIncome';
+
 export const EXPENSE_LABELS = {
   total: 'Δαπάνες έτους',
   paid: 'πληρωμένες ως σήμερα',
@@ -32,6 +34,27 @@ export const INCOME_LABELS = {
   expected: 'αναμενόμενα με βάση τη μίσθωση',
   estimate: 'εκτίμηση',
 } as const;
+
+/**
+ * Η ΒΑΣΗ ΤΟΥ ΦΟΡΟΥ ΕΝΟΙΚΙΩΝ, ΓΡΑΜΜΕΝΗ ΔΙΠΛΑ ΣΤΟ ΠΟΣΟ (έλεγχος 18/11/2026). Για το
+ * ίδιο ακίνητο η Επισκόπηση έδειχνε φόρο 1.111,50€ και η Λογιστική 0,00€ χωρίς
+ * να λέει καμία ότι μετρά άλλο πράγμα. Η Επισκόπηση φορολογεί όλη τη χρονιά
+ * (`propertyRentTax`: μίσθωμα × 12 ή στόχος × 12)· η Λογιστική τα ενοίκια που
+ * έχουν καταχωρηθεί στο βιβλίο της χρονιάς. Δύο νόμιμες βάσεις, με όνομα η καθεμία.
+ */
+export const TAX_BASIS_LABELS = {
+  /** Ο φόρος της `propertyRentTax` για ακίνητο με μίσθωση: όλη η χρονιά. */
+  fullYear: (year: number) => `Εκτίμηση για όλο το ${year}`,
+  /** Ο φόρος της `propertyRentTax` για ακίνητο χωρίς μίσθωση (κανόνας 5 του taxIncome). */
+  received: 'Από όσα εισπράχθηκαν ως σήμερα',
+  /** Ο φόρος της Λογιστικής: οι δόσεις και οι διαμονές του βιβλίου της χρονιάς. */
+  recorded: (year: number) => `Από όσα καταχωρήθηκαν για το ${year}`,
+} as const;
+
+/** Η ετικέτα της βάσης του φόρου που δίνει η `propertyRentTax`. */
+export function rentTaxBasisLabel(basis: TaxIncomeBasis, year: number): string {
+  return basis === 'received' ? TAX_BASIS_LABELS.received : TAX_BASIS_LABELS.fullYear(year);
+}
 
 /**
  * Από πού βγαίνει το ετήσιο έσοδο της απόδοσης (lib/facts/income: `yieldIncome`).

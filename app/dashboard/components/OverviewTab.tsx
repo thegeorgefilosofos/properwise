@@ -85,7 +85,7 @@ import OccupancyPanel from './OccupancyPanel'
 import PolicyNotice from './PolicyNotice'
 import { athensToday, isoYear, isoMonth } from '@/lib/core/time'
 import { type IncomeRent } from '@/lib/income/propertyIncome'
-import { yearExpensesOf, expenseParts, expensePartsShort, EXPENSE_LABELS, INCOME_LABELS, rentIncome, yieldIncome, propertyStatus, hostingReceipts, hostingParts, hostingPartsShort, HOSTING_LABELS, YIELD_LABELS, YIELD_SHORT_LABELS, YIELD_INLINE_LABELS, yieldCosts, yieldPlatformFees, netPreTaxLabel, PLATFORM_FEE_LABELS, enfiaYear, closedTaxRefs, propertyRentTax, targetMonthlyOf } from '@/lib/facts'
+import { yearExpensesOf, expenseParts, expensePartsShort, EXPENSE_LABELS, INCOME_LABELS, rentIncome, yieldIncome, propertyStatus, hostingReceipts, hostingParts, hostingPartsShort, HOSTING_LABELS, YIELD_LABELS, YIELD_SHORT_LABELS, YIELD_INLINE_LABELS, yieldCosts, yieldPlatformFees, netPreTaxLabel, PLATFORM_FEE_LABELS, enfiaYear, closedTaxRefs, propertyRentTax, targetMonthlyOf, rentTaxBasisLabel } from '@/lib/facts'
 import { useEnfiaSettings, useEnfiaInstalmentCounts } from './useEnfia'
 import type { ClientStaysRow } from '@/lib/supabase/tables'
 import { useLoad, type LoadTurn } from '@/app/hooks/useLoad'
@@ -1298,7 +1298,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           // ακίνητο δεν μοιράζεται τίποτα: είναι όλος ο φόρος του. Η ετικέτα
           // λέει το καθένα στη θέση του και η πλήρης εξήγηση μένει στο ⓘ.
           { label: portfolioTax.count>1 ? 'Μερίδιο φόρου' : 'Φόρος ενοικίου', value:fmtEur(estTax), fact: 'tax-year',
-            sub: incomeIsEstimate ? INCOME_LABELS.estimate : undefined,
+            // Η ΒΑΣΗ ΜΕ ΟΝΟΜΑ (18/11/2026): η Λογιστική δείχνει τον φόρο των
+            // καταχωρημένων ενοικίων· εδώ είναι όλη η χρονιά και το λέει.
+            sub: rentTaxBasisLabel(rentTax.income.basis, year),
             // Η ΒΑΣΗ ΤΟΥ ΦΟΡΟΥ ΛΕΓΕΤΑΙ ΠΡΩΤΗ: η ίδια με το «Έσοδα έτους» και με τον
             // φόρο των Αποδόσεων και της Βραχυχρόνιας (lib/facts/rentTax).
             title:`Φόρος ${year} στα ${fmtEur(rentTax.income.annual)} του ακινήτου${yi.label ? ` (${yi.label})` : ''}. ` + (portfolioTax.count>1
