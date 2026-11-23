@@ -1,5 +1,7 @@
 'use client';
 
+import { useNarrow } from '@/components/useNarrow';
+import { ActionMenu } from '@/components/ActionMenu';
 import { useState, useEffect, useCallback, useMemo, useRef, useSyncExternalStore } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import * as expenses from '@/lib/data/expenses';
@@ -315,7 +317,13 @@ export default function TabDocuments({
   // Η λογική ζει στο lib/archive/facets.ts, με τα δικά της τεστ.
   const [sel, setSel] = useState<Selection>({});
   const [query, setQuery] = useState('');
-  const [view, setView] = useState<'grid' | 'list'>('grid');
+  // ΛΙΣΤΑ ΣΤΟ ΤΗΛΕΦΩΝΟ (Χ5, 23/11/2026). Το πλέγμα έδινε σε κάθε λογαριασμό
+  // κάρτα 170 εικονοστοιχείων με ένα γενικό εικονίδιο αρχείου: δύο χαρτιά ανά
+  // οθόνη. Κάτω από τα 600 η προεπιλογή είναι η λίστα· ό,τι διαλέξει ο χρήστης
+  // κρατιέται όσο μένει στην καρτέλα.
+  const narrow = useNarrow();
+  const [viewPick, setView] = useState<'grid' | 'list' | null>(null);
+  const view = viewPick ?? (narrow ? 'list' : 'grid');
   // ΜΗΝΕΣ Ή ΦΑΚΕΛΟΙ. Δύο προβολές του ΙΔΙΟΥ φιλτραρισμένου συνόλου· η επιλογή
   // μένει στη συσκευή, ώστε όποιος δουλεύει με φακέλους να τους βρίσκει ξανά.
   const [fbLayout, setFbLayout] = useRemembered<'columns' | 'list'>('pw.archive.layout', parseLayout, v => v, 'columns');
@@ -1155,8 +1163,8 @@ function FileList({ items, groups, tree, openAll = false, empty, a, onUpload }: 
    κάνει 124. Δεν είναι πολλά λόγια· είναι πολύς αέρας. Με έναν χρόνο χρήσης
    πίσω του, το ίδιο μοτίβο δίνει πενήντα οθόνες.
 
-   ΤΙ ΑΛΛΑΖΕΙ. Ανοιχτοί μένουν οι ΔΥΟ πιο πρόσφατοι μήνες — «Αυτόν τον μήνα»
-   και «Τον προηγούμενο» — που είναι το σύνολο εργασίας. Οι παλιότεροι
+   ΤΙ ΑΛΛΑΖΕΙ. Ανοιχτοί μένουν οι ΔΥΟ πιο πρόσφατοι μήνες, ο τρέχων και ο
+   προηγούμενος, που είναι το σύνολο εργασίας. Οι παλιότεροι
    διπλώνουν. Δεν κρύβεται τίποτα χωρίς σήμα: ο μετρητής αρχείων μένει πάντα
    στην κεφαλίδα, οπότε βλέπεις ότι υπάρχουν και πόσα.
 
@@ -1303,14 +1311,19 @@ const RowBtn = ({ title, onClick, children }: { title: string; onClick: () => vo
 function FileRow({ i, a }: { i: Item; a: FileActions }) {
   const [hov, setHov] = useState(false);
   const coarse = useCoarsePointer();
-  const shown = hov || coarse;
+  // ΣΤΟ ΤΗΛΕΦΩΝΟ ΟΙ ΕΝΕΡΓΕΙΕΣ ΣΕ ΕΝΑ «⋯» (Χ5, 23/11/2026). Με τη λίστα ως
+  // προεπιλογή κάτω από τα 600, τα κουμπιά των 44 στη σειρά άφηναν στο όνομα
+  // του αρχείου στήλη μίας λέξης ανά γραμμή (σαρωτής διάταξης, 320 ως 440).
+  // Μένουν το εικονίδιο και το «⋯»· το ποσό πάει στη γραμμή κάτω από το όνομα.
+  const compact = useNarrow();
+  const shown = (hov || coarse) && !compact;
   const sel = a.selected.has(i.id);
   const canFix = !!i.raw && i.raw.kind === 'document';
   const selectable = !!i.raw || !!i.url;
   return (
     <div onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
       style={{ display: 'flex', alignItems: 'center', gap: 12, background: sel ? 'var(--accent-soft)' : 'var(--bg-elevated)', border: `1px solid ${sel ? 'var(--accent-border)' : 'var(--border-subtle)'}`, borderRadius: T.radius.inner, padding: '10px 14px', transition: `background 0.14s ${T.ease.standard}` }}>
-      <div style={{ width: 18, display: 'flex', flexShrink: 0 }}>{selectable && (shown || sel) && <SelectBox checked={sel} onChange={() => a.onToggleSel(i.id)} label={`Επιλογή ${i.title}`}/>}</div>
+      {(!compact || sel) && <div style={{ width: 18, display: 'flex', flexShrink: 0 }}>{selectable && (shown || sel) && <SelectBox checked={sel} onChange={() => a.onToggleSel(i.id)} label={`Επιλογή ${i.title}`}/>}</div>}
       {i.isImage && i.url
         ? <RuntimeImg src={i.url} alt="" onClick={() => a.onOpenLightbox(i)} style={{ width: 44, height: 44, borderRadius: T.radius.badge, objectFit: 'cover', flexShrink: 0, cursor: 'pointer', border: '1px solid var(--border-subtle)' }}/>
         : <div {...pressable(() => { if (canPreview(i)) a.onOpenLightbox(i); })} style={{ width: 44, height: 44, borderRadius: T.radius.badge, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'var(--accent)', cursor: canPreview(i) ? 'pointer' : 'default' }}>
@@ -1323,10 +1336,10 @@ function FileRow({ i, a }: { i: Item; a: FileActions }) {
           {a.showFolder && <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent)', fontWeight: 600 }}>{FOLDER_LABEL[i.folder]}</span>}
         </div>
         <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 2 }}>
-          {[i.date ? fd(i.date) : null, i.sizeBytes ? fmtBytes(i.sizeBytes) : null, i.note, i.originalName ? `Αρχικό: ${i.originalName}` : null].filter(Boolean).join(' · ')}
+          {[compact && i.value != null ? fe(i.value) : null, i.date ? fd(i.date) : null, i.sizeBytes ? fmtBytes(i.sizeBytes) : null, i.note, i.originalName ? `Αρχικό: ${i.originalName}` : null].filter(Boolean).join(' · ')}
         </div>
       </div>
-      {i.value != null && <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{fe(i.value)}</span>}
+      {i.value != null && !compact && <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{fe(i.value)}</span>}
       {shown && i.raw && (
         <>
           {i.downloadUrl && <RowBtn title={`Λήψη ως ${i.fileName}`} onClick={() => window.open(i.downloadUrl!, '_blank', 'noopener')}><IconDownload size={14}/></RowBtn>}
@@ -1334,9 +1347,20 @@ function FileRow({ i, a }: { i: Item; a: FileActions }) {
           {canFix && <RowBtn title="Διόρθωση αναγνώρισης" onClick={() => a.onFix(i)}><IconMoveFolder size={14}/></RowBtn>}
         </>
       )}
-      {i.url && <a className="po-box" href={i.url} target="_blank" rel="noopener noreferrer"
+      {i.url && !compact && <a className="po-box" href={i.url} target="_blank" rel="noopener noreferrer"
         style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--accent)', textDecoration: 'none', padding: '6px 12px', border: '1px solid var(--accent-border)', borderRadius: T.radius.badge, whiteSpace: 'nowrap' }}>Άνοιγμα</a>}
-      {i.raw && <RowBtn title="Διαγραφή" onClick={() => a.onDelete(i)}><IconX/></RowBtn>}
+      {i.raw && !compact && <RowBtn title="Διαγραφή" onClick={() => a.onDelete(i)}><IconX/></RowBtn>}
+      {(i.raw || i.url) && compact && (
+        <ActionMenu iconOnly label={`Ενέργειες για ${shownName(i)}`} items={[
+          ...(i.url ? [{ key: 'open', label: 'Άνοιγμα', onClick: () => { window.open(i.url!, '_blank', 'noopener'); } }] : []),
+          ...(i.downloadUrl ? [{ key: 'dl', label: `Λήψη ως ${i.fileName}`, icon: <IconDownload size={15}/>, onClick: () => { window.open(i.downloadUrl!, '_blank', 'noopener'); } }] : []),
+          ...(i.raw ? [
+            { key: 'rename', label: 'Μετονομασία', icon: <IconPencil size={15}/>, onClick: () => a.onRename(i) },
+            ...(canFix ? [{ key: 'fix', label: 'Διόρθωση αναγνώρισης', icon: <IconMoveFolder size={15}/>, onClick: () => a.onFix(i) }] : []),
+            { key: 'del', label: 'Διαγραφή', danger: true, icon: <IconX size={15}/>, onClick: () => a.onDelete(i) },
+          ] : []),
+        ]}/>
+      )}
     </div>
   );
 }

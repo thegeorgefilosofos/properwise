@@ -71,6 +71,13 @@ import { SegmentControl, NumberInput, CustomSelect, fieldLabelStyle } from './UI
 import { createClient } from '@/lib/supabase/client';
 import * as checklist from '@/lib/data/checklist';
 import * as planData from '@/lib/data/plan';
+import * as billStore from '@/lib/data/bills';
+import * as expenseStore from '@/lib/data/expenses';
+import { mergeLedger } from '@/lib/expenses/ledger';
+import { contractOverview } from '@/lib/contracts/overview';
+import { enfiaYear } from '@/lib/facts';
+import { athensToday } from '@/lib/core/time';
+import { useEnfiaSettings, useEnfiaInstalmentCounts } from './useEnfia';
 import { readCosts, EMPTY_PLAN, type PlanState } from '@/lib/data/plan';
 import { saved } from '@/components/dbWrite';
 import { notify, notifyOk } from '@/components/Toast';
@@ -79,7 +86,7 @@ import { navLabel } from '@/lib/nav/labels';
 import { hyphenate } from '@/lib/core/hyphenate';
 import type { PropertyStatus } from '@/lib/property/status';
 import {
-  planFor, groupSteps, vacancyCost, renovationLoan, saleEstimate,
+  planFor, groupSteps, vacancyCost, knownVacancyCosts, vacancyInputs, renovationLoan, saleEstimate,
   ACTOR_LABEL, EFFORT_LABEL, RISK_LABEL, FUNDING_KIND_LABEL, DISPUTE_KINDS, PLAN_DISCLAIMER,
   type Step, type Option, type DisputeKind, type VacancyCostInput,
 } from '@/lib/property/plan';
@@ -96,6 +103,12 @@ interface PlanProperty {
   year_built?: number | null;
   postal_code?: string | null;
   prop_type?: string | null;
+  // Για τον ΕΝΦΙΑ και το ασφάλιστρο του κενού: τα ίδια πεδία με την Επισκόπηση.
+  enfia?: number | null;
+  obj_value?: number | string | null;
+  floor?: string | number | null;
+  ownership?: number | string | null;
+  insurance_amount?: number | null;
 }
 
 // Υποθέσεις ΜΟΝΟ για το μέγεθος της δόσης επισκευαστικού, δηλωμένες ρητά στην
@@ -399,6 +412,112 @@ function importLocal(base: string): PlanState | null {
   return empty ? null : { done, disputeKind: kind === 'unknown' ? null : kind, vacancyCosts: costs, useAgent: true };
 }
 
+// ── ΤΟ ΝΟΥΜΕΡΟ ΤΟΥ ΚΕΝΟΥ ─────────────────────────────────────────────────
+// ΞΕΚΙΝΑ ΑΠΟ Ο,ΤΙ ΗΔΗ ΞΕΡΕΙ Η ΕΦΑΡΜΟΓΗ (Υ9, αξιολόγηση 23/11/2026). Η οθόνη
+// άνοιγε με τέσσερα άδεια πεδία και ζητούσε ΕΝΦΙΑ, κοινόχρηστα και ασφάλιστρο
+// που η Επισκόπηση έδειχνε δύο κλικ πριν. Τώρα οι γνωστές τιμές έρχονται από
+// τις ίδιες πηγές (`enfiaYear`, τα Συμβόλαια, η ασφάλεια κατοικίας) και η
+// πρώτη εικόνα είναι το ποσό. Αποθηκεύεται μόνο ό,τι αλλάξει ο χρήστης
+// (lib/property/plan.ts, `vacancyInputs`).
+//
+// ΤΑ ΠΕΔΙΑ ΔΕΝ ΜΑΖΕΥΟΝΤΑΙ ΚΑΤΩ ΑΠΟ ΤΑ ΔΑΧΤΥΛΑ ΤΟΥ ΧΡΗΣΤΗ. Το αν η φόρμα είναι
+// ανοιχτή κρίνεται ΜΙΑ φορά, μόλις έρθουν και τα δικά του και τα γνωστά:
+// όποιος βρίσκει ποσό βλέπει το ποσό, όποιος δεν βρίσκει γράφει χωρίς να
+// του κλείσει η φόρμα με το πρώτο ψηφίο.
+const KNOWN_HINT: Partial<Record<keyof VacancyCostInput, string>> = {
+  enfiaYear: 'Ίδιος με την Επισκόπηση',
+  commonMonthly: 'Από τα Συμβόλαια',
+  insuranceYear: 'Από την ασφάλεια κατοικίας',
+};
+
+function VacancyPanel<P extends PlanProperty>({ propertyId, userId, property, own, loaded, setCost }: {
+  propertyId: string;
+  userId: string;
+  property: P;
+  own: VacancyCostInput;
+  loaded: boolean;
+  setCost: (field: keyof VacancyCostInput, v: number | undefined) => void;
+}) {
+  const [enfiaSettings, , enfiaLoading] = useEnfiaSettings(propertyId, userId);
+  const enfiaCounts = useEnfiaInstalmentCounts(propertyId, userId);
+  const year = Number(athensToday().slice(0, 4));
+  const enfiaAnnual = enfiaLoading ? null : enfiaYear(enfiaSettings, year, {
+    stored: property.enfia ?? null, value: property.value ?? null,
+    objValue: property.obj_value == null ? null : Number(property.obj_value),
+    sqm: property.sqm ?? null, yearBuilt: property.year_built ?? null, floor: property.floor ?? null,
+    propType: property.prop_type ?? null, ownershipPct: property.ownership == null ? null : Number(property.ownership),
+    postalCode: property.postal_code ?? null, instalmentCounts: enfiaCounts,
+  }).annual;
+
+  // Τα κοινόχρηστα του μήνα, από την ίδια μηχανή με τα Συμβόλαια. Αν η ανάγνωση
+  // αποτύχει, το πεδίο απλώς μένει για τον χρήστη: τίποτα δεν μαντεύεται.
+  const [common, setCommon] = useState<{ key: string; monthly: number | null } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const db = createClient();
+    void Promise.all([
+      billStore.ofProperty(db, propertyId, billStore.LEDGER_COLUMNS, userId),
+      expenseStore.ledger(db, propertyId),
+    ]).then(([bills, rows]) => {
+      const { entries } = mergeLedger(bills as never[], rows as never[]);
+      const card = contractOverview(entries, new Date()).find(c => c.kind === 'common');
+      if (alive) setCommon({ key: propertyId, monthly: card?.monthly ?? null });
+    }).catch(() => { if (alive) setCommon({ key: propertyId, monthly: null }); });
+    return () => { alive = false };
+  }, [propertyId, userId]);
+  const commonReady = common?.key === propertyId;
+
+  const known = knownVacancyCosts({
+    enfiaAnnual, insuranceMonthly: property.insurance_amount ?? null,
+    commonMonthly: commonReady ? common.monthly : null,
+  });
+  const { values, fromKnown } = vacancyInputs(own, known);
+  const drain = vacancyCost(values);
+  const ready = loaded && !enfiaLoading && commonReady;
+
+  const [openState, setOpenState] = useState<boolean | null>(null);
+  if (openState === null && ready) setOpenState(drain.monthly === 0);
+  const open = openState === true;
+  const hint = (k: keyof VacancyCostInput, fallback: string) => (fromKnown.includes(k) ? KNOWN_HINT[k] ?? fallback : fallback);
+
+  return (
+    <Panel label="Τι κοστίζει ο μήνας που περνάει"
+      info={<InfoHint label="Τι μετράει και τι όχι">
+        Μόνο όσα φεύγουν από τον λογαριασμό σου. Το ενοίκιο που δεν εισπράττεις είναι άλλη συζήτηση.
+      </InfoHint>}
+      right={ready && drain.monthly > 0
+        /* Μένει χειροποίητο: το LinkBtn δεν δέχεται aria-expanded και η αποκάλυψη θα έπαυε να ανακοινώνεται. */
+        ? <button type="button" style={quietBtn} onClick={() => setOpenState(!open)} aria-expanded={open}>
+            {open ? 'Σύμπτυξη' : 'Αλλαγή δεδομένων'}
+          </button>
+        : undefined}>
+      {open && (
+        /* ΡΗΤΕΣ ΤΕΣΣΕΡΙΣ ΣΤΗΛΕΣ, ΟΧΙ auto-fit: ίδια διάταξη σε κάθε zoom (`fixedCols`).
+           Στοίχιση στην κορυφή, γιατί κάθε πεδίο κουβαλά υπόδειξη από κάτω. */
+        <div {...fixedCols(4, 20, 'start')}>
+          <MoneyField label="ΕΝΦΙΑ (έτος)" hint={hint('enfiaYear', 'Από το εκκαθαριστικό')} value={values.enfiaYear} onChange={v => setCost('enfiaYear', v)} />
+          <MoneyField label="Κοινόχρηστα (μήνας)" hint={hint('commonMonthly', 'Ό,τι πληρώνεις κλειστό')} value={values.commonMonthly} onChange={v => setCost('commonMonthly', v)} />
+          <MoneyField label="Πάγια ρεύμα/νερό (μήνας)" hint="Χωρίς κατανάλωση" value={values.utilitiesMonthly} onChange={v => setCost('utilitiesMonthly', v)} />
+          <MoneyField label="Ασφάλιστρο (έτος)" hint={hint('insuranceYear', 'Αν υπάρχει')} value={values.insuranceYear} onChange={v => setCost('insuranceYear', v)} />
+        </div>
+      )}
+      {ready && drain.monthly > 0 && (
+        <div style={{ marginTop: open ? T.sp.xl : 0, paddingTop: open ? T.sp.lg : 0, borderTop: open ? '1px solid var(--border-subtle)' : 'none' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{ ...TT.kpi }}>{feAuto(drain.monthly)}</span>
+            <span style={{ ...TT.bodySm, color: 'var(--text-secondary)' }}>
+              κάθε μήνα που μένει κενό · {feAuto(drain.yearly)} τον χρόνο
+            </span>
+          </div>
+          <div style={{ ...TT.caption, color: 'var(--text-tertiary)', marginTop: 8 }}>
+            {drain.parts.map(p => `${p.label} ${feAuto(p.monthly)}`).join(' · ')}
+          </div>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
 // ── Η καρτέλα ─────────────────────────────────────────────────────────────
 
 /**
@@ -451,13 +570,6 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
   // όντως ανοίγουν και κλείνουν: οι ομάδες της σειράς και ο φάκελος αναφοράς.
   const [shutGroups, setShutGroups] = useState<Record<string, boolean>>({});
   const [refOpen, setRefOpen] = useState(false);
-  // ΤΑ ΠΕΔΙΑ ΤΟΥ ΚΕΝΟΥ ΜΑΖΕΥΟΝΤΑΝ ΚΑΤΩ ΑΠΟ ΤΑ ΔΑΧΤΥΛΑ ΤΟΥ ΧΡΗΣΤΗ. Η κατάσταση
-  // υπολογιζόταν από το τρέχον σύνολο («υπάρχει νούμερο, άρα κλείσε»), οπότε με
-  // το που έμπαινε ο ΕΝΦΙΑ — πρώτο από τα τέσσερα πεδία — η φόρμα εξαφανιζόταν
-  // και τα άλλα τρία δεν συμπληρώνονταν ποτέ. Το κριτήριο είναι «τι ήξερε η
-  // οθόνη ΟΤΑΝ ΑΝΟΙΞΕ»: όποιος ξαναμπαίνει με συμπληρωμένα δεδομένα βλέπει το
-  // αποτέλεσμα, όποιος τα γράφει τώρα δεν χάνει τη φόρμα από μπροστά του.
-  const [costsOpen, setCostsOpen] = useState(() => vacancyCost(costs).monthly === 0);
 
   // ══ ΠΟΙΑ ΒΗΜΑΤΑ ΕΧΟΥΝ ΗΔΗ ΓΙΝΕΙ ΕΡΓΑΣΙΕΣ ═════════════════════════════════
   // Διαβάζεται ΜΙΑ φορά, από τη βάση, με πρόθεμα `plan:`. Χωρίς αυτό το κουμπί
@@ -545,9 +657,6 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
       setKind((st.disputeKind ?? 'unknown') as DisputeKind);
       setCosts(st.vacancyCosts as VacancyCostInput);
       setUseAgent(st.useAgent);
-      // Η φόρμα των παγίων ανοίγει μόνο όταν δεν ξέρουμε ακόμη κόστος. Το
-      // κριτήριο κρίνεται ΜΕ ΟΣΑ ΗΡΘΑΝ, όχι με το άδειο αρχικό.
-      setCostsOpen(vacancyCost(st.vacancyCosts as VacancyCostInput).monthly === 0);
       setLoaded(true);
     })().catch(() => { if (alive) setLoaded(true) });
     return () => { alive = false };
@@ -604,7 +713,6 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
     yearBuilt: property.year_built ?? null,
   }), [status, done, kind, property.sqm, property.value, property.year_built]);
 
-  const drain = useMemo(() => vacancyCost(costs), [costs]);
   const sale = useMemo(() => saleEstimate(property.value ?? 0, { useAgent }), [property.value, useAgent]);
   // Ενδεικτική δόση επισκευαστικού: το τοκοχρεολύσιο έρχεται από το lib/loans και
   // το επιτόκιο δηλώνεται ρητά ως υπόθεση, ακριβώς κάτω από τον αριθμό.
@@ -757,44 +865,7 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
           νούμερο, η φόρμα δεν έχει τι άλλο να πει: μαζεύεται και μένει το
           αποτέλεσμα, που είναι και ο λόγος που ζητήθηκαν. */}
       {plan.status === 'vacant' && (
-        <Panel label="Τι κοστίζει ο μήνας που περνάει"
-          info={<InfoHint label="Τι μετράει και τι όχι">
-            Μόνο όσα φεύγουν από τον λογαριασμό σου. Το ενοίκιο που δεν εισπράττεις είναι άλλη συζήτηση.
-          </InfoHint>}
-          right={drain.monthly > 0
-            /* Μένει χειροποίητο: το LinkBtn δεν δέχεται aria-expanded και η αποκάλυψη θα έπαυε να ανακοινώνεται. */
-            ? <button type="button" style={quietBtn} onClick={() => setCostsOpen(o => !o)} aria-expanded={costsOpen}>
-                {costsOpen ? 'Σύμπτυξη' : 'Αλλαγή δεδομένων'}
-              </button>
-            : undefined}>
-          {costsOpen && (
-            /* ΡΗΤΕΣ ΤΕΣΣΕΡΙΣ ΣΤΗΛΕΣ, ΟΧΙ auto-fit. Με ελάχιστο 170 το ίδιο
-               πλέγμα έβγαζε τέσσερα πεδία στο 100% zoom και «τρία και ένα» στο
-               125%: η ίδια οθόνη, άλλη διάταξη σε κάθε ρύθμιση περιηγητή. Το
-               `fixedCols` είναι η μία απάντηση της εφαρμογής σε αυτό. Στοίχιση
-               στην κορυφή: κάθε πεδίο κουβαλά υπόδειξη ΑΠΟ ΚΑΤΩ, οπότε το κάτω
-               άκρο δεν είναι το κουτί. */
-            <div {...fixedCols(4, 20, 'start')}>
-              <MoneyField label="ΕΝΦΙΑ (έτος)" hint="Από το εκκαθαριστικό" value={costs.enfiaYear} onChange={v => setCost('enfiaYear', v)} />
-              <MoneyField label="Κοινόχρηστα (μήνας)" hint="Ό,τι πληρώνεις κλειστό" value={costs.commonMonthly} onChange={v => setCost('commonMonthly', v)} />
-              <MoneyField label="Πάγια ρεύμα/νερό (μήνας)" hint="Χωρίς κατανάλωση" value={costs.utilitiesMonthly} onChange={v => setCost('utilitiesMonthly', v)} />
-              <MoneyField label="Ασφάλιστρο (έτος)" hint="Αν υπάρχει" value={costs.insuranceYear} onChange={v => setCost('insuranceYear', v)} />
-            </div>
-          )}
-          {drain.monthly > 0 && (
-            <div style={{ marginTop: costsOpen ? T.sp.xl : 0, paddingTop: costsOpen ? T.sp.lg : 0, borderTop: costsOpen ? '1px solid var(--border-subtle)' : 'none' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-                <span style={{ ...TT.kpi }}>{feAuto(drain.monthly)}</span>
-                <span style={{ ...TT.bodySm, color: 'var(--text-secondary)' }}>
-                  κάθε μήνα που μένει κενό · {feAuto(drain.yearly)} τον χρόνο
-                </span>
-              </div>
-              <div style={{ ...TT.caption, color: 'var(--text-tertiary)', marginTop: 8 }}>
-                {drain.parts.map(p => `${p.label} ${feAuto(p.monthly)}`).join(' · ')}
-              </div>
-            </div>
-          )}
-        </Panel>
+        <VacancyPanel propertyId={propertyId} userId={userId} property={property} own={costs} loaded={loaded} setCost={setCost} />
       )}
 
       {/* ── Η ΣΕΙΡΑ ──────────────────────────────────────────────────────

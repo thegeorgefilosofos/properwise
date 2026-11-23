@@ -94,9 +94,28 @@ export function greeting(now: Date = new Date()): string {
 
 export interface AskText { subject: string; body: string }
 
-/** Το κείμενο που φεύγει από email, WhatsApp, Viber ή SMS. */
-export function askText(o: { key: string; item: string; year: number; note?: string; from?: string | null; now?: Date }): AskText {
-  const what = askPhrase(o.key, o.item);
+/** Ένα από όσα λείπουν: ο κωδικός του και η γραμμή της λίστας. */
+export interface AskItem { key: string; item: string }
+
+/** «α, β και γ»: χωρίς κόμμα πριν από το «και». */
+const joinGr = (parts: readonly string[]): string =>
+  parts.length < 2 ? (parts[0] ?? '') : `${parts.slice(0, -1).join(', ')} και ${parts[parts.length - 1]}`;
+
+/** Το θέμα του μηνύματος: η γραμμή της λίστας για ένα, το πλήθος για περισσότερα. */
+export function askSubjectMany(year: number, items: readonly AskItem[]): string {
+  return items.length === 1 ? `Ε2 ${year}: ${items[0].item}` : `Ε2 ${year}: ${items.length} στοιχεία που λείπουν`;
+}
+
+/**
+ * Το κείμενο που φεύγει από email, WhatsApp, Viber ή SMS.
+ *
+ * ΕΝΑ ΜΗΝΥΜΑ ΓΙΑ ΟΣΑ ΛΕΙΠΟΥΝ (Μ18, 23/11/2026). Με `items` το «Ζήτησε όλα»
+ * λέει σε μία πρόταση όλα όσα λείπουν από τον πελάτη, αντί για τρία μηνύματα
+ * με τον ίδιο χαιρετισμό και τον ίδιο σύνδεσμο.
+ */
+export function askText(o: { key?: string; item?: string; items?: readonly AskItem[]; year: number; note?: string; from?: string | null; now?: Date }): AskText {
+  const items: readonly AskItem[] = o.items ?? [{ key: o.key ?? '', item: o.item ?? '' }];
+  const what = joinGr(items.map(i => askPhrase(i.key, i.item)));
   const note = o.note?.trim();
   const lines = [
     greeting(o.now),
@@ -106,7 +125,7 @@ export function askText(o: { key: string; item: string; year: number; note?: str
   ];
   const sign = o.from?.trim();
   const body = `${lines.join('\n')}${sign ? `\n\n${sign}` : ''}`;
-  return { subject: `Ε2 ${o.year}: ${o.item}`, body };
+  return { subject: askSubjectMany(o.year, items), body };
 }
 
 /** Ο σύνδεσμος που ανοίγει την εφαρμογή του καναλιού. `null` για την εφαρμογή ή χωρίς στοιχείο. */

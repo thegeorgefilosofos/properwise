@@ -71,6 +71,8 @@ import { EventModal, ScopeModal } from './calendar/EventModal'
 import { SubscribeModal } from './calendar/SubscribeModal'
 import { CalendarQuickAdd } from './calendar/CalendarQuickAdd'
 import { dueTextStart, incomeInstalmentsAfter } from '@/lib/facts/deadlines'
+import { belowGrid } from '@/lib/calendar/belowGrid'
+import { grDate } from '@/lib/core/format'
 import { cssRect, cssViewW, cssViewH } from '@/lib/core/cssZoom'
 
 export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenTasks }: {
@@ -88,6 +90,9 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
   const [sheetDate,setSheetDate]=useState<string>('')
   const [currentDate,setCurrentDate]=useState(athensNow())
   const [selectedDate,setSelectedDate]=useState<string>(todayStr())
+  // Η ημέρα που πάτησε ο χρήστης στο πλέγμα: η λίστα από κάτω δείχνει μόνο αυτή.
+  // Κενή στην αρχή, οπότε η λίστα είναι του μήνα (lib/calendar/belowGrid.ts).
+  const [pickedDay,setPickedDay]=useState<string|null>(null)
   const [showModal,setShowModal]=useState(false)
   const [editingEvent,setEditingEvent]=useState<CalEvent|null>(null)
   const [editOccDate,setEditOccDate]=useState<string|null>(null)   // ημερομηνία της συγκεκριμένης εμφάνισης
@@ -808,14 +813,28 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
 
       {!loading&&viewMode==='month'&&(
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-          <MonthView events={monthEvents} currentDate={currentDate} selectedDate={selectedDate} onDayClick={d=>{setSelectedDate(d);setCurrentDate(new Date(d+'T00:00:00'))}} onDayOpen={d=>{setSelectedDate(d);setSheetDate(d)}} onEventClick={openEdit} upcomingAll={filtered} drag={drag} stays={stays}/>
-          {monthEvents.length>0&&(
-            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-              {/* Ο μήνας τον λέει ο επιλογέας από πάνω, μαζί με τη χρονιά του. */}
-              <p style={{ fontSize: 'var(--fs-base)', lineHeight: 1.3, fontFamily: T.font.sans, fontWeight: 600, color:'var(--text-secondary)' }}>Γεγονότα</p>
-              {monthEvents.map(e=>(<EventCard key={e.id} event={e} onToggleStatus={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} selected={selectedIds.has(e.id)} onSelect={toggleSelect} bulkMode={bulkMode} sameMonth/>))}
-            </div>
-          )}
+          {/* ΤΟ ΔΕΥΤΕΡΟ ΠΑΤΗΜΑ ΣΤΗΝ ΙΔΙΑ ΗΜΕΡΑ ΓΥΡΙΖΕΙ ΣΤΟΝ ΜΗΝΑ, όπως και το «Όλος ο μήνας». */}
+          <MonthView events={monthEvents} currentDate={currentDate} selectedDate={selectedDate} onDayClick={d=>{setSelectedDate(d);setCurrentDate(new Date(d+'T00:00:00'));setPickedDay(p=>p===d?null:d)}} onDayOpen={d=>{setSelectedDate(d);setSheetDate(d)}} onEventClick={openEdit} drag={drag} stays={stays}/>
+          {(()=>{
+            const pad=(n:number)=>String(n).padStart(2,'0')
+            const list=belowGrid(monthEvents, pickedDay, `${currentDate.getFullYear()}-${pad(currentDate.getMonth()+1)}`)
+            if(!list.day&&list.events.length===0) return null
+            return (
+              <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                {/* Ο μήνας τον λέει ο επιλογέας από πάνω, μαζί με τη χρονιά του· η ημέρα λέγεται εδώ. */}
+                <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:12 }}>
+                  <p style={{ fontSize: 'var(--fs-base)', lineHeight: 1.3, fontFamily: T.font.sans, fontWeight: 600, color:'var(--text-secondary)', margin:0, fontVariantNumeric:'tabular-nums' }}>{list.day?grDate(list.day):'Γεγονότα'}</p>
+                  {list.day&&<LinkBtn onClick={()=>setPickedDay(null)}>Όλος ο μήνας</LinkBtn>}
+                </div>
+                {list.events.map(e=>(<EventCard key={e.id} event={e} onToggleStatus={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} selected={selectedIds.has(e.id)} onSelect={toggleSelect} bulkMode={bulkMode} sameMonth/>))}
+                {list.day&&list.events.length===0&&(
+                  <p style={{ fontSize: 'var(--fs-base)', fontFamily: T.font.sans, color:'var(--text-tertiary)', margin:0 }}>
+                    Τίποτα αυτή την ημέρα. <LinkBtn className="po-tap-inline" onClick={()=>openNew(list.day!)}>Νέο γεγονός</LinkBtn>
+                  </p>
+                )}
+              </div>
+            )
+          })()}
           {/* ═══ ΤΟ ΑΔΕΙΟ ΠΛΕΓΜΑ ΕΙΝΑΙ Η ΚΕΝΗ ΚΑΤΑΣΤΑΣΗ ══════════════════════
               Από κάτω του καθόταν ολόκληρο EmptyState με εικονίδιο, τίτλο «Δεν
               βρέθηκαν γεγονότα αυτόν τον μήνα» και υπόδειξη «Πάτησε σε μια ημέρα

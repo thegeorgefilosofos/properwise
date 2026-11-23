@@ -19,6 +19,7 @@ import { fmtFor } from '@/lib/core/format';
 import { PLAN_COPY_EN } from './plans';
 import { BRAND_ABOUT } from '@/lib/seo/organization';
 import { PRODUCT_NAME } from '@/lib/core/site';
+import { APP_LANGUAGE_EN } from './appScreens';
 
 const f = fmtFor('en');
 const name = (id: keyof typeof PLAN_COPY_EN) => PLAN_COPY_EN[id].name;
@@ -38,13 +39,13 @@ export const LANDING_EN = {
   haveAccount: 'I have an account',
   factsLabel: 'No risk',
   facts: ['No subscription for one property', `${TRIAL_DAYS}-day trial with ${NOA}`] as const,
-  appLanguage: 'The app is in Greek today. English is on the way.',
+  appLanguage: APP_LANGUAGE_EN,
 };
 
 /** Η σύντομη ξενάγηση (app/en/TourVideo.tsx). Τα σημεία είναι η
  *  περιγραφή του βίντεο σε κείμενο: ό,τι δείχνει η εικόνα, το διαβάζει και ο
  *  αναγνώστης οθόνης. Η σημείωση γλώσσας λέει ότι οι οθόνες στο βίντεο είναι
- *  αγγλική προεπισκόπηση: η εφαρμογή σήμερα είναι ελληνική. */
+ *  αγγλική προεπισκόπηση· ποιες οθόνες είναι ήδη αγγλικές το λέει το appScreens.ts. */
 export const TOUR_EN = {
   over: 'Quick tour',
   title: 'See it work, start to finish',
@@ -60,7 +61,7 @@ export const TOUR_EN = {
     'A complete file for your accountant in Greece.',
     `${NOA} answers in Greek, from your own numbers.`,
   ] as const,
-  note: 'The video shows an English preview of the app. The app is in Greek today and English is on the way.',
+  note: `The video shows an English preview of the app. ${APP_LANGUAGE_EN}`,
 };
 
 export const HOW_EN = {

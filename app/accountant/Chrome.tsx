@@ -14,7 +14,7 @@
 // σελίδα σε σελίδα είναι ο τίτλος του εγγράφου, όχι το όνομα του σπιτιού.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { LogOut, Repeat, LayoutDashboard } from 'lucide-react';
+import { LogOut, Repeat, LayoutDashboard, Building2 } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 import { T, TT } from '@/components/Theme';
 import { ActionMenu } from '@/components/ActionMenu';
@@ -49,7 +49,7 @@ export function portalYears(): number[] {
  * χρονολογίες επάνω του (ημερομηνία έκδοσης, ημερομηνίες δαπανών) δεν λέει τι
  * αλλάζει αν το πειράξεις.
  */
-export function PortalBar({ year, onYear, back, home = PORTAL_HOME, firmOnly }: {
+export function PortalBar({ year, onYear, back, home = PORTAL_HOME, firmOnly, firmLink }: {
   year?: number;
   onYear?: (y: number) => void;
   /** Πού γυρνά ο άνθρωπος από εδώ. Λείπει όταν δεν υπάρχει πουθενά να γυρίσει. */
@@ -58,6 +58,8 @@ export function PortalBar({ year, onYear, back, home = PORTAL_HOME, firmOnly }: 
   home?: string;
   /** Λογαριασμός μόνο για το γραφείο (my_firm.firmOnly): χωρίς πίνακα ιδιοκτήτη. */
   firmOnly?: boolean;
+  /** Το όνομα της σελίδας του γραφείου στο μενού του λογαριασμού· λείπει χωρίς γραφείο. */
+  firmLink?: string;
 }) {
   return (
     <header style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
@@ -109,7 +111,7 @@ export function PortalBar({ year, onYear, back, home = PORTAL_HOME, firmOnly }: 
                 options={portalYears().map(y => ({ value: String(y), label: `Χρήση ${y}` }))} />
             </div>
           )}
-          <AccountMenu firmOnly={firmOnly} />
+          <AccountMenu firmOnly={firmOnly} firmLink={firmLink} />
         </div>
       </div>
     </header>
@@ -127,7 +129,7 @@ export function PortalBar({ year, onYear, back, home = PORTAL_HOME, firmOnly }: 
  *
  * Χωρίς συνδεδεμένο χρήστη (π.χ. ιδιοκτήτης με σύνδεσμο) δεν αποδίδεται τίποτα.
  */
-function AccountMenu({ firmOnly }: { firmOnly?: boolean }) {
+function AccountMenu({ firmOnly, firmLink }: { firmOnly?: boolean; firmLink?: string }) {
   const supabase = useMemo(() => createClient(), []);
   const [who, setWho] = useState<{ name: string | null; email: string; firm: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -164,6 +166,10 @@ function AccountMenu({ firmOnly }: { firmOnly?: boolean }) {
         <span style={{ display: 'block', fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', lineHeight: 1.35 }}>{who.email}</span>
       </>}
       items={[
+        // ΤΟ ΓΡΑΦΕΙΟ ΖΕΙ ΣΤΟΝ ΛΟΓΑΡΙΑΣΜΟ (Μ18, 23/11/2026). Ηταν πρώτο από τέσσερα
+        // ισοβαρή κουμπιά στην κεφαλίδα της λίστας: μια σελίδα που ανοίγεις
+        // σπάνια, στη θέση της δουλειάς της ημέρας.
+        ...(firmLink ? [{ key: 'firm', label: firmLink, icon: <Building2 size={16} />, onClick: () => hardNavigate('/accountant/workspace?view=firm') }] : []),
         ...(owner ? [{ key: 'owner', label: 'Μετάβαση στον πίνακα ιδιοκτήτη', icon: <LayoutDashboard size={16} />, onClick: () => hardNavigate('/dashboard') }] : []),
         { key: 'switch', label: 'Σύνδεση με άλλο λογαριασμό', icon: <Repeat size={16} />, busy, busyLabel: 'Αποσύνδεση…', onClick: () => void leave('/login') },
         { key: 'out', label: 'Αποσύνδεση', icon: <LogOut size={16} />, busy, busyLabel: 'Αποσύνδεση…', onClick: () => void leave('/') },

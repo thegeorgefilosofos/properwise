@@ -23,7 +23,7 @@ import { T, TT, Btn, Modal, ChipToggle, fd } from '@/components/Theme';
 import { Textarea } from '@/app/dashboard/components/UIComponents';
 import {
   askChannels, askHref, askText, askSentText, ASK_CHANNEL_LABEL,
-  type AskChannel, type AskContact,
+  type AskChannel, type AskContact, type AskItem,
 } from '@/lib/accountant/ask';
 
 const ICON: Record<AskChannel, typeof Mail> = {
@@ -36,8 +36,8 @@ const label: React.CSSProperties = { ...TT.label, color: 'var(--text-tertiary)',
 export interface AskTarget {
   ownerId: string;
   ownerName: string;
-  key: string;
-  item: string;
+  /** Όσα ζητιούνται. Ένα από τη γραμμή του, περισσότερα από το «Ζήτησε όλα». */
+  items: AskItem[];
   contact?: AskContact | null;
 }
 
@@ -47,8 +47,8 @@ export default function RequestSheet({ target, year, from, onClose, onSend }: {
   /** Η υπογραφή του μηνύματος: το όνομα του γραφείου, αν υπάρχει. */
   from?: string | null;
   onClose: () => void;
-  /** Γράφει το αίτημα στην εφαρμογή. `true` όταν η βάση το δέχτηκε. */
-  onSend: (note: string | undefined) => Promise<boolean>;
+  /** Γράφει ένα αίτημα ανά στοιχείο στην εφαρμογή. `true` όταν η βάση τα δέχτηκε όλα. */
+  onSend: (note: string | undefined, items: AskItem[]) => Promise<boolean>;
 }) {
   const channels = useMemo(() => askChannels(target.contact), [target.contact]);
   const [ch, setCh] = useState<AskChannel>('app');
@@ -58,15 +58,21 @@ export default function RequestSheet({ target, year, from, onClose, onSend }: {
   // Μετά την καταγραφή, για εξωτερικό κανάλι: ο σύνδεσμος που ανοίγει την εφαρμογή του.
   const [sent, setSent] = useState<{ ch: AskChannel; href: string | null; at: Date } | null>(null);
   const hintId = useId();
+  // ΤΟ «ΖΗΤΗΣΕ ΟΛΑ» ΞΕΚΙΝΑ ΜΕ ΟΛΑ ΕΠΙΛΕΓΜΕΝΑ (Μ18): ένα κουμπί στην κάρτα και
+  // εδώ ο λογιστής βγάζει όποιο δεν θέλει να ζητήσει τώρα. Ένα μήνυμα, όχι τρία.
+  const many = target.items.length > 1;
+  const [picked, setPicked] = useState<string[]>(() => target.items.map(i => i.key));
+  const chosen = target.items.filter(i => picked.includes(i.key));
 
-  const message = askText({ key: target.key, item: target.item, year, note: text, from });
+  const message = askText({ items: chosen, year, note: text, from });
   const external = ch !== 'app';
 
   const send = async () => {
     if (busy) return;
     setBusy(true);
     setError('');
-    const ok = await onSend(text.trim() || undefined);
+    if (!chosen.length) return;
+    const ok = await onSend(text.trim() || undefined, chosen);
     setBusy(false);
     if (!ok) { setError('Το αίτημα δεν στάλθηκε. Έλεγξε τη σύνδεση και δοκίμασε ξανά.'); return; }
     setSent({ ch, href: askHref(ch, target.contact, message), at: new Date() });
@@ -75,7 +81,7 @@ export default function RequestSheet({ target, year, from, onClose, onSend }: {
   const openLabel = sent?.ch === 'email' ? 'Άνοιξε το email' : sent?.ch === 'sms' ? 'Άνοιξε το SMS' : sent ? `Άνοιξε το ${ASK_CHANNEL_LABEL[sent.ch]}` : '';
 
   return (
-    <Modal open onClose={onClose} size="sm" title="Ζήτησέ το" subtitle={`${target.ownerName} · Χρήση ${year}`}
+    <Modal open onClose={onClose} size="sm" title={many ? 'Ζήτησε όλα' : 'Ζήτησέ το'} subtitle={`${target.ownerName} · Χρήση ${year}`}
       footer={sent ? (
         <>
           <Btn variant={sent.href ? 'ghost' : 'primary'} onClick={onClose}>Κλείσιμο</Btn>
@@ -86,7 +92,7 @@ export default function RequestSheet({ target, year, from, onClose, onSend }: {
       ) : (
         <>
           <Btn variant="ghost" onClick={onClose} disabled={busy}>Ακύρωση</Btn>
-          <Btn variant="primary" onClick={() => void send()} disabled={busy} describedBy={external ? hintId : undefined}>
+          <Btn variant="primary" onClick={() => void send()} disabled={busy || !chosen.length} describedBy={external ? hintId : undefined}>
             {busy ? 'Αποστολή…' : ch === 'email' ? 'Στείλε με email' : external ? `Στείλε με ${ASK_CHANNEL_LABEL[ch]}` : 'Στείλε'}
           </Btn>
         </>
@@ -101,16 +107,30 @@ export default function RequestSheet({ target, year, from, onClose, onSend }: {
             <p style={{ ...note, marginTop: T.sp.xs }}>
               {sent.href
                 ? askSentText(sent.ch).replace('Στάλθηκε στην εφαρμογή. ', '')
-                : `Ο πελάτης το βλέπει στη Λογιστική του: «${target.item}».`}
+                : chosen.length === 1 ? `Ο πελάτης το βλέπει στη Λογιστική του: «${chosen[0].item}».` : 'Ο πελάτης τα βλέπει στη Λογιστική του.'}
             </p>
           </div>
         </div>
       ) : (
         <>
+          {many ? (
+            <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
+              <legend style={{ ...label, padding: 0 }}>Τι ζητάς</legend>
+              <div style={{ display: 'grid', gap: T.sp.sm, marginTop: T.sp.sm }}>
+                {target.items.map(i => (
+                  <ChipToggle key={i.key} on={picked.includes(i.key)} size="lg" grow
+                    onClick={() => setPicked(p => p.includes(i.key) ? p.filter(k => k !== i.key) : [...p, i.key])}>
+                    {i.item}
+                  </ChipToggle>
+                ))}
+              </div>
+            </fieldset>
+          ) : (
           <div>
             <p style={label}>Τι ζητάς</p>
-            <p style={{ ...TT.body, fontWeight: 600, color: 'var(--text-primary)', margin: `${T.sp.xs}px 0 0` }}>{target.item}</p>
+            <p style={{ ...TT.body, fontWeight: 600, color: 'var(--text-primary)', margin: `${T.sp.xs}px 0 0` }}>{target.items[0]?.item}</p>
           </div>
+          )}
 
           <Textarea dictation label="Σημείωση, προαιρετικά" value={text} onChange={setText} rows={2} autoGrow
             placeholder="Π.χ. του Οκτωβρίου, με τις αποδείξεις" />

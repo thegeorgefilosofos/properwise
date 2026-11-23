@@ -11,6 +11,7 @@ import * as loanStore from '@/lib/data/loans'
 import * as contactStore from '@/lib/data/contacts'
 import * as billing from '@/lib/data/billing'
 import { T, fn, fe, PageTitle, InfoBanner, Btn, IconBtn, ChipToggle, EmptyState, Skeleton, SkeletonKPIs, isOverlayOpen, Bar } from '@/components/Theme'
+import { showTool } from '@/lib/ui/thresholds'
 import { confirmDialog } from '@/components/confirmBus'
 import { notify, notifyOk, notifyError } from '@/components/Toast'
 import { saved, savedData, optimistic } from '@/components/dbWrite'
@@ -608,13 +609,21 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
     prevPct.current = stats.pct
   }, [stats.pct, stats.total])
 
-  const filtered = useMemo(() => items.filter(item => {
+  // ═══ ΤΑ ΧΕΙΡΙΣΤΗΡΙΑ ΑΠΟ ΟΚΤΩ ΕΡΓΑΣΙΕΣ ΚΑΙ ΠΑΝΩ (Μ9, 23/11/2026) ═════════
+  // Για τρεις εργασίες η οθόνη είχε αναζήτηση, δύο επιλογείς, διάταξη και
+  // τέσσερα chips: περισσότερα χειριστήρια από γραμμές. Ως οκτώ η λίστα χωρά
+  // σε μία οθόνη και το μάτι βρίσκει γρηγορότερα (lib/ui/thresholds.ts, ίδιος
+  // κανόνας με Επαφές και Αρχείο). Ό,τι δεν φαίνεται ΔΕΝ φιλτράρει: η λίστα
+  // που πέφτει κάτω από οκτώ δεν μένει κολλημένη σε φίλτρο που δεν βλέπεις.
+  const listTools = showTool('search', items.length)
+  const view: ViewMode = listTools ? viewMode : 'list'
+  const filtered = useMemo(() => !listTools ? items : items.filter(item => {
     const matchStatus = filterStatus === 'all' ? true : filterStatus === 'overdue' ? isOverdue(item.due_date, item.status) : item.status === filterStatus
     const matchCat = filterCat === 'all' || item.category === filterCat
     const matchPri = filterPri === 'all' || item.priority === filterPri
     const q = search.toLowerCase()
     return matchStatus && matchCat && matchPri && (!q || item.description.toLowerCase().includes(q) || (item.assigned_contact_name || '').toLowerCase().includes(q) || (item._tags || []).some(t => t.toLowerCase().includes(q)))
-  }), [items, filterStatus, filterCat, filterPri, search])
+  }), [items, filterStatus, filterCat, filterPri, search, listTools])
 
   const grouped = useMemo(() => { const g: Record<string, ChecklistItem[]> = {}; filtered.forEach(item => { if (!g[item.category]) g[item.category] = []; g[item.category].push(item) }); return g }, [filtered])
   const usedCats = CATEGORIES.filter(c => items.some(i => i.category === c.id))
@@ -699,7 +708,10 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
                 είναι ισότιμη ενέργεια με την Εξαγωγή που κάθεται δίπλα τους και
                 χωρίς περίγραμμα διαβάζονταν ως κείμενο και όχι ως κουμπί. Η ίδια
                 ενέργεια στην άδεια κατάσταση ήταν ήδη «secondary». */}
-            <Btn variant="secondary" onClick={() => setShowTemplates(true)}>Πρότυπα</Btn>
+            {/* ΤΑ «ΠΡΟΤΥΠΑ» ΜΠΗΚΑΝ ΜΕΣΑ ΣΤΟ «ΝΕΑ ΕΚΚΡΕΜΟΤΗΤΑ» (Μ9, 23/11/2026). Ηταν
+                τρίτο ισοβαρές κουμπί για τον ίδιο σκοπό, να μπει κάτι νέο στη
+                λίστα: τώρα είναι το «Από πρότυπο» της φόρμας. Η κενή κατάσταση
+                τα κρατά, γιατί εκεί είναι ο γρηγορότερος δρόμος για την αρχή. */}
             <ExportMenu
               onExcel={() => exportChecklistExcel(items)}
               onPdf={() => exportChecklistPDF(items, branding)}
@@ -719,8 +731,10 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
         <InfoBanner tone="warning">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <span style={{ flex: 1, minWidth: 200 }}>
-              <strong style={{ color: 'var(--text-primary)' }}>{pendingObligations.length === 1 ? 'Λείπει 1 υποχρέωση' : `Λείπουν ${pendingObligations.length} υποχρεώσεις`}</strong>
-              {' '}που προκύπτουν από τον νόμο για αυτό το ακίνητο, με ημερομηνία και επίσημη πηγή.
+              {/* ΛΙΓΟΤΕΡΑ ΛΟΓΙΑ (Μ10): η ημερομηνία και η πηγή μπαίνουν μαζί με την
+                  υποχρέωση και το λέει το μήνυμα μετά το πάτημα· εδώ αρκεί τι
+                  λείπει και ποιο λήγει πρώτο. */}
+              <strong style={{ color: 'var(--text-primary)' }}>{pendingObligations.length === 1 ? 'Λείπει 1 υποχρέωση του νόμου.' : `Λείπουν ${pendingObligations.length} υποχρεώσεις του νόμου.`}</strong>
               {nextObligation ? ` ${firstDueLine(nextObligation)}` : ''}
             </span>
             <Btn variant="secondary" onClick={loadObligations}>{obligationsCta(pendingObligations.length)}</Btn>
@@ -768,7 +782,7 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
           κρατούν την υπόδειξη ολόκληρη σε φαρδιά οθόνη, αλλά σε 164
           εικονοστοιχεία στήλης η υπόδειξη κόβεται με αποσιωπητικά, που το
           ίδιο το χειριστήριο ήδη ξέρει να κάνει. */}
-      {items.length > 0 && <div className="filter-bar" style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+      {listTools && <div className="filter-bar" style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
         {/* ΤΟ ΕΛΑΧΙΣΤΟ ΠΛΑΤΟΣ ΒΓΑΙΝΕΙ ΑΠΟ ΤΗΝ ΥΠΟΔΕΙΞΗ, ΟΧΙ ΑΠΟ ΣΤΡΟΓΓΥΛΟ ΑΡΙΘΜΟ.
             Στα 180 το πεδίο χωρούσε δίπλα στα φίλτρα σε ορισμένα πλάτη και η
             υπόδειξη κοβόταν στη μέση: μετρημένο στα 430, ήθελε 209 και είχε 176.
@@ -829,7 +843,7 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
         {hasFilters && <Btn size="lg" onClick={clearFilters}>Καθαρισμός φίλτρων</Btn>}
       </div>}
 
-      {usedCats.length > 0 && (
+      {listTools && usedCats.length > 0 && (
         <div style={{ display: 'flex', gap: 8, marginBottom: T.sp.xl, flexWrap: 'wrap' }}>
           <ChipToggle on={filterCat === 'all'} onClick={() => setFilterCat('all')}>Όλα ({items.length})</ChipToggle>
           {usedCats.map(c => {
@@ -916,7 +930,7 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
              απόσταση σαράντα εικονοστοιχείων δεν βοηθά, ρωτά ποιο είναι ποιο. */
           hint="Δοκίμασε διαφορετικά φίλτρα ή πάτησε «Καθαρισμός φίλτρων» πιο πάνω."
         />
-      ) : viewMode === 'timeline' ? (
+      ) : view === 'timeline' ? (
         <TimelineView items={filtered} onEdit={item => { setEditItem(item); setShowAddModal(true) }} />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
@@ -1011,6 +1025,7 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
 
       {showTemplates && <TemplateModal onSelect={loadTemplate} onLoadObligations={loadObligations} onClose={() => setShowTemplates(false)} ctx={fieldCtx} pending={pendingObligations} smart={smartSuggestions} />}
       {showAddModal && <ItemModal item={editItem || undefined} contacts={contacts} onSave={saveItem} onClose={() => { setShowAddModal(false); setEditItem(null) }}
+        onTemplates={() => { setShowAddModal(false); setShowTemplates(true) }}
         onScan={editItem ? () => { const it = editItem; setShowAddModal(false); setEditItem(null); setReceiptItem(it) } : undefined} />}
       {receiptItem && <ReceiptScanModal item={receiptItem} propertyId={propertyId} userId={userId} onClose={() => setReceiptItem(null)} onSaved={msg => { notifyOk(msg); fetchAll() }} />}
 

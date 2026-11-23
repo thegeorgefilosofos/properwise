@@ -3,7 +3,7 @@
 // Η ΚΑΡΤΕΛΑ ΜΙΑΣ ΕΚΚΡΕΜΟΤΗΤΑΣ
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState } from 'react'
-import { T, Modal, Btn, ChipToggle, fe, fieldRow } from '@/components/Theme'
+import { T, Modal, Btn, ChipToggle, LinkBtn, fe, fieldRow } from '@/components/Theme'
 import { hy } from '@/components/Hyphen'
 import { WHO_LABEL } from '@/lib/accounting/dossier'
 import { DatePicker, CustomSelect } from '../UIComponents'
@@ -13,11 +13,13 @@ import { CATEGORIES, PRIORITIES, STATUSES, RECURRING_OPTIONS, ITEM_TAGS, type Ch
 import { Dictation } from '@/components/dictation/MicButton'
 
 // ─── ItemModal ────────────────────────────────────────────────────────────────
-export function ItemModal({ item, contacts, onSave, onClose, onScan }: {
+export function ItemModal({ item, contacts, onSave, onClose, onScan, onTemplates }: {
   item?: ChecklistItem; contacts: Contact[]
   onSave: (data: ReturnType<typeof mkEmpty>) => void; onClose: () => void
   /** «Φωτογράφισε το τιμολόγιο» — ο ΜΟΝΟΣ δρόμος για πραγματικό κόστος. */
   onScan?: () => void
+  /** Τα πρότυπα, ως άλλος δρόμος για ΝΕΑ εκκρεμότητα (Μ9): ζούσαν σε δικό τους κουμπί στην κεφαλίδα. */
+  onTemplates?: () => void
 }) {
   const [form, setForm] = useState<ReturnType<typeof mkEmpty>>(item ? {
     description: item.description, category: item.category, note: item.note || '',
@@ -44,7 +46,9 @@ export function ItemModal({ item, contacts, onSave, onClose, onScan }: {
         <Btn variant="secondary" onClick={onClose}>Ακύρωση</Btn>
         <Btn variant="primary" disabled={!canSave} onClick={() => { if (canSave) onSave(form) }}>{item ? 'Αποθήκευση' : 'Προσθήκη εκκρεμότητας'}</Btn>
       </>}>
-      <div><FL>Περιγραφή *</FL><Dictation value={form.description} onChange={v => setForm(f => ({ ...f, description: v }))}><Inp ariaLabel="Περιγραφή" value={form.description} onChange={v => setForm(f => ({ ...f, description: v }))} placeholder="Συντήρηση καλοριφέρ" /></Dictation></div>
+      <div>{!item && onTemplates
+        ? <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}><FL>Περιγραφή *</FL><LinkBtn onClick={onTemplates}>Από πρότυπο</LinkBtn></div>
+        : <FL>Περιγραφή *</FL>}<Dictation value={form.description} onChange={v => setForm(f => ({ ...f, description: v }))}><Inp ariaLabel="Περιγραφή" value={form.description} onChange={v => setForm(f => ({ ...f, description: v }))} placeholder="Συντήρηση καλοριφέρ" /></Dictation></div>
       {/* ═══ ΔΥΟ ΣΕΙΡΕΣ ΤΩΝ ΤΡΙΩΝ, ΟΧΙ ΤΕΣΣΕΡΙΣ ΤΩΝ ΔΥΟ ══════════════════════
           Τα επτά πεδία κάθονταν σε τέσσερα ξεχωριστά πλέγματα των δύο, οπότε η
           φόρμα έβγαινε 2-2-2-1: τέσσερις σειρές, με την τελευταία μισή άδεια

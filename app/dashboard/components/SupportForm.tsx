@@ -23,7 +23,11 @@ const field = (focused: boolean) => ({
   fontFamily: T.font.sans, fontSize: 'var(--fs-base)', lineHeight: 1.5, outline: 'none',
 });
 
-export default function SupportForm({ plan = 'free' }: { plan?: PlanId }) {
+export default function SupportForm({ plan = 'free', bare }: {
+  plan?: PlanId;
+  /** Χωρίς τη δική της κεφαλίδα: ζει μέσα στο «Γράψε μας» (WriteToUs.tsx). */
+  bare?: boolean;
+}) {
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [focus, setFocus] = useState<'s' | 'm' | null>(null);
@@ -56,17 +60,19 @@ export default function SupportForm({ plan = 'free' }: { plan?: PlanId }) {
     <div>
       {/* Ιδια κεφαλίδα με το «Κάνε το PROPERWISE καλύτερο» από κάτω: εικονίδιο
           στο απαλό accent και τίτλος, ώστε οι δύο κάρτες να διαβάζονται ζευγάρι. */}
-      <div className="set-head">
+      {!bare && <div className="set-head">
         <span className="set-head-ico" aria-hidden="true"><LifeBuoy size={15} /></span>
         <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.sans, letterSpacing: '-0.01em' }}>
           Υποστήριξη
         </span>
-      </div>
-      <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.5, margin: '8px 0 0' }}>
+      </div>}
+      <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.5, margin: bare ? '12px 0 0' : '8px 0 0' }}>
         Η απάντηση έρχεται στο email του λογαριασμού σου.
         {priority && ` Με το «${PLANS[plan].name}» τα μηνύματα από εδώ απαντώνται κατά προτεραιότητα.`}
       </p>
-      <Dictation value={subject} style={{ marginTop: 12 }}
+      {/* ΣΤΟ «ΓΡΑΨΕ ΜΑΣ» ΧΩΡΙΣ ΘΕΜΑ: το λέει ήδη η επιλογή «Πρόβλημα» και ένα
+          προαιρετικό πεδίο πάνω από το μήνυμα είναι ένα βήμα που δεν χρειάζεται. */}
+      {!bare && <Dictation value={subject} style={{ marginTop: 12 }}
         onChange={v => { setSubject(v.slice(0, SUPPORT_SUBJECT_MAX)); if (error) setError(null); }}>
         <input
           aria-label="Θέμα" value={subject} maxLength={SUPPORT_SUBJECT_MAX} placeholder="Θέμα (προαιρετικό)"
@@ -74,8 +80,8 @@ export default function SupportForm({ plan = 'free' }: { plan?: PlanId }) {
           onFocus={() => setFocus('s')} onBlur={() => setFocus(null)}
           style={field(focus === 's')}
         />
-      </Dictation>
-      <Dictation multiline value={message} style={{ marginTop: 8 }}
+      </Dictation>}
+      <Dictation multiline value={message} style={{ marginTop: bare ? 12 : 8 }}
         onChange={v => { setMessage(v.slice(0, SUPPORT_MESSAGE_MAX)); if (error) setError(null); if (sent) setSent(false); }}>
         <textarea
           aria-label="Το μήνυμά σου" value={message} maxLength={SUPPORT_MESSAGE_MAX} rows={4}

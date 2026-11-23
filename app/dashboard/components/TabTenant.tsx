@@ -70,6 +70,7 @@ import {
 } from '@/components/Toast';
 import { saved } from '@/components/dbWrite';
 import { propertyStatus } from '@/lib/facts/status';
+import { showTool } from '@/lib/ui/thresholds';
 import { confirmDialog } from '@/components/ConfirmDialog';
 import LeaseModal from './LeaseModal';
 import LeaseDeclaration from './LeaseDeclaration';
@@ -397,19 +398,28 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
     past:pastTenants.length,
   }),[currentTenants,pastTenants,overdueByTenant]);
 
+  // ═══ ΕΝΑΣ ΜΙΣΘΩΤΗΣ, ΜΙΑ ΚΑΡΤΑ (Μ8, αξιολόγηση 23/11/2026) ══════════════
+  // Με έναν ενοικιαστή η οθόνη έδειχνε σύνοψη που ξανάγραφε ένα προς ένα τα
+  // ποσά της μοναδικής κάρτας (450 / 0 / 1.350), πεδίο αναζήτησης και τριπλό
+  // φίλτρο για ένα άτομο. Η σύνοψη και το φίλτρο εμφανίζονται από δύο
+  // μισθώσεις, η αναζήτηση από οκτώ (lib/ui/thresholds.ts, ο κανόνας των
+  // Επαφών και του Αρχείου). Ό,τι δεν φαίνεται ΔΕΝ φιλτράρει: ένας μόνος
+  // προηγούμενος ενοικιαστής δεν κρύβεται πίσω από το «Τρέχοντες».
+  const segOn=showTool('filter',tenants.length), searchOn=showTool('search',tenants.length);
   const filtered=useMemo(()=>{
-    const q=search.trim().toLowerCase();
+    const q=searchOn?search.trim().toLowerCase():'';
+    const seg=segOn?segment:'all';
     return tenants.filter(t=>{
-      if(segment==='current'&&isPastTenant(t)) return false;
-      if(segment==='past'&&!isPastTenant(t)) return false;
-      if(segment==='overdue'&&!overdueByTenant.has(t.id)) return false;
+      if(seg==='current'&&isPastTenant(t)) return false;
+      if(seg==='past'&&!isPastTenant(t)) return false;
+      if(seg==='overdue'&&!overdueByTenant.has(t.id)) return false;
       if(q){
         const hay=`${t.full_name} ${t.afm||''} ${t.phone||''}`.toLowerCase();
         if(!hay.includes(q)) return false;
       }
       return true;
     });
-  },[tenants,search,segment,overdueByTenant]);
+  },[tenants,search,segment,overdueByTenant,segOn,searchOn]);
 
   // ── Φόρμα ────────────────────────────────────────────────────────────────────
   const openAdd=()=>{ setForm({ ...blank(), ...propDefaults }); setFieldErr(null); setEditId(null); setFormDocs([]); setMoreOpen(false); setError(null); setIsForm(true); };
@@ -745,7 +755,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
           <Btn variant="primary" onClick={openAdd}>{E?E.newTenant:'Νέος ενοικιαστής'}</Btn>
         </div>:undefined}/>
 
-      {tenants.length>0&&<TenantSummary {...summary} en={E?.summary}/>}
+      {segOn&&<TenantSummary {...summary} en={E?.summary}/>}
 
       {/* ═══ ΑΝΑΖΗΤΗΣΗ ΚΑΙ ΦΙΛΤΡΟ, ΟΠΩΣ ΣΤΟ ΑΡΧΕΙΟ (16.11.2026) ═══════════════
           Ηταν πεδίο χωρίς εικονίδιο με γωνίες 10 και, δίπλα, τρία ανεξάρτητα
@@ -756,12 +766,12 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
           σχήμα χαπιού) και τμηματικός επιλογέας σε ράγα, που στο τηλέφωνο
           πιάνει όλο το πλάτος με τρία ίσα κομμάτια. Η υπόδειξη λέει ΤΙ
           ψάχνεται· το «Αναζήτηση» ζει στην ετικέτα του αναγνώστη οθόνης. */}
-      {tenants.length>0&&<div className="po-tools">
-        <div className="po-search">
+      {segOn&&<div className="po-tools">
+        {searchOn&&<div className="po-search">
           <Search size={15} aria-hidden="true" className="po-search-icon"/>
           <input value={search} onChange={e=>setSearch(e.target.value)} type="search"
             className="po-search-input" aria-label={E?E.searchLabel:'Αναζήτηση ενοικιαστή'} placeholder={E?E.searchHint:'Όνομα, ΑΦΜ ή τηλέφωνο'}/>
-        </div>
+        </div>}
         {/* «Όλοι», «Τρέχοντες», «Προηγούμενοι»: πληθυντικοί, γιατί φιλτράρουν
             ΛΙΣΤΑ. Το «Τρέχων» μένει στη σήμανση ΕΝΟΣ ενοικιαστή. */}
         <div role="group" aria-label={E?E.segLabel:'Ποιοι ενοικιαστές φαίνονται'} className="po-rail">
@@ -790,14 +800,16 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                   <RecordCard key={t.id} onOpen={()=>{setOpenId(t.id);setDossierTab('overview');}}
                     openLabel={E?E.openCard(t.full_name):`Άνοιγμα καρτέλας: ${t.full_name}`}
                     lead={avatar(t.full_name, 42)}
-                    tone={od?'negative':undefined}
                     title={t.full_name}
                     sub={<>
                       <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans }}>{E?(t.lease_start||t.lease_end?E.period(fD(t.lease_start),fD(t.lease_end)):E.noPeriod):t.lease_start||t.lease_end?`${fmtD(t.lease_start)} έως ${fmtD(t.lease_end)}`:'χωρίς περίοδο μίσθωσης'}</span>
                       {t.afm&&<span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{E?E.afm(t.afm):<>ΑΦΜ {t.afm}</>}</span>}
                     </>}
                     badges={<>
-                      {statusBadge(t)}
+                      {/* ΤΟ ΚΟΚΚΙΝΟ ΛΕΓΕΤΑΙ ΜΙΑ ΦΟΡΑ (Μ8). Ηταν σήμα «Ληξιπρόθεσμο»,
+                          κόκκινο περίγραμμα και κόκκινο ποσό στην ίδια κάρτα. Μένει
+                          το ποσό, κάτω από τη λέξη «Ληξιπρόθεσμα»: λέει και πόσα. */}
+                      {!od&&statusBadge(t)}
                       {(declaredByTenant.get(t.id)||0)>0&&<Badge tone="accent">{E?E.badge.declared:'Δηλωμένη πληρωμή'}</Badge>}
                     </>}
                     actions={

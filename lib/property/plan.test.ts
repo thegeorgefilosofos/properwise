@@ -9,6 +9,7 @@
 
 import {
   planFor, nextStep, progressOf, groupSteps, vacancyCost, renovationLoan, saleEstimate,
+  knownVacancyCosts, vacancyInputs,
   isPlanStatus, PLAN_STATUSES, PLAN_DISCLAIMER, DISPUTE_KINDS, ACTOR_LABEL,
   EFFORT_LABEL, RISK_LABEL, FUNDING_KIND_LABEL, RENO_GROUPS,
   type Plan, type Step, type PlanStatus, type DisputeKind,
@@ -337,6 +338,31 @@ for (const s of PLAN_STATUSES) {
   eq('τα αρνητικά αγνοούνται', vacancyCost({ commonMonthly: -50 }).monthly, 0);
   eq('τα σκουπίδια αγνοούνται', vacancyCost({ enfiaYear: NaN }).monthly, 0);
   ok('μόνο ό,τι δόθηκε εμφανίζεται', vacancyCost({ commonMonthly: 30 }).parts.length === 1);
+}
+
+// ═══ ΤΟ ΚΕΝΟ ΞΕΚΙΝΑ ΑΠΟ Ο,ΤΙ ΗΔΗ ΞΕΡΕΙ Η ΕΦΑΡΜΟΓΗ (Υ9) ═══════════════════
+// Τέσσερα άδεια πεδία ζητούσαν ΕΝΦΙΑ, κοινόχρηστα και ασφάλιστρο που η
+// Επισκόπηση έδειχνε δύο οθόνες πριν. Οι γνωστές τιμές γεμίζουν τα πεδία· ό,τι
+// γράψει ο χρήστης κερδίζει, ακόμη και το κενό.
+{
+  const known = knownVacancyCosts({ enfiaAnnual: 214, insuranceMonthly: 44, commonMonthly: 30.5 });
+  eq('ΕΝΦΙΑ έτους, ίδιος με της Επισκόπησης', known.enfiaYear, 214);
+  eq('ασφάλιστρο: μηνιαίο επί δώδεκα', known.insuranceYear, 528);
+  eq('κοινόχρηστα του μήνα', known.commonMonthly, 30.5);
+  ok('πάγια ρεύματος/νερού δεν μαντεύονται από λογαριασμούς με κατανάλωση', !('utilitiesMonthly' in known));
+  eq('άγνωστα και μηδενικά μένουν έξω', knownVacancyCosts({ enfiaAnnual: 0, insuranceMonthly: null, commonMonthly: NaN }), {});
+
+  const fresh = vacancyInputs({}, known);
+  eq('χωρίς δικά του, τα γνωστά', fresh.values, known);
+  eq('και λέει ποια ήρθαν από εκεί', fresh.fromKnown, ['enfiaYear', 'commonMonthly', 'insuranceYear']);
+
+  const mine = vacancyInputs({ commonMonthly: 50 }, known);
+  eq('το δικό του κερδίζει', mine.values.commonMonthly, 50);
+  eq('τα υπόλοιπα μένουν γνωστά', mine.fromKnown, ['enfiaYear', 'insuranceYear']);
+
+  const cleared = vacancyInputs({ enfiaYear: undefined }, known);
+  ok('το κενό που έγραψε ο χρήστης δεν ξαναγεμίζει', cleared.values.enfiaYear === undefined && !cleared.fromKnown.includes('enfiaYear'));
+  eq('το σύνολο βγαίνει από τις ίδιες τιμές', vacancyCost(fresh.values).monthly, vacancyCost(known).monthly);
 }
 
 // ═══ ΔΑΝΕΙΟ ΕΠΙΣΚΕΥΗΣ — ΜΙΑ ΠΗΓΗ ΑΛΗΘΕΙΑΣ ════════════════════════════════
