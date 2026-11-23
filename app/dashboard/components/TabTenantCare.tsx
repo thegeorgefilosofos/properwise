@@ -206,7 +206,7 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
   const E=useAppEn('tenants');
   const X=useAppEn('errors');
   /** Γραφή στη βάση με το σφάλμα στη γλώσσα της οθόνης. */
-  const sv=(el:string,k:string,q:Parameters<typeof saved>[1])=>saved(el,q,X&&E?(e:unknown)=>X.failed(E.err[k]??el,e):undefined);
+  const onDbFail=(el:string,k:string)=>X&&E?(e:unknown)=>X.failed(E.err[k]??el,e):undefined;
   const fail=(el:string,k:string,e:unknown)=>X&&E?X.failed(E.err[k]??el,e):failed(el,e);
   const W=E?.comm;
   const [logs,setLogs]=useState<CommLog[]>([]);
@@ -254,7 +254,7 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
     // Η ημερομηνία είναι NOT NULL στη βάση και ο επιλογέας έχει «Εκκαθάριση»:
     // το '' απέρριπτε την καταγραφή (22007). Το κουμπί μένει κλειστό χωρίς αυτήν.
     if(!form.summary.trim()||!form.date)return;setSaving(true);
-    const ok=await sv('Η καταγραφή επικοινωνίας δεν αποθηκεύτηκε','commNotSaved', supabase.from('tenant_comm_log').insert({tenant_id:tenant.id,property_id:propertyId,user_id:userId,type:form.type,summary:form.summary.trim(),date:form.date,outcome:form.outcome||null}));
+    const ok=await saved('Η καταγραφή επικοινωνίας δεν αποθηκεύτηκε', supabase.from('tenant_comm_log').insert({tenant_id:tenant.id,property_id:propertyId,user_id:userId,type:form.type,summary:form.summary.trim(),date:form.date,outcome:form.outcome||null}), onDbFail('Η καταγραφή επικοινωνίας δεν αποθηκεύτηκε','commNotSaved'));
     setSaving(false);
     // ΤΟ ΓΡΑΨΙΜΟ ΤΟΥ ΧΡΗΣΤΗ ΔΕΝ ΣΒΗΝΕΤΑΙ ΟΤΑΝ Η ΑΠΟΘΗΚΕΥΣΗ ΑΠΕΤΥΧΕ. Η φόρμα
     // έκλεινε και τα πεδία μηδενίζονταν ΑΝΕΞΑΡΤΗΤΑ από το αποτέλεσμα: ο χρήστης
@@ -369,7 +369,7 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
             {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ. Το `s.btnDng` είναι γεωμετρικά δευτερεύον κουμπί, αλλά
                 ο κόκκινος τόνος του δεν έχει ρόλο στο `Btn`: με `secondary` η διαγραφή
                 θα έχανε το χρώμα που την ξεχωρίζει από τις υπόλοιπες ενέργειες. */}
-            <button style={s.btnDng} onClick={async()=>{if(!(await (E&&W?confirmDialog(E.ask(W.delAsk,W.del,true)):confirmDialog('Διαγραφή καταγραφής επικοινωνίας;',{tone:'negative',confirmLabel:'Διαγραφή'}))))return;if(await sv('Η καταγραφή δεν διαγράφηκε','commNotDeleted',supabase.from('tenant_comm_log').delete().eq('id',log.id)))loadLogs();}}>{W?W.del:'Διαγραφή'}</button>
+            <button style={s.btnDng} onClick={async()=>{if(!(await (E&&W?confirmDialog(E.ask(W.delAsk,W.del,true)):confirmDialog('Διαγραφή καταγραφής επικοινωνίας;',{tone:'negative',confirmLabel:'Διαγραφή'}))))return;if(await saved('Η καταγραφή δεν διαγράφηκε', supabase.from('tenant_comm_log').delete().eq('id',log.id), onDbFail('Η καταγραφή δεν διαγράφηκε','commNotDeleted')))loadLogs();}}>{W?W.del:'Διαγραφή'}</button>
           </div>
         ))}
       </div>
@@ -622,7 +622,7 @@ export function DamagesView({ tenant, propertyId, userId, damages, onRefresh }:{
   const E=useAppEn('tenants');
   const X=useAppEn('errors');
   /** Γραφή στη βάση με το σφάλμα στη γλώσσα της οθόνης. */
-  const sv=(el:string,k:string,q:Parameters<typeof saved>[1])=>saved(el,q,X&&E?(e:unknown)=>X.failed(E.err[k]??el,e):undefined);
+  const onDbFail=(el:string,k:string)=>X&&E?(e:unknown)=>X.failed(E.err[k]??el,e):undefined;
   const W=E?.damages;
   const fD=(d:string|null)=>E&&!d?E.noDate:fmtD(d);
   const [addOpen,setAddOpen]=useState(false);
@@ -638,11 +638,11 @@ export function DamagesView({ tenant, propertyId, userId, damages, onRefresh }:{
     if(!f.description.trim()) return;
     setBusy(true);
     const payload={ tenant_id:tenant.id, property_id:propertyId, user_id:userId, occurred_on:f.occurred_on||null, description:f.description.trim(), cost:f.cost?Math.max(0,parseFloat(f.cost)):null, charged_to_tenant:f.charged_to_tenant, repaired:f.repaired, repaired_on:f.repaired?(f.repaired_on||todayISO()):null, notes:f.notes.trim()||null };
-    if(editId){ if(!await sv('Η φθορά δεν ενημερώθηκε','damageNotUpdated', supabase.from('tenant_damages').update(payload).eq('id',editId))) return; }
-    else { if(!await sv('Η φθορά δεν καταχωρήθηκε','damageNotSaved', supabase.from('tenant_damages').insert(payload))) return; }
+    if(editId){ if(!await saved('Η φθορά δεν ενημερώθηκε', supabase.from('tenant_damages').update(payload).eq('id',editId), onDbFail('Η φθορά δεν ενημερώθηκε','damageNotUpdated'))) return; }
+    else { if(!await saved('Η φθορά δεν καταχωρήθηκε', supabase.from('tenant_damages').insert(payload), onDbFail('Η φθορά δεν καταχωρήθηκε','damageNotSaved'))) return; }
     setBusy(false); setAddOpen(false); setF(blankF()); setEditId(null); onRefresh();
   };
-  const del=async(d:TenantDamage)=>{ if(!(await (E&&W?confirmDialog(E.ask(W.delAsk,W.del,true)):confirmDialog('Διαγραφή φθοράς;',{tone:'negative',confirmLabel:'Διαγραφή'})))) return; if(await sv('Η φθορά δεν διαγράφηκε','damageNotDeleted',supabase.from('tenant_damages').delete().eq('id',d.id))) onRefresh(); };
+  const del=async(d:TenantDamage)=>{ if(!(await (E&&W?confirmDialog(E.ask(W.delAsk,W.del,true)):confirmDialog('Διαγραφή φθοράς;',{tone:'negative',confirmLabel:'Διαγραφή'})))) return; if(await saved('Η φθορά δεν διαγράφηκε', supabase.from('tenant_damages').delete().eq('id',d.id), onDbFail('Η φθορά δεν διαγράφηκε','damageNotDeleted'))) onRefresh(); };
 
   // Ομαδοποίηση ανά έτος μίσθωσης (από lease_start· αλλιώς ανά ημερολογιακό έτος).
   const bucketOf=(occurred:string|null):{key:string;label:string;sort:number}=>{
@@ -769,7 +769,7 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
   const E=useAppEn('tenants');
   const X=useAppEn('errors');
   /** Γραφή στη βάση με το σφάλμα στη γλώσσα της οθόνης. */
-  const sv=(el:string,k:string,q:Parameters<typeof saved>[1])=>saved(el,q,X&&E?(e:unknown)=>X.failed(E.err[k]??el,e):undefined);
+  const onDbFail=(el:string,k:string)=>X&&E?(e:unknown)=>X.failed(E.err[k]??el,e):undefined;
   const W=E?.maint;
   const stLabel=(k:string)=>W?.status[k]??(MAINT_STATUS[k]||MAINT_STATUS.new).label;
   const [busy,setBusy]=useState(false);
@@ -803,7 +803,7 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
   const [doneCost,setDoneCost]=useState('');
   const setStatus=async(m:MaintenanceReq,status:string)=>{
     setBusy(true);
-    const ok=await sv('Η κατάσταση του αιτήματος δεν αποθηκεύτηκε','requestStatusNotSaved', supabase.from('maintenance_requests').update({ status, resolved_at: status==='done'?new Date().toISOString():null }).eq('id',m.id));
+    const ok=await saved('Η κατάσταση του αιτήματος δεν αποθηκεύτηκε', supabase.from('maintenance_requests').update({ status, resolved_at: status==='done'?new Date().toISOString():null }).eq('id',m.id), onDbFail('Η κατάσταση του αιτήματος δεν αποθηκεύτηκε','requestStatusNotSaved'));
     setBusy(false); onRefresh(); if(ok) notifyOk(W?W.updated:'Το αίτημα ενημερώθηκε');
   };
   // Ολοκλήρωση εργασίας: σημειώνεται «done» και, αν δοθεί κόστος, καταχωρείται
@@ -814,15 +814,15 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
     // ΔΥΟ ΓΡΑΨΙΜΑΤΑ ΚΑΙ ΤΟ ΔΕΥΤΕΡΟ ΕΞΑΡΤΑΤΑΙ ΑΠΟ ΤΟ ΠΡΩΤΟ. Αν το αίτημα δεν
     // έκλεισε, η δαπάνη δεν πρέπει να μπει: θα έμενε κόστος επισκευής χωρίς
     // επισκευή. Και το τελικό μήνυμα λέει ΤΙ ΕΓΙΝΕ ΠΡΑΓΜΑΤΙΚΑ, όχι τι ζητήθηκε.
-    const closed=await sv('Το αίτημα δεν κλείστηκε','requestNotClosed', supabase.from('maintenance_requests').update({ status:'done', resolved_at:new Date().toISOString() }).eq('id',m.id));
+    const closed=await saved('Το αίτημα δεν κλείστηκε', supabase.from('maintenance_requests').update({ status:'done', resolved_at:new Date().toISOString() }).eq('id',m.id), onDbFail('Το αίτημα δεν κλείστηκε','requestNotClosed'));
     let costSaved=false;
     if(closed&&Number.isFinite(cost)&&cost>0){
       // Η ομάδα ΔΕΝ γραφόταν: το κόστος της επισκευής που πλήρωσε ο ιδιοκτήτης
       // δεν εξέπιπτε ποτέ. Το στρώμα την παράγει από την κατηγορία.
-      costSaved=await sv('Το αίτημα έκλεισε, αλλά το κόστος δεν καταχωρήθηκε στις δαπάνες','costNotRecorded', expenses.insert(supabase, [expenses.row({ propertyId, userId }, {
+      costSaved=await saved('Το αίτημα έκλεισε, αλλά το κόστος δεν καταχωρήθηκε στις δαπάνες', expenses.insert(supabase, [expenses.row({ propertyId, userId }, {
         amount:cost, date:todayISO(), paid:true,
         category:'Συντήρηση & Επισκευές', description:[m.title,m.assignee_name].filter(Boolean).join(' · ').slice(0,120),
-      })]));
+      })]), onDbFail('Το αίτημα έκλεισε, αλλά το κόστος δεν καταχωρήθηκε στις δαπάνες','costNotRecorded'));
     }
     setBusy(false); onRefresh();
     if(!closed) return;
@@ -831,16 +831,16 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
   };
   const toDamage=async(m:MaintenanceReq)=>{
     setBusy(true);
-    const ok=await sv('Η φθορά δεν καταγράφηκε','damageNotRecorded', supabase.from('tenant_damages').insert({ tenant_id:tenant.id, property_id:propertyId, user_id:userId, occurred_on:todayISO(), description:[m.title,m.description].filter(Boolean).join(': ').slice(0,500), cost:null, charged_to_tenant:false, repaired:false, notes:'Από αίτημα βλάβης ενοικιαστή' }));
+    const ok=await saved('Η φθορά δεν καταγράφηκε', supabase.from('tenant_damages').insert({ tenant_id:tenant.id, property_id:propertyId, user_id:userId, occurred_on:todayISO(), description:[m.title,m.description].filter(Boolean).join(': ').slice(0,500), cost:null, charged_to_tenant:false, repaired:false, notes:'Από αίτημα βλάβης ενοικιαστή' }), onDbFail('Η φθορά δεν καταγράφηκε','damageNotRecorded'));
     setBusy(false); onRefresh(); if(ok) notifyOk(W?W.toDamage:'Καταγράφηκε στις φθορές');
   };
-  const del=async(m:MaintenanceReq)=>{ if(!(await (E&&W?confirmDialog(E.ask(W.delAsk,W.del,true)):confirmDialog('Διαγραφή αιτήματος;',{tone:'negative',confirmLabel:'Διαγραφή'})))) return; if(await sv('Το αίτημα δεν διαγράφηκε','requestNotDeleted',supabase.from('maintenance_requests').delete().eq('id',m.id))) onRefresh(); };
+  const del=async(m:MaintenanceReq)=>{ if(!(await (E&&W?confirmDialog(E.ask(W.delAsk,W.del,true)):confirmDialog('Διαγραφή αιτήματος;',{tone:'negative',confirmLabel:'Διαγραφή'})))) return; if(await saved('Το αίτημα δεν διαγράφηκε', supabase.from('maintenance_requests').delete().eq('id',m.id), onDbFail('Το αίτημα δεν διαγράφηκε','requestNotDeleted'))) onRefresh(); };
   // Από το κοινό `fd`, όχι δικό του μορφοποιητή: έγραφε «05 Οκτ 2026» (26/10/2026).
   const gdt=(d:string|null)=>d?fd(d):ABSENT_DATE;
   const openAssign=(m:MaintenanceReq)=>{ setAssignFor(m.id); setAf({name:m.assignee_name||'',contact:m.assignee_contact||''}); };
   const saveAssign=async(m:MaintenanceReq)=>{
     setBusy(true);
-    const ok=await sv('Η ανάθεση δεν αποθηκεύτηκε','assignNotSaved', supabase.from('maintenance_requests').update({ assignee_name:af.name.trim()||null, assignee_contact:af.contact.trim()||null, status:m.status==='new'?'in_progress':m.status }).eq('id',m.id));
+    const ok=await saved('Η ανάθεση δεν αποθηκεύτηκε', supabase.from('maintenance_requests').update({ assignee_name:af.name.trim()||null, assignee_contact:af.contact.trim()||null, status:m.status==='new'?'in_progress':m.status }).eq('id',m.id), onDbFail('Η ανάθεση δεν αποθηκεύτηκε','assignNotSaved'));
     setBusy(false); onRefresh();
     // Το πλαίσιο ανάθεσης μένει ανοιχτό όταν η αποθήκευση απέτυχε: κλειστό, με
     // κόκκινο μήνυμα από πάνω, δεν αφήνει τον χρήστη να ξαναδοκιμάσει.
