@@ -249,8 +249,29 @@ else
   [ -n "$got" ] || { echo "::error::Οι εξαρτήσεις του $BROWSER δεν εγκαταστάθηκαν από καμία πηγή μετά από τέσσερις γύρους"; exit 1; }
 fi
 
+# Πακέτο που το καλύπτει ήδη άλλο εγκατεστημένο πακέτο, με το ίδιο όνομα ή
+# μέσω «Provides». ΤΙ ΕΓΙΝΕ (23/11/2026, εκτέλεση 45087386418): η νέα εικόνα
+# του δρομέα έφερε το GStreamer 1.28, όπου το libgstreamer1.0-0 είναι εικονικό
+# πακέτο με άλλο πραγματικό όνομα. Το apt το εγκατέστησε μέσω του παρόχου του,
+# αλλά η προσομοίωση του playwright-core ρωτά το dpkg με το παλιό όνομα και το
+# έβλεπε ακόμη «λείπει». Η βιβλιοθήκη υπήρχε· το όνομα όχι.
+provided() {
+  dpkg-query -W -f='${db:Status-Abbrev}|${Package}|${Provides}\n' 2>/dev/null |
+    awk -F'|' -v want="$1" '$1 ~ /^ii/ {
+      if ($2 == want) { found=1; exit }
+      n = split($3, pv, /, */)
+      for (i = 1; i <= n; i++) { sub(/ .*/, "", pv[i]); if (pv[i] == want) { found=1; exit } }
+    } END { exit found ? 0 : 1 }'
+}
+
 # Η ΑΠΟΔΕΙΞΗ: ξανά η ίδια ερώτηση και πρέπει να απαντά «τίποτα δεν λείπει».
+# Ό,τι μένει ελέγχεται μία φορά ακόμη στο dpkg, μέσω «Provides».
 LEFT=$(missing) || exit 1
+STILL=
+for p in $LEFT; do
+  if provided "$p"; then echo "  ✓ $p: το καλύπτει εγκατεστημένος πάροχος"; else STILL="$STILL $p"; fi
+done
+LEFT=$(echo $STILL)
 if [ -n "$LEFT" ]; then
   echo "::error::Μετά την εγκατάσταση λείπουν ακόμη:" $LEFT
   exit 1
