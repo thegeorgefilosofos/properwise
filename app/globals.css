@@ -9387,6 +9387,9 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
      κεφαλίδες των ενοτήτων έπεφταν στη γωνία του «Ν» (12 χειριστήρια, 360–430). */
   :root:has(.pa-fab-wrap) .atak-row { padding-right: calc(var(--fab-lane, 64px) - 16px) !important; }
   :root:has(.pa-fab-wrap) .acc-toggle { max-width: calc(100% - var(--fab-lane, 64px) + 16px); }
+  /* Και στα «Από το myDATA»: το ποσό στο τέλος της γραμμής έπεφτε κάτω από το «Ν»
+     στο πρώτο κάδρο (360). Το κουτί μένει σε όλο το πλάτος, το ποσό φεύγει από τη γωνία. */
+  :root:has(.pa-fab-wrap) .md-row { padding-right: calc(var(--fab-lane, 64px) - 16px); }
 }
 /* Το κελί του «Τι έρχεται» (SettingsRoadmap): αιώρηση σε CSS, ουδέτερο εικονίδιο. */
 .rm-item { border: 1px solid var(--border-subtle); transition: border-color .15s, box-shadow .15s; }

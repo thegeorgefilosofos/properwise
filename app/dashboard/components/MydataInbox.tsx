@@ -134,7 +134,7 @@ export default function MydataInbox({ propertyId, userId, properties = [], onFil
         {rows.map(d => {
           const amount = centsLabel(Number(d.gross_cents), d.is_credit);
           if (d.id !== openId) return (
-            <button key={d.id} type="button" className="inbound-row" onClick={() => setOpen(d.id)} aria-expanded={false}
+            <button key={d.id} type="button" className="inbound-row md-row" onClick={() => setOpen(d.id)} aria-expanded={false}
               aria-label={`Άνοιγμα: ${who(d)}, ${amount}`}>
               <span className="inbound-who po-elide" style={{ ...TT.body, textWrap: undefined, fontWeight: 600, color: 'var(--text-primary)' }}>{who(d)}</span>
               <span className="inbound-what po-elide" style={{ ...TT.bodySm, textWrap: undefined, color: 'var(--text-secondary)' }}>{d.title}</span>
