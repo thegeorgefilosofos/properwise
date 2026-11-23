@@ -794,7 +794,12 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
           Η ταξινόμηση που διάλεξες στον πίνακα ισχύει και εδώ. */}
       <div className="pf-cards">
         {sorted.map(r => (
-          <RecordCard key={r.id} onOpen={() => onSelectProperty(r.id)} openLabel={`Άνοιγμα ${r.name}`}
+          <RecordCard key={r.id} onOpen={() => onSelectProperty(r.id)} openLabel={`Άνοιγμα ${r.name}: ${[
+                r.owed > 0 ? `${UNPAID_LABEL} ${eur(r.owed)}` : null,
+                r.tasks > 0 ? `${r.tasks} ${r.tasks === 1 ? 'εκκρεμότητα' : 'εκκρεμότητες'}` : null,
+                r.owed <= 0 && r.tasks === 0 ? 'Τίποτα ανοιχτό' : null,
+                r.occupancy != null ? `Πληρότητα ${fp(r.occupancy)}` : null,
+              ].filter(Boolean).join(' · ')}`}
             lead={<SelectBox checked={selected.has(r.id)} onChange={() => toggleSelect(r.id)} label={`Επιλογή ${r.name}`} />}
             title={r.name}
             sub={<span style={{ ...TT.caption }}>{r.typeLabel}</span>}
@@ -814,18 +819,12 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
                   (e2e:vertical). Τώρα «Ανεξόφλητες 342,00€ · 2 εκκρεμότητες» σε μία
                   γραμμή, ίδια λέξη με το πλακίδιο της σύνοψης· τόνος προσοχής μόνο στο
                   ποσό, αποσιωπητικά μόνο αν δεν χωρά. */}
-              {/* ΣΤΑ 320 ΦΕΥΓΕΙ ΠΡΩΤΑ ΤΟ ΔΕΥΤΕΡΕΥΟΝ (Safari αφής, 320×640: «· 2 εκκρεμότητες»
-                  περίσσευε 3 εικονοστοιχεία). Η γραμμή είναι δοχείο· κάτω από το πλάτος
-                  που χωρά τα μέρη της, οι εκκρεμότητες και η πληρότητα κρύβονται
-                  (`.pf-card-more`, `.pf-card-occ`, globals.css) και μένουν ολόκληρες στο κείμενο για τον αναγνώστη οθόνης. */}
+              {/* ΣΤΟ ΤΗΛΕΦΩΝΟ ΜΟΝΟ ΤΟ ΠΟΣΟ. Το «· 2 εκκρεμότητες» και το «· Πληρότητα»
+                  κόβονταν στα 320 και 375 με τις γραμματοσειρές του CI. Κάτω από τα 600
+                  κρύβονται (`.pf-card-more`, `.pf-card-occ`, globals.css) και ο αναγνώστης
+                  οθόνης τα ακούει ολόκληρα στο όνομα της κάρτας (`openLabel`). */}
               <span className="pf-card-line">
-                <span className="sr-only">{[
-                r.owed > 0 ? `${UNPAID_LABEL} ${eur(r.owed)}` : null,
-                r.tasks > 0 ? `${r.tasks} ${r.tasks === 1 ? 'εκκρεμότητα' : 'εκκρεμότητες'}` : null,
-                r.owed <= 0 && r.tasks === 0 ? 'Τίποτα ανοιχτό' : null,
-                r.occupancy != null ? `Πληρότητα ${fp(r.occupancy)}` : null,
-              ].filter(Boolean).join(' · ')}</span>
-                <span className="pf-card-text" aria-hidden="true">
+                <span className="pf-card-text">
                 {r.owed > 0 && (
                   <span title={`${r.unpaid} ${r.unpaid === 1 ? 'ανεξόφλητη' : 'ανεξόφλητες'}, ${eur(r.owed)}`}>
                     {`${UNPAID_LABEL} `}
@@ -838,7 +837,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
                   </span>
                 )}
                 {r.owed <= 0 && r.tasks === 0 && 'Τίποτα ανοιχτό'}
-                {r.occupancy != null && <span className={r.owed > 0 && r.tasks > 0 ? 'pf-card-occ-3' : 'pf-card-occ'}>{` · Πληρότητα ${fp(r.occupancy)}`}</span>}
+                {r.occupancy != null && <span className="pf-card-occ">{` · Πληρότητα ${fp(r.occupancy)}`}</span>}
                 </span>
               </span>
               <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6" /></svg>
