@@ -349,7 +349,7 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
         .agenda--undated .agenda-row:has(.agenda-done) { grid-template-columns: minmax(0, 1fr) auto auto; }
         /* ΤΑ ΚΟΥΜΠΙΑ ΣΤΟΙΧΙΖΟΝΤΑΙ ΚΑΘΕΤΑ. Κάθε γραμμή είναι δικό της πλέγμα και το
            ποσό υπάρχει μόνο σε μερικές: χωρίς σταθερό πλάτος η στήλη του ποσού
-           έσπρωχνε το «Πληρώθηκε» σε άλλο σημείο σε κάθε γραμμή. */
+           έσπρωχνε το κουμπί κλεισίματος σε άλλο σημείο σε κάθε γραμμή. */
         .agenda-row:has(.agenda-done) .agenda-side { min-width: 112px; justify-content: flex-end; }
         /* Η γραμμή-σύνδεσμος: το κουμπί την καλύπτει ολόκληρη, το βέλος δεξιά. */
         .agenda-cover {
