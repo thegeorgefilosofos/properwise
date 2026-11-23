@@ -804,16 +804,23 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
                 μόνο τα τρία ποσά και τίποτα δεν έλεγε ότι πατιέται. */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, ...TT.caption }}>
               <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                {/* ΣΤΗΝ ΙΔΙΑ ΣΕΙΡΑ, ΟΣΟ ΚΑΙ ΠΡΙΝ. Με λέξεις μέσα στα δύο σήματα
+                    («342,00€ ανεξόφλητες», «2 εκκρεμότητες») η σειρά τύλιγε στα 375 και
+                    κάθε κάρτα ψήλωνε (e2e:vertical). Οι λέξεις μένουν στο όνομα του σήματος. */}
                 {r.owed > 0 && (
-                  <span className="pf-pending-chip" data-tone="warning" title={`${r.unpaid} ${r.unpaid === 1 ? 'ανεξόφλητη' : 'ανεξόφλητες'}, ${eur(r.owed)}`}>
+                  <span className="pf-pending-chip" data-tone="warning" role="img"
+                    aria-label={`${eur(r.owed)} ${UNPAID_LABEL.toLowerCase()}`}
+                    title={`${r.unpaid} ${r.unpaid === 1 ? 'ανεξόφλητη' : 'ανεξόφλητες'}, ${eur(r.owed)}`}>
                     <Receipt size={13} aria-hidden="true" />
-                    {`${eur(r.owed)} ${UNPAID_LABEL.toLowerCase()}`}
+                    {eur(r.owed)}
                   </span>
                 )}
                 {r.tasks > 0 && (
-                  <span className="pf-pending-chip">
+                  <span className="pf-pending-chip" role="img"
+                    aria-label={`${r.tasks} ${r.tasks === 1 ? 'εκκρεμότητα' : 'εκκρεμότητες'}`}
+                    title={`${r.tasks} ${r.tasks === 1 ? 'εκκρεμότητα' : 'εκκρεμότητες'} με προθεσμία που πέρασε ή κρίσιμη`}>
                     <ListTodo size={13} aria-hidden="true" />
-                    {`${r.tasks} ${r.tasks === 1 ? 'εκκρεμότητα' : 'εκκρεμότητες'}`}
+                    {r.tasks}
                   </span>
                 )}
                 {r.owed <= 0 && r.tasks === 0 && <span>Τίποτα ανοιχτό</span>}

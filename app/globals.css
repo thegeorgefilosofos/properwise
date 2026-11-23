@@ -9328,6 +9328,11 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
   .ov-year .tn-sum-val { grid-column: 3; grid-row: 1; text-align: right; }
   .ov-year-note { grid-column: 2 / -1; grid-row: 2; margin-top: 0; }
 }
+/* ΜΟΝΟ ΤΕΛΕΥΤΑΙΟ ΣΤΙΣ ΔΥΟ ΣΤΗΛΕΣ: ΑΠΛΩΝΕΤΑΙ (e2e-layout, 768 και 820). Χωρίς ήρωα
+   (αξιολόγηση 2, Υ2) τα κελιά είναι επτά και το τελευταίο έμενε μισό, με τρύπα δίπλα. */
+@media (min-width: 600px) and (max-width: 899px) {
+  .ov-year .tn-sum-rows > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
 @media (min-width: 900px) {
   .ov-year { grid-template-columns: minmax(0, 0.9fr) minmax(0, 3fr); align-items: start; gap: 24px; padding: 20px; }
   .ov-year .tn-sum-rows { grid-template-columns: repeat(3, minmax(0, 1fr)); }

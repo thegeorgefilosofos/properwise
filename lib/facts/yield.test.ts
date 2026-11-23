@@ -14,7 +14,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync } from 'node:fs';
 import { propertyYield, yieldCosts, netPreTaxLabel, YIELD_LABELS, YIELD_SHORT_LABELS, expenseParts, expensePartsShort } from './index';
-import { fe, fp } from '@/lib/core/format';
+import { fe } from '@/lib/core/format';
 import { computeYields } from '@/lib/billing/propertyFacts';
 import { yields } from '@/lib/market/returns';
 
