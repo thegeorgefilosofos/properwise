@@ -29,11 +29,11 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { T } from '@/components/tokens';
 import { TRIAL_DAYS } from '@/lib/billing/plans';
+import { TRIAL_LINE, TRIAL_LINE_EN } from '@/lib/legal/billingWords';
 import { RENO_39B_LAW, RENO_39B_KYA } from '@/lib/accounting/renovation39b';
 import { E1_4D2_SOURCE } from '@/lib/accounting/e1Codes';
 import { signupCta } from '@/lib/billing/trialOffer';
 import { withSignupEntry } from '@/lib/analytics/signupEntry';
-import { ASSISTANT_ACC } from '@/lib/assistant/identity';
 import { hy } from '@/components/Hyphen';
 import PublicMenu, { type MenuGroup } from './PublicMenu';
 import { ToolCtaLink } from './ToolCtaLink';
@@ -459,9 +459,12 @@ export function SectionHead({ over, title, sub }: { over: string; title: string;
 // είναι πληροφορία.
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Η φράση της δοκιμής, μία φορά για όλα τα εργαλεία. */
-// Χωρίς «δωρεάν» δίπλα σε πακέτο (κανόνας ιδιοκτήτη): «χωρίς συνδρομή».
-export const TRIAL_LINE = `Χωρίς συνδρομή για ένα ακίνητο, με ${ASSISTANT_ACC} τις πρώτες ${TRIAL_DAYS} ημέρες.`;
+// Η ΦΡΑΣΗ ΤΗΣ ΔΟΚΙΜΗΣ ΕΡΧΕΤΑΙ ΑΠΟ ΤΟ billingWords (αξιολόγηση σχεδίασης 3). Ηταν
+// γραμμένη εδώ με το χέρι («Χωρίς συνδρομή για ένα ακίνητο, με τη Νόα…»), έξω
+// από το αρχείο όπου ζει κάθε λέξη για δοκιμή και χρέωση. Το «χωρίς συνδρομή»
+// το λέει ήδη το κουμπί δίπλα (`signupCta()`). Μένει η `TRIAL_LINE`, με τις
+// ημέρες από το `TRIAL_DAYS`.
+const trialLine = (en: boolean): string => (en ? TRIAL_LINE_EN : TRIAL_LINE).many.replace('{n}', String(TRIAL_DAYS));
 
 // Η ΕΠΙΦΥΛΑΞΗ (`EstimateNote`) ΚΑΙ ΤΟ ΟΡΙΟ ΠΟΥ ΕΠΙΒΛΗΘΗΚΕ (`ToolClampNote`) ΖΟΥΝ
 // ΣΤΟ app/ToolNotes.tsx. Τα καλούν οι υπολογιστές, που τρέχουν στον περιηγητή·
@@ -650,8 +653,8 @@ export function ToolSources({ kind, checked, updated, locale = 'el' }: {
 
 // ΑΠΟΔΙΔΕΤΑΙ ΣΤΗ ΣΕΛΙΔΑ ΚΑΙ ΠΕΡΝΑ ΣΤΟΝ ΥΠΟΛΟΓΙΣΤΗ ΕΤΟΙΜΗ (`cta`). Δεν έχει τίποτα
 // διαδραστικό, αλλά οι υπολογιστές τρέχουν στον περιηγητή: εισαγμένη από εκεί
-// έφερνε στο πακέτο τους αυτό το αρχείο μαζί με όσα θέλει η `TRIAL_LINE` στην
-// αρχικοποίησή της (ταυτότητα βοηθού, πακέτα χρέωσης) και το λογότυπο. Από τη
+// έφερνε στο πακέτο τους αυτό το αρχείο μαζί με όσα θέλει η γραμμή της δοκιμής
+// (πακέτα και λέξεις χρέωσης) και το λογότυπο. Από τη
 // σελίδα ο περιηγητής παίρνει μόνο το HTML της, στην ίδια θέση.
 /**
  * @param href Πού πηγαίνει το κουμπί της εγγραφής. Προεπιλογή η εγγραφή με
@@ -675,7 +678,7 @@ export function ToolCta({ title, body, href = withSignupEntry('/signup', 'calcul
           {body}
         </>)}</p>
         <p style={{ margin: '8px 0 0', fontSize: 'var(--fs-base)', color: 'var(--text-tertiary)' }}>
-          {en ? TOOL_SHELL_EN.trialLine : TRIAL_LINE}
+          {trialLine(en)}
         </p>
       </div>
       <ToolCtaLink href={localHref(locale, href)} className="lp-cta lp-primary" style={{

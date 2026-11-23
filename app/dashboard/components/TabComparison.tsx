@@ -340,7 +340,7 @@ export default function TabComparison({ properties, userId, onNavigate, profileT
             τυλιγμένη σε κάρτα: ένα περίγραμμα γύρω από την απουσία της δίνει σώμα
             που δεν έχει και οι σαράντα τρεις από τις σαράντα πέντε άλλες της
             εφαρμογής δεν το κάνουν. */}
-        <PageTitle title="Σύγκριση ακινήτων" sub="Ποιο αποδίδει καλύτερα, με τα ίδια μέτρα για όλα" />
+        <PageTitle title="Σύγκριση ακινήτων" />
         <EmptyState icon={<Building2 size={20} />}
             title={single ? 'Χρειάζονται τουλάχιστον δύο ακίνητα' : 'Κανένα ζευγάρι ακινήτων ίδιου τύπου'}
             hint={single

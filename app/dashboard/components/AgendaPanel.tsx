@@ -145,19 +145,12 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
 
                 <div className="agenda-body">
                   <span className="agenda-item-title">{it.title}</span>
-                  {/* Η ΕΞΗΓΗΣΗ ΦΑΙΝΕΤΑΙ — ΑΛΛΑ ΜΟΝΟ ΟΠΟΥ ΑΛΛΑΖΕΙ ΤΙ ΚΑΝΕΙΣ.
-                      Ήταν πίσω από κλικ, που σε οθόνη αφής δεν ανακοινώνεται καν.
-                      Το να ανοίξουν όμως ΟΛΕΣ πρόσθετε 250 εικονοστοιχεία στην
-                      πρώτη οθόνη: για προθεσμία 204 ημερών ο τίτλος και ο
-                      αριθμός τα λένε όλα. Μένει όπου επείγει (εκπρόθεσμο) ή όπου
-                      δεν υπάρχει ημερομηνία — εκεί η σημείωση ΕΙΝΑΙ η οδηγία. */}
-                  {it.note && (d.overdue || d.value == null) ? (
-                    <span className="agenda-note">{it.note}</span>
-                  ) : it.condition && (
-                    // Η ΠΡΟΫΠΟΘΕΣΗ ΤΟΥ ΗΜΕΡΟΛΟΓΙΟΥ (κριτική σχεδίασης r7): η δόση φόρου
-                    // εισοδήματος δεν αφορά όλους και η γραμμή δεν το κρύβει.
-                    <span className="agenda-note">{it.condition}</span>
-                  )}
+                  {/* ΜΙΑ ΓΡΑΜΜΗ ΑΝΑ ΕΚΚΡΕΜΟΤΗΤΑ, ΧΩΡΙΣ ΣΗΜΕΙΩΣΗ (αξιολόγηση σχεδίασης 3).
+                      Η σημείωση φαινόταν στο εκπρόθεσμο και στο χωρίς ημερομηνία,
+                      η προϋπόθεση της δόσης φόρου σε όλα: μία γραμμή στις πέντε
+                      έβγαινε τριπλάσια σε ύψος. Ο τίτλος, ο χρόνος και το ποσό
+                      λένε τι επείγει· η εξήγηση μένει στο γεγονός του Ημερολογίου
+                      και στην καρτέλα όπου οδηγεί η γραμμή. */}
                 </div>
 
                 {/* ΠΟΣΟ ΚΑΙ ΕΝΕΡΓΕΙΑ ΣΤΗΝ ΙΔΙΑ ΘΕΣΗ ΣΕ ΚΑΘΕ ΓΡΑΜΜΗ. Η δόση ΕΝΦΙΑ
@@ -303,10 +296,6 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
           font-family: ${T.font.sans}; font-size: 14px; font-weight: 600;
           line-height: 1.4; color: var(--text-primary);
         }
-        .agenda-note {
-          font-family: ${T.font.sans}; font-size: 12px; line-height: 1.55;
-          color: var(--text-tertiary); text-wrap: pretty;
-        }
         .agenda-side {
           align-self: center; display: flex; flex-direction: column; align-items: flex-end;
           gap: 4px; min-width: 0;
@@ -379,7 +368,7 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
           .agenda-head { flex-direction: column; align-items: flex-start; }
           .agenda-row {
             grid-template-columns: minmax(0, 1fr) auto;
-            grid-template-areas: "when when" "title amt" "note note" "go go";
+            grid-template-areas: "when when" "title amt" "go go";
             column-gap: 12px; row-gap: 0;
           }
           .agenda--undated .agenda-row { grid-template-columns: minmax(0, 1fr) auto; }
@@ -390,7 +379,6 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
           }
           .agenda-item-title { grid-area: title; }
           .agenda-amt { grid-area: amt; align-self: start; }
-          .agenda-note { grid-area: note; margin-top: 4px; }
           .agenda-go { grid-area: go; justify-self: start; margin-top: 10px; }
           /* Ποσό και βέλος μαζί, στη δεξιά άκρη της σειράς του τίτλου. */
           .agenda-row--link .agenda-side {

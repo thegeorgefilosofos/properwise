@@ -15,6 +15,7 @@ import { FEATURE_MIN_PLAN, isTabPurchasable, planAtLeast, requiredPlanForTab } f
 import { PLANS } from '@/lib/billing/plans'
 import EnfiaPanel from './EnfiaPanel';
 import AccountantDossier from './AccountantDossier'
+import { ACCOUNTANT_SEND_LABEL } from './accountantSend'
 import { UNCOLLECTED_RENT_RULE as UNCOLLECTED_RULE } from '@/lib/accounting/dossier'
 import { statusLabel, type StatusRow } from '@/lib/property/status'
 // Το λογιστικό πρόσημο: τυπογραφικό μείον, όχι ενωτικό και ποτέ «−0,00€».
@@ -196,7 +197,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
   // «ΣΥΝΔΕΣΜΟΣ» ΚΑΙ ΟΧΙ «ΣΤΕΙΛΕ» (αξιολόγηση 2, Υ5). Δίπλα του το πακέτο ανά ΑΦΜ
   // έχει το δικό του «Στείλε», που στέλνει αρχείο. Αυτό εδώ δίνει πρόσβαση
   // ανάγνωσης: δύο διαφορετικές πράξεις, δύο διαφορετικές λέξεις.
-  const accountantSend = { label: acctLink ? 'Ο σύνδεσμος είναι έτοιμος' : 'Σύνδεσμος για τον λογιστή', onClick: shareWithAccountant, busy: acctBusy,
+  const accountantSend = { label: acctLink ? 'Ο σύνδεσμος είναι έτοιμος' : ACCOUNTANT_SEND_LABEL, onClick: shareWithAccountant, busy: acctBusy,
     title: canAccountantPortal ? 'Σύνδεσμος χωρίς κωδικούς και χωρίς email, μόνο για ανάγνωση. Καλύπτει όλα τα ακίνητά σου.' : `Περιλαμβάνεται από το πακέτο «${PLANS[FEATURE_MIN_PLAN.e2_export].name}» και πάνω, όπως και η εξαγωγή Ε2.` }
   const accountantActions = acctLink ? (
     <>

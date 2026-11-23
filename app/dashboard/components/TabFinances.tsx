@@ -196,7 +196,7 @@ export default function TabFinances({
         // ΠΑΝΩ από τον τίτλο «Δαπάνες», δηλαδή η ενέργεια πριν από το όνομα της
         // οθόνης. Στο `right` της κεφαλίδας κάθεται όπως σε κάθε άλλη καρτέλα:
         // δεξιά του τίτλου στον υπολογιστή, κάτω από αυτόν στο κινητό.
-        <PageTitle title={tabName} sub={E ? E.sub : 'Ό,τι πλήρωσες και ό,τι περιμένει πληρωμή, για αυτό το ακίνητο.'}
+        <PageTitle title={tabName}
           right={(onNewExpense ?? onScan) ? <Btn variant="primary" size="lg" onClick={onNewExpense ?? onScan}>{E ? E.newExpense : 'Νέα δαπάνη'}</Btn> : undefined} />
       )}
       {contracts

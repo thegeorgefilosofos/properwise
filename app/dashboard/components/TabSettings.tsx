@@ -784,8 +784,8 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
   // στεκόταν κάτω από το «Πακέτο Επαγγελματίας» της ίδιας ενότητας και ο
   // χρήστης δεν ήξερε ποιο από τα δύο διαλέγει. Οι κάρτες λένε για ποιον είναι.
   const PROFILE_OPTS: { v: ProfileType; title: string; sub: string }[] = [
-    { v: 'individual', title: 'Για τα δικά μου ακίνητα', sub: 'Λίγα ακίνητα, με όσα χρειάζονται η δήλωση και ο λογιστής.' },
-    { v: 'professional', title: 'Για πελάτες ή χαρτοφυλάκιο', sub: 'Πολλά ακίνητα, με χαρτοφυλάκιο, σύγκριση και ομάδα.' },
+    { v: 'individual', title: 'Για τα δικά μου ακίνητα', sub: 'Λίγα ακίνητα' },
+    { v: 'professional', title: 'Για πελάτες ή χαρτοφυλάκιο', sub: 'Πολλά ακίνητα και ομάδα' },
   ];
 
   return (
@@ -796,7 +796,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
           σειρά: Προφίλ, Συνδρομή, Ειδοποιήσεις, Ασφάλεια, Δεδομένα. Ο ίδιος
           κατάλογος δύο φορές, σε απόσταση σαράντα εικονοστοιχείων. Ο υπότιτλος
           λέει τώρα τι ΕΙΝΑΙ η σελίδα· τι περιέχει το λένε οι κεφαλίδες της. */}
-      <PageTitle title={E ? E.title : 'Λογαριασμός'} sub={E ? E.sub : 'Ό,τι αφορά εσένα και τα δεδομένα σου'} />
+      <PageTitle title={E ? E.title : 'Λογαριασμός'} />
 
       {/* ── 1. ΠΡΟΦΙΛ ─────────────────────────────────────────────────── */}
       <ProfileCard userId={userId} email={accountEmail} />
@@ -936,10 +936,12 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
 
         {/* Τρόπος χρήσης: Ιδιώτης / Επαγγελματίας */}
         <div style={divider}>
-          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans, marginBottom: 4 }}>Τρόπος χρήσης</div>
-          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginBottom: 14, lineHeight: 1.5 }}>
-            Αλλάζει όποτε θέλεις.{partner ? ' Είσαι ενεργός συνεργάτης PROPERWISE.' : ''}
-          </div>
+          {/* «Αλλάζει όποτε θέλεις» έφυγε (αξιολόγηση σχεδίασης 3): δύο κάρτες
+              επιλογής το λένε μόνες τους. */}
+          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans, marginBottom: partner ? 4 : 14 }}>Τρόπος χρήσης</div>
+          {partner && (
+            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginBottom: 14, lineHeight: 1.5 }}>Είσαι ενεργός συνεργάτης PROPERWISE.</div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: 12 }}>
             {PROFILE_OPTS.map(o => {
               const on = chosenType === o.v;

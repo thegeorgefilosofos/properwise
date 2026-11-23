@@ -1,188 +1,72 @@
 'use client'
 // ═══════════════════════════════════════════════════════════════════════════
-// Η ΕΠΑΦΗ ΣΤΗ ΛΙΣΤΑ: ΚΑΡΤΑ, ΣΥΜΠΑΓΗΣ ΓΡΑΜΜΗ, ΔΙΑΧΩΡΙΣΤΙΚΟ ΟΜΑΔΑΣ, ΑΛΦΑΒΗΤΟ
+// Η ΕΠΑΦΗ ΣΤΗ ΛΙΣΤΑ: ΓΡΑΜΜΗ, ΓΡΑΜΜΗ ΠΙΝΑΚΑ, ΔΙΑΧΩΡΙΣΤΙΚΟ ΟΜΑΔΑΣ, ΑΛΦΑΒΗΤΟ
 // ═══════════════════════════════════════════════════════════════════════════
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { useCoarsePointer } from '@/components/useCoarsePointer'
 import { displayPhone } from '@/lib/core/greek'
 import { initialsOf, type AlphaEntry } from '@/lib/contacts/alpha'
-import {
-  Phone, Mail, Globe, MapPin, QrCode, Printer, History, Receipt, CalendarPlus, Users, Building2,
-  Pencil, Trash2,
-} from 'lucide-react'
+import { Phone, Mail, Globe, Users } from 'lucide-react'
 import { T, ChipToggle, SelectBox, ABSENT, pressable, RuntimeImg } from '@/components/Theme'
-import type { ReportBranding } from '@/lib/reportBranding'
-import { type Contact, GROUPS, roleMeta, fmtDate, daysUntil, isOverdue } from './model'
-import { QuickAct } from './Bits'
-import { printContactCard } from './exports'
+import { type Contact, GROUPS, roleMeta, isOverdue } from './model'
 
-// ─── Contact Card ─────────────────────────────────────────────────────────────
-export function ContactCard({ contact, onOpen, onEdit, onDelete, onQuickExpense, onQuickCalendar, onShowHistory, onShowQR, selected, onSelect, bulkMode, branding, scopeLabel, scopePortfolio }: {
-  contact: Contact; onOpen?: () => void; onEdit: () => void; onDelete: () => void
-  onQuickExpense: () => void; onQuickCalendar: () => void; onShowHistory: () => void; onShowQR: () => void
-  selected?: boolean; onSelect?: () => void; bulkMode?: boolean; branding?: ReportBranding | null
-  scopeLabel?: string | null; scopePortfolio?: boolean
+// ─── Contact Row ──────────────────────────────────────────────────────────────
+// ═══ ΓΡΑΜΜΗ ΛΙΣΤΑΣ 56, ΟΧΙ ΚΑΡΤΑ 230 (αξιολόγηση σχεδίασης 3) ════════════════
+// Κάθε επαφή ήταν κάρτα με αρχικά 50, ετικέτα, τηλέφωνο, email, ΑΦΜ και ραντεβού
+// σε δικές τους σειρές: με πέντε επαφές χωρούσαν δύο στην οθόνη του τηλεφώνου.
+// Ο,τι ψάχνει κανείς σε μια λίστα επαφών είναι το όνομα και η κλήση. Τώρα, όπως
+// στο Mercury Recipients: όνομα, ρόλος από κάτω, κλήση δεξιά. Ολα τα υπόλοιπα
+// (στοιχεία, ενέργειες, ιστορικό, QR, διαγραφή) ζουν στο ντοσιέ που ανοίγει η
+// γραμμή. Το ληγμένο ραντεβού μένει ορατό, γιατί ζητά κίνηση.
+export const CONTACT_ROW_H = 56
+/** Τα αρχικά της επαφής: μικρότερα από τη γραμμή, ώστε το όνομα να κρατά το βάρος. */
+const AVATAR = 32
+
+export function ContactRow({ contact, onOpen, selected, onSelect, bulkMode, scopePortfolio }: {
+  contact: Contact; onOpen: () => void
+  selected?: boolean; onSelect?: () => void; bulkMode?: boolean; scopePortfolio?: boolean
 }) {
   const meta = roleMeta(contact.role)
   const extra = contact._extra || {}
-  const initials = initialsOf(contact.full_name)
-  const [hov, setHov] = useState(false); const [showActions, setShowActions] = useState(false)
-  // Εστίαση πληκτρολογίου μέσα στην κάρτα: κρατά τις ενέργειες ορατές.
-  const [kbd, setKbd] = useState(false)
-  // ΣΕ ΟΘΟΝΗ ΑΦΗΣ ΔΕΝ ΥΠΑΡΧΕΙ hover, ΑΡΑ ΔΕΝ ΥΠΗΡΧΑΝ ΚΑΙ ΟΙ ΕΝΕΡΓΕΙΕΣ. Κλήση,
-  // WhatsApp, Viber, email και ολόκληρο το μενού «···» (Επεξεργασία, Νέα δαπάνη,
-  // Ραντεβού, Ιστορικό, QR, Εκτύπωση, Διαγραφή) εμφανίζονταν μόνο με ποντίκι.
-  // Δηλαδή σε κινητό — που είναι η πλειονότητα των χρηστών — η καρτέλα Επαφές
-  // ήταν λίστα ονομάτων χωρίς καμία ενέργεια. Η εφαρμογή έχει ήδη τη λύση δύο
-  // φορές: το `useCoarsePointer` και ένα `@media (hover: none)` στο φύλλο στυλ.
-  const coarse = useCoarsePointer()
-  const actionsRef = useRef<HTMLDivElement>(null)
-  // Κλείσιμο του μενού «···» με κλικ εκτός ή με Escape (χωρίς μετατόπιση διάταξης).
-  useEffect(() => {
-    if (!showActions) return
-    const onDown = (e: MouseEvent) => { if (actionsRef.current && !actionsRef.current.contains(e.target as Node)) setShowActions(false) }
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowActions(false) }
-    document.addEventListener('mousedown', onDown)
-    document.addEventListener('keydown', onKey)
-    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey) }
-  }, [showActions])
-  const overdue = extra.next_appointment && isOverdue(extra.next_appointment)
-  const dueDays = extra.next_appointment ? daysUntil(extra.next_appointment) : null
+  const overdue = !!extra.next_appointment && isOverdue(extra.next_appointment)
   const GroupIcon = meta.GroupIcon || Users
-
+  const name = contact.full_name || 'Χωρίς όνομα'
   return (
-    <div onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
-      onFocus={e => { if (e.target instanceof HTMLElement && e.target.matches(':focus-visible')) setKbd(true) }}
-      onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setKbd(false) }}
-      onClick={bulkMode ? onSelect : undefined}
-      /* ═══ Η ΚΑΡΤΑ ΕΠΑΦΗΣ ΑΝΑΠΑΥΕΤΑΙ ΟΠΟΥ ΚΑΙ Η ΚΑΡΤΑ ΠΕΛΑΤΗ ══════════════════
-         ΜΕΤΡΗΜΕΝΟ ΣΤΟΝ ΠΑΓΚΟ, 22 ΟΘΟΝΕΣ: πέντε κάρτες επαφής ήταν οι μόνες της
-         οθόνης χωρίς βάθος, ενώ δίπλα τους οι κάρτες ενότητας ανασηκώνονται.
-         Το `boxShadow` πήγαινε από το ΤΙΠΟΤΑ κατευθείαν στο `elev-2` με το
-         ποντίκι, δηλαδή η κάρτα δεν ανέβαινε ένα σκαλί, εμφανιζόταν.
-
-         Η `.client-card` του globals.css λέει ήδη πώς αναπαύεται μια κάρτα
-         περιεχομένου σε πλέγμα: `surface-raised` με `border-raised` και
-         `highlight-inset, elev-1`. Στο hover παίρνει `highlight-inset-strong` με
-         `elev-2`. Η κάρτα επαφής είναι το ίδιο πράγμα και παίρνει τα ίδια.
-
-         ΚΑΙ ΤΟ ΠΕΡΙΓΡΑΜΜΑ ΓΙΝΕΤΑΙ ΕΝΟΣ ΕΙΚΟΝΟΣΤΟΙΧΕΙΟΥ. Το 1,5 ήταν το μόνο
-         της εφαρμογής: κάθε άλλη κάρτα, εδώ και παντού, γράφει 1. */
-      style={{ background: selected ? 'color-mix(in srgb, var(--accent) 6%, var(--surface-raised))' : 'var(--surface-raised)', border: '1px solid ' + (selected ? 'var(--accent)' : hov ? 'var(--accent-border)' : overdue ? 'var(--negative-border)' : 'var(--border-raised)'), borderLeft: overdue && !bulkMode ? '3px solid var(--negative)' : undefined, borderRadius: T.radius.card, padding: bulkMode ? '18px 18px 16px 46px' : '18px 18px 16px', position: 'relative', alignSelf: 'start', boxShadow: selected ? '0 0 0 3px var(--accent-soft)' : hov ? 'var(--highlight-inset-strong), var(--elev-2)' : 'var(--highlight-inset), var(--elev-1)', transition: 'border-color 0.2s, box-shadow 0.2s, background 0.2s', cursor: bulkMode ? 'pointer' : 'default' }}>
-      {/* Η ΑΡΙΣΤΕΡΗ ΛΩΡΙΔΑ ΕΓΙΝΕ ΠΕΡΙΓΡΑΜΜΑ. Ηταν απόλυτο κουτί τριών
-          εικονοστοιχείων μέσα σε κάρτα με περίγραμμα ενός, με δική του
-          καμπύλη: άφηνε σκούρα εγκοπή στη γωνία σε ΚΑΘΕ κάρτα· και χωρίς
-          ληγμένο ραντεβού δεν σήμαινε τίποτα. Τώρα υπάρχει μόνο όταν σημαίνει. */}
-      {bulkMode && <div style={{ position: 'absolute', top: 17, left: 15, zIndex: 2 }}><SelectBox checked={!!selected} onChange={() => onSelect?.()} label={`Επιλογή ${contact.full_name}`} /></div>}
-      {overdue && <div style={{ position: 'absolute', top: 0, right: 0, background: 'var(--negative)', color: 'var(--text-inverse)', fontSize: 'var(--fs-xs)', fontWeight: 700, padding: '3px 10px', borderRadius: '0 16px 0 8px', }}>Ληγμένο ραντεβού</div>}
-      {/* ΟΙ ΕΝΕΡΓΕΙΕΣ ΑΠΟΔΙΔΟΝΤΑΙ ΠΑΝΤΑ, ΚΡΥΒΕΤΑΙ ΜΟΝΟ Η ΟΨΗ ΤΟΥΣ. Οσο υπήρχαν
-          μόνο με το ποντίκι από πάνω, το πληκτρολόγιο δεν τις έφτανε ποτέ στην
-          οθόνη γραφείου. Τώρα φαίνονται με αιώρηση, με εστίαση πληκτρολογίου
-          μέσα στην κάρτα και πάντα σε αφή. */}
-      {!bulkMode && (
-        <div ref={actionsRef} style={{ position: 'absolute', top: 28, right: 18, zIndex: 20, opacity: (hov || showActions || coarse || kbd) ? 1 : 0, transition: 'opacity 0.15s' }}>
-          {/* ═══ ΟΙ ΕΝΕΡΓΕΙΕΣ ΔΕΝ ΗΤΑΝ ΣΤΟ ΥΨΟΣ ΤΗΣ ΓΡΑΜΜΗΣ ΠΟΥ ΑΦΟΡΟΥΝ ═══════
-            Μετρημένο στα 390: η γραμμή του ονόματος πιάνει 601→651, δηλαδή
-            κέντρο στο 626. Τα κουμπιά κάθονταν 595→625, κέντρο 610 — δεκαέξι
-            εικονοστοιχεία πιο ψηλά από αυτό που χειρίζονται, σε κάθε κάρτα
-            επαφής. Και το `right: 12` τα έσπρωχνε έξι πιο δεξιά από τη στήλη
-            του περιεχομένου, δηλαδή έβγαιναν από τη στοίχιση της κάρτας.
-
-            Τα νούμερα δεν είναι διάλεγμα ματιού: η εσωτερική απόσταση της
-            κάρτας είναι 18, το πλακίδιο του αρχικού 50 ψηλό και το κουμπί 30 —
-            18 + (50−30)/2 = 28. Το `right: 18` ισοφαρίζει την ίδια απόσταση,
-            οπότε η δεξιά άκρη των κουμπιών πέφτει ΑΚΡΙΒΩΣ πάνω στη δεξιά άκρη
-            του κειμένου από κάτω. Ο σαρωτής ανέφερε τη διαφορά ως σύγκρουση
-            στόχων σε τέσσερα πλάτη: το σφάλμα ήταν η στοίχιση, όχι η στρώση. */}
-          {/* Ορατές μόνο οι πιο συχνές ενέργειες — όλες οι υπόλοιπες μπαίνουν στο «···» */}
-          <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-            {contact.phone && <QuickAct as="a" href={'tel:' + contact.phone} title="Κλήση"><Phone size={13} /></QuickAct>}
-            {extra.whatsapp && contact.phone && <QuickAct as="a" href={'https://wa.me/' + contact.phone.replace(/\D/g, '')} target="_blank" rel="noreferrer" title="WhatsApp" label="WA" />}
-            {extra.viber && contact.phone && <QuickAct as="a" href={'viber://chat?number=' + contact.phone.replace(/\D/g, '')} title="Viber" label="VB" />}
-            {contact.email && <QuickAct as="a" href={'mailto:' + contact.email} title="Ηλεκτρονικό ταχυδρομείο"><Mail size={13} /></QuickAct>}
-            <QuickAct as="button" onClick={() => setShowActions(s => !s)} title="Περισσότερες ενέργειες"><span style={{ fontSize: 16, fontWeight: 700, lineHeight: 0, marginTop: -4 }}>···</span></QuickAct>
-          </div>
-          {showActions && (
-            <div role="menu" style={{ position: 'absolute', top: 38, right: 0, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: '6px', minWidth: 210, boxShadow: 'var(--elev-3)' }}>
-              {[
-                { Icon: Pencil, label: 'Επεξεργασία', onClick: onEdit, color: 'var(--text-secondary)' },
-                { Icon: Receipt, label: 'Νέα δαπάνη', onClick: onQuickExpense, color: 'var(--text-secondary)' },
-                { Icon: CalendarPlus, label: 'Νέο ραντεβού', onClick: onQuickCalendar, color: 'var(--text-secondary)' },
-                { Icon: History, label: 'Ιστορικό συνεργασίας', onClick: onShowHistory, color: 'var(--text-secondary)' },
-                { Icon: QrCode, label: 'Κωδικός QR', onClick: onShowQR, color: 'var(--accent)' },
-                { Icon: Printer, label: 'Εκτύπωση κάρτας', onClick: () => printContactCard(contact, branding), color: 'var(--text-secondary)' },
-              ].map((a, i) => (
-                /* ΜΕΝΟΥΝ ΧΕΙΡΟΠΟΙΗΤΕΣ ΚΑΙ ΟΙ ΔΥΟ ΓΡΑΜΜΕΣ. Το Btn δεν προωθεί ούτε
-                   `role="menuitem"` —που το ζητά το role="menu" από πάνω— ούτε
-                   className, δηλαδή θα έχανε την `.po-hov-fill` με τον δικό της
-                   τόνο ανά γραμμή. Και η γραμμή μενού είναι πλήρους πλάτους με
-                   αριστερή στοίχιση ενώ το Btn κεντράρει. */
-                <button className="po-hov-fill" key={i} type="button" role="menuitem" onClick={() => { a.onClick(); setShowActions(false) }} style={{ '--hov-fill': 'var(--bg-surface)', display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 12px', borderRadius: T.radius.badge, border: 'none', cursor: 'pointer', fontSize: 'var(--fs-base)', color: 'var(--text-primary)', textAlign: 'left' }} >
-                  <a.Icon size={14} color={a.color} style={{ flexShrink: 0 }} />{a.label}
-                </button>
-              ))}
-              <div style={{ height: 1, background: 'var(--border-subtle)', margin: '5px 8px' }} />
-              <button className="po-hov-fill" type="button" role="menuitem" onClick={() => { onDelete(); setShowActions(false) }} style={{ '--hov-fill': 'color-mix(in srgb, var(--negative) 8%, transparent)', display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 12px', borderRadius: T.radius.badge, border: 'none', cursor: 'pointer', fontSize: 'var(--fs-base)', color: 'var(--negative)', textAlign: 'left' }} >
-                <Trash2 size={14} color="var(--negative)" style={{ flexShrink: 0 }} />Διαγραφή
-              </button>
-            </div>
-          )}
-        </div>
+    <li className="ct-row" data-selected={selected ? '' : undefined}
+      style={{ display: 'flex', alignItems: 'center', gap: 4, minHeight: CONTACT_ROW_H, borderTop: '1px solid var(--border-subtle)', background: selected ? 'var(--accent-soft)' : undefined }}>
+      {bulkMode && <SelectBox checked={!!selected} onChange={() => onSelect?.()} label={`Επιλογή ${name}`} />}
+      <button type="button" className="ct-row-main" onClick={bulkMode ? onSelect : onOpen}
+        aria-label={bulkMode ? `Επιλογή ${name}` : undefined}
+        style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 12, minHeight: CONTACT_ROW_H, padding: '8px 4px', border: 0, background: 'transparent', color: 'inherit', textAlign: 'left', cursor: 'pointer', font: 'inherit' }}>
+        {extra.avatar_url
+          ? <RuntimeImg src={extra.avatar_url} alt="" style={{ width: AVATAR, height: AVATAR, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+          : <span aria-hidden="true" style={{ width: AVATAR, height: AVATAR, borderRadius: '50%', background: 'var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>{initialsOf(contact.full_name) || <GroupIcon size={14} />}</span>}
+        <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span className="po-elide" title={name} style={{ fontSize: 'var(--fs-md)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-primary)' }}>{name}</span>
+          <span className="po-elide" style={{ fontSize: 'var(--fs-xs)', lineHeight: 1.3, color: overdue ? 'var(--negative)' : 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+            {scopePortfolio && <Globe size={10} aria-label="Όλο το χαρτοφυλάκιο" style={{ flexShrink: 0 }} />}
+            {[extra.specialty || meta.label || contact.role, overdue ? 'Ληγμένο ραντεβού' : null].filter(Boolean).join(' · ')}
+          </span>
+        </span>
+      </button>
+      {contact.phone && !bulkMode && (
+        <a href={'tel:' + contact.phone} aria-label={`Κλήση ${name}`} title={displayPhone(contact.phone)}
+          className="ct-row-call"
+          style={{ width: T.h.lg, height: T.h.lg, flexShrink: 0, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', textDecoration: 'none' }}>
+          <Phone size={17} aria-hidden="true" />
+        </a>
       )}
-      {/* ═══ ΤΟ ΥΨΟΣ ΤΟ ΟΡΙΖΕΙ ΤΟ ΠΕΡΙΕΧΟΜΕΝΟ ═══════════════════════════════
-          Κάθε ενότητα της κάρτας κρατούσε δικό της κάτω περιθώριο (10, 10, 10,
-          12) ΚΑΙ αποδιδόταν ακόμη κι όταν ήταν άδεια: επαφή με ένα τηλέφωνο
-          έκλεινε με δύο κενά κουτιά και ~40 εικονοστοιχεία λευκό κάτω από το
-          τελευταίο στοιχείο. Τώρα οι ενότητες είναι στήλη με ενιαίο κενό και
-          όσες δεν έχουν τίποτα δεν υπάρχουν. Και η κάρτα δεν τεντώνεται στο
-          ύψος της διπλανής της (`alignSelf: start`). */}
-      <div style={{ paddingLeft: 10, pointerEvents: bulkMode ? 'none' : undefined, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div {...pressable(() => onOpen && !bulkMode && onOpen())} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 2, paddingRight: bulkMode ? 0 : 100, cursor: onOpen && !bulkMode ? 'pointer' : 'default' }}>
-          {extra.avatar_url ? <RuntimeImg src={extra.avatar_url} alt="" style={{ width: 50, height: 50, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-border)', flexShrink: 0 }} />
-            : <div style={{ width: 50, height: 50, borderRadius: '50%', background: 'var(--accent-soft)', border: '2px solid var(--accent-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>{initials || <GroupIcon size={20} />}</div>}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontFamily: T.font.sans, marginBottom: 1 }}>{contact.full_name}</div>
-            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}><GroupIcon size={11} style={{ flexShrink: 0 }} />{meta.label || contact.role}</div>
-            {extra.specialty && <div className="po-subline" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{extra.specialty}</div>}
-          </div>
-        </div>
-        {(extra.preferred || scopeLabel) && <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          {extra.preferred && <span style={{ fontSize: 'var(--fs-xs)', padding: '2px 8px', borderRadius: T.radius.pill, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', color: 'var(--accent)', fontWeight: 700 }}>Προτιμώμενη</span>}
-          {scopeLabel && (
-            <span title={scopePortfolio ? 'Ισχύει για όλο το χαρτοφυλάκιο' : 'Ανήκει σε συγκεκριμένο ακίνητο'} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--fs-xs)', padding: '2px 8px', borderRadius: T.radius.pill, background: scopePortfolio ? 'var(--accent-soft)' : 'var(--bg-elevated)', border: '1px solid ' + (scopePortfolio ? 'var(--accent-border)' : 'var(--border-subtle)'), color: scopePortfolio ? 'var(--accent)' : 'var(--text-secondary)', fontWeight: 500, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {scopePortfolio ? <Globe size={10} style={{ flexShrink: 0 }} /> : <Building2 size={10} style={{ flexShrink: 0 }} />}{scopeLabel}
-            </span>
-          )}
-        </div>}
-        {(extra.tags || []).length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-            {(extra.tags || []).map(t => <span key={t} style={{ fontSize: 'var(--fs-xs)', padding: '2px 8px', borderRadius: T.radius.pill, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', color: 'var(--accent)' }}>{t}</span>)}
-          </div>
-        )}
-        {(contact.phone || extra.phone2 || contact.email || extra.website || extra.office_address) && <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {contact.phone && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Phone size={12} color="var(--text-tertiary)" style={{ flexShrink: 0 }} />
-              <a href={'tel:' + contact.phone} className="po-tap" style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontVariantNumeric: 'tabular-nums', textDecoration: 'none' }}>{displayPhone(contact.phone)}</a>
-              {extra.whatsapp && <a href={'https://wa.me/' + contact.phone.replace(/\D/g, '')} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', fontSize: 'var(--fs-xs)', color: 'var(--accent)', fontWeight: 700, background: 'var(--accent-soft)', padding: '1px 5px', borderRadius: T.radius.xs }}>WA</a>}
-              {extra.viber && <a href={'viber://chat?number=' + contact.phone.replace(/\D/g, '')} style={{ textDecoration: 'none', fontSize: 'var(--fs-xs)', color: 'var(--accent)', fontWeight: 700, background: 'var(--accent-soft)', padding: '1px 5px', borderRadius: T.radius.xs }}>VB</a>}
-            </div>
-          )}
-          {extra.phone2 && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Phone size={12} color="var(--text-tertiary)" style={{ flexShrink: 0 }} /><a href={'tel:' + extra.phone2} className="po-tap" style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, fontVariantNumeric: 'tabular-nums', textDecoration: 'none' }}>{displayPhone(extra.phone2)}</a><span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>2ο</span></div>}
-          {contact.email && <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}><Mail size={12} color="var(--text-tertiary)" style={{ flexShrink: 0 }} /><span style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{contact.email}</span></div>}
-          {extra.website && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Globe size={12} color="var(--text-tertiary)" style={{ flexShrink: 0 }} /><span style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{extra.website}</span></div>}
-          {extra.office_address && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><MapPin size={12} color="var(--text-tertiary)" style={{ flexShrink: 0 }} /><span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{extra.office_address}</span></div>}
-        </div>}
-        {(extra.afm || extra.iban || extra.next_appointment || (extra.notes_log || []).length > 0 || (extra.files || []).length > 0) && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-          {extra.afm && <span title="Αριθμός Φορολογικού Μητρώου" style={{ fontSize: 'var(--fs-xs)', padding: '2px 8px', borderRadius: T.radius.pill, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>ΑΦΜ {extra.afm}</span>}
-          {extra.iban && <span title="Διεθνής Αριθμός Τραπεζικού Λογαριασμού (IBAN)" style={{ fontSize: 'var(--fs-xs)', padding: '2px 8px', borderRadius: T.radius.pill, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>IBAN ···{extra.iban.slice(-4)}{extra.iris && <span title="Σύστημα άμεσων πληρωμών σε πραγματικό χρόνο (IRIS)" style={{ color: 'var(--text-secondary)', fontWeight: 700, marginLeft: 4 }}>IRIS</span>}</span>}
-          {extra.next_appointment && <span style={{ fontSize: 'var(--fs-xs)', padding: '2px 8px', borderRadius: T.radius.pill, background: overdue ? 'var(--negative-soft)' : 'var(--accent-soft)', border: '1px solid ' + (overdue ? 'var(--negative-border)' : 'var(--accent-border)'), color: overdue ? 'var(--negative)' : 'var(--accent)' }}>{overdue ? `Ραντεβού πριν από ${Math.abs(dueDays || 0)} ${Math.abs(dueDays || 0) === 1 ? 'ημέρα' : 'ημέρες'}` : `Ραντεβού ${fmtDate(extra.next_appointment)}`}</span>}
-          {(extra.notes_log || []).length > 0 && <span style={{ fontSize: 'var(--fs-xs)', padding: '2px 8px', borderRadius: T.radius.pill, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', color: 'var(--accent)' }}>{(extra.notes_log || []).length === 1 ? '1 σημείωση' : `${(extra.notes_log || []).length} σημειώσεις`}</span>}
-          {(extra.files || []).length > 0 && <span style={{ fontSize: 'var(--fs-xs)', padding: '2px 8px', borderRadius: T.radius.pill, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>{(extra.files || []).length === 1 ? '1 αρχείο' : `${(extra.files || []).length} αρχεία`}</span>}
-        </div>}
-        {contact._freeNotes && <div style={{ fontSize: 12, color: 'var(--text-secondary)', background: 'var(--bg-elevated)', borderRadius: T.radius.badge, padding: '7px 11px', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{contact._freeNotes}</div>}
-      </div>
-    </div>
+    </li>
+  )
+}
+
+/** Το περίβλημα της λίστας: μία κάρτα, γραμμές με λεπτό διαχωριστικό. */
+export function ContactList({ children }: { children: React.ReactNode }) {
+  return (
+    <ul data-list className="ct-list" style={{ listStyle: 'none', margin: 0, padding: 0, background: 'var(--surface-raised)', border: '1px solid var(--border-raised)', borderRadius: T.radius.card, boxShadow: 'var(--highlight-inset), var(--elev-1)', overflow: 'hidden' }}>
+      <style>{`.ct-row{padding:0 8px 0 12px}.ct-list>.ct-row:first-child{border-top:0}.ct-row-main:focus-visible,.ct-row-call:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}@media (hover:hover){.ct-row:hover{background:var(--bg-hover)}.ct-row-call:hover{background:var(--accent-soft)}}`}</style>
+      {children}
+    </ul>
   )
 }
 

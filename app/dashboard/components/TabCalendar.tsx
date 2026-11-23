@@ -510,7 +510,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
           ψάχνει κανείς στο ημερολόγιο: μία λέξη με τον αριθμό των ανοιχτών,
           στη θέση της ενέργειας του τίτλου. Σύνδεσμος και όχι κουμπί: κάθεται
           ως λέξη, χωρίς κουτί. */}
-      <PageTitle title={navLabel('calendar')} sub="Προθεσμίες, πληρωμές και ραντεβού"
+      <PageTitle title={navLabel('calendar')}
         right={onOpenTasks ? (
           <LinkBtn onClick={onOpenTasks}>
             Εκκρεμότητες{openTasks > 0 && <span style={{ fontFamily: T.font.num, fontVariantNumeric:'tabular-nums', color:'var(--text-tertiary)', fontWeight:500, marginLeft:6 }}>{openTasks}</span>}

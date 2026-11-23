@@ -8816,6 +8816,9 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
      σειρά του μήνα αφήνει ελεύθερη τη στήλη του «Ν», ώστε το κουμπί να μην
      πέφτει από κάτω του σε όποιο σημείο της κύλισης κι αν βρεθεί. */
   :root:has(.pa-fab-wrap) .fc-step { padding-right: calc(var(--fab-h, 48px) - 8px); }
+  /* Και η κλήση στη γραμμή της επαφής (ContactCard.tsx, ContactRow): κάθεται
+     αριστερά από τη στήλη του «Ν», ώστε στην κύλιση να μην περνά από κάτω του. */
+  :root:has(.pa-fab-wrap) .ct-row { padding-right: calc(var(--fab-h, 48px) + 8px); }
 }
 
 /* ═══ ΛΟΓΙΣΤΙΚΗ: Ο ΦΑΚΕΛΟΣ ΤΟΥ ΛΟΓΙΣΤΗ, ΜΑΖΕΜΕΝΟΣ (14/11/2026) ═══════════════

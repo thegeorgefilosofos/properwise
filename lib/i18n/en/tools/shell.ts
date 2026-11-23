@@ -5,7 +5,6 @@
 // Οι πηγές λένε τους ίδιους νόμους με τα ίδια νούμερα· οι νόμοι λέγονται με
 // τον αριθμό τους («Law 5246/2025»), χωρίς επινοημένο αγγλικό όνομα.
 // ═══════════════════════════════════════════════════════════════════════════
-import { TRIAL_DAYS } from '@/lib/billing/plans';
 import { FIRST_YEAR_NEW_BRACKETS, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT } from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
 import { ELECTRICITY_VAT_PCT } from '@/lib/energy/tariff';
@@ -28,7 +27,6 @@ export const TOOL_SHELL_EN = {
   badge: 'Legal basis', badgeSources: 'Sources',
   checked: (d: string) => `Limits checked ${d}`,
   updated: (d: string) => `Last updated ${d}`,
-  trialLine: `No subscription for one property, with Noa for the first ${TRIAL_DAYS} days.`,
   faqTitle: 'What people ask before they calculate',
   faqOver: 'FAQ',
   privacy: {

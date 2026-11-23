@@ -32,8 +32,9 @@ import { mergeLedger } from '@/lib/expenses/ledger'
 import { contractOverview } from '@/lib/contracts/overview'
 import { useAppPreferences } from './useAppPreferences'
 import {
-  T, TT, Btn, LinkBtn, SkeletonKPIs, Skeleton, EmptyState, SecHdr, InfoBanner, fp, feOr, fd, type KPIItem,
+  T, Btn, LinkBtn, SkeletonKPIs, Skeleton, EmptyState, SecHdr, InfoBanner, fp, feOr, fd, type KPIItem,
 } from '@/components/Theme'
+import { InfoHint } from './InfoHint'
 import { FileText, Wallet, Receipt, Landmark, TrendingUp, Building2, Percent, Banknote, Coins } from 'lucide-react'
 
 /** Το εικονίδιο κάθε ποσού της χρονιάς, από την ετικέτα του. */
@@ -1338,6 +1339,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           // ακίνητο δεν μοιράζεται τίποτα: είναι όλος ο φόρος του. Η ετικέτα
           // λέει το καθένα στη θέση του και η πλήρης εξήγηση μένει στο ⓘ.
           { label: portfolioTax.count>1 ? 'Μερίδιο φόρου' : 'Φόρος ενοικίου', value:fmtEur(estTax), fact: 'tax-year',
+            // «ΠΩΣ ΒΓΑΙΝΕΙ Ο ΦΟΡΟΣ» ΣΤΟ ⓘ ΤΟΥ ΠΛΑΚΙΔΙΟΥ (αξιολόγηση σχεδίασης 3). Ηταν
+            // παράγραφος κάτω από τα ποσά· ανήκει στη γραμμή που εξηγεί.
+            hint: income && taxNote ? taxNote : undefined,
             // Η ΒΑΣΗ ΜΕ ΟΝΟΜΑ (18/11/2026): η Λογιστική δείχνει τον φόρο των
             // καταχωρημένων ενοικίων· εδώ είναι όλη η χρονιά και το λέει.
             sub: rentTaxBasisLabel(rentTax.income.basis, year),
@@ -1464,7 +1468,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
                         <div key={k.label} className="tn-sum-row" title={k.title} {...factAttrs(k)}>
                           {hidden(k)}
                           <span className="tn-sum-ico">{yearIcon(k.label, 15)}</span>
-                          <span className="tn-sum-name">{k.label}</span>
+                          <span className="tn-sum-name"><span>{k.label}{k.hint && <InfoHint label={k.label}>{k.hint}</InfoHint>}</span></span>
                           <span className="tn-sum-val">{k.value}</span>
                           {k.sub && <small className="ov-year-note">{k.sub}</small>}
                         </div>
@@ -1474,12 +1478,6 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
                 </section>
               );
             })()}
-            {/* Ο ΦΟΡΟΣ ΤΟΥ ΧΑΡΤΟΦΥΛΑΚΙΟΥ ΜΕΝΕΙ ΣΗΜΕΙΩΣΗ, ΚΑΤΩ ΑΠΟ ΤΑ ΠΛΕΓΜΑΤΑ. Είναι
-                εξήγηση του «Μερίδιο φόρου», όχι μέγεθος: διαβάζεται αφού δεις τα
-                νούμερα, όχι ανάμεσά τους. */}
-            {income && taxNote && (
-              <p style={{...TT.caption,margin:'0 0 16px'}}><strong style={{color:'var(--text-primary)',fontWeight:600}}>Πώς βγαίνει ο φόρος.</strong> {taxNote}</p>
-            )}
           </>
         );
       })()}
