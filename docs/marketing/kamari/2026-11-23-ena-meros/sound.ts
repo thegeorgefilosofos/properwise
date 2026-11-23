@@ -1,7 +1,11 @@
-// Ο ήχος της ταινίας, συντεθειμένος με το scripts/marketing/synth.ts.
-// Οι χρόνοι έρχονται από το χρονολόγιο του film.html (μία πηγή): χτύποι, βυθίσεις, πατήματα.
+// Ο ήχος της ταινίας (v8), συντεθειμένος με το scripts/marketing/synth.ts.
+// Οι χρόνοι έρχονται από το χρονολόγιο του film.html (μία πηγή), σε δευτερόλεπτα.
 //
 //   npx tsx docs/marketing/kamari/2026-11-23-ena-meros/sound.ts <έξοδος.wav>
+//
+// Δυναμική (LRA πάνω από 3): το αγκίστρι με χτύπημα και χωρίς ρυθμό, το σώμα με πλήρη ρυθμό,
+// το κλείσιμο μόνο με πατάκι και καμπάνα, πιο χαμηλά. Τα πατήματα τονίζονται: η μουσική
+// χαμηλώνει 0,12″ γύρω τους και το κλικ είναι 3,3 dB δυνατότερο από της v7 (0,38 αντί για 0,26).
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,53 +16,55 @@ const html = readFileSync(join(here, 'film.html'), 'utf8');
 const json = /<script id="timeline" type="application\/json">([\s\S]*?)<\/script>/.exec(html);
 if (!json) throw new Error('Λείπει το χρονολόγιο από το film.html');
 const TL = JSON.parse(json[1]) as {
-  bpm: number; beats: number; hook: number[]; msg: number[]; scenes: number[]; turns: number[]; reveal: number; rowsOver: number[];
-  sheetUp: number; fill: [number, number]; ticks: number[]; dings: number[]; rowsDocs: number[]; taps: number[]; packUp: number;
-  rowsPack: number[]; entries: number[]; bells: number[]; chords: [number, string[]][];
+  dur: number; bpm: number; cuts: number[]; rowsOver: number[]; taps: number[]; fill: [number, number]; ticks: number[];
+  dates: number; dings: number[]; filed: number; packUp: number; rowsPack: number[]; close: number; msgClose: number[]; url: number;
+  chords: [number, string[]][];
 };
-const BEAT = 60 / TL.bpm, B = (b: number) => b * BEAT, DUR = B(TL.beats);
 const out = process.argv[2];
 if (!out) throw new Error('Δώσε αρχείο εξόδου');
+const BEAT = 60 / TL.bpm, START = TL.cuts[0], END = TL.close;
 
-const m = new Mix(DUR);
-const chords = TL.chords.map(([b, notes]) => [B(b), ch(...notes)] as [number, number[]]);
-m.pad(chords, .022);
-// Το μπάσο μπαίνει με την αποκάλυψη και φεύγει στο τελευταίο μέτρο.
-m.bass(chords, B(TL.reveal), B(TL.beats - 2), .05);
-// Μπάσο που αναπνέει στα όγδοα: ο παλμός του τέμπο.
-for (let b = TL.reveal; b < TL.beats - 4; b++) { const notes = [...TL.chords].reverse().find(([cb]) => cb <= b)![1]; m.pluck(B(b) + BEAT / 2, n(notes[0]) + 12, .035, 0, .05); }
+const m = new Mix(TL.dur);
+const chords = TL.chords.map(([t, notes]) => [t, ch(...notes)] as [number, number[]]);
+const chordAt = (t: number) => [...TL.chords].reverse().find(([ct]) => ct <= t)![1];
+m.pad(chords, .02);
+m.bass(chords, START, END, .05);
 
-// Παλμός: κρουστό κάθε δύο χτύπους από την αποκάλυψη, πιο αραιό στο αγκίστρι· ελαφρύ μεταλλικό σε κάθε μισό χτύπο.
+// Ρυθμός μόνο στο σώμα της ταινίας (από την πρώτη κοπή ως το κλείσιμο), στο πλέγμα των 120 BPM.
 const kicks: number[] = [];
-for (let b = 0; b < TL.beats - 2; b++) {
-  const t = B(b), on = b >= TL.reveal;
-  // Στο μήνυμα: κρουστό κάθε δύο χτύπους. Μετά: σε κάθε χτύπο, παλαμάκι στο 2 και στο 4, μεταλλικό στα όγδοα και στα δέκατα έκτα.
-  if (on || b % 2 === 0) { m.kick(t, on ? .9 : .7); kicks.push(t); }
-  m.hat(t + BEAT / 2, on ? .034 : .02, b % 2 ? .35 : -.35);
-  if (on) { m.hat(t + BEAT / 4, .014, .5); m.hat(t + 3 * BEAT / 4, .014, -.5); }
-  if (on && b % 2 === 1) m.clap(t, .06);
+for (let t = START; t < END - 1e-6; t += BEAT) {
+  const k = Math.round((t - START) / BEAT);
+  m.kick(t, .9); kicks.push(t);
+  m.hat(t + BEAT / 2, .03, k % 2 ? .35 : -.35);
+  m.hat(t + BEAT / 4, .012, .5); m.hat(t + 3 * BEAT / 4, .012, -.5);
+  if (k % 2 === 1) m.clap(t, .055);
+  m.pluck(t + BEAT / 2, n(chordAt(t)[0]) + 12, .03, 0, .05);
 }
-// Οι ήχοι της ταινίας, στους χρόνους του film.html:
-// χτύπημα στο αγκίστρι, ένας ήχος ανά πάτημα (δύο), απαλό «ding» όταν γεμίζουν τα πεδία και όταν είναι έτοιμο το zip.
-m.boom(B(TL.hook[0]), .2); m.clap(B(TL.hook[0]), .07);
-for (const b of TL.hook.slice(1)) m.click(B(b), 1800, .1, 0);
-m.whoosh(B(TL.reveal) - .15, .4, .04, true);
-for (const b of TL.turns) m.whoosh(B(b) - .2, .4, .035, true);
-m.whoosh(B(TL.scenes[4]) - .1, .4, .035, false);
-for (const b of TL.taps) { m.click(B(b), 2200, .26, .15); m.click(B(b) + .03, 1100, .09, .15); }
-for (const b of [TL.sheetUp, TL.packUp]) m.sweep(B(b), .35, 330, 700, .016);
-for (const list of [TL.rowsOver, TL.rowsDocs, TL.rowsPack]) list.forEach((b, i) => {
-  const notes = [...TL.chords].reverse().find(([cb]) => cb <= b)![1];
-  m.pluck(B(b), n(notes[i % notes.length]) + 12, .024, (i % 2 ? .25 : -.25));
+// Αγκίστρι: χτύπημα στο καρέ 0. Κάθε κοπή: σύντομο φύσημα.
+m.boom(0, .22); m.clap(0, .07);
+for (const c of TL.cuts.slice(0, -1)) m.whoosh(c - .12, .3, .028, true);
+m.whoosh(END - .1, .4, .03, false);
+// Οι γραμμές που εμφανίζονται μόνες τους.
+for (const list of [TL.rowsOver, TL.rowsPack]) list.forEach((t, i) => {
+  const notes = chordAt(t); m.pluck(t, n(notes[i % notes.length]) + 12, .024, i % 2 ? .25 : -.25);
 });
-for (const b of TL.dings) { m.bell(B(b), n('B5'), .05, .1); m.bell(B(b) + .09, n('E6'), .035, -.1); }
-for (const b of TL.entries) {
-  const notes = [...TL.chords].reverse().find(([cb]) => cb <= b)![1];
-  m.pluck(B(b), n(notes[notes.length - 1]) + 12, .035, -.2);
-}
-for (const b of TL.bells) m.bell(B(b), n('E5'), .06);
+// Τα πεδία που γεμίζουν: λεπτά κλικ πληκτρολόγησης στον Πάροχο, ένα για κάθε ✓.
+for (let t = TL.fill[0]; t < TL.fill[1]; t += (TL.fill[1] - TL.fill[0]) / 11) m.click(t, 3200, .045, .2);
+for (const t of [...TL.ticks, TL.dates]) m.click(t, 2600, .07, -.15);
+m.sweep(TL.packUp, .35, 330, 700, .016);
+// «Ding»: πεδία γεμάτα, φάκελος ενημερωμένος, zip έτοιμο.
+for (const t of TL.dings) { m.bell(t, n('B5'), .05, .1); m.bell(t + .09, n('E6'), .035, -.1); }
+// Κλείσιμο: πιο χαμηλά, χωρίς ρυθμό.
+m.bell(END, n('E5'), .045);
+TL.msgClose.forEach((t, i) => m.pluck(t, n(chordAt(t)[2 + i % 3]) + 12, .022, -.2 + .2 * i));
 
 m.duck(kicks, .28);
+// Τονισμός των πατημάτων: η μουσική χαμηλώνει γύρω τους, μετά γράφεται το κλικ, πιο δυνατά.
+m.duck(TL.taps.map((t) => t - .02), .45);
+for (const t of TL.taps) { m.click(t, 2200, .38, .1); m.click(t + .03, 1100, .14, .1); m.kick(t, .25); }
+
+// Το κλείσιμο πιο χαμηλά από το σώμα: μείωση περίπου 8 dB μετά το END.
+for (let i = m.idx(END); i < m.N; i++) { const g = 1 - .62 * Math.min(1, (i - m.idx(END)) / m.idx(.6)); m.L[i] *= g; m.R[i] *= g; }
 m.reverb(.5);
-m.write(out, 1.3);
-console.log(`✓ ${out} · ${DUR.toFixed(2)}″`);
+m.write(out, .8);
+console.log(`✓ ${out} · ${TL.dur.toFixed(2)}″`);

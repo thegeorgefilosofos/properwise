@@ -6,7 +6,7 @@
 //       πρόχειρο 1×, ένα καρέ ανά καρέ, χωρίς θόλωμα κίνησης
 //   CHROMIUM_PATH=… node render.mjs full <916|45> <out.mp4> [από καρέ] [ως καρέ]
 //       λήψη 3×, 4 υποκαρέ, σ0,5 πριν από τη σμίκρυνση lanczos, x264 της συνταγής.
-//       Το καρέ 0 είναι το εξώφυλλο (TL.cover): μπαίνει στη θέση του, χωρίς νέο καρέ.
+//       v8: το καρέ 0 είναι το αγκίστρι (render(0)). Το εξώφυλλο βγαίνει χωριστά, με το stills.
 //
 // Τα PNG δεν γράφονται στον δίσκο: περνούν από σωλήνα στο ffmpeg.
 import { chromium } from 'playwright-core';
@@ -72,7 +72,7 @@ for (let k = 0; ; k++) {
   catch (e) { if (k >= 3) throw e; console.error('νέα προσπάθεια φόρτωσης:', e.message.split('\n')[0]); }
 }
 const TL = await s.pg.evaluate(() => window.TL);
-const FPS = TL.fps, N = Math.round(TL.beats * 60 / TL.bpm * FPS);
+const FPS = TL.fps, N = Math.round(TL.dur * FPS);
 
 if (mode === 'stills') {
   const ts = a4.split(',').map(Number), scale = Number(a5 || 0.25);
@@ -85,12 +85,12 @@ if (mode === 'stills') {
 } else if (mode === 'draft') {
   await run(['-y', '-v', 'error', '-framerate', String(FPS), '-f', 'image2pipe', '-c:v', 'png', '-i', '-',
     '-vf', 'format=yuv420p', '-c:v', 'libx264', '-crf', '20', '-preset', 'veryfast', out], async (stdin) => {
-    for (let i = 0; i < N; i++) await write(stdin, await grab(s, i === 0 ? TL.cover : i / FPS));
+    for (let i = 0; i < N; i++) await write(stdin, await grab(s, i / FPS));
     stdin.end();
   });
 } else if (mode === 'crisp') {
   // v5: ένα δείγμα ανά καρέ (κανένα θόλωμα κίνησης), λήψη 3× και σμίκρυνση lanczos (κανένα gblur),
-  // x264 -crf 14 -tune animation με όριο 14 Mbps. Το καρέ 0 είναι το εξώφυλλο.
+  // x264 -crf 14 -tune animation με όριο 14 Mbps. Το καρέ 0 είναι το αγκίστρι.
   const from = Number(a4 || 0), to = Number(a5 || N);
   const t0 = Date.now();
   await run(['-y', '-v', 'error', '-framerate', String(FPS), '-f', 'image2pipe', '-c:v', 'png', '-i', '-',
@@ -99,7 +99,7 @@ if (mode === 'stills') {
     '-maxrate', '14M', '-bufsize', '28M', '-x264-params', 'keyint=300:min-keyint=30:scenecut=40',
     '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'tv', '-an', out], async (stdin) => {
     for (let i = from; i < to; i++) {
-      await write(stdin, await grab(s, i === 0 ? TL.cover : i / FPS));
+      await write(stdin, await grab(s, i / FPS));
       if (i % 60 === 0) console.log(`καρέ ${i}/${to} · ${((Date.now() - t0) / 1000).toFixed(0)}″`);
     }
     stdin.end();
@@ -114,7 +114,7 @@ if (mode === 'stills') {
     '-r', '30', ...X264, '-an', out], async (stdin) => {
     for (let i = from; i < to; i++) {
       // Υποκαρέ γύρω από τον χρόνο του καρέ: (k − 1,5)/120. Το καρέ 0 είναι το εξώφυλλο.
-      const base = i === 0 ? TL.cover : i / FPS;
+      const base = i / FPS;
       const ts = [0, 1, 2, 3].map((k) => base + (k - 1.5) / 120);
       // Αν τίποτα δεν κινείται ανάμεσα στα υποκαρέ, μία λήψη αρκεί για τα τέσσερα.
       const sigs = await s.pg.evaluate((ts) => ts.map((t) => window.render(t)), ts);
