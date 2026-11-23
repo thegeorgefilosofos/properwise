@@ -38,7 +38,10 @@ const ok = (name: string, cond: boolean, extra = '') => {
 };
 
 const ROWS = 5;
-const decode = (s: string) => s.replace(/&amp;/g, '&').replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/<[^>]+>/g, '').trim();
+// Πρώτα φεύγουν οι ετικέτες, ώσπου να μη μείνει καμία, και ΜΕΤΑ οι οντότητες,
+// με το &amp; τελευταίο: αλλιώς ένα «&amp;lt;» θα γινόταν «<» (CodeQL).
+const stripTags = (s: string) => { let prev; do { prev = s; s = s.replace(/<[^>]*>/g, ''); } while (s !== prev); return s; };
+const decode = (s: string) => stripTags(s).replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').trim();
 const anchors = (s: string) => [...s.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/g)]
   .map(m => ({ tag: m[1], href: /href="([^"]+)"/.exec(m[1])?.[1] ?? '', text: decode(m[2]) }));
 
