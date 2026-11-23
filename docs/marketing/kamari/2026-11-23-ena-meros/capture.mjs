@@ -165,7 +165,8 @@ p = await open('?c=accounting&n=6', MACRO);
 {
   const dl = await rect(p.getByRole('button', { name: 'Κατέβασε' }));
   // Μόνο ΑΦΜ και κουμπιά: η κεφαλίδα της κάρτας και ό,τι είναι κάτω μένουν έξω από τη λήψη.
-  const crop = { x: 20, y: dl.y - 70, w: 260, h: 120 };
+  // Ως το x 300: στο «Ετοιμάζεται» το κουμπί φαρδαίνει και το «Στείλε» πάει ως το x 276 (στην κάρτα, που φτάνει ως το 374).
+  const crop = { x: 20, y: dl.y - 70, w: 280, h: 120 };
   boxes.accounting = { download: dl, crop };
   await clipShot(p, 'acc', crop);
   await p.getByRole('button', { name: 'Κατέβασε' }).click();

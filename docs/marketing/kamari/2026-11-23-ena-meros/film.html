@@ -153,7 +153,7 @@ const B = {
   prov: { x: 26, y: 297, w: 338, h: 37 }, afm: { x: 26, y: 374, w: 162, h: 39 }, amount: { x: 26, y: 493, w: 304, h: 38 },
   dates: [{ x: 216, y: 383, w: 83, h: 21 }, { x: 40, y: 580, w: 83, h: 21 }, { x: 40, y: 658, w: 83, h: 21 }, { x: 216, y: 658, w: 83, h: 21 }],
   save: { x: 25, y: 794, w: 340, h: 36 }, power: { x: 29, y: 577, w: 332, h: 53 },
-  download: { x: 38, y: 523, w: 119, h: 36 }, acc: { x: 20, y: 453, w: 260, h: 120 }, afmBlock: { x: 34, y: 458, w: 228, h: 110 },
+  download: { x: 38, y: 523, w: 119, h: 36 }, acc: { x: 20, y: 453, w: 280, h: 120 }, afmBlock: { x: 30, y: 458, w: 254, h: 110 },
   REG: { overview: [250, 594], tiles: [80, 764], form: [220, 440], save: [420, 424], docs: [350, 494] },
 };
 // Τα περιεχόμενα του zip: PACK_FILES του lib/accounting/meetingPack.ts, με τη σειρά του packEntries.
@@ -281,7 +281,7 @@ const SHOTS = [
   { id: 'S_form', from: CUT[3], to: CUT[4], s: 2.6, s45: 2.38, ay: 236, sy: C0, top: 236, bottom: 614 },
   { id: 'S_save', from: CUT[4], to: CUT[5], s: 2.28, ay: 844, sy: C1 - 21, top: 462 },
   { id: 'S_docs', from: CUT[5], to: CUT[6], s: 2.6, s45: 2.35, ay: 365, sy: C0, top: 365, bottom: 750 },
-  { id: 'S_acc', from: CUT[6], to: CUT[7], s: 3.74, ay: 513, sy: (SAFE[0] + SAFE[1]) / 2, cx: 148, top: 453 },
+  { id: 'S_acc', from: CUT[6], to: CUT[7], s: 3.5, ay: 513, sy: (SAFE[0] + SAFE[1]) / 2, cx: 157, top: 453 },
   { id: 'S_zip', from: CUT[7], to: CUT[8], s: 2.6, ay: 844, sy: C1 - 22, top: 0 },
 ];
 const shotAt = (t) => SHOTS.find((x) => t >= x.from && t < x.to) || null;
@@ -421,6 +421,12 @@ window.render = function render(t) {
 window.ready = async () => {
   await Promise.all([...document.images].map((im) => im.decode()));
   await document.fonts.load('700 50px Inter', 'ΑΒΓαβγ€0123'); await document.fonts.ready;
+  // Στο 4:5 οι λεζάντες μιας γραμμής μικραίνουν 5%.
+  if (fmt === '45') for (const el of capEls) {
+    el.style.display = 'block';
+    if (el.offsetHeight < L.capSize * 1.5) el.style.fontSize = (L.capSize * 0.95).toFixed(2) + 'px';
+    el.style.display = 'none';
+  }
   // Το όνομα του zip σε μία γραμμή: αν δεν χωρά, μικραίνει.
   let fs = 15 * K;
   while (titleEl.scrollWidth > 350 * K && fs > 10 * K) { fs -= 0.5; titleEl.style.fontSize = fs + 'px'; }
