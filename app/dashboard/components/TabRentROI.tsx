@@ -709,7 +709,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
           <Tile label="Μεικτή απόδοση" value={fp(y.grossYield)} fact={useRecorded ? 'yield-gross' : undefined}
             facts={useRecorded ? { 'income-year': fe(y.annualRent) } : undefined} sub={useRecorded && yi ? (yi.basis === 'lease' ? `${fe(y.annualRent)} τον χρόνο ${yi.shortLabel}` : yi.basis === 'stays' ? `${fe(y.annualRent)} το ${taxYear}, ${yi.shortLabel}` : `${fe(y.annualRent)} τον χρόνο, από ${fe(yi.received ?? 0)} ως σήμερα`) : mkt(`${fe(y.annualRent)} έσοδα τον χρόνο`)} info={<TermInfo term="Μεικτή απόδοση" text={G.gross_yield} />} />
           {/* Η ΚΑΘΑΡΗ ΛΕΕΙ ΑΝ ΜΕΣΑ ΤΗΣ ΥΠΑΡΧΕΙ ΕΚΤΙΜΗΣΗ. Μόνο με καταγραφές είναι ο
-              ίδιος αριθμός με την Επισκόπηση· με κόστη του μοντέλου που δεν έχουν
+              ίδιος αριθμός με τον Προϋπολογισμό· με κόστη του μοντέλου που δεν έχουν
               καταγραφεί είναι «Εκτιμώμενη» και το λέει ποια. */}
           <Tile label={netPreTaxLabel(costs, true)} value={fp(y.netYield)}
             facts={useRecorded ? { 'yield-net-recorded': fp(netRecorded) } : undefined}
@@ -718,10 +718,9 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
               G.net_yield,
               costs.stayFees > 0 ? `Αφαιρούνται ${fe(costs.stayFees)} ${PLATFORM_FEE_LABELS.fromStays}. ${PLATFORM_FEE_LABELS.note}${stayFees && stayFees.ownMonths > 0 ? ` ${PLATFORM_FEE_LABELS.ownMonths}` : ''}` : null,
               costs.basis === 'estimated' ? `Εδώ αφαιρούνται και εκτιμήσεις για ό,τι δεν έχεις καταγράψει φέτος ως δαπάνη: ${costs.modelledKinds.map(k => MODELLED_COST_LABELS[k]).join(', ')}.` : null,
-              // Η ΓΕΦΥΡΑ ΠΡΟΣ ΤΗΝ ΕΠΙΣΚΟΠΗΣΗ. Εκεί η καθαρή βγαίνει μόνο από
-              // καταγραφές· εδώ, με τις εκτιμήσεις, είναι μικρότερη. Ο ίδιος αριθμός
-              // χωρίς τις εκτιμήσεις λέγεται, ώστε τα δύο ποσοστά να εξηγούνται.
-              costs.basis === 'estimated' && nVal > 0 ? `Μόνο με τα καταγεγραμμένα έξοδα: ${fp(netRecorded)}, ο αριθμός της Επισκόπησης.` : null,
+              // Ο ΙΔΙΟΣ ΑΡΙΘΜΟΣ ΧΩΡΙΣ ΤΙΣ ΕΚΤΙΜΗΣΕΙΣ. Η Επισκόπηση δεν γράφει πια δική
+              // της καθαρή απόδοση (αξιολόγηση 2, Υ4): η καθαρή ζει εδώ, με τη βάση της.
+              costs.basis === 'estimated' && nVal > 0 ? `Μόνο με τα καταγεγραμμένα έξοδα: ${fp(netRecorded)}.` : null,
             ].filter(Boolean).join(' ')} />} />
           {/* «Μετά τον φόρο» και όχι «Απόδοση μετά τον φόρο»: δίπλα στη μεικτή και
               την καθαρή η λέξη «απόδοση» εννοείται· στα 390 η ετικέτα

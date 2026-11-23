@@ -160,7 +160,7 @@ ok('και ο μετρητής δεν σκάει', overdueCount([]) === 0)
   const one = dueParts(-1);
   ok('μία ημέρα πίσω, ενικός', one.unit === 'ημέρα πίσω');
   const soon = dueParts(204);
-  ok('μελλοντικό: σκέτος αριθμός', soon.value === 204 && soon.unit === 'ημέρες');
+  ok('μελλοντικό: σκέτος αριθμός', soon.value === 204 && soon.unit === 'ημέρες ακόμη');
   ok('μελλοντικό: δεν είναι εκπρόθεσμο', soon.overdue === false);
   ok('σήμερα: λέξη αντί για μηδέν', dueParts(0).word === 'σήμερα' && dueParts(0).value === null);
   ok('αύριο: λέξη αντί για ένα', dueParts(1).word === 'αύριο' && dueParts(1).value === null);
@@ -337,6 +337,19 @@ ok('και ο μετρητής δεν σκάει', overdueCount([]) === 0)
   const c = withCondition(it, [{ id: o.id, note: o.notes }]).condition ?? ''
   ok('5η δόση: η πρόταση «Αφορά μόνο…» του ημερολογίου, αυτούσια', c.startsWith('Αφορά μόνο όσους') && o.notes.includes(c.slice(0, -1)))
   ok('άλλες γραμμές: καμία προϋπόθεση', withCondition({ ...it, key: 'tax:enfia-instalment-2026-9' }, [{ id: o.id, note: o.notes }]).condition === undefined)
+}
+
+// ── ΤΟ ΠΟΣΟ ΤΗΣ ΔΟΣΗΣ ΦΟΡΟΥ ΕΙΣΟΔΗΜΑΤΟΣ, ΑΠΟ ΤΗΝ ΠΡΟΒΛΕΨΗ (αξιολόγηση 2, Μ11) ──
+// Μόνο η δόση ΕΝΦΙΑ είχε ποσό· η «Φόρος εισοδήματος, 5η δόση» όχι, ενώ το ίδιο
+// ποσό, την ίδια ημερομηνία, το έγραφε το γράφημα 12 μηνών από κάτω.
+{
+  const o = greekPropertyTaxObligations(2026, 'long_term').find(x => x.id === 'income-instalment-2026-5')!
+  const a = buildAgenda({ today: TODAY, obligations: [obl({ id: o.id, title: o.title, date: o.date, daysUntil: 30 })] })
+  const line = { kind: 'income_tax', date: o.date, amount: 200, certainty: 'actual' as const }
+  const w = attachAmounts(a, [line])
+  ok('δόση φόρου εισοδήματος: το ποσό της πρόβλεψης, ίδια ημερομηνία', w[0].amount?.value === 200 && w[0].amount.estimate === false)
+  const none = attachAmounts(a, [])
+  ok('χωρίς γραμμή, ούτε ποσό ούτε ενέργεια «ανέβασε την πράξη»', none[0].amount === undefined && none[0].action?.tab !== 'enfia-import')
 }
 
 console.log(fail === 0 ? `✓ agenda: ${pass} έλεγχοι πέρασαν` : `✗ agenda: ${fail} απέτυχαν από ${pass + fail}`)

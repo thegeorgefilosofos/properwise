@@ -8,7 +8,8 @@
 import { forecast12, incomeTaxInstalments, splitPeriod, FORECAST_MONTHS, type ForecastInput, type ForecastLine } from './forecast12'
 import { enfiaYear, ENFIA_DEFAULTS, type EnfiaSettings } from '../facts/enfia'
 import { enfiaDueDates } from '../facts/deadlines'
-import { INCOME_TAX_INSTALMENTS } from '../tax/greekTaxCalendar'
+import { INCOME_TAX_INSTALMENTS, greekPropertyTaxObligations } from '../tax/greekTaxCalendar'
+import { instalmentTitle } from '../facts/labels'
 import { loanInstalment, type LoanRow } from '../loans/shape'
 import { hostPayout } from '../clients/stayAmounts'
 import type { LedgerEntry } from '../expenses/ledger'
@@ -46,7 +47,7 @@ const declared: EnfiaSettings = { ...ENFIA_DEFAULTS, enfiaAnnual: '428.60' }
   ok('ΕΝΦΙΑ 2026: οι δόσεις 8 ως 12 μέσα στο παράθυρο', due26.map(i => i.no).join() === '8,9,10,11,12')
   ok('ΕΝΦΙΑ: όσες γραμμές όσες και οι δόσεις των δύο εκκαθαριστικών', lines.length === due26.length + due27.length)
   ok('ΕΝΦΙΑ 2026: κάθε ποσό και ημερομηνία από το enfiaYear',
-    due26.every(i => lines.some(l => l.date === i.date && eq(l.amount, i.amount) && l.label === `ΕΝΦΙΑ ${i.no}/12`)))
+    due26.every(i => lines.some(l => l.date === i.date && eq(l.amount, i.amount) && l.label === instalmentTitle('ΕΝΦΙΑ', i.no, 12))))
   ok('ΕΝΦΙΑ 2027: κάθε ποσό και ημερομηνία από το enfiaYear',
     due27.every(i => lines.some(l => l.date === i.date && eq(l.amount, i.amount))))
   ok('το άθροισμα των δώδεκα δόσεων της μηχανής είναι το ετήσιο', eq(sum(e26.instalments.map(i => i.amount)), e26.annual))
@@ -56,13 +57,13 @@ const declared: EnfiaSettings = { ...ENFIA_DEFAULTS, enfiaAnnual: '428.60' }
     lines.filter(l => l.date! < firstOf27).every(l => l.certainty === 'actual' && l.source === `εκκαθαριστικό ΕΝΦΙΑ ${2026}`))
   ok('το επόμενο εκκαθαριστικό δεν έχει βγει: αναμενόμενο',
     lines.filter(l => l.date! >= firstOf27).every(l => l.certainty === 'expected'))
-  ok('η 8η δόση στις 30/10/2026', lines.some(l => l.label === 'ΕΝΦΙΑ 8/12' && l.date === '2026-10-30'))
+  ok('η 8η δόση στις 30/10/2026', lines.some(l => l.label === 'ΕΝΦΙΑ, 8η δόση' && l.date === '2026-10-30'))
 }
 {
   // Η δόση που σημειώθηκε πληρωμένη στο Ημερολόγιο δεν ξαναεμφανίζεται.
   const ref = enfiaDueDates(2026).find(d => d.no === 8)!.ref
   const f = forecast12({ ...base, enfia: { settings: declared, facts: {}, closedRefs: new Set([ref]) } })
-  ok('δόση που έκλεισε δεν μπαίνει', !ofKind(f, 'enfia').some(l => l.label === 'ΕΝΦΙΑ 8/12' && l.date!.startsWith('2026')))
+  ok('δόση που έκλεισε δεν μπαίνει', !ofKind(f, 'enfia').some(l => l.label === 'ΕΝΦΙΑ, 8η δόση' && l.date!.startsWith('2026')))
 }
 {
   // Εκτίμηση από τα στοιχεία, με συνιδιοκτησία 50%: η μηχανή βγάζει το μερίδιο.
@@ -71,7 +72,7 @@ const declared: EnfiaSettings = { ...ENFIA_DEFAULTS, enfiaAnnual: '428.60' }
   const e = enfiaYear(ENFIA_DEFAULTS, 2026, facts)
   // Το μερίδιο είναι 103,60€: με ελάχιστη δόση 10€ δέκα δόσεις, όχι δώδεκα (20.10.2026).
   ok('εκτίμηση: καμία δόση κάτω από 10€, άρα 10 δόσεις', e.instalments.length === 10 && e.instalments.every(i => i.amount >= 10))
-  const l8 = ofKind(f, 'enfia').find(l => l.label === `ΕΝΦΙΑ 8/${e.instalments.length}`)
+  const l8 = ofKind(f, 'enfia').find(l => l.label === instalmentTitle('ΕΝΦΙΑ', 8, e.instalments.length))
   ok('εκτίμηση: το ποσό της μηχανής στο μερίδιο', !!l8 && eq(l8.amount, e.instalments[7].amount) && e.annual > 0)
   ok('εκτίμηση: αναμενόμενο, με την πηγή του', !!l8 && l8.certainty === 'expected' && l8.source.startsWith('εκτίμηση'))
 }
@@ -313,6 +314,23 @@ const entry = (o: Partial<LedgerEntry>): LedgerEntry => ({
   ok('όταν περίοδος και λήξη συμπίπτουν, το όνομα μένει ως έχει', ofKind(h, 'bill')[0]?.label === 'ΔΕΗ Νοεμβρίου')
   ok('χωρίς τόνους και κεφαλαία: ίδια λέξη', splitPeriod('ΔΕΗ ΙΟΥΝΙΟΥ 2026').base === 'ΔΕΗ' && splitPeriod('ΔΕΗ ΙΟΥΝΙΟΥ 2026').period === 5)
   ok('όνομα χωρίς μήνα: αμετάβλητο', splitPeriod('Κοινόχρηστα').period === null)
+}
+
+// ── ΕΝΑ ΟΝΟΜΑ ΔΟΣΗΣ ΣΕ ΟΛΗ ΤΗΝ ΟΘΟΝΗ (αξιολόγηση 2, Χ3) ─────────────────────
+// Η ατζέντα έγραφε «ΕΝΦΙΑ, 9η δόση» (το ημερολόγιο του νόμου) και, στην ίδια
+// οθόνη, η πρόβλεψη «ΕΝΦΙΑ 5/12» και «Φόρος εισοδήματος 1/8». Η πρόβλεψη παίρνει
+// πλέον τον τίτλο του ημερολογίου, λέξη προς λέξη, για την ίδια ημερομηνία.
+{
+  const f = forecast12({ ...base, enfia: { settings: declared, facts: {} },
+    incomeTax: { statements: [{ taxYear: 2025, amount: 1600 }], estimate: null } })
+  const cal = greekPropertyTaxObligations(2026, 'long_term')
+  const enf = ofKind(f, 'enfia').filter(l => l.date!.startsWith('2026'))
+  ok('ΕΝΦΙΑ: ο τίτλος της πρόβλεψης είναι ο τίτλος του ημερολογίου',
+    enf.length > 0 && enf.every(l => cal.some(o => o.date === l.date && o.title === l.label)))
+  const inc = ofKind(f, 'income_tax').filter(l => l.source.includes('2025'))
+  ok('φόρος εισοδήματος: ο τίτλος της πρόβλεψης είναι ο τίτλος του ημερολογίου',
+    inc.length > 0 && inc.every(l => cal.some(o => o.date === l.date && o.title === l.label)))
+  ok('κανένα «n/m» στα ονόματα των δόσεων', !all(f).some(l => /\d\/\d/.test(l.label)))
 }
 
 console.log(fail === 0 ? `✓ forecast12: ${pass} έλεγχοι πέρασαν` : `✗ forecast12: ${fail} απέτυχαν από ${pass + fail}`)

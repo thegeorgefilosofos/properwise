@@ -67,7 +67,6 @@ import CashHero from './CashHero'
 import { SpeakAmount } from '@/components/SpeakAmount'
 import RentReceived, { receivableLines } from './RentReceived'
 import AgendaPanel from './AgendaPanel'
-import { CalendarQuickAdd } from './calendar/CalendarQuickAdd'
 import AssistantStrip from './AssistantStrip'
 import ForecastCard from './ForecastCard'
 import { forecast12, type IncomeTaxStatement } from '@/lib/home/forecast12'
@@ -86,7 +85,7 @@ import OccupancyPanel from './OccupancyPanel'
 import PolicyNotice from './PolicyNotice'
 import { athensToday, isoYear, isoMonth } from '@/lib/core/time'
 import { type IncomeRent } from '@/lib/income/propertyIncome'
-import { yearExpensesOf, expenseParts, expensePartsShort, EXPENSE_LABELS, INCOME_LABELS, rentIncome, yieldIncome, propertyStatus, hostingReceipts, hostingParts, hostingPartsShort, HOSTING_LABELS, YIELD_LABELS, YIELD_SHORT_LABELS, YIELD_INLINE_LABELS, yieldCosts, yieldPlatformFees, netPreTaxLabel, PLATFORM_FEE_LABELS, enfiaYear, closedTaxRefs, propertyRentTax, targetMonthlyOf, rentTaxBasisLabel } from '@/lib/facts'
+import { yearExpensesOf, expenseParts, expensePartsShort, EXPENSE_LABELS, INCOME_LABELS, rentIncome, yieldIncome, propertyStatus, hostingReceipts, hostingParts, hostingPartsShort, HOSTING_LABELS, YIELD_LABELS, YIELD_SHORT_LABELS, YIELD_INCOME_SHORT_LABELS, yieldCosts, yieldPlatformFees, PLATFORM_FEE_LABELS, enfiaYear, closedTaxRefs, propertyRentTax, targetMonthlyOf, rentTaxBasisLabel } from '@/lib/facts'
 import { useEnfiaSettings, useEnfiaInstalmentCounts } from './useEnfia'
 import type { ClientStaysRow } from '@/lib/supabase/tables'
 import { useLoad, type LoadTurn } from '@/app/hooks/useLoad'
@@ -1094,8 +1093,10 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           όταν ανοίγει την εφαρμογή («να μη χάνω προθεσμίες»). Τίποτα δεν
           αφαιρέθηκε: η Νόα και το Ταμείο ακολουθούν, με τη σειρά τους. Οι
           λογαριασμοί μένουν έξω από τη λίστα (τους λέει το Ταμείο). */}
-      <AgendaPanel items={agenda} total={agendaAll.length} onNavigate={onNavigate} incomplete={failedReads.length > 0}
-        footer={<CalendarQuickAdd userId={userId} />} />
+      {/* ΧΩΡΙΣ ΤΗΝ ΠΡΟΤΑΣΗ «ΒΑΛΕ ΤΙΣ ΠΡΟΘΕΣΜΙΕΣ ΣΤΟ ΚΙΝΗΤΟ» (αξιολόγηση 2, Μ12). Ήταν η
+          ίδια κάρτα με δύο κουμπιά εδώ και στο Ημερολόγιο. Μένει εκεί, όπου ανήκει·
+          κάθε γραμμή της λίστας οδηγεί ήδη στο Ημερολόγιο. */}
+      <AgendaPanel items={agenda} total={agendaAll.length} onNavigate={onNavigate} incomplete={failedReads.length > 0} />
 
       {/* Με μισά ποσά η Νόα θα έλεγε «βλέπω» για όσα δεν διάβασε. */}
       {!moneyGap && <AssistantStrip ctx={stripCtx} />}
@@ -1137,7 +1138,8 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           από τα γραφήματα, όχι πάνω από τις ενέργειες: πρώτα οι Εκκρεμότητες και
           το Ταμείο (η δουλειά της οθόνης είναι «τι χρειάζεται τώρα»), μετά η
           ενημέρωση, μετά οι αναλύσεις. */}
-      <SecHdr label="Το ακίνητο" sub="Στοιχεία και πάγια κόστη" />
+      {/* Χωρίς κεφαλίδα «Το ακίνητο / Στοιχεία και πάγια κόστη» (αξιολόγηση 2, Χ1):
+          οι δύο κάρτες από κάτω λένε ήδη το όνομά τους. */}
       <div className="grid-main">
         {/* ═══ ΔΕΚΑΤΡΕΙΣ ΣΕΙΡΕΣ ΔΙΠΛΑ ΣΕ ΠΕΝΤΕ ══════════════════════════════
             Ο πίνακας στοιχείων ήταν μία στήλη ζευγαριών σε πλέγμα τριών ίσων
@@ -1161,8 +1163,14 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
               ακριβώς πλάτη που έβγαζε το `auto-fit`: μία ως τα 700, δύο ως τα
               900, τρεις από εκεί και πάνω. */}
           <div className="prop-facts">
-            {([['Τύπος',propertyTypeLabel(prop.prop_type)],['Εμβαδόν',prop.sqm?`${prop.sqm} τ.μ.`:null],['Υπνοδωμάτια',prop.bedrooms?String(prop.bedrooms):null],['Διεύθυνση',prop.address],['ΑΤΑΚ',prop.atak],['Έτος κατασκευής',prop.year_built?String(prop.year_built):null],['Όροφος',prop.floor!=null?String(prop.floor):null],['Θέρμανση',heatingLabel(prop.heating)||null],['Ενεργειακή κλάση',prop.pea_class],['Θέσεις στάθμευσης',prop.parking_spaces?String(prop.parking_spaces):null],['Αποθήκη',prop.storage_sqm?`${prop.storage_sqm} τ.μ.`:null],['Αντικειμενική αξία',prop.obj_value?fmtEur(prop.obj_value):null],[enfiaNow.label,enfiaNow.annual>0?fmtEur(enfiaNow.annual):null]] as [string,string|null][]).filter(([,v])=>v).map(([k,v]) => (
-              <div key={k} title={k==='ΑΤΑΚ'?'Αριθμός Ταυτότητας Ακινήτου, από το έντυπο Ε9':k==='Εκτιμώμενος ΕΝΦΙΑ'?'Ενιαίος Φόρος Ιδιοκτησίας Ακινήτων: ο ετήσιος φόρος περιουσίας':undefined}
+            {(([['Διεύθυνση',prop.address],['Τύπος',propertyTypeLabel(prop.prop_type)],['Εμβαδόν',prop.sqm?`${prop.sqm} τ.μ.`:null],['Υπνοδωμάτια',prop.bedrooms?String(prop.bedrooms):null],['ΑΤΑΚ',prop.atak],['Έτος κατασκευής',prop.year_built?String(prop.year_built):null],['Όροφος',prop.floor!=null?String(prop.floor):null],['Θέρμανση',heatingLabel(prop.heating)||null],['Ενεργειακή κλάση',prop.pea_class],['Θέσεις στάθμευσης',prop.parking_spaces?String(prop.parking_spaces):null],['Αποθήκη',prop.storage_sqm?`${prop.storage_sqm} τ.μ.`:null],['Αντικειμενική αξία',prop.obj_value?fmtEur(prop.obj_value):null],[enfiaNow.label,enfiaNow.annual>0?fmtEur(enfiaNow.annual):null]] as [string,string|null][])).filter(([,v])=>v).map(([k,v], i, list) => (
+              // ΔΥΟ ΣΤΗΛΕΣ ΚΑΙ ΣΤΟ ΤΗΛΕΦΩΝΟ (αξιολόγηση 2, Χ4). Έντεκα σειρές σε μία
+              // στήλη, περίπου 700 εικονοστοιχεία, για τιμές μιας λέξης. Η διεύθυνση
+              // πρώτη και σε όλο το πλάτος (`data-wide`)· αν τα υπόλοιπα βγουν μονά,
+              // το τελευταίο απλώνεται (`data-orphan`), ώστε να μη μείνει τρύπα.
+              <div key={k} data-wide={k==='Διεύθυνση' ? '' : undefined}
+                data-orphan={i === list.length - 1 && k !== 'Διεύθυνση' && (list.length - (list[0][0]==='Διεύθυνση' ? 1 : 0)) % 2 === 1 ? '' : undefined}
+                title={k==='ΑΤΑΚ'?'Αριθμός Ταυτότητας Ακινήτου, από το έντυπο Ε9':k==='Εκτιμώμενος ΕΝΦΙΑ'?'Ενιαίος Φόρος Ιδιοκτησίας Ακινήτων: ο ετήσιος φόρος περιουσίας':undefined}
                 style={{padding:'9px 0',borderBottom:'1px solid var(--border-subtle)',minWidth:0}}>
                 {/* ══ Η ΤΙΜΗ ΚΟΒΟΤΑΝ ΚΑΙ ΜΑΖΙ ΤΗΣ ΚΟΒΟΤΑΝ ΚΑΙ ΤΟ ΠΟΣΟ ══════════
                     Ετικέτα και τιμή κάθονταν στην ΙΔΙΑ γραμμή, η μία απέναντι
@@ -1246,7 +1254,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           από κάτω, από τις ίδιες μεταβλητές, διαβασμένα ολογράφως. Φαίνεται μόνο
           με την «Ανάγνωση ποσών» των Ρυθμίσεων και μόνο όπου υπάρχουν έσοδα:
           χωρίς αυτά δεν υπάρχει φόρος ούτε καθαρό να ακουστεί. */}
-      <SecHdr label={`Η χρονιά ${year}`} sub="Πού καταλήγει με ό,τι ξέρουμε σήμερα"
+      {/* Χωρίς υπότιτλο (αξιολόγηση 2, Χ1): το «με ό,τι ξέρουμε σήμερα» το λέει η
+          κεφαλίδα της οθόνης, πάνω από το καθαρό. */}
+      <SecHdr label={`Η χρονιά ${year}`}
         info={!moneyGap && isLet(prop) ? (
           <span className="sec-hdr-act">
           <SpeakAmount variant="icon" title={`Η χρονιά ${year}`} label="τα ποσά της χρονιάς" figures={[
@@ -1296,7 +1306,12 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
             // καθαρό — και χωρούν σε μία γραμμή και στα 320. Η πηγή (φιλοξενία,
             // μίσθωση) και η «εκτίμηση» λέγονται στον υπότιτλο.
             label: 'Έσοδα έτους', value:fmtEur(annualRent), fact: 'income-year',
-            sub: `${incomeIsEstimate ? `${INCOME_LABELS.estimate} · ` : ''}${yi.received != null ? `${fmtEur(yi.received)} ${INCOME_LABELS.received}` : `${fmtEur(rent)} τον μήνα`}`,
+            // ΣΤΟ ΒΡΑΧΥΧΡΟΝΙΟ ΟΧΙ «ΕΙΣΠΡΑΓΜΕΝΑ» (αξιολόγηση 2, Υ3). Το ποσό ως σήμερα
+            // είναι το ΔΗΛΩΤΕΟ των διαμονών, με μέσα την προμήθεια που δεν μπήκε ποτέ
+            // στον λογαριασμό· γραφόταν «εισπραγμένα ως σήμερα» και, δύο σειρές πιο
+            // κάτω, οι «Εισπράξεις» έδειχναν άλλο ποσό και το ίδιο δηλωτέο ξανά. Εδώ
+            // μένει η βάση της εκτίμησης· το δηλωτέο λέγεται μία φορά, στις Εισπράξεις.
+            sub: `${incomeIsEstimate ? `${INCOME_LABELS.estimate} · ` : ''}${yi.basis === 'stays' ? YIELD_INCOME_SHORT_LABELS.stays : yi.received != null ? `${fmtEur(yi.received)} ${INCOME_LABELS.received}` : `${fmtEur(rent)} τον μήνα`}`,
             title: fromLease
               ? `Το μηνιαίο μίσθωμα × 12 (${INCOME_LABELS.expected}). ${yi.received != null ? `${fmtEur(yi.received)} ${INCOME_LABELS.received}.` : 'Δεν έχει καταγραφεί δόση ακόμη.'} Ίδια βάση με το ${navLabel('portfolio')} και την ${navLabel('roi')}.`
               : yi.basis === 'stays'
@@ -1365,19 +1380,20 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
         const extra: KPIItem[] = [];
         // ═══ Η ΑΠΟΔΟΣΗ ΜΠΗΚΕ ΣΤΑ ΣΥΜΦΡΑΖΟΜΕΝΑ, ΟΧΙ ΣΤΟ ΚΕΝΟ ΑΝΑΜΕΣΑ ═════════
         // Ηταν μια γραμμή κειμένου 12 ανάμεσα στα δύο πλέγματα: ούτε πλακίδιο
-        // ούτε υπότιτλος, με αρνητικό περιθώριο για να κολλήσει στο πρώτο. Στα
-        // 390 έσπαγε σε δύο γραμμές και αιωρούνταν. Είναι ακριβώς ό,τι λέει το
-        // δεύτερο πλέγμα για τον εαυτό του — συμφραζόμενο του αποτελέσματος —
-        // οπότε κάθεται εκεί, με το ίδιο σχήμα: μεικτή ως αριθμός, καθαρή και
-        // αξία ως υπότιτλος. Οι λέξεις από το lib/facts.
+        // ούτε υπότιτλος, με αρνητικό περιθώριο για να κολλήσει στο πρώτο. Τώρα
+        // κάθεται στο πλέγμα, με το ίδιο σχήμα. Οι λέξεις από το lib/facts.
+        //
+        // ΜΟΝΟ Η ΜΕΙΚΤΗ (αξιολόγηση 2, Υ4). Ο υπότιτλος έγραφε και «καθαρή προ
+        // φόρου, χωρίς εκτιμήσεις 2,02%», ενώ η Απόδοση, για το ίδιο ακίνητο, γράφει
+        // «Εκτιμώμενη καθαρή απόδοση 1,38%»: δύο «καθαρές» και ένα κελί που λέει
+        // «Μεικτή» στον τίτλο και «καθαρή» στην υπογραφή. Το καθαρό της χρονιάς
+        // λέγεται ήδη εδώ σε ευρώ («Καθαρό έτους»)· η καθαρή απόδοση ζει σε μία
+        // οθόνη, την Απόδοση, με τη βάση της στο όνομα. Η μεικτή δεν έχει εκτίμηση
+        // κόστους, άρα είναι ίδια παντού.
         if (income && propValue>0) extra.push({
-          label: YIELD_SHORT_LABELS.gross, value: fp(grossYield), fact: 'yield-gross', facts: { 'yield-net-recorded': fp(netYield) },
-          // Στο βραχυχρόνιο το «χωρίς εκτιμήσεις» λέει γιατί οι Αποδόσεις, που
-          // προσθέτουν καθαρισμό και τέλη από το μοντέλο, γράφουν μικρότερο ποσοστό.
-          sub: `${propertyStatus(prop) === 'rent_short' ? YIELD_INLINE_LABELS.net_pre_tax_recorded : YIELD_INLINE_LABELS.net_pre_tax} ${fp(netYield)} · αξία ${fmtEur(propValue)}`,
-          title: `${YIELD_LABELS.gross}: ετήσιο ενοίκιο ως ποσοστό της αξίας του ακινήτου, πριν από τις δαπάνες. ${costs.stayFees > 0
-            ? `${netPreTaxLabel(costs)}: ετήσιο έσοδο μείον τις δαπάνες του έτους που έχεις καταγράψει και ${fmtEur(costs.stayFees)} ${PLATFORM_FEE_LABELS.fromStays}, ως ποσοστό της αξίας. ${PLATFORM_FEE_LABELS.note}`
-            : `${netPreTaxLabel(costs)}: ετήσιο έσοδο μείον τις δαπάνες του έτους που έχεις καταγράψει, ως ποσοστό της αξίας.`}` });
+          label: YIELD_SHORT_LABELS.gross, value: fp(grossYield), fact: 'yield-gross',
+          sub: `αξία ${fmtEur(propValue)}`,
+          title: `${YIELD_LABELS.gross}: ετήσιο ενοίκιο ως ποσοστό της αξίας του ακινήτου, πριν από τις δαπάνες. Η καθαρή απόδοση είναι στην ${navLabel('roi')}.` });
         if (hasActiveLoan) extra.push({
           // ΧΩΡΙΣ ΣΤΡΟΓΓΥΛΕΥΣΗ ΣΤΟ ΕΥΡΩ. Η ατζέντα της ίδιας οθόνης γράφει τη δόση
           // με τα λεπτά της· εδώ έβγαινε «922,00€» δίπλα σε «922,30€».
@@ -1421,18 +1437,26 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
                 (`title`) και τα ίδια `data-fact` για τον έλεγχο ίδιου αριθμού. */}
             {(() => {
               const all = [...items, ...extra];
-              const hero = income ? all.find(k => k.label === 'Καθαρό έτους') ?? all[0] : all[0];
+              // ΕΝΑΣ ΜΕΓΑΛΟΣ ΑΡΙΘΜΟΣ ΣΤΗΝ ΟΘΟΝΗ (αξιολόγηση 2, Υ2). Όταν η κεφαλίδα της
+              // Επισκόπησης δείχνει ήδη το καθαρό (`heroIsNet`), η κάρτα το έγραφε
+              // ξανά με τα ίδια ψηφία και ίδιο βάρος: δύο εστίες. Τώρα η κάρτα δεν
+              // έχει ήρωα· το «Καθαρό έτους» μένει μια σειρά, στη θέση του στην
+              // αλυσίδα έσοδα, δαπάνες, φόρος, καθαρό, με τον ίδιο τίτλο.
+              const headerShowsNet = heroIsNet && !rentMissing && !enfiaMissing;
+              const hero = headerShowsNet ? null : income ? all.find(k => k.label === 'Καθαρό έτους') ?? all[0] : all[0];
               const rows = all.filter(k => k !== hero);
               const factAttrs = (k: KPIItem) => ({ 'data-fact': k.fact, 'data-fact-value': k.fact ? k.value : undefined });
               const hidden = (k: KPIItem) => k.facts && Object.entries(k.facts).map(([n, v]) => <span key={n} hidden data-fact={n} data-fact-value={v} />);
               return (
-                <section className="tn-sum ov-year" aria-label={`Η χρονιά ${year}`}>
+                <section className="tn-sum ov-year" aria-label={`Η χρονιά ${year}`} data-flat={hero ? undefined : ''}>
+                  {hero && (
                   <div className="tn-sum-hero" title={hero.title} {...factAttrs(hero)}>
                     {hidden(hero)}
                     <div className="tn-sum-label">{yearIcon(hero.label, 15)}{hero.label}</div>
                     <div className="tn-sum-big">{hero.value}</div>
                     {hero.sub && <div className="tn-sum-sub">{hero.sub}</div>}
                   </div>
+                  )}
                   {rows.length > 0 && (
                     <div className="tn-sum-rows" data-n={rows.length}>
                       {rows.map(k => (

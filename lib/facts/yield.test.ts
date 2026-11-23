@@ -13,7 +13,7 @@
 //   · με εκτίμηση μέσα, η ετικέτα είναι «Εκτιμώμενη καθαρή απόδοση προ φόρου».
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync } from 'node:fs';
-import { propertyYield, yieldCosts, netPreTaxLabel, YIELD_LABELS, YIELD_SHORT_LABELS, YIELD_INLINE_LABELS, expenseParts, expensePartsShort } from './index';
+import { propertyYield, yieldCosts, netPreTaxLabel, YIELD_LABELS, YIELD_SHORT_LABELS, expenseParts, expensePartsShort } from './index';
 import { fe, fp } from '@/lib/core/format';
 import { computeYields } from '@/lib/billing/propertyFacts';
 import { yields } from '@/lib/market/returns';
@@ -100,16 +100,15 @@ ok('Επισκόπηση: καθαρή 3,01%', r2(overview.netYield) === 3.01, o
   ok('καμία τυφλή πρόσθεση μοντέλου πάνω στα έξοδα', !/nOpex \+ stCosts/.test(src));
 }
 
-// ── Η γραμμή της Επισκόπησης: «Απόδοση: μεικτή 4,03% · καθαρή προ φόρου 3,01%» ─
+// ── Η Επισκόπηση δεν γράφει δεύτερη καθαρή απόδοση (αξιολόγηση 2, Υ4) ─────────
+// Έγραφε «καθαρή προ φόρου, χωρίς εκτιμήσεις 2,02%» κάτω από τη μεικτή, ενώ η
+// Απόδοση γράφει για το ίδιο ακίνητο «Εκτιμώμενη καθαρή απόδοση 1,38%». Η καθαρή
+// απόδοση ζει σε μία οθόνη· η Επισκόπηση λέει το καθαρό της χρονιάς σε ευρώ.
 {
-  ok('οι λέξεις της γραμμής', YIELD_INLINE_LABELS.title === 'Απόδοση' && YIELD_INLINE_LABELS.gross === 'μεικτή'
-    && YIELD_INLINE_LABELS.net_pre_tax === 'καθαρή προ φόρου');
-  const line = `${YIELD_INLINE_LABELS.title}: ${YIELD_INLINE_LABELS.gross} ${fp(4.03)} · ${YIELD_INLINE_LABELS.net_pre_tax} ${fp(3.01)}`;
-  ok('η γραμμή γράφεται όπως ζητήθηκε', line === 'Απόδοση: μεικτή 4,03% · καθαρή προ φόρου 3,01%', line);
   const ov = readFileSync('app/dashboard/components/OverviewTab.tsx', 'utf8');
   ok('η Επισκόπηση δεν γράφει πια «Απόδοση.»', !/>Απόδοση\.<\/strong>/.test(ov));
   ok('η Επισκόπηση δεν κατεβάζει σε πεζά ολόκληρες ετικέτες', !/YIELD_LABELS\.(gross|net_pre_tax)\.toLowerCase\(\)/.test(ov));
-  ok('η Επισκόπηση παίρνει τις λέξεις από το lib/facts', /YIELD_INLINE_LABELS\.net_pre_tax\}/.test(ov));
+  ok('η Επισκόπηση δεν γράφει καθαρή απόδοση', !/yield-net-recorded|fp\(netYield\)/.test(ov));
 }
 
 // ── Το πλακίδιο «Δαπάνες έτους» στο μισό πλάτος ──────────────────────────

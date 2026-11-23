@@ -51,6 +51,7 @@ import { roundHalfUp } from '../core/money';
 import { MONTHS_NOM, MONTHS_GEN, MONTHS_ACC, monthGen } from '../core/months';
 import { grDate } from '../core/format';
 import { instalmentPeriods, monthsPerInstalment, type PaymentFreq } from '@/lib/rent/frequency';
+import { instalmentTitle, CASH_LABELS } from '@/lib/facts/labels';
 
 /** Πόσοι μήνες. Ο τρέχων και οι έντεκα επόμενοι. */
 export const FORECAST_MONTHS = 12;
@@ -66,7 +67,7 @@ export type Certainty = 'actual' | 'expected';
 
 export interface ForecastLine {
   kind: FlowKind;
-  /** «ΕΝΦΙΑ 8/12», «Ενοίκιο», «Δόση δανείου». */
+  /** «ΕΝΦΙΑ, 8η δόση», «Ενοίκιο», «Δόση δανείου». */
   label: string;
   /** Από πού βγήκε, με λέξεις: «εκκαθαριστικό ΕΝΦΙΑ 2026», «μισθωτήριο». */
   source: string;
@@ -318,7 +319,7 @@ export function forecast12(input: ForecastInput): Forecast {
         if (due && due < today) {
           // Ληξιπρόθεσμη του τρέχοντος μήνα: τη μετρά το Ταμείο, όχι εδώ. Λέγεται
           // όμως στη θέση της, ώστε ο μήνας να μη φαίνεται φτωχότερος απ' ό,τι είναι.
-          gapAt(idx, { kind: 'owed', flow: 'rent', label: 'Ενοίκιο', hint: `Έληγε ${grDate(due)}. Φαίνεται στο Ταμείο, πιο πάνω.` });
+          gapAt(idx, { kind: 'owed', flow: 'rent', label: 'Ενοίκιο', hint: `Έληγε ${grDate(due)}. Φαίνεται στο «${CASH_LABELS.owedToMe}», πιο πάνω.` });
           continue;
         }
         put(idx, { kind: 'rent', label: 'Ενοίκιο', source: 'δόση ενοικίου', amount: pos(r.amount), dir: 'in', certainty: 'actual', date: due });
@@ -376,7 +377,7 @@ export function forecast12(input: ForecastInput): Forecast {
       // σε εκκαθαριστικό που δεν έχει βγει ακόμη είναι υπόθεση ότι θα μείνει ίδιο.
       const actual = declared && e.datesConfirmed && y <= year;
       // Η πηγή με λέξεις της γραμμής, όχι η ετικέτα του πλακιδίου («ΕΝΦΙΑ
-      // έτους (εκτίμηση)» δίπλα σε «ΕΝΦΙΑ 9/12» θα έλεγε τη λέξη δύο φορές).
+      // έτους (εκτίμηση)» δίπλα σε «ΕΝΦΙΑ, 9η δόση» θα έλεγε τη λέξη δύο φορές).
       const source = actual ? `εκκαθαριστικό ΕΝΦΙΑ ${y}`
         : declared ? 'με το ποσό που έχεις δηλώσει'
         : e.inUse.source === 'lastYear' ? 'με το περσινό ποσό'
@@ -386,7 +387,7 @@ export function forecast12(input: ForecastInput): Forecast {
         const ref = refs.get(i.no);
         if (ref && closed.has(ref)) continue;
         const before = lines.length;
-        putDated({ kind: 'enfia', label: `ΕΝΦΙΑ ${i.no}/${e.instalments.length}`, source, amount: i.amount, dir: 'out', certainty: actual ? 'actual' : 'expected', date: i.date });
+        putDated({ kind: 'enfia', label: instalmentTitle('ΕΝΦΙΑ', i.no, e.instalments.length), source, amount: i.amount, dir: 'out', certainty: actual ? 'actual' : 'expected', date: i.date });
         if (lines.length > before) hasEnfia = true;
       }
     }
@@ -409,7 +410,7 @@ export function forecast12(input: ForecastInput): Forecast {
         const base = (st ?? est) as IncomeTaxStatement;
         for (const i of incomeTaxInstalments(base.amount, T)) {
           putDated({
-            kind: 'income_tax', label: `Φόρος εισοδήματος ${i.no}/${INCOME_TAX_INSTALMENTS}`,
+            kind: 'income_tax', label: instalmentTitle('Φόρος εισοδήματος', i.no, INCOME_TAX_INSTALMENTS),
             source: st ? `εκκαθαριστικό φόρου εισοδήματος ${T}` : `εκτίμηση φόρου ενοικίων ${T}`,
             amount: i.amount, dir: 'out', certainty: st ? 'actual' : 'expected', date: i.date,
           });
@@ -420,7 +421,7 @@ export function forecast12(input: ForecastInput): Forecast {
           const m = 6 + i;
           const date = lastWorkingDayOfMonth(T + 1 + Math.floor(m / 12), m % 12);
           if (date < today) continue;
-          gapAt(idxOf(date), { kind: 'missing', flow: 'income_tax', label: `Φόρος εισοδήματος ${i + 1}/${INCOME_TAX_INSTALMENTS}`,
+          gapAt(idxOf(date), { kind: 'missing', flow: 'income_tax', label: instalmentTitle('Φόρος εισοδήματος', i + 1, INCOME_TAX_INSTALMENTS),
             // Το εκκαθαριστικό του τρέχοντος έτους δεν έχει εκδοθεί ακόμη: δεν
             // ζητάμε να σαρωθεί χαρτί που δεν υπάρχει.
             hint: T >= year ? `Το ποσό θα το δώσει το εκκαθαριστικό ${T}, όταν εκδοθεί.` : `Λείπει το εκκαθαριστικό ${T}. Σάρωσέ το για να μπει το ποσό.` });

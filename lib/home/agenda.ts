@@ -361,7 +361,15 @@ export interface AmountLine { kind: string; date: string | null; amount: number;
  */
 export function attachAmounts(items: AgendaItem[], lines: readonly AmountLine[]): AgendaItem[] {
   return items.map(it => {
-    if (it.amount || !it.due || !ENFIA_PAYMENT_ROW.test(it.key)) return it;
+    if (it.amount || !it.due) return it;
+    // Η ΔΟΣΗ ΦΟΡΟΥ ΕΙΣΟΔΗΜΑΤΟΣ ΜΕ ΤΟ ΠΟΣΟ ΤΗΣ ΠΡΟΒΛΕΨΗΣ (αξιολόγηση 2, Μ11). Μόνο
+    // όταν η πρόβλεψη το ξέρει (εκκαθαριστικό ή εκτίμηση της οθόνης)· αλλιώς η
+    // γραμμή μένει όπως ήταν, με την προϋπόθεση «Αφορά μόνο…» και χωρίς ποσό.
+    if (INCOME_TAX_ROW.test(it.key)) {
+      const t = lines.find(x => x.kind === 'income_tax' && x.date === it.due && x.amount > 0);
+      return t ? { ...it, amount: { value: t.amount, estimate: t.certainty !== 'actual' } } : it;
+    }
+    if (!ENFIA_PAYMENT_ROW.test(it.key)) return it;
     const l = lines.find(x => x.kind === 'enfia' && x.date === it.due && x.amount > 0);
     // ΧΩΡΙΣ ΠΟΣΟ, Η ΓΡΑΜΜΗ ΛΕΕΙ ΠΩΣ ΒΓΑΙΝΕΙ (17/11/2026). Η «ΕΝΦΙΑ, 8η δόση»
     // έμενε με αριθμό ημερών και ένα βέλος προς το Ημερολόγιο, όπου το ποσό
@@ -370,6 +378,8 @@ export function attachAmounts(items: AgendaItem[], lines: readonly AmountLine[])
   });
 }
 
+/** Η δόση φόρου εισοδήματος, ίδιο κλειδί στην ατζέντα και στο Ημερολόγιο (`tax:income-instalment-2026-5`). */
+const INCOME_TAX_ROW = /^tax:income-instalment-/;
 /** Η γραμμή πληρωμής ΕΝΦΙΑ, ίδιο κλειδί στην ατζέντα και στο Ημερολόγιο (`tax:enfia-instalment-2026-9`). */
 export const ENFIA_PAYMENT_ROW = /^tax:enfia-(first|instalment|last)-/;
 /** Ο προορισμός «ανέβασε την πράξη ΕΝΦΙΑ»: όχι καρτέλα, η εισαγωγή του myAADE. */
@@ -404,7 +414,7 @@ export function dueLabel(daysLeft: number | null): string | null {
 export interface DueParts {
   /** Ο αριθμός, ή null όταν δεν υπάρχει προθεσμία ή είναι σήμερα/αύριο. */
   value: number | null;
-  /** Η μονάδα κάτω από τον αριθμό («ημέρες πίσω», «ημέρες»). */
+  /** Η μονάδα κάτω από τον αριθμό («ημέρες πίσω», «ημέρες ακόμη»). */
   unit: string;
   /** Λέξη αντί για αριθμό, όταν ο αριθμός δεν προσθέτει τίποτα. */
   word: string | null;
@@ -420,7 +430,9 @@ export function dueParts(daysLeft: number | null): DueParts {
   // «σήμερα» και «αύριο» διαβάζονται αμέσως· το «0» και το «1» θέλουν μετάφραση.
   if (daysLeft === 0) return { value: null, unit: '', word: 'σήμερα', overdue: false };
   if (daysLeft === 1) return { value: null, unit: '', word: 'αύριο', overdue: false };
-  return { value: daysLeft, unit: daysLeft === 1 ? 'ημέρα' : 'ημέρες', word: null, overdue: false };
+  // «ΑΚΟΜΗ», ΟΠΩΣ ΤΟ ΕΚΠΡΟΘΕΣΜΟ ΛΕΕΙ «ΠΙΣΩ» (αξιολόγηση 2, Μ11). Σκέτο «7 ημέρες»
+  // δεν έλεγε αν είναι μπροστά ή πίσω· τη διαφορά την έδειχνε μόνο το βάρος.
+  return { value: daysLeft, unit: 'ημέρες ακόμη', word: null, overdue: false };
 }
 
 // ΤΟ ΕΠΕΙΓΟΝ ΧΩΡΙΣ ΗΜΕΡΟΜΗΝΙΑ ΓΡΑΦΕΤΑΙ «ΤΩΡΑ», ΤΑ ΥΠΟΛΟΙΠΑ ΜΕΝΟΥΝ ΚΕΝΑ. Κάθε

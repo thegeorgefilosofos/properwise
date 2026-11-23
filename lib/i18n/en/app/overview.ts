@@ -150,8 +150,6 @@ export const OVERVIEW_EN = {
   agenda: {
     title: 'To-dos',
     late: (n: number) => `${n} overdue`,
-    byPriority: (n: number) => `${n} by priority`,
-    items: (n: number) => `${n} ${n === 1 ? 'item' : 'items'}`,
     none: 'Nothing is pending.',
     noneIncomplete: 'Not all to-dos loaded.',
     incomplete: 'The list may not be complete.',
@@ -160,7 +158,7 @@ export const OVERVIEW_EN = {
     pending: 'pending',
     estimate: 'estimate',
     today: 'today', tomorrow: 'tomorrow', now: 'now',
-    unit: (n: number, late: boolean) => (late ? (n === 1 ? 'day late' : 'days late') : (n === 1 ? 'day' : 'days')),
+    unit: (n: number, late: boolean) => (late ? (n === 1 ? 'day late' : 'days late') : (n === 1 ? 'day left' : 'days left')),
     /** Η κοινή προϋπόθεση των δόσεων του φόρου εισοδήματος (lib/home/agenda.ts, withCondition). */
     incomeCondition: 'Only if your tax return left tax to pay that you didn’t settle in one payment.',
     /** Ενέργειες που δεν είναι καρτέλα του μενού. */

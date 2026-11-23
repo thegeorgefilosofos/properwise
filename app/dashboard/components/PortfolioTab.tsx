@@ -21,7 +21,8 @@ import { T, PageTitle, Badge, Btn, ExportButton, EmptyState, InfoBanner, SecHdr,
 import { statusLabel, BY_KEY, type StatusRow } from '@/lib/property/status';
 import { propertyTypeLabel } from '@/lib/property/types';
 import { yearOccupancy } from '@/lib/clients/reports';
-import { rentIncome, propertyStatus, isLease, yearExpensesOf, YIELD_LABELS } from '@/lib/facts';
+import { rentIncome, propertyStatus, isLease, yearExpensesOf, YIELD_LABELS, UNPAID_LABEL } from '@/lib/facts';
+import { navLabel } from '@/lib/nav/labels';
 import { athensToday } from '@/lib/core/time';
 import { mergeLedger, ledgerTotal, ledgerUnpaid } from '@/lib/expenses/ledger';
 import { portfolioReturns } from '@/lib/market/portfolio';
@@ -75,7 +76,9 @@ interface Row {
   staysUnresolved: number;
   /** Δεδουλευμένα μισθώματα ως σήμερα, από τις καταχωρημένες δόσεις (0 αν δεν υπάρχουν). */
   rentExpected: number;
-  occupancy: number | null; overbooked: boolean; nights: number; pending: number;
+  occupancy: number | null; overbooked: boolean; nights: number;
+  /** Ανεξόφλητες καταχωρήσεις (λογαριασμοί και δαπάνες) και εργασίες που θέλουν προσοχή: δύο μεγέθη, δύο ονόματα. */
+  unpaid: number; tasks: number;
   /** Ο ΠΑΡΟΝΟΜΑΣΤΗΣ της πληρότητας, ώστε το ποσοστό να μπορεί να εξηγηθεί. */
   availableDays: number;
   /** Πόσα ΕΥΡΩ οφείλονται — το πλήθος μόνο του δεν λέει αν χρωστάς 60€ ή 1.800€. */
@@ -85,7 +88,7 @@ interface Row {
   leased: boolean;
 }
 
-type SortKey = 'name' | 'revenue' | 'net' | 'occupancy' | 'pending';
+type SortKey = 'name' | 'revenue' | 'net' | 'occupancy' | 'owed' | 'tasks';
 
 export default function PortfolioTab({ properties, userId, onSelectProperty }: Props) {
   const supabase = createClient();
@@ -352,7 +355,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
       return {
         id: p.id, name: p.name, typeLabel: propertyTypeLabel(p.prop_type) || 'Ακίνητο', mode, statusLabel: declaredStatus,
         revenue, expenses, expensesYear, net: revenue - expenses, revenueEstimated, staysUnresolved, rentExpected,
-        occupancy, overbooked, nights, availableDays: occ.availableDays, pending: unpaid + chkAtt, owed,
+        occupancy, overbooked, nights, availableDays: occ.availableDays, unpaid, tasks: chkAtt, owed,
         value: p.value || 0, annualRevenue, annualExpenses, leased: isLease(fi.status),
       };
     });
@@ -378,7 +381,11 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
 
   const totalRevenue = rows.reduce((s, r) => s + r.revenue, 0);
   const totalExpenses = rows.reduce((s, r) => s + r.expenses, 0);
-  const totalPending = rows.reduce((s, r) => s + r.pending, 0);
+  /** Πόσα ακίνητα έχουν ανεξόφλητο ποσό: για τον διαχειριστή, το πλήθος που κρίνει. */
+  const owingProps = rows.filter(r => r.owed > 0).length;
+  // Η στήλη των εργασιών υπάρχει μόνο όταν έχει περιεχόμενο: διακόσιες παύλες
+  // είναι θόρυβος, όχι πληροφορία.
+  const anyTasks = rows.some(r => r.tasks > 0);
   // Πόσα ευρώ οφείλονται σε ΟΛΟ το χαρτοφυλάκιο — το νούμερο που κρίνει τι κάνεις σήμερα.
   const totalOwed = rows.reduce((s, r) => s + r.owed, 0);
   const shortRows = rows.filter(r => r.occupancy != null);
@@ -543,8 +550,8 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
   const fieldStyle: CSSProperties = { width: '100%', padding: '10px 16px', borderRadius: T.radius.xs, border: '1px solid var(--border-control)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontFamily: T.font.sans, fontSize: 14, outline: 'none' };
 
   const exportCsv = () => {
-    const head = ['Ακίνητο', 'Τύπος', 'Κατάσταση', 'Έσοδα ως σήμερα', 'Βάση εσόδων', 'Δαπάνες ως σήμερα', 'Καθαρό ως σήμερα', 'Πληρότητα %', 'Διαθέσιμες ημέρες', 'Νύχτες', 'Εκκρεμότητες', 'Οφειλές (€)'];
-    const lines: (string | number)[][] = sorted.map(r => [r.name, r.typeLabel, r.statusLabel, r.revenue, revenueBasis(r), r.expenses, r.net, r.occupancy ?? '', r.occupancy != null ? r.availableDays : '', r.nights, r.pending, r.owed]);
+    const head = ['Ακίνητο', 'Τύπος', 'Κατάσταση', 'Έσοδα ως σήμερα', 'Βάση εσόδων', 'Δαπάνες ως σήμερα', 'Καθαρό ως σήμερα', 'Πληρότητα %', 'Διαθέσιμες ημέρες', 'Νύχτες', UNPAID_LABEL, `${UNPAID_LABEL} (€)`, navLabel('checklist')];
+    const lines: (string | number)[][] = sorted.map(r => [r.name, r.typeLabel, r.statusLabel, r.revenue, revenueBasis(r), r.expenses, r.net, r.occupancy ?? '', r.occupancy != null ? r.availableDays : '', r.nights, r.unpaid, r.owed, r.tasks]);
     downloadTableXlsx(`Χαρτοφυλάκιο ${year}`, {
       title: 'Χαρτοφυλάκιο', subject: String(year), headers: head, rows: lines,
     });
@@ -572,7 +579,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
           πλάτους: 150 εικονοστοιχεία κουμπιών πριν από τον πρώτο αριθμό. Οι
           δύο σπάνιες (καταστάσεις ιδιοκτήτη, Excel) μπαίνουν στο «Περισσότερα»,
           όπως στις Επαφές· η είσπραξη μένει η μία μπλε ενέργεια. */}
-      <PageTitle title="Χαρτοφυλάκιο" sub={`${properties.length} ${properties.length === 1 ? 'ακίνητο' : 'ακίνητα'} · έσοδα και εκκρεμότητες ${year}`}
+      <PageTitle title="Χαρτοφυλάκιο" sub={`${properties.length} ${properties.length === 1 ? 'ακίνητο' : 'ακίνητα'} · ${year}`}
         right={<>
           <ActionMenu label="Περισσότερα" items={[
             { key: 'statements', label: 'Καταστάσεις ιδιοκτήτη', description: 'Έσοδα, δαπάνες και καθαρό ανά ιδιοκτήτη, σε PDF ή Excel.', icon: <FileText size={15} aria-hidden="true" />, onClick: openStatements },
@@ -636,12 +643,14 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
               <span className="pf-sum-line"><span className="tn-sum-val">{fp(avgOcc)}</span><small className="pf-sum-note pf-opt">{`μέση, ${shortRows.length} βραχυχρόνια`}</small></span>
             </div>
           )}
-          {/* ΤΟ ΠΛΗΘΟΣ ΕΙΝΑΙ Ο ΑΡΙΘΜΟΣ, ΤΟ ΠΟΣΟ Η ΕΞΗΓΗΣΗ: «14 · 756,00€» σε ένα
-              κελί ήταν δύο γεγονότα κολλημένα με μια τελεία. */}
+          {/* ΑΝΕΞΟΦΛΗΤΕΣ, ΟΧΙ «ΕΚΚΡΕΜΟΤΗΤΕΣ» (αξιολόγηση 2, Υ1). Η λέξη είναι το όνομα
+              της καρτέλας των εργασιών· εδώ μετρούσε κυρίως απλήρωτους λογαριασμούς
+              («934 · 68.400,00€ ανοιχτά»). Το ποσό είναι ο αριθμός, γιατί αυτό κρίνει
+              τι κάνεις σήμερα· από κάτω, σε πόσα ακίνητα. */}
           <div className="tn-sum-row" data-tone={totalOwed > 0 ? 'warning' : undefined}>
             <span className="tn-sum-ico"><ListTodo size={15} aria-hidden="true" /></span>
-            <span className="tn-sum-name">Εκκρεμότητες</span>
-            <span className="pf-sum-line"><span className="tn-sum-val">{totalPending}</span><small className={'pf-sum-note' + (totalOwed > 0 ? '' : ' pf-opt')}>{totalOwed > 0 ? <>{eur(totalOwed)}<span className="pf-sum-more"> ανοιχτά</span></> : 'κανένα ανοιχτό ποσό'}</small></span>
+            <span className="tn-sum-name">{UNPAID_LABEL}</span>
+            <span className="pf-sum-line"><span className="tn-sum-val">{eur(totalOwed)}</span><small className={'pf-sum-note' + (totalOwed > 0 ? '' : ' pf-opt')}>{totalOwed > 0 ? `σε ${owingProps} ${owingProps === 1 ? 'ακίνητο' : 'ακίνητα'}` : 'κανένα ανοιχτό ποσό'}</small></span>
           </div>
         </div>
       </section>
@@ -710,7 +719,8 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
                 <Th label="Δαπάνες" align="right" />
                 <Th label="Καθαρό" k="net" sort={sort} asc={asc} onSort={toggleSort} />
                 <Th label="Πληρότητα" k="occupancy" sort={sort} asc={asc} onSort={toggleSort} />
-                <Th label="Εκκρεμότητες" k="pending" sort={sort} asc={asc} onSort={toggleSort} />
+                <Th label={UNPAID_LABEL} k="owed" sort={sort} asc={asc} onSort={toggleSort} />
+                {anyTasks && <Th label={navLabel('checklist')} k="tasks" sort={sort} asc={asc} onSort={toggleSort} />}
                 <th style={{ width: 40 }} />
               </tr>
             </thead>
@@ -742,20 +752,26 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
                     ? <Num v={fp(r.occupancy)} title={occupancyTitle(r)} fact={{ name: 'occ-year', property: r.id }} />
                     : <td style={{ padding: '13px 14px', textAlign: 'right', fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>{r.mode === 'short' ? ABSENT_SHORT : 'Δεν ισχύει'}</td>}
                   <td style={{ padding: '13px 14px', textAlign: 'right' }}>
-                    {r.pending > 0
+                    {r.owed > 0
                       ? (
                         // ΤΟ ΠΛΗΘΟΣ ΚΑΙ ΤΟ ΠΟΣΟ ΜΑΖΙ. Το σκέτο «3» δεν λέει αν το
-                        // ακίνητο χρωστά 60€ ή 1.800€ — και αυτή είναι όλη η
-                        // διαφορά στο τι θα κάνει ο ιδιοκτήτης σήμερα το πρωί.
+                        // ακίνητο χρωστά 60€ ή 1.800€: αυτή είναι όλη η διαφορά
+                        // στο τι θα κάνει ο ιδιοκτήτης σήμερα το πρωί.
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}
-                              title={r.owed > 0 ? `${r.pending} εκκρεμή, από τα οποία ${fe(r.owed)} σε απλήρωτους λογαριασμούς` : `${r.pending} εκκρεμή`}>
-                          {/* Τόνος προσοχής μόνο όταν υπάρχει ανοιχτό ποσό (.pf-pending). */}
-                          <span className="pf-pending" data-tone={r.owed > 0 ? 'warning' : undefined}>{r.pending}</span>
-                          {r.owed > 0 && <span style={{ fontFamily: T.font.num, fontSize: 12, color: 'var(--warning-on-container)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fe(r.owed)}</span>}
+                              title={`${r.unpaid} ${r.unpaid === 1 ? 'ανεξόφλητη' : 'ανεξόφλητες'}, ${fe(r.owed)}`}>
+                          <span className="pf-pending" data-tone="warning">{r.unpaid}</span>
+                          <span style={{ fontFamily: T.font.num, fontSize: 12, color: 'var(--warning-on-container)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fe(r.owed)}</span>
                         </span>
                       )
                       : <span style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-tertiary)' }}>Καμία</span>}
                   </td>
+                  {anyTasks && (
+                    <td style={{ padding: '13px 14px', textAlign: 'right' }}>
+                      {r.tasks > 0
+                        ? <span className="pf-pending" title={`${r.tasks} ${r.tasks === 1 ? 'εκκρεμότητα' : 'εκκρεμότητες'} με προθεσμία που πέρασε ή κρίσιμη`}>{r.tasks}</span>
+                        : <span style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-tertiary)' }}>Καμία</span>}
+                    </td>
+                  )}
                   <td style={{ padding: '13px 14px', textAlign: 'right' }}>
                     <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
                   </td>
@@ -784,17 +800,23 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
               { label: 'Καθαρό', value: eur(r.net), strong: true },
             ]} />
             {/* ΟΙ ΔΥΟ ΣΤΗΛΕΣ ΠΟΥ ΕΛΕΙΠΑΝ ΑΠΟ ΤΗΝ ΚΑΡΤΑ. Ο πίνακας του υπολογιστή
-                έχει «Εκκρεμότητες» και «Πληρότητα»· στο τηλέφωνο η κάρτα έδειχνε
+                έχει «Ανεξόφλητες» και «Πληρότητα»· στο τηλέφωνο η κάρτα έδειχνε
                 μόνο τα τρία ποσά και τίποτα δεν έλεγε ότι πατιέται. */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, ...TT.caption }}>
               <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                {r.pending > 0
-                  ? <span className="pf-pending-chip" data-tone={r.owed > 0 ? 'warning' : undefined}
-                      title={`${r.pending} ${r.pending === 1 ? 'εκκρεμότητα' : 'εκκρεμότητες'}${r.owed > 0 ? `, ${eur(r.owed)} ανοιχτά` : ''}`}>
-                      <ListTodo size={13} aria-hidden="true" />
-                      {`${r.pending}${r.owed > 0 ? ` · ${eur(r.owed)}` : ''}`}
-                    </span>
-                  : <span>Καμία εκκρεμότητα</span>}
+                {r.owed > 0 && (
+                  <span className="pf-pending-chip" data-tone="warning" title={`${r.unpaid} ${r.unpaid === 1 ? 'ανεξόφλητη' : 'ανεξόφλητες'}, ${eur(r.owed)}`}>
+                    <Receipt size={13} aria-hidden="true" />
+                    {`${eur(r.owed)} ${UNPAID_LABEL.toLowerCase()}`}
+                  </span>
+                )}
+                {r.tasks > 0 && (
+                  <span className="pf-pending-chip">
+                    <ListTodo size={13} aria-hidden="true" />
+                    {`${r.tasks} ${r.tasks === 1 ? 'εκκρεμότητα' : 'εκκρεμότητες'}`}
+                  </span>
+                )}
+                {r.owed <= 0 && r.tasks === 0 && <span>Τίποτα ανοιχτό</span>}
                 {r.occupancy != null && <span>{`Πληρότητα ${fp(r.occupancy)}`}</span>}
               </span>
               <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6" /></svg>

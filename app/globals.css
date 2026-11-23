@@ -1480,6 +1480,11 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
    θέλουμε: «40px ήρωας, που μικραίνει μόνο όταν δεν χωράει». */
 .cash-hero { container-type: inline-size; }
 .cash-figure { font-size: clamp(26px, 8cqi, 40px); }
+/* ΜΟΝΗ ΠΛΕΥΡΑ: ΜΙΑ ΣΕΙΡΑ, ΤΟ ΠΟΣΟ ΔΕΞΙΑ, ΣΕ ΜΕΓΕΘΟΣ ΔΕΥΤΕΡΕΥΟΝΤΟΣ (αξιολόγηση 2, Μ13).
+   Ο ήρωας της οθόνης είναι το καθαρό της κορυφής· εδώ ήταν δεύτερο 40άρι. */
+.cash-btn--solo > .cash-label { grid-column: 1; grid-row: 1; }
+.cash-btn--solo > .cash-note { grid-column: 1; grid-row: 2; }
+.cash-btn--solo > .cash-figure { grid-column: 2; grid-row: 1 / span 2; font-size: 22px; text-align: right; }
 /* ΟΙ ΔΥΟ ΠΛΕΥΡΕΣ: «Σου οφείλουν» και «Οφείλεις», ίδια δομή, ίδια θέση.
    Μία στήλη στο στενό, δύο ίσες με κάθετο διαχωριστή όταν η ΚΑΡΤΑ (όχι η
    οθόνη) έχει πλάτος. Ηταν flex με τύλιγμα και media query στα 560: η
@@ -3175,11 +3180,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
    ολόκληρη τη σειρά. Στις τρεις στήλες ο κανόνας ΔΕΝ ισχύει: δύο στοιχεία στην
    τελευταία σειρά είναι σειρά που τελείωσε.
    Τα σπασίματα αναπαράγουν ακριβώς όσα έβγαζε το `auto-fit` με ελάχιστο 230. */
-.prop-facts { display: grid; column-gap: 28px; grid-template-columns: minmax(0, 1fr); }
-@media (min-width: 700px) { .prop-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (min-width: 900px) { .prop-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (min-width: 700px) and (max-width: 899px) {
-  .prop-facts > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+/* ΔΥΟ ΣΤΗΛΕΣ ΑΠΟ ΤΟ ΤΗΛΕΦΩΝΟ (αξιολόγηση 2, Χ4): οι τιμές είναι μιας λέξης και η
+   μία στήλη έδινε έντεκα σειρές. Η διεύθυνση (`data-wide`) και το μονό τελευταίο
+   (`data-orphan`, το σημαδεύει το OverviewTab) απλώνονται όσο οι στήλες είναι δύο. */
+.prop-facts { display: grid; column-gap: 20px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 900px) { .prop-facts { column-gap: 28px; grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 899px) {
+  .prop-facts > [data-wide], .prop-facts > [data-orphan] { grid-column: 1 / -1; }
 }
 @media (hover: hover) {
   .cl-ch:hover .cl-ch-fill { background: var(--accent); }
@@ -9300,6 +9307,12 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
   .ov-year .tn-sum-rows { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .ov-year .tn-sum-rows[data-n="2"], .ov-year .tn-sum-rows[data-n="4"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ov-year .tn-sum-rows[data-n="1"] { grid-template-columns: minmax(0, 1fr); }
+  /* ΧΩΡΙΣ ΗΡΩΑ (αξιολόγηση 2, Υ2): το καθαρό είναι ήδη ο αριθμός της κεφαλίδας.
+     Μία ζώνη, τέσσερα κελιά ανά σειρά, ώστε η αλυσίδα έσοδα, δαπάνες, φόρος,
+     καθαρό να διαβάζεται σε μία γραμμή· με πέντε, έξι ή εννιά κελιά, τρία. */
+  .ov-year[data-flat] { grid-template-columns: minmax(0, 1fr); }
+  .ov-year[data-flat] .tn-sum-rows { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ov-year[data-flat] .tn-sum-rows:is([data-n="3"], [data-n="5"], [data-n="6"], [data-n="9"]) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 /* ═══ .cash-btn · ΤΟ ΤΑΜΕΙΟ ΤΗΣ ΕΠΙΣΚΟΠΗΣΗΣ (CashHero) ═════════════════════════
