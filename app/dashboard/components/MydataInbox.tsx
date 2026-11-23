@@ -223,7 +223,7 @@ export default function MydataInbox({ propertyId, userId, properties = [], onFil
                 )}
                 <Btn variant="ghost" onClick={() => void dismiss(d)} disabled={busyHere}>Δεν αφορά ακίνητο</Btn>
               </div>
-              <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 6 }}>
+              <div className="act-row" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', borderTop: '1px solid var(--border-subtle)' }}>
                 <Btn variant="ghost" onClick={() => void ignore(d)} disabled={busyHere}>Πάντα αγνόησε αυτόν τον πάροχο</Btn>
               </div>
             </div>

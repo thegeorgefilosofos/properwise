@@ -1243,7 +1243,7 @@ body {
 /* Α2: τα «Από το myDATA» σε δύο σειρές, χωρίς αποσιώπηση. Ο πάροχος και το ποσό
    στην πρώτη, ο τύπος με την ημερομηνία στη δεύτερη: τίποτα δεν κόβεται στα 360,
    γιατί το όνομα του παρόχου είναι αυτό που ψάχνει ο χρήστης. */
-.inbound-row.md-row-2 { flex-wrap: wrap; row-gap: 2px; }
+.inbound-row.md-row-2 { flex-wrap: wrap; }
 .inbound-row.md-row-2 > .md-row-who { flex: 1 1 0; min-width: 0; overflow-wrap: anywhere; }
 .inbound-row.md-row-2 > .md-row-what { flex: 1 1 100%; min-width: 0; }
 
