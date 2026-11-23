@@ -32,6 +32,8 @@ import {
   parseRequestedDoc, toInboxDoc, classifyHttp, retryDelayMs, requestDocsUrl, aadeHeaders,
   athensIso, maxMark, safeErrorCode, type ContinuationToken, type ErrorCode, type ParseError, type InvalidDoc,
 } from './mydata.ts'
+import { classifyDoc, type ClassifyRules, type ProviderHistory, type Reason } from './mydataClassify.ts'
+import { KIND_CATEGORY, providerByAfm } from '../../../lib/mydata/providers.ts'
 
 export type SyncKind = 'manual' | 'auto' | 'nightly' | 'retry'
 
@@ -74,6 +76,20 @@ export interface IngestDoc {
   is_credit: boolean
   cancelled: boolean
   cancellation_mark: string | null
+  /**
+   * Α2. `auto`: η βάση το καταχωρεί χωρίς πάτημα, αν ο πελάτης έχει ΕΝΑ ακίνητο
+   * (αλλιώς το κρατά για έλεγχο με `pick_property`). `review`: περιμένει τον
+   * χρήστη με την κατηγορία προσυμπληρωμένη. Οι απορρίψεις δεν φτάνουν εδώ.
+   */
+  tier: 'auto' | 'review'
+  /** slug της ταξινομίας, ή null. */
+  category: string | null
+  /** Η ετικέτα και η ομάδα της κατηγορίας, μόνο για το `auto` (η δαπάνη γράφεται στη βάση). */
+  category_label: string | null
+  expense_group: string | null
+  /** Το όνομα του παρόχου από το μητρώο, για το «Πάροχος» της δαπάνης. */
+  vendor: string | null
+  reasons: Reason[]
 }
 
 export interface IngestInput {
@@ -82,6 +98,8 @@ export interface IngestInput {
   docs: IngestDoc[]
   cancels: { invoice_mark: string; cancellation_mark: string }[]
   quarantine: InvalidDoc[]
+  /** Α2: πόσα δεν αφορούν ακίνητα. Μόνο το πλήθος· τίποτα άλλο δεν αποθηκεύεται. */
+  rejected: number
   /** Πόσα ήρθαν από την ΑΑΔΕ σε αυτή τη σελίδα (για το αρχείο πρόσβασης). */
   fetched: number
   /** null: ο ΜΑΡΚ δεν προχωρά. */
@@ -102,6 +120,12 @@ export interface Store {
   end(accountantId: string, lease: string, error: ErrorCode | null, added: number): Promise<void>
   /** Νέα προσπάθεια σε ένα λεπτό για όσους δεν πρόλαβαν (null: όλοι του λογιστή). */
   defer(accountantId: string, consentIds: string[] | null): Promise<void>
+  /**
+   * Α2: τα επιβεβαιωμένα παραστατικά του πελάτη ανά ΑΦΜ εκδότη (πλήθος, μέσος
+   * όρος, τελευταία κατηγορία). Χωρίς αυτό κανείς δεν είναι «γνωστός» και όλα
+   * πάνε για έλεγχο: η έλλειψη δεν χαλαρώνει τίποτα.
+   */
+  providerStats?(lease: string, consentId: string): Promise<Record<string, ProviderHistory>>
 }
 
 export interface EngineDeps {
@@ -115,6 +139,8 @@ export interface EngineDeps {
   /** Σφάλμα σχήματος: η ΑΑΔΕ άλλαξε κάτι. Ποτέ με σώμα απάντησης ή ΑΦΜ. */
   alert?: (code: ParseError | 'invalid_invoice', aadeCodes: string[]) => void
   rand?: () => number
+  /** Για δοκιμές: λίστα «δεν αφορά ακίνητα» άλλη από του αποθετηρίου. */
+  classifyRules?: ClassifyRules
 }
 
 /** Πόσες προσπάθειες για 429 / 5xx / κενό σώμα / δίκτυο. */
@@ -216,6 +242,9 @@ export async function runAccountant(d: EngineDeps, accountantId: string, kind: S
       let quarantined = false
       let next: ContinuationToken | null = t.resume ? { partitionKey: t.resume.partitionKey, rowKey: t.resume.rowKey } : null
       try {
+        // Α2: το ιστορικό μία φορά ανά πελάτη. Μέσα στο ίδιο τρέξιμο ένας νέος
+        // πάροχος μένει νέος για όλα του τα παραστατικά (πιο αυστηρό, όχι πιο χαλαρό).
+        const history = d.store.providerStats ? await d.store.providerStats(lease, t.consentId) : {}
         for (let page = 0; ; page++) {
           if (page >= MAX_PAGES || Date.now() > d.deadline - RESERVE_MS) { more = true; out.partial = true; break }
           // Η ΣΥΝΑΙΝΕΣΗ, ΠΡΙΝ ΑΠΟ ΚΑΘΕ ΣΕΛΙΔΑ.
@@ -239,14 +268,25 @@ export async function runAccountant(d: EngineDeps, accountantId: string, kind: S
             break
           }
           const docs: IngestDoc[] = []
+          let rejected = 0
           for (const inv of parsed.invoices) {
             const m = toInboxDoc(inv, t.afm)
             if (m.kind !== 'doc') continue
+            const v = classifyDoc({
+              counterpartAfm: m.counterpartAfm, docType: m.docType, netCents: m.netCents, vatCents: m.vatCents,
+              grossCents: m.grossCents, credit: m.credit, amountsClose: m.amountsClose,
+            }, history[m.counterpartAfm] ?? null, d.classifyRules)
+            // ΑΠΟΡΡΙΨΗ ΧΩΡΙΣ ΑΠΟΘΗΚΕΥΣΗ: ούτε όνομα ούτε ποσό φεύγουν προς τη βάση.
+            if (v.tier === 'reject') { rejected++; continue }
+            const cat = v.tier === 'auto' && v.kind ? KIND_CATEGORY[v.kind] : null
             docs.push({
               mark: m.mark, counterpart_afm: m.counterpartAfm, counterpart_name: m.counterpartName,
               doc_type: m.docType, series: m.series, aa: m.aa, issue_date: m.issueDate, title: m.title,
               net_cents: m.netCents, vat_cents: m.vatCents, gross_cents: m.grossCents,
               is_credit: m.credit, cancelled: m.cancelled, cancellation_mark: m.cancellationMark,
+              tier: cat ? 'auto' : 'review', category: v.category,
+              category_label: cat?.label ?? null, expense_group: cat?.group ?? null,
+              vendor: providerByAfm(m.counterpartAfm)?.name ?? null, reasons: v.reasons,
             })
           }
           // Ο ΜΑΡΚ μετρά ΚΑΙ όσα δεν έγιναν δαπάνη: αλλιώς θα ζητιούνταν ξανά κάθε φορά.
@@ -266,6 +306,7 @@ export async function runAccountant(d: EngineDeps, accountantId: string, kind: S
             lease, consentId: t.consentId, docs,
             cancels: parsed.cancellations.map(c => ({ invoice_mark: c.invoiceMark, cancellation_mark: c.cancellationMark })),
             quarantine: parsed.quarantine,
+            rejected,
             fetched: parsed.invoices.length + parsed.cancellations.length + parsed.quarantine.length,
             maxMark: allowed,
             resume: done ? null : {

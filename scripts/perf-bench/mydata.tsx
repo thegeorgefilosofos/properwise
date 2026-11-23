@@ -3,7 +3,9 @@
 // ─────────────────────────────────────────────────────────────────────────
 // Η κάρτα του λογιστή (app/accountant/workspace/MydataCard.tsx) σε πέντε όψεις,
 // η γραμμή του πελάτη στον Λογαριασμό (MydataConsent.tsx) σε τρεις και τα
-// Εισερχόμενα «Από το myDATA» (MydataInbox.tsx). Οι σαρωτές διάταξης, κάθετου
+// Εισερχόμενα «Από το myDATA» (MydataInbox.tsx) με τα επίπεδα του Α2: για
+// έλεγχο (νέος πάροχος, άγνωστος, πιστωτικό, πάνω από το όριο), μπήκαν μόνα
+// τους, δύο ακίνητα. Οι σαρωτές διάταξης, κάθετου
 // ρυθμού και Νόας τις περνούν όπως κάθε άλλη σκηνή (scripts/lib/scenes.mjs).
 //
 // Τα ονόματα είναι πλασματικά, όπως σε κάθε σκηνή του πάγκου. Οι ώρες της
@@ -18,6 +20,7 @@ import { SetList } from '@/app/dashboard/components/SettingsKit';
 import { Card } from '@/components/Theme';
 import { portalWrap } from '@/app/accountant/Chrome';
 import { createClient } from '@/lib/supabase/client';
+import { PROVIDERS } from '@/lib/mydata/providers';
 
 const SYNCED = '2026-11-23T01:10:00Z';
 const LEASE = new Date(Date.now() - 60_000).toISOString();
@@ -70,11 +73,28 @@ const LOG = [
   { at: '2026-11-20T09:00:00Z', action: 'consent_granted', n: null },
 ];
 
+// Α2: τα επίπεδα. Οι πάροχοι του μητρώου (lib/mydata/providers.ts) φαίνονται με
+// το όνομά τους· ο άγνωστος με την επωνυμία του, ή «ΑΦΜ …» όταν δεν τη στέλνει.
+const POWER = PROVIDERS.find(p => p.kind === 'electricity')!;
+const WATER = PROVIDERS.find(p => p.kind === 'water')!;
+const PHONE = PROVIDERS.find(p => p.kind === 'telecom')!;
 const DOCS = [
-  { id: 'd1', mark: 400001000000101, counterpart_afm: '099000037', counterpart_name: 'Ηλεκτρική Ενέργεια & Δίκτυα Α.Ε.', doc_type: '2.1', issue_date: '2026-11-02', title: 'Τιμολόγιο Παροχής Υπηρεσιών Α 101', net_cents: 10000, vat_cents: 2400, gross_cents: 12400, is_credit: false },
-  { id: 'd2', mark: 400001000000102, counterpart_afm: '099000049', counterpart_name: null, doc_type: '1.1', issue_date: '2026-11-15', title: 'Τιμολόγιο Πώλησης ΤΠΥ 7', net_cents: 7137, vat_cents: 1713, gross_cents: 8850, is_credit: false },
-  { id: 'd3', mark: 400001000000110, counterpart_afm: '099000037', counterpart_name: 'Ηλεκτρική Ενέργεια & Δίκτυα Α.Ε.', doc_type: '5.1', issue_date: '2026-11-20', title: 'Πιστωτικό Τιμολόγιο ΠΙΣ 3', net_cents: 1000, vat_cents: 240, gross_cents: 1240, is_credit: true },
-  { id: 'd4', mark: 400001000000120, counterpart_afm: '990000014', counterpart_name: 'Ύδρευση Δήμου Παραδείγματος', doc_type: '11.2', issue_date: '2026-10-28', title: 'Απόδειξη Παροχής Υπηρεσιών Β 55', net_cents: 123450, vat_cents: 0, gross_cents: 123450, is_credit: false },
+  { id: 'd1', mark: 400001000000101, counterpart_afm: POWER.afm, counterpart_name: null, doc_type: '2.1', issue_date: '2026-11-02', title: 'Τιμολόγιο Παροχής Υπηρεσιών Α 101', net_cents: 10000, vat_cents: 2400, gross_cents: 12400, is_credit: false,
+    tier: 'review', category: 'electricity', review_reasons: ['new_provider'] },
+  { id: 'd2', mark: 400001000000102, counterpart_afm: '099000049', counterpart_name: 'Υδραυλικές Εργασίες Παραδείγματος', doc_type: '1.1', issue_date: '2026-11-15', title: 'Τιμολόγιο Πώλησης ΤΠΥ 7', net_cents: 7137, vat_cents: 1713, gross_cents: 8850, is_credit: false,
+    tier: 'review', category: 'plumber', review_reasons: ['unknown_provider'] },
+  { id: 'd3', mark: 400001000000110, counterpart_afm: POWER.afm, counterpart_name: null, doc_type: '5.1', issue_date: '2026-11-20', title: 'Πιστωτικό Τιμολόγιο ΠΙΣ 3', net_cents: 1000, vat_cents: 240, gross_cents: 1240, is_credit: true,
+    tier: 'review', category: 'electricity', review_reasons: ['credit', 'doc_type'] },
+  { id: 'd4', mark: 400001000000120, counterpart_afm: WATER.afm, counterpart_name: null, doc_type: '11.2', issue_date: '2026-10-28', title: 'Απόδειξη Παροχής Υπηρεσιών Β 55', net_cents: 123450, vat_cents: 0, gross_cents: 123450, is_credit: false,
+    tier: 'review', category: 'water', review_reasons: ['over_limit'] },
+  { id: 'd5', mark: 400001000000121, counterpart_afm: '099000061', counterpart_name: null, doc_type: '11.1', issue_date: '2026-11-21', title: 'Απόδειξη Λιανικής Γ 9', net_cents: 2016, vat_cents: 484, gross_cents: 2500, is_credit: false,
+    tier: 'review', category: null, review_reasons: ['new_provider', 'unknown_provider'] },
+];
+
+const AUTO = [
+  { id: 'u1', mark: 400001000000090, counterpart_afm: POWER.afm, counterpart_name: null, doc_type: '2.1', issue_date: '2026-10-02', title: 'Τιμολόγιο Παροχής Υπηρεσιών Α 90', net_cents: 7137, vat_cents: 1713, gross_cents: 8850, is_credit: false, tier: 'auto', category: 'electricity', review_reasons: [] },
+  { id: 'u2', mark: 400001000000091, counterpart_afm: WATER.afm, counterpart_name: null, doc_type: '11.2', issue_date: '2026-10-05', title: 'Απόδειξη Παροχής Υπηρεσιών Β 41', net_cents: 3120, vat_cents: 0, gross_cents: 3120, is_credit: false, tier: 'auto', category: 'water', review_reasons: [] },
+  { id: 'u3', mark: 400001000000092, counterpart_afm: PHONE.afm, counterpart_name: null, doc_type: '2.1', issue_date: '2026-10-10', title: 'Τιμολόγιο Παροχής Υπηρεσιών Τ 7', net_cents: 2419, vat_cents: 581, gross_cents: 3000, is_credit: false, tier: 'auto', category: 'internet', review_reasons: [] },
 ];
 
 const ATTENTION = [
@@ -88,7 +108,10 @@ export function mydataRespond(which: string, table: string, filters: Array<[stri
   if (table === 'mydata_access_log') return { data: which === 'mydataConsentNone' ? [] : LOG, error: null };
   // Η ακύρωση αφού καταχωρήθηκε: δική της σκηνή, χωρίς εκκρεμή από κάτω.
   if (table === 'mydata_docs' && filters.some(f => f[1] === 'needs_attention')) return { data: which === 'mydataInboxCancelled' ? ATTENTION : [], error: null };
-  if (table === 'mydata_docs') return { data: which === 'mydataInbox' ? DOCS : [], error: null };
+  // Α2: ό,τι μπήκε μόνο του και το πλήθος όσων δεν αφορούσαν ακίνητα.
+  if (table === 'mydata_docs' && filters.some(f => f[1] === 'filed_by')) return { data: which === 'mydataInbox' || which === 'mydataInboxAuto' ? AUTO : [], error: null };
+  if (table === 'mydata_consents') return { data: which.startsWith('mydataInbox') ? { not_property: 4 } : null, error: null };
+  if (table === 'mydata_docs') return { data: which === 'mydataInbox' || which === 'mydataInboxTwo' ? DOCS : [], error: null };
   return undefined;
 }
 
@@ -125,5 +148,9 @@ export const MYDATA_VIEWS: Record<string, () => React.ReactElement> = {
   mydataConsentDenied: consent,
   mydataConsentPaused: consent,
   mydataInboxCancelled: () => <MydataInbox propertyId="p0" userId="u1" />,
-  mydataInbox: () => <MydataInbox propertyId="p0" userId="u1" properties={[{ id: 'p0', name: 'Διαμέρισμα Παραδείγματος' }, { id: 'p1', name: 'Στούντιο στο κέντρο' }]} />,
+  mydataInbox: () => <MydataInbox propertyId="p0" userId="u1" />,
+  // Α2: δύο ακίνητα, άρα και επιλογή ακινήτου στην κάρτα.
+  mydataInboxTwo: () => <MydataInbox propertyId="p0" userId="u1" properties={[{ id: 'p0', name: 'Διαμέρισμα Παραδείγματος' }, { id: 'p1', name: 'Στούντιο στο κέντρο' }]} />,
+  // Α2: όλα μπήκαν μόνα τους· τίποτα για έλεγχο.
+  mydataInboxAuto: () => <MydataInbox propertyId="p0" userId="u1" />,
 };

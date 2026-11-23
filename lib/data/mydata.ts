@@ -111,11 +111,14 @@ export async function accessLog(db: Db, clientId: string, limit = 8): Promise<{ 
 
 // ── Τα Εισερχόμενα: «Για έλεγχο» ──────────────────────────────────────────
 
-export const DOC_COLUMNS = 'id,mark,counterpart_afm,counterpart_name,doc_type,issue_date,title,net_cents,vat_cents,gross_cents,is_credit';
+export const DOC_COLUMNS = 'id,mark,counterpart_afm,counterpart_name,doc_type,issue_date,title,net_cents,vat_cents,gross_cents,is_credit,tier,category,review_reasons';
 // Το `id` έχει προεπιλογή στη βάση, άρα ο παραγόμενος τύπος το δηλώνει κενό·
 // σε γραμμή που διαβάστηκε υπάρχει πάντα.
+// Α2: `tier`, `category` (προσυμπληρωμένη) και `review_reasons` (κωδικοί) τα
+// γράφει ο συγχρονισμός· σε παλιές γραμμές είναι κενά.
 export type PendingDoc = { id: string } & Pick<MydataDocsRow,
-  'mark' | 'counterpart_afm' | 'counterpart_name' | 'doc_type' | 'issue_date' | 'title' | 'net_cents' | 'vat_cents' | 'gross_cents' | 'is_credit'>;
+  'mark' | 'counterpart_afm' | 'counterpart_name' | 'doc_type' | 'issue_date' | 'title' | 'net_cents' | 'vat_cents' | 'gross_cents' | 'is_credit'>
+  & Partial<Pick<MydataDocsRow, 'tier' | 'category' | 'review_reasons'>>;
 
 export async function pendingDocs(db: Db, clientId: string, limit = 50): Promise<{ rows: PendingDoc[]; error: DbError | null }> {
   const { data, error } = await db.from('mydata_docs').select(DOC_COLUMNS)
@@ -131,7 +134,12 @@ export const dedupOf = (mark: number | string): string => `mydata:${mark}`;
  * ΦΠΑ από τα λεπτά της βάσης, με πρόσημο για το πιστωτικό. Η οθόνη δεν δίνει
  * ποσό: δίνει μόνο ακίνητο και κατηγορία.
  */
-export function expenseFromDoc(d: PendingDoc, scope: { propertyId: string; userId: string }, category: string, vendorLabel: string) {
+export interface Payment {
+  /** Η απάντηση στο «Πληρώθηκε με τράπεζα ή κάρτα;» (μόνο πάνω από το όριο). */
+  method: 'Ηλεκτρονική πληρωμή' | 'Μετρητά';
+}
+
+export function expenseFromDoc(d: PendingDoc, scope: { propertyId: string; userId: string }, category: string, vendorLabel: string, payment?: Payment) {
   const sign = d.is_credit ? -1 : 1;
   return {
     ...expenseRow(scope, {
@@ -139,7 +147,8 @@ export function expenseFromDoc(d: PendingDoc, scope: { propertyId: string; userI
       amount: (sign * Number(d.gross_cents)) / 100,
       category,
       date: d.issue_date,
-      paid: false,
+      paid: !!payment,
+      payment_method: payment?.method ?? null,
       store_vendor: vendorLabel,
       supplier_afm: /^\d{9}$/.test(d.counterpart_afm) ? d.counterpart_afm : null,
       notes: `myDATA · ΜΑΡΚ ${d.mark}`,
@@ -156,8 +165,11 @@ export interface FileOutcome { expenseId: string | null; error: DbError | null; 
  * δέσιμο, που η βάση το κάνει μόνο αν τα ποσά είναι ακριβώς της ΑΑΔΕ. Αν η
  * δαπάνη υπήρχε ήδη (δεύτερο πάτημα, δεύτερη καρτέλα), δένεται αυτή.
  */
-export async function fileDoc(db: Db, d: PendingDoc, scope: { propertyId: string; userId: string }, category: string, vendorLabel: string): Promise<FileOutcome> {
-  const row = expenseFromDoc(d, scope, category, vendorLabel);
+export async function fileDoc(
+  db: Db, d: PendingDoc, scope: { propertyId: string; userId: string }, category: string, vendorLabel: string,
+  opts: { slug?: string; payment?: Payment } = {},
+): Promise<FileOutcome> {
+  const row = expenseFromDoc(d, scope, category, vendorLabel, opts.payment);
   let expenseId: string | null = null;
   const { data, error } = await addRow(db, row);
   if (error && error.code !== '23505') return { expenseId: null, error: error as DbError, linked: false };
@@ -167,7 +179,8 @@ export async function fileDoc(db: Db, d: PendingDoc, scope: { propertyId: string
     if (found.error || !found.id) return { expenseId: null, error: found.error, linked: false };
     expenseId = found.id;
   }
-  const { data: link, error: linkError } = await db.rpc('mydata_doc_filed', { p_doc: d.id, p_expense: expenseId });
+  // Η κατηγορία (slug) μένει στο παραστατικό: το επόμενο του ίδιου παρόχου έρχεται με αυτήν.
+  const { data: link, error: linkError } = await db.rpc('mydata_doc_filed', { p_doc: d.id, p_expense: expenseId, p_category: opts.slug ?? null });
   const linked = !linkError && (link as { ok?: boolean } | null)?.ok === true;
   return { expenseId, error: (linkError as DbError) ?? null, linked };
 }
@@ -196,4 +209,28 @@ export async function cancelAck(db: Db, docId: string, remove: boolean): Promise
 export async function ignoreProvider(db: Db, counterpartAfm: string): Promise<{ dismissed: number; error: DbError | null }> {
   const { data, error } = await db.rpc('mydata_ignore_provider', { p_afm: counterpartAfm });
   return { dismissed: Number((data as { dismissed?: number } | null)?.dismissed ?? 0), error: error as DbError | null };
+}
+
+// ── Α2: ό,τι μπήκε μόνο του και ό,τι δεν αφορά ακίνητα ───────────────────────
+
+/** Οσα καταχωρήθηκαν χωρίς πάτημα τις τελευταίες `days` ημέρες, πιο πρόσφατα πρώτα. */
+export async function autoDocs(db: Db, clientId: string, days = 30, now: Date = new Date()): Promise<{ rows: PendingDoc[]; error: DbError | null }> {
+  const since = new Date(now.getTime() - days * 86_400_000).toISOString();
+  const { data, error } = await db.from('mydata_docs').select(DOC_COLUMNS)
+    .eq('client_id', clientId).eq('filed_by', 'auto').eq('status', 'filed').gte('decided_at', since)
+    .order('decided_at', { ascending: false }).limit(20);
+  return { rows: (data as PendingDoc[] | null) ?? [], error: error as DbError | null };
+}
+
+/** «Δεν είναι σωστό»: σβήνει μόνο τη δαπάνη του ίδιου ΜΑΡΚ, το παραστατικό ξαναγίνεται «Για έλεγχο». */
+export async function undoAuto(db: Db, docId: string): Promise<{ ok: boolean; error: DbError | null }> {
+  const { data, error } = await db.rpc('mydata_auto_undo', { p_doc: docId });
+  return { ok: !error && (data as { ok?: boolean } | null)?.ok === true, error: error as DbError | null };
+}
+
+/** Πόσα παραστατικά δεν αφορούσαν ακίνητα και δεν κρατήθηκαν (μόνο το πλήθος υπάρχει). */
+export async function notPropertyCount(db: Db, clientId: string): Promise<{ n: number; error: DbError | null }> {
+  const { data, error } = await db.from('mydata_consents').select('not_property')
+    .eq('client_id', clientId).is('revoked_at', null).maybeSingle();
+  return { n: Number((data as { not_property?: number } | null)?.not_property ?? 0), error: error as DbError | null };
 }

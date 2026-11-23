@@ -5,7 +5,7 @@
 // αναζήτηση για 200 πελάτες, όριο «Συγχρονισμός τώρα», έλεγχος μορφής κλειδιού.
 import {
   athensStamp, syncedLine, clientSyncedLine, newCount, centsLabel, rowState, sortRows, filterRows,
-  cardPhase, progressLine, attention, aadeDownLine, manualWaitMinutes, keyShape, runReason, connectReason, LOG_ACTION, type ClientRow, type Connection,
+  cardPhase, progressLine, attention, aadeDownLine, manualWaitMinutes, keyShape, runReason, connectReason, LOG_ACTION, groupRows, type ClientRow, type Connection,
 } from './status';
 
 let pass = 0, fail = 0;
@@ -111,6 +111,31 @@ for (const r of ['busy', 'too_soon', 'key_invalid', 'no_key', 'mfa_required', 'd
 for (const r of ['key_rejected', 'bad_key_shape', 'bad_user', 'no_clients', 'too_many', 'x']) {
   ok(`μήνυμα σύνδεσης με λύση (${r})`, connectReason(r).endsWith('.') && !/—/.test(connectReason(r)));
 }
+
+// ── Α2: στο τηλέφωνο ομάδες ανά κατάσταση, η εξήγηση μία φορά ─────────────
+{
+  const base = (i: number, p: Partial<ClientRow>): ClientRow => ({
+    ownerId: `o${i}`, name: `Πελάτης ${String.fromCharCode(0x391 + (i % 20))}${i}`, consent: true, status: 'ok', lastSyncAt: '2026-11-23T01:10:00Z',
+    lastNew: 1, error: null, nextRetryAt: null, pending: 0, afmConfirmed: true, quarantined: 0, ...p,
+  });
+  const rows = [
+    base(1, {}), base(2, { error: 'quarantine', status: 'error', quarantined: 1 }), base(3, { status: 'paused' }),
+    base(4, { error: 'quarantine', status: 'error', quarantined: 2 }), base(5, {}), base(6, { error: 'quarantine', status: 'error', quarantined: 1 }),
+    base(7, { consent: false, status: null }), base(8, { consent: false, status: null, afmConfirmed: false }),
+  ];
+  const g = groupRows(rows);
+  const check = g.find(x => x.label === 'Θέλει έλεγχο');
+  ok('Α2 ομάδες: «Θέλει έλεγχο» με τρεις', check?.rows.length === 3);
+  ok('Α2 ομάδες: η εξήγηση μία φορά ανά ομάδα', check?.fix === rowState(rows[1]).fix && g.filter(x => x.label === 'Θέλει έλεγχο').length === 1);
+  ok('Α2 ομάδες: «Σε παύση» μία', g.find(x => x.label === 'Σε παύση')?.rows.length === 1);
+  ok('Α2 ομάδες: όσοι θέλουν κάτι πρώτα', g[0].tone === 'warn' && g[g.length - 1].tone !== 'warn');
+  ok('Α2 ομάδες: «Εντάξει» χωρίς εξήγηση', g.find(x => x.label === 'Εντάξει')?.fix === '');
+  ok('Α2 ομάδες: χωρίς άδεια με διαφορετική λύση σε χωριστή ομάδα', g.filter(x => x.label === 'Χωρίς άδεια').length === 2);
+  ok('Α2 ομάδες: κάθε πελάτης ακριβώς μία φορά', g.reduce((s, x) => s + x.rows.length, 0) === rows.length);
+  ok('Α2 ομάδες: αλφαβητικά μέσα στην ομάδα', check!.rows.map(r => r.name).join() === [...check!.rows].sort((a, b) => a.name.localeCompare(b.name, 'el')).map(r => r.name).join());
+  ok('Α2 ομάδες: κενό, κενό', groupRows([]).length === 0);
+}
+ok('Α2 αρχείο: αυτόματη καταχώρηση με λέξεις', !!LOG_ACTION.auto_filed && !!LOG_ACTION.auto_undone && !!LOG_ACTION.not_property);
 
 console.log(`mydata status: ${pass} ✓ · ${fail} ✗`);
 if (fail) process.exit(1);

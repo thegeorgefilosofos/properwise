@@ -9,6 +9,8 @@
 import { startFakeAade, FAKE_USER, FAKE_KEY } from '../../../scripts/mydata-fake/server.mjs'
 import { runAccountant, nextRetryAt, TRANSIENT, type Store, type Target, type SyncKind, type IngestInput } from './mydataEngine.ts'
 import type { ErrorCode, InvalidDoc } from './mydata.ts'
+import { PROVIDERS } from '../../../lib/mydata/providers.ts'
+import { readFileSync } from 'node:fs'
 
 let pass = 0, fail = 0
 const ok = (name: string, cond: boolean) => { if (cond) pass++; else { fail++; console.error('✗ ' + name) } }
@@ -326,6 +328,48 @@ void (async () => {
       const m2 = memoryStore([consent('a', A)])
       await runAccountant(deps(fake.url, m2.store), 'acc1', 'nightly')
       ok('19 M4: το cron δεν έχει πρόσωπο', m2.actors[0] === null)
+    }
+
+    // ── 20. Α2: τρία επίπεδα πριν από τη βάση ───────────────────────────────
+    // Το 101 έρχεται από πάροχο του μητρώου που ο πελάτης έχει επιβεβαιώσει,
+    // το 102 από εκδότη της λίστας «δεν αφορά ακίνητα» (κανόνας της δοκιμής).
+    // Το 110 (πιστωτικό) από άγνωστο εκδότη. Η βάση παίρνει ΜΟΝΟ τα δύο.
+    {
+      const POWER = PROVIDERS.find(p => p.kind === 'electricity')!
+      const DENY = '099000049'
+      const page = readFileSync(new URL('./mydataFixtures/page1.xml', import.meta.url), 'utf8')
+        .replace(/<continuationToken>[\s\S]*?<\/continuationToken>/, '')
+        .replace('<vatNumber>099000037</vatNumber>', `<vatNumber>${POWER.afm}</vatNumber>`)
+      const tiers = await startFakeAade({ plan: { [A]: [page] } })
+      try {
+        const cA = consent('a', A)
+        const m = memoryStore([cA])
+        const stats: Record<string, { n: number; avgCents: number; category?: string | null }> = { [POWER.afm]: { n: 2, avgCents: 11000 } }
+        const asked: string[] = []
+        m.store.providerStats = async (_l, id) => { asked.push(id); return stats }
+        const r = await runAccountant(deps(tiers.url, m.store, { classifyRules: { notProperty: new Set([DENY]) } }), 'acc1', 'manual')
+        const docs = m.ingests.flatMap(i => i.docs)
+        const auto = docs.find(d => d.mark === '400001000000101')
+        ok('20: το τρέξιμο τελειώνει', r.ok)
+        ok('20: το ιστορικό ζητήθηκε μία φορά για τον πελάτη', asked.length === 1 && asked[0] === 'a')
+        ok('20: γνωστός και επιβεβαιωμένος πάροχος: αυτόματα', auto?.tier === 'auto')
+        ok('20: η κατηγορία φτάνει στη βάση με ετικέτα και ομάδα της ταξινομίας', auto?.category === 'electricity' && auto?.category_label === 'Ρεύμα' && auto?.expense_group === 'fixed')
+        ok('20: αυτόματα χωρίς λόγο ελέγχου', Array.isArray(auto?.reasons) && auto!.reasons.length === 0)
+        ok('20: η απόρριψη δεν φτάνει στη βάση', !docs.some(d => d.mark === '400001000000102'))
+        ok('20: μόνο το πλήθος της απόρριψης', m.ingests.reduce((s, i) => s + i.rejected, 0) === 1)
+        ok('20: ο ΜΑΡΚ περνά και πάνω από την απόρριψη', BigInt(cA.lastMark) >= BigInt('400001000000102'))
+        ok('20: κανένα όνομα ή ποσό της απόρριψης στη βάση', !JSON.stringify(m.ingests).includes(DENY))
+      } finally { await tiers.close() }
+      // Χωρίς `providerStats` (παλιά βάση): κανείς δεν είναι «γνωστός», όλα για έλεγχο.
+      const again = await startFakeAade({ plan: { [A]: [page] } })
+      try {
+        const cA = consent('a', A)
+        const m = memoryStore([cA])
+        await runAccountant(deps(again.url, m.store), 'acc1', 'manual')
+        const d = m.ingests.flatMap(i => i.docs).find(x => x.mark === '400001000000101')
+        ok('20: χωρίς ιστορικό: για έλεγχο ως νέος πάροχος', d?.tier === 'review' && d.reasons.includes('new_provider'))
+        ok('20: η κατηγορία προσυμπληρωμένη και στον έλεγχο', d?.category === 'electricity')
+      } finally { await again.close() }
     }
 
     // ── 14. Το δίκτυο κόβεται ───────────────────────────────────────────────

@@ -270,6 +270,11 @@ export interface ParsedInvoice {
   netCents: number
   vatCents: number
   grossCents: number
+  /**
+   * Τα υπόλοιπα πέντε σύνολα, ΜΟΝΟ στη μνήμη: χρειάζονται για τον έλεγχο
+   * «κλείνουν τα ποσά» (Α2) και δεν αποθηκεύονται.
+   */
+  otherCents: { withheld: number; fees: number; stamp: number; otherTaxes: number; deductions: number }
 }
 
 export interface ParsedCancellation { invoiceMark: string; cancellationMark: string; cancellationDate: string }
@@ -379,7 +384,13 @@ function parseInvoice(inv: XNode): ParsedInvoice {
   if (!summary) throw new InvalidInvoice('invoiceSummary')
   // Ολα τα οκτώ σύνολα του InvoiceSummaryType είναι υποχρεωτικά στο σχήμα και
   // ελέγχονται όλα· κρατιούνται μόνο τα τρία που χρειάζεται η δαπάνη.
-  for (const k of ['totalWithheldAmount', 'totalFeesAmount', 'totalStampDutyAmount', 'totalOtherTaxesAmount', 'totalDeductionsAmount']) cents(summary, k)
+  const otherCents = {
+    withheld: cents(summary, 'totalWithheldAmount'),
+    fees: cents(summary, 'totalFeesAmount'),
+    stamp: cents(summary, 'totalStampDutyAmount'),
+    otherTaxes: cents(summary, 'totalOtherTaxesAmount'),
+    deductions: cents(summary, 'totalDeductionsAmount'),
+  }
 
   return {
     mark, cancelledByMark: cbm ?? null,
@@ -390,7 +401,19 @@ function parseInvoice(inv: XNode): ParsedInvoice {
     netCents: cents(summary, 'totalNetValue'),
     vatCents: cents(summary, 'totalVatAmount'),
     grossCents: cents(summary, 'totalGrossValue'),
+    otherCents,
   }
+}
+
+/**
+ * Κλείνουν τα σύνολα; totalGrossValue = καθαρό + ΦΠΑ − παρακρατήσεις + τέλη +
+ * χαρτόσημο + λοιποί φόροι − κρατήσεις (InvoiceSummaryType, v2.0.2). Ακέραια
+ * λεπτά, χωρίς κινητή υποδιαστολή. Δεν αλλάζει κανένα ποσό: μόνο λέει «ναι» ή
+ * «όχι» και το «όχι» στέλνει το παραστατικό για έλεγχο.
+ */
+export function amountsClose(inv: Pick<ParsedInvoice, 'netCents' | 'vatCents' | 'grossCents' | 'otherCents'>): boolean {
+  const o = inv.otherCents
+  return inv.grossCents === inv.netCents + inv.vatCents - o.withheld + o.fees + o.stamp + o.otherTaxes - o.deductions
 }
 
 function parseCancellation(c: XNode): ParsedCancellation {
@@ -495,6 +518,8 @@ export type InboxDoc =
       credit: boolean
       cancelled: boolean
       cancellationMark: string | null
+      /** Α2: τα σύνολα κλείνουν (`amountsClose`). */
+      amountsClose: boolean
     }
 
 /**
@@ -527,6 +552,7 @@ export function toInboxDoc(inv: ParsedInvoice, entityAfm: string): InboxDoc {
     credit: CREDIT_TYPES.has(inv.invoiceType),
     cancelled: inv.cancelledByMark !== null,
     cancellationMark: inv.cancelledByMark,
+    amountsClose: amountsClose(inv),
   }
 }
 

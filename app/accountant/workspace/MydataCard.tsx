@@ -27,7 +27,7 @@ import { confirmDialog } from '@/components/confirmBus';
 import { notify, notifyError } from '@/components/Toast';
 import * as mydata from '@/lib/data/mydata';
 import {
-  cardPhase, syncedLine, progressLine, rowState, sortRows, filterRows, attention, manualWaitMinutes, keyShape,
+  cardPhase, syncedLine, progressLine, rowState, sortRows, filterRows, attention, manualWaitMinutes, keyShape, groupRows,
   runReason, connectReason, athensStamp, aadeDownLine, newCount, type ClientRow, type Connection, type SortKey,
 } from '@/lib/mydata/status';
 import { shouldAutoSync } from '@/lib/mydata/autoSync';
@@ -161,6 +161,7 @@ export default function MydataCard({ db, userId }: { db: SupabaseClient; userId:
   const consented = rows.filter(r => r.consent).length;
   const shown = useMemo(() => sortRows(filterRows(rows, find), sort), [rows, find, sort]);
   const issues = attention(rows);
+  const groups = useMemo(() => groupRows(shown), [shown]);
   // Η ΑΑΔΕ εκτός για όλους: η ώρα λέγεται μία φορά, στη γραμμή κατάστασης, όχι σε κάθε γραμμή.
   const allDown = aadeDownLine(rows) !== null;
 
@@ -173,6 +174,32 @@ export default function MydataCard({ db, userId }: { db: SupabaseClient; userId:
       ? `${syncedLine(conn.last_sync_at, conn.last_sync_new)}${issues ? ` · ${issues === 1 ? '1 πελάτης θέλει' : `${issues}\u00a0πελάτες θέλουν`} προσοχή` : ''}`
       : phase === 'rejected' ? 'Η ΑΑΔΕ δεν δέχεται το κλειδί. Βάλε νέο για να συνεχίσουν οι συγχρονισμοί.'
       : 'Φέρνει τα παραστατικά όσων πελατών πατήσουν «Επιτρέπω», χωρίς λήψεις και ανεβάσματα.';
+
+  // Το «Επιβεβαίωση ΑΦΜ» της γραμμής: ίδιο στον πίνακα και στις ομάδες του τηλεφώνου.
+  const afmControl = (r: ClientRow) => (
+    <>
+      {!r.consent && afmFor !== r.ownerId && (
+        <Btn variant="ghost" onClick={() => { setAfmFor(r.ownerId); setAfmVal(''); setAfmSay(''); }}>
+          {r.afmConfirmed ? 'Αλλαγή ΑΦΜ' : 'Επιβεβαίωση ΑΦΜ'}
+        </Btn>
+      )}
+      {!r.consent && afmFor === r.ownerId && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'end', gap: 8, marginTop: 6 }}>
+          <div style={{ maxWidth: 240 }}>
+            <TextInput label="ΑΦΜ από το myAADE σου" value={afmVal} inputMode="numeric" mono
+              onChange={v => { setAfmVal(v); setAfmSay(''); }}
+              onKeyDown={e => { if (e.key === 'Enter') void saveAfm(r.ownerId, r.name); if (e.key === 'Escape') setAfmFor(null); }} />
+          </div>
+          <p style={{ ...TT.bodySm, margin: 0, flexBasis: '100%', color: 'var(--text-tertiary)' }}>
+            Γράψε το από τις εξουσιοδοτήσεις σου στο myAADE, όχι από το προφίλ του πελάτη.
+          </p>
+          <Btn variant="primary" onClick={() => void saveAfm(r.ownerId, r.name)} disabled={!afmVal.trim()}>Αποθήκευση</Btn>
+          <Btn variant="ghost" onClick={() => setAfmFor(null)}>Άκυρο</Btn>
+          {afmSay && <p role="alert" style={{ ...TT.bodySm, margin: 0, flexBasis: '100%', color: 'var(--warning-on-container)' }}>{afmSay}</p>}
+        </div>
+      )}
+    </>
+  );
 
   if (!loaded) return null;
 
@@ -243,8 +270,38 @@ export default function MydataCard({ db, userId }: { db: SupabaseClient; userId:
             .md-table .md-new-inline { display: none; }
             @media (max-width: 560px) { .md-table .md-when-col { display: none; } .md-table .md-when-inline { display: block; } }
             @media (max-width: 400px) { .md-table .md-new-col { display: none; } .md-table .md-new-inline { display: inline; } }
+            .md-groups { display: none; }
+            .md-group + .md-group { margin-top: ${T.sp.md}px; padding-top: ${T.sp.md}px; border-top: 1px solid var(--border-subtle); }
+            .md-group .md-nw { white-space: nowrap; }
+            .md-group ul { list-style: none; margin: ${T.sp.sm}px 0 0; padding: 0; display: grid; gap: 10px; }
+            @media (max-width: 560px) { .md-wide { display: none; } .md-groups { display: block; } }
           `}</style>
-          <div className="md-box po-table-box" tabIndex={0} aria-label={`${consented} από ${rows.length} πελάτες με άδεια`}>
+          {/* ΣΤΟ ΤΗΛΕΦΩΝΟ: ομάδες ανά κατάσταση, η εξήγηση μία φορά (Α2). */}
+          <div className="md-box md-groups" tabIndex={0} aria-label={`${consented} από ${rows.length} πελάτες με άδεια, ανά κατάσταση`}>
+            {groups.map(g => (
+              <section key={g.key} className="md-group" aria-label={`${g.label} · ${g.rows.length}`}>
+                <h3 style={{ ...TT.body, margin: 0, fontWeight: 600, color: g.tone === 'warn' ? 'var(--warning-on-container)' : 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                  {g.label} · {g.rows.length.toLocaleString('el-GR')}
+                </h3>
+                {g.fix && !(allDown && g.tone === 'wait') && <p style={{ ...TT.bodySm, margin: '4px 0 0', color: 'var(--text-secondary)' }}>{g.fix}</p>}
+                <ul>
+                  {g.rows.map(r => (
+                    <li key={r.ownerId}>
+                      <span style={{ ...TT.body, display: 'block', fontWeight: 600, color: 'var(--text-primary)' }}>{r.name}</span>
+                      {r.lastSyncAt && (
+                        <span style={{ ...TT.bodySm, display: 'block', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+                          <span className="md-nw">{athensStamp(r.lastSyncAt)}</span>{r.consent ? <> · <span className="md-nw">{newCount(r.lastNew)}</span></> : null}
+                        </span>
+                      )}
+                      {afmControl(r)}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+            {shown.length === 0 && <p style={{ ...TT.bodySm, margin: 0, color: 'var(--text-tertiary)' }}>Κανένας πελάτης με αυτό το όνομα.</p>}
+          </div>
+          <div className="md-box md-wide po-table-box" tabIndex={0} aria-label={`${consented} από ${rows.length} πελάτες με άδεια`}>
             <table className="po-table tbl-sticky md-table">
               <thead>
                 <tr>
@@ -271,26 +328,7 @@ export default function MydataCard({ db, userId }: { db: SupabaseClient; userId:
                       <td>
                         <span style={{ color: TONE_COLOR[st.tone], fontWeight: st.tone === 'warn' ? 600 : 400 }}>{st.label}</span>
                         {st.fix && !(allDown && st.tone === 'wait') && <span style={{ ...TT.bodySm, display: 'block', color: 'var(--text-tertiary)' }}>{st.fix}</span>}
-                        {!r.consent && afmFor !== r.ownerId && (
-                          <Btn variant="ghost" onClick={() => { setAfmFor(r.ownerId); setAfmVal(''); setAfmSay(''); }}>
-                            {r.afmConfirmed ? 'Αλλαγή ΑΦΜ' : 'Επιβεβαίωση ΑΦΜ'}
-                          </Btn>
-                        )}
-                        {!r.consent && afmFor === r.ownerId && (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'end', gap: 8, marginTop: 6 }}>
-                            <div style={{ maxWidth: 240 }}>
-                              <TextInput label="ΑΦΜ από το myAADE σου" value={afmVal} inputMode="numeric" mono
-                                onChange={v => { setAfmVal(v); setAfmSay(''); }}
-                                onKeyDown={e => { if (e.key === 'Enter') void saveAfm(r.ownerId, r.name); if (e.key === 'Escape') setAfmFor(null); }} />
-                            </div>
-                            <p style={{ ...TT.bodySm, margin: 0, flexBasis: '100%', color: 'var(--text-tertiary)' }}>
-                              Γράψε το από τις εξουσιοδοτήσεις σου στο myAADE, όχι από το προφίλ του πελάτη.
-                            </p>
-                            <Btn variant="primary" onClick={() => void saveAfm(r.ownerId, r.name)} disabled={!afmVal.trim()}>Αποθήκευση</Btn>
-                            <Btn variant="ghost" onClick={() => setAfmFor(null)}>Άκυρο</Btn>
-                            {afmSay && <p role="alert" style={{ ...TT.bodySm, margin: 0, flexBasis: '100%', color: 'var(--warning-on-container)' }}>{afmSay}</p>}
-                          </div>
-                        )}
+                        {afmControl(r)}
                       </td>
                       <td className="md-when-col md-when">{r.lastSyncAt ? athensStamp(r.lastSyncAt) : ''}</td>
                       <td className="md-num md-new-col">{r.consent && r.lastSyncAt ? r.lastNew.toLocaleString('el-GR') : ''}</td>

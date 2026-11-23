@@ -78,7 +78,7 @@ const store: Store = {
   async ingest(i) {
     const { data, error } = await admin.rpc('mydata_ingest', {
       p_lease: i.lease, p_consent: i.consentId, p_docs: i.docs, p_cancels: i.cancels,
-      p_quarantine: i.quarantine, p_fetched: i.fetched,
+      p_quarantine: i.quarantine, p_fetched: i.fetched, p_rejected: i.rejected,
       p_max_mark: i.maxMark, p_resume: i.resume, p_done: i.done,
     })
     if (error) throw new Error('db_ingest')
@@ -92,6 +92,16 @@ const store: Store = {
   async end(accountantId, lease, err, added) {
     const { error } = await admin.rpc('mydata_sync_end', { p_accountant: accountantId, p_lease: lease, p_error: err, p_added: added })
     if (error) reportEdgeError('mydata-sync', new Error('db_end'))
+  },
+  // Α2: τα επιβεβαιωμένα ανά πάροχο, για το «νέος πάροχος» και το «2× τον μέσο όρο».
+  async providerStats(lease, consentId) {
+    const { data, error } = await admin.rpc('mydata_provider_stats', { p_lease: lease, p_consent: consentId })
+    if (error) throw new Error('db_stats')
+    const out: Record<string, { n: number; avgCents: number; category: string | null }> = {}
+    for (const [afm, v] of Object.entries((data ?? {}) as Record<string, { n?: number; avg?: number; cat?: string | null }>)) {
+      out[afm] = { n: Number(v?.n ?? 0), avgCents: Math.round(Number(v?.avg ?? 0)), category: typeof v?.cat === 'string' ? v.cat : null }
+    }
+    return out
   },
   async defer(accountantId, consentIds) {
     const { error } = await admin.rpc('mydata_defer', { p_accountant: accountantId, p_consents: consentIds })

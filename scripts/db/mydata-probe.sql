@@ -418,6 +418,114 @@ begin
   raise notice 'probe: ένα ανά ΜΑΡΚ, σύνδεση με χειροκίνητη ±3 ημερών, συνέχεια σελίδων';
 end $probe$;
 
+-- ── 5α. Α2 (20261123160000): ΑΥΤΟΜΑΤΑ, ΓΙΑ ΕΛΕΓΧΟ, ΑΠΟΡΡΙΨΗ ──────────────────
+--  Ο Π1 έχει ΕΝΑ ακίνητο: το `auto` γίνεται δαπάνη με τα ποσά της ΑΑΔΕ. Με
+--  δεύτερο ακίνητο το ίδιο πάει για έλεγχο (`pick_property`). Επανάληψη της
+--  σελίδας δεν γεννά δεύτερη δαπάνη. Ο κατάλογος λόγων είναι κλειστός. Οι
+--  απορρίψεις μετρώνται, δεν γράφονται. Στο τέλος σβήνει ό,τι έγραψε, ώστε οι
+--  μετρήσεις των επόμενων ενοτήτων να μένουν ίδιες.
+do $probe$
+declare
+  p1 uuid := 'ad000000-0000-4000-8000-0000000000a1';
+  prop uuid := 'ad000000-0000-4000-8000-00000000f0a1';
+  lease uuid := current_setting('mydata.lease')::uuid;
+  k uuid := (select id from public.mydata_consents where afm = '099000013' and revoked_at is null);
+  doc_auto jsonb; doc_review jsonb; doc_bad jsonb; doc_two jsonb;
+  r json; st jsonb; e record; np0 int;
+begin
+  np0 := (select not_property from public.mydata_consents where id = k);
+  doc_auto := jsonb_build_object('mark','400001000000140','counterpart_afm','090000045','counterpart_name',null,'doc_type','2.1','series','Α','aa','140','issue_date','2026-11-04','title','Τιμολόγιο Παροχής Υπηρεσιών Α 140','net_cents',7137,'vat_cents',1713,'gross_cents',8850,'is_credit',false,'cancelled',false,'cancellation_mark',null,
+    'tier','auto','category','electricity','category_label','Ρεύμα','expense_group','fixed','vendor','ΔΕΗ','reasons','[]'::jsonb);
+  doc_review := jsonb_build_object('mark','400001000000141','counterpart_afm','094079101','counterpart_name',null,'doc_type','11.2','series','Β','aa','141','issue_date','2026-11-04','title','Απόδειξη Παροχής Υπηρεσιών Β 141','net_cents',3000,'vat_cents',0,'gross_cents',3000,'is_credit',false,'cancelled',false,'cancellation_mark',null,
+    'tier','review','category','water','category_label',null,'expense_group',null,'vendor',null,'reasons','["new_provider","drop table"]'::jsonb);
+  doc_bad := jsonb_build_object('mark','400001000000142','counterpart_afm','090000045','counterpart_name',null,'doc_type','2.1','series','Α','aa','142','issue_date','2026-11-05','title','Τ','net_cents',100,'vat_cents',24,'gross_cents',124,'is_credit',false,'cancelled',false,'cancellation_mark',null,
+    'tier','auto','category','electricity','category_label','','expense_group','fixed','vendor','ΔΕΗ','reasons','[]'::jsonb);
+
+  r := public.mydata_ingest(lease, k, jsonb_build_array(doc_auto, doc_review, doc_bad), '[]'::jsonb, '[]'::jsonb, 6, null, null, true, 3);
+  if not (r->>'ok')::boolean then raise exception 'Α2: η σελίδα απέτυχε: %', r; end if;
+  if (r->>'auto')::int <> 1 or (r->>'added')::int <> 3 then raise exception 'Α2: % αυτόματα και % νέα αντί για 1 και 3', r->>'auto', r->>'added'; end if;
+
+  select * into e from public.expenses where user_id = p1 and dedup_hash = 'mydata:400001000000140';
+  if not found then raise exception 'Α2: το αυτόματο δεν έγινε δαπάνη'; end if;
+  if e.amount <> 88.50 or e.vat_amount <> 17.13 or e.category <> 'Ρεύμα' or e.expense_group <> 'fixed'
+     or e.property_id <> prop or e.store_vendor <> 'ΔΕΗ' or e.supplier_afm <> '090000045' or e.paid then
+    raise exception 'Α2: η αυτόματη δαπάνη δεν έχει τα στοιχεία της ΑΑΔΕ: % % % % %', e.amount, e.vat_amount, e.category, e.store_vendor, e.supplier_afm;
+  end if;
+  if (select status || '/' || filed_by || '/' || tier from public.mydata_docs where mark = 400001000000140) <> 'filed/auto/auto' then
+    raise exception 'Α2: το αυτόματο παραστατικό δεν σημειώθηκε filed/auto';
+  end if;
+  if (select status || '/' || tier || '/' || category from public.mydata_docs where mark = 400001000000141) <> 'pending/review/water' then
+    raise exception 'Α2: το για έλεγχο δεν κράτησε κατηγορία';
+  end if;
+  if (select review_reasons from public.mydata_docs where mark = 400001000000141) <> array['new_provider']::text[] then
+    raise exception 'Α2: άγνωστος κωδικός λόγου πέρασε στη βάση';
+  end if;
+  if (select status || '/' || tier from public.mydata_docs where mark = 400001000000142) <> 'pending/review' then
+    raise exception 'Α2: αυτόματο χωρίς ετικέτα κατηγορίας έγινε δαπάνη';
+  end if;
+  if exists (select 1 from public.expenses where dedup_hash = 'mydata:400001000000142') then raise exception 'Α2: δαπάνη χωρίς κατηγορία'; end if;
+  if (select not_property from public.mydata_consents where id = k) <> np0 + 3 then raise exception 'Α2: οι απορρίψεις δεν μετρήθηκαν'; end if;
+  if not exists (select 1 from public.mydata_access_log where client_id = p1 and action = 'not_property' and n = 3) then raise exception 'Α2: η απόρριψη δεν γράφτηκε στο αρχείο'; end if;
+  if not exists (select 1 from public.mydata_access_log where client_id = p1 and action = 'auto_filed' and n = 1) then raise exception 'Α2: η αυτόματη καταχώρηση δεν γράφτηκε στο αρχείο'; end if;
+
+  -- Επανάληψη της ίδιας σελίδας: καμία δεύτερη δαπάνη.
+  r := public.mydata_ingest(lease, k, jsonb_build_array(doc_auto, doc_review), '[]'::jsonb, '[]'::jsonb, 2, null, null, true);
+  if (r->>'added')::int <> 0 or (select count(*) from public.expenses where dedup_hash = 'mydata:400001000000140') <> 1 then
+    raise exception 'Α2: η επανάληψη γέννησε δεύτερη δαπάνη';
+  end if;
+  -- Ο χρήστης απέρριψε το 141· ξανάρχεται ως auto: δεν γίνεται δαπάνη.
+  update public.mydata_docs set status = 'dismissed' where mark = 400001000000141;
+  perform public.mydata_ingest(lease, k, jsonb_build_array(doc_review || '{"tier":"auto","category_label":"Νερό","expense_group":"fixed"}'::jsonb), '[]'::jsonb, '[]'::jsonb, 1, null, null, true);
+  if exists (select 1 from public.expenses where dedup_hash = 'mydata:400001000000141') then raise exception 'Α2: απορριμμένο έγινε δαπάνη στην επανάληψη'; end if;
+
+  -- Ιστορικό: το 140 μετρά για τη ΔΕΗ, με κατηγορία· λάθος μίσθωση, τίποτα.
+  st := public.mydata_provider_stats(lease, k);
+  if (st->'090000045'->>'n')::int <> 1 or (st->'090000045'->>'avg')::int <> 8850 or st->'090000045'->>'cat' <> 'electricity' then
+    raise exception 'Α2: το ιστορικό της ΔΕΗ λάθος: %', st;
+  end if;
+  if st ? '094079101' then raise exception 'Α2: απορριμμένο μέτρησε ως επιβεβαιωμένο'; end if;
+  if public.mydata_provider_stats(gen_random_uuid(), k) <> '{}'::jsonb then raise exception 'Α2: ιστορικό χωρίς μίσθωση'; end if;
+
+  -- Δεύτερο ακίνητο: το auto πάει για έλεγχο με pick_property.
+  insert into public.user_properties(id, user_id, name) values ('ad000000-0000-4000-8000-00000000f0a2', p1, 'Δεύτερο του Π1');
+  doc_two := doc_auto || '{"mark":"400001000000143","aa":"143"}'::jsonb;
+  perform public.mydata_ingest(lease, k, jsonb_build_array(doc_two), '[]'::jsonb, '[]'::jsonb, 1, null, null, true);
+  if (select status || '/' || tier from public.mydata_docs where mark = 400001000000143) <> 'pending/review'
+     or not ((select review_reasons from public.mydata_docs where mark = 400001000000143) @> array['pick_property']) then
+    raise exception 'Α2: με δύο ακίνητα το αυτόματο δεν πήγε για έλεγχο';
+  end if;
+  if exists (select 1 from public.expenses where dedup_hash = 'mydata:400001000000143') then raise exception 'Α2: δαπάνη σε τυχαίο ακίνητο'; end if;
+  delete from public.user_properties where id = 'ad000000-0000-4000-8000-00000000f0a2';
+  raise notice 'probe: Α2 αυτόματα μόνο με ένα ακίνητο, λόγοι από κλειστό κατάλογο, απορρίψεις μόνο ως πλήθος';
+end $probe$;
+
+-- Ο ξένος δεν αναιρεί· ο ίδιος αναιρεί και σβήνει ΜΟΝΟ τη δαπάνη του ΜΑΡΚ.
+select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a2', true);
+set local role authenticated;
+do $probe$ declare r json; begin
+  r := public.mydata_auto_undo((select id from public.mydata_docs where mark = 400001000000140));
+  if (r->>'ok')::boolean then raise exception 'Α2: ο Π2 αναίρεσε δαπάνη του Π1'; end if;
+end $probe$;
+reset role;
+select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a1', true);
+set local role authenticated;
+do $probe$ declare r json; kept int := (select count(*) from public.expenses where user_id = auth.uid()); begin
+  r := public.mydata_auto_undo((select id from public.mydata_docs where mark = 400001000000140));
+  if not (r->>'ok')::boolean or (r->>'removed')::int <> 1 then raise exception 'Α2: η αναίρεση απέτυχε: %', r; end if;
+  if (select count(*) from public.expenses where user_id = auth.uid()) <> kept - 1 then raise exception 'Α2: η αναίρεση έσβησε άλλη δαπάνη'; end if;
+  if (select status || '/' || tier || '/' || coalesce(filed_by, '-') from public.mydata_docs where mark = 400001000000140) <> 'pending/review/-' then
+    raise exception 'Α2: μετά την αναίρεση δεν ξαναμπήκε για έλεγχο';
+  end if;
+  r := public.mydata_auto_undo((select id from public.mydata_docs where mark = 400001000000141));
+  if (r->>'ok')::boolean then raise exception 'Α2: αναίρεση σε παραστατικό που δεν μπήκε μόνο του'; end if;
+  raise notice 'probe: Α2 «Δεν είναι σωστό»: μόνο ο ίδιος, μόνο η δαπάνη του ΜΑΡΚ';
+end $probe$;
+reset role;
+do $probe$ begin
+  delete from public.expenses where dedup_hash in ('mydata:400001000000140', 'mydata:400001000000141', 'mydata:400001000000142', 'mydata:400001000000143');
+  delete from public.mydata_docs where mark between 400001000000140 and 400001000000143;
+end $probe$;
+
 -- ── 6. RLS: ΔΥΟ ΛΟΓΙΣΤΕΣ, ΔΥΟ ΠΕΛΑΤΕΣ, ΕΝΑΣ ΞΕΝΟΣ ────────────────────────────
 do $probe$
 declare
