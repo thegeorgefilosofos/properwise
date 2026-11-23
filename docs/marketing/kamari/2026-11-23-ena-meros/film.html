@@ -2,99 +2,138 @@
 <html lang="el">
 <head>
 <meta charset="utf-8">
-<title>Όλο το ακίνητο σε ένα μέρος</title>
-<!-- Τα χρώματα και η Inter έρχονται από το ίδιο το app/globals.css (render.mjs το σερβίρει ως /globals.css, με το public/ ως ρίζα). -->
+<title>Κάθε ακίνητο. Ένα μέρος.</title>
+<!-- Χρώματα και Inter από το ίδιο το app/globals.css (render.mjs: /globals.css, /fonts και /brand από το public/). -->
 <link rel="stylesheet" href="/globals.css">
 <style>
   *, *::before, *::after { transition: none !important; animation: none !important; }
   html, body { margin: 0; padding: 0; overflow: hidden; background: var(--mkt-bg-base); }
   #stage { position: absolute; left: 0; top: 0; overflow: hidden; font-family: 'Inter', sans-serif; color: var(--mkt-text-primary);
-    font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; background: linear-gradient(180deg, var(--mkt-space-top), var(--mkt-space-mid) 55%, var(--mkt-space-bottom)); }
-  #shape { position: absolute; background: var(--mkt-bg-elevated); overflow: hidden; }
-  #shape .layer { position: absolute; inset: 0; border-radius: inherit; }
-  #fillAccent { background: var(--mkt-accent); }
-  #ringAccent { border: 3px solid var(--mkt-accent); }
-  #ringStrong { border: 2px solid var(--mkt-border-strong); }
-  #ringSoft { border: 2px solid var(--mkt-border-default); }
+    font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; background: var(--mkt-bg-base); perspective: 2600px; }
+  #bg { position: absolute; inset: 0; background: linear-gradient(180deg, var(--mkt-space-top), var(--mkt-space-mid) 55%, var(--mkt-space-bottom)); }
+  .glow { position: absolute; border-radius: 50%;
+    background: radial-gradient(circle, color-mix(in srgb, var(--mkt-accent) 16%, transparent), transparent 66%); }
+  #rig { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  #body { position: absolute; inset: 0; background: var(--mkt-bg-elevated); border: 2px solid var(--mkt-border-strong);
+    box-shadow: 0 90px 180px color-mix(in srgb, var(--mkt-bg-base) 92%, transparent), 0 30px 60px color-mix(in srgb, var(--mkt-bg-base) 70%, transparent); }
+  .btn { position: absolute; background: var(--mkt-bg-elevated); border: 1.5px solid var(--mkt-border-strong); border-radius: 4px; }
   #screen { position: absolute; overflow: hidden; background: var(--mkt-bg-base); }
-  #screen img { position: absolute; left: 0; top: 0; visibility: hidden; max-width: none; }
-  #dim { position: absolute; inset: 0; background: var(--mkt-bg-base); }
-  #focus { position: absolute; border: 3px solid var(--mkt-accent); border-radius: 14px; }
-  #card { position: absolute; overflow: hidden; border: 2px solid var(--mkt-accent); background: var(--mkt-bg-surface);
-    box-shadow: 0 28px 90px color-mix(in srgb, var(--mkt-bg-base) 80%, transparent); }
-  #card img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; visibility: hidden; max-width: none; }
+  #status { position: absolute; left: 0; top: 0; right: 0; background: var(--mkt-bg-base); }
+  #status .time { position: absolute; font-weight: 650; color: var(--mkt-text-primary); letter-spacing: -0.01em; }
+  #status svg { position: absolute; }
+  #status svg .f { fill: var(--mkt-text-primary); }
+  #status svg .s { stroke: var(--mkt-text-primary); fill: none; }
+  #island { position: absolute; background: var(--mkt-bg-base); border-radius: 999px; }
+  #app { position: absolute; left: 0; overflow: hidden; background: var(--mkt-bg-base); }
+  .layer { position: absolute; left: 0; top: 0; overflow: hidden; }
+  .layer img, .clip img { position: absolute; left: 0; top: 0; max-width: none; }
+  .clip { position: absolute; overflow: hidden; }
+  #dimOver { position: absolute; inset: 0; background: var(--mkt-bg-base); }
+  #glass { position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(118deg, color-mix(in srgb, var(--mkt-text-primary) 6%, transparent) 0%, transparent 32%); }
+  /* Προβολέας: σκιά στο υπόλοιπο, λεπτό περίγραμμα στο στοιχείο. Καμία θόλωση. */
+  #spot { position: absolute; border: 2px solid var(--mkt-accent); border-radius: 12px;
+    box-shadow: 0 0 0 3000px color-mix(in srgb, var(--mkt-bg-base) 65%, transparent); }
+  .tick { position: absolute; border-radius: 50%; background: var(--mkt-positive); }
+  .tick svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .tick path { fill: none; stroke: var(--mkt-bg-base); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+  #touch { position: absolute; border-radius: 50%; background: color-mix(in srgb, var(--mkt-text-primary) 38%, transparent);
+    border: 2px solid color-mix(in srgb, var(--mkt-text-primary) 75%, transparent); }
+  #touchRing { position: absolute; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--mkt-text-primary) 60%, transparent); }
+  /* Το πακέτο του λογιστή: τα ονόματα αρχείων του lib/accounting/meetingPack.ts (PACK_FILES), με τη σειρά του packEntries. */
+  #pack { position: absolute; background: var(--mkt-bg-elevated); border: 1.5px solid var(--mkt-border-default); border-bottom: 0; }
+  #pack .grab { position: absolute; background: var(--mkt-border-strong); border-radius: 999px; }
+  #pack .title { position: absolute; font-weight: 700; color: var(--mkt-text-primary); line-height: 1.25; }
+  #pack .row { position: absolute; display: flex; align-items: center; border-top: 1px solid var(--mkt-border-subtle); }
+  #pack .row .ic { flex: none; display: flex; align-items: center; justify-content: center; border-radius: 8px;
+    background: color-mix(in srgb, var(--mkt-accent) 16%, transparent); }
+  #pack .row .ic svg path { fill: none; stroke: var(--mkt-accent); stroke-width: 1.7; stroke-linejoin: round; stroke-linecap: round; }
+  #pack .row .nm { font-weight: 600; color: var(--mkt-text-primary); }
+  #pack .row .sub { color: var(--mkt-text-tertiary); font-weight: 500; }
+  #zone { position: absolute; left: 0; right: 0; top: 0; }
   .txt { position: absolute; text-align: center; white-space: normal; text-wrap: balance; }
-  .date { font-weight: 750; letter-spacing: -0.02em; line-height: 1; }
-  .line { font-weight: 620; line-height: 1.2; }
-  .cap { font-weight: 680; line-height: 1.14; letter-spacing: -0.01em; }
-  .eyebrow { font-weight: 700; letter-spacing: .16em; color: var(--mkt-accent); }
-  .foot { color: var(--mkt-text-tertiary); font-weight: 500; }
-  .num { font-weight: 760; letter-spacing: -0.02em; line-height: 1; white-space: nowrap; display: flex; justify-content: center; }
-  .num .col { display: inline-block; overflow: hidden; position: relative; }
-  .num .strip { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; }
-  .num .strip span { display: block; text-align: center; }
-  #badge { position: absolute; color: var(--mkt-text-secondary); background: var(--mkt-bg-surface); border: 1.5px solid var(--mkt-border-default);
-    border-radius: 999px; font-weight: 600; white-space: nowrap; }
-  #cursor { position: absolute; left: 0; top: 0; }
-  #cursor svg { display: block; }
-  #cursor .arrow path { fill: var(--mkt-text-primary); stroke: var(--mkt-bg-base); stroke-width: 2.2; stroke-linejoin: round; }
-  #who { position: absolute; background: var(--mkt-bg-elevated); color: var(--mkt-text-primary); border: 1.5px solid var(--mkt-border-strong);
-    border-radius: 999px; font-weight: 650; white-space: nowrap; }
-  #ripple { position: absolute; border: 3px solid var(--mkt-accent); border-radius: 50%; }
+  .msg { font-weight: 760; letter-spacing: -0.025em; line-height: 1; }
+  .cap { font-weight: 740; line-height: 1.06; letter-spacing: -0.02em; }
+  #badge { position: absolute; color: var(--mkt-text-secondary); background: var(--mkt-bg-surface);
+    border: 1.5px solid var(--mkt-border-default); border-radius: 999px; font-weight: 600; white-space: nowrap; }
+  #logo { position: absolute; }
+  #url { position: absolute; border: 2px solid var(--mkt-accent); border-radius: 999px; color: var(--mkt-accent); font-weight: 650; text-align: center; }
 </style>
 </head>
 <body>
 <div id="stage">
-  <div id="shape">
-    <div class="layer" id="fillAccent"></div>
-    <div class="layer" id="ringSoft"></div>
-    <div class="layer" id="ringStrong"></div>
-    <div class="layer" id="ringAccent"></div>
+  <div id="bg"><div class="glow" id="g1"></div><div class="glow" id="g2"></div></div>
+  <div id="rig">
+    <div id="body"></div>
+    <div class="btn" id="b1"></div><div class="btn" id="b2"></div><div class="btn" id="b3"></div><div class="btn" id="b4"></div>
+    <div id="screen">
+      <div id="app">
+        <div class="layer" id="Lover">
+          <img id="overEmpty" src="work/shots6/overview-empty.png" alt="">
+          <img id="overBase" src="work/shots6/overview.png" alt="">
+          <div class="clip" id="pendClip"></div>
+          <div id="dimOver"></div>
+        </div>
+        <div class="layer" id="Lscan">
+          <img id="scanBase" src="work/shots6/scan.png" alt="">
+          <img id="scanFields" src="work/shots6/crop-fields.png" alt="">
+          <div class="clip" id="provClip"></div>
+          <div class="clip" id="afmClip"></div>
+        </div>
+        <div class="layer" id="Ldocs">
+          <img id="docsEmpty" src="work/shots6/documents-empty.png" alt="">
+          <img id="docsBase" src="work/shots6/documents.png" alt="">
+          <div class="clip" id="docsClip"></div>
+        </div>
+        <div class="layer" id="Lacc">
+          <img id="accBase" src="work/shots6/accountant.png" alt="">
+          <img id="accBusy" src="work/shots6/accountantBusy.png" alt="">
+          <img id="accCard" src="work/shots6/crop-dossier.png" alt="">
+          <img id="accCardBusy" src="work/shots6/crop-dossierBusy.png" alt="">
+          <div id="pack"><div class="grab"></div><div class="title"></div></div>
+        </div>
+        <div id="spot"></div>
+        <div class="tick" id="t1"><svg viewBox="0 0 20 20"><path d="M5.5 10.4 L8.6 13.4 L14.6 7"/></svg></div>
+        <div class="tick" id="t2"><svg viewBox="0 0 20 20"><path d="M5.5 10.4 L8.6 13.4 L14.6 7"/></svg></div>
+        <div class="tick" id="t3"><svg viewBox="0 0 20 20"><path d="M5.5 10.4 L8.6 13.4 L14.6 7"/></svg></div>
+        <div id="touchRing"></div><div id="touch"></div>
+      </div>
+      <div id="status">
+        <div class="time">9:41</div>
+        <svg id="sig" viewBox="0 0 18 12"><rect class="f" x="0" y="8" width="3" height="4" rx="1"/><rect class="f" x="5" y="5.5" width="3" height="6.5" rx="1"/><rect class="f" x="10" y="3" width="3" height="9" rx="1"/><rect class="f" x="15" y="0" width="3" height="12" rx="1"/></svg>
+        <svg id="wifi" viewBox="0 0 16 12"><path class="f" d="M8 12 L5.6 9.2 A3.4 3.4 0 0 1 10.4 9.2 Z"/><path class="s" stroke-width="1.8" stroke-linecap="round" d="M3.2 6.6 A6.8 6.8 0 0 1 12.8 6.6"/><path class="s" stroke-width="1.8" stroke-linecap="round" d="M0.9 3.9 A10.3 10.3 0 0 1 15.1 3.9"/></svg>
+        <svg id="batt" viewBox="0 0 27 13"><rect class="s" x="0.75" y="0.75" width="22.5" height="11.5" rx="3.2" stroke-width="1.2" opacity=".5"/><rect class="f" x="2.5" y="2.5" width="16.5" height="8" rx="1.8"/><rect class="f" x="24.6" y="4.3" width="1.8" height="4.4" rx="0.9" opacity=".5"/></svg>
+      </div>
+      <div id="island"></div>
+      <div id="glass"></div>
+    </div>
   </div>
-  <div id="screen">
-    <img data-shot="portfolio" src="work/shots/portfolio.png" alt="">
-    <img data-shot="overview" src="work/shots/overview.png" alt="">
-    <img data-shot="scan" src="work/shots/scan.png" alt="">
-    <img data-shot="accountant" src="work/shots/accountant.png" alt="">
-    <img data-shot="accountantBusy" src="work/shots/accountantBusy.png" alt="">
-    <div id="focus"></div>
-    <div id="dim"></div>
-  </div>
+  <div id="zone"></div>
   <div id="texts"></div>
   <div id="badge">Δεδομένα επίδειξης</div>
-  <div id="card">
-    <img data-crop="portfolio" src="work/shots/crop-portfolio.png" alt="">
-    <img data-crop="deadlines" src="work/shots/crop-deadlines.png" alt="">
-    <img data-crop="fields" src="work/shots/crop-fields.png" alt="">
-    <img data-crop="dossier" src="work/shots/crop-dossier.png" alt="">
-    <img data-crop="dossierBusy" src="work/shots/crop-dossierBusy.png" alt="">
-  </div>
-  <div id="ripple"></div>
-  <div id="cursor">
-    <svg class="arrow" width="40" height="52" viewBox="0 0 40 52"><path d="M4 3 L4 42 L14 33 L21 49 L28 46 L21 30 L35 30 Z"/></svg>
-    <div id="who">Εσύ</div>
-  </div>
+  <img id="logo" src="/brand/properwise-logotypo-lefko.svg" alt="PROPERWISE">
+  <div id="url">properwise.gr</div>
 </div>
 
-<!-- ΤΟ ΧΡΟΝΟΛΟΓΙΟ, ΜΙΑ ΠΗΓΗ. Το διαβάζουν η ταινία, ο ήχος (sound.ts) και η λήψη (capture.mjs, για τα κοντινά). Χρόνοι σε χτύπους.
-     «crops»: τα τέσσερα κοντινά, σε px εφαρμογής (390×844) πάνω στη λήψη της Επισκόπησης, της Σάρωσης, της Λογιστικής. -->
+<!-- ΤΟ ΧΡΟΝΟΛΟΓΙΟ, ΜΙΑ ΠΗΓΗ: η ταινία και ο ήχος (sound.ts). Χτύποι των 120 BPM (0,5″).
+     «Σχεδόν τίποτα δεν πατάς»: δύο πατήματα σε όλη την ταινία (Σάρωσε έγγραφο, Κατέβασε). -->
 <script id="timeline" type="application/json">
 {
-  "bpm": 120, "beats": 58, "fps": 30, "cover": 2.2,
-  "dips": [6, 7.5, 12.5, 14, 15, 20.5, 22, 23, 28.5, 30, 31, 38, 44],
-  "lifts": [7.5, 15, 23, 31],
-  "taps": [14, 22, 30, 34],
-  "entries": [0, 1, 2, 6, 14, 22, 30, 38, 44, 44.5, 45, 46],
-  "bells": [0, 38, 44],
-  "reveal": 6,
-  "chords": [[0, ["A2", "E3", "A3", "C4", "E4"]], [6, ["F2", "C3", "F3", "A3", "C4"]], [14, ["C3", "G3", "C4", "E4", "G4"]], [22, ["G2", "D3", "G3", "B3", "D4"]], [30, ["A2", "E3", "A3", "C4", "E4"]], [38, ["F2", "C3", "F3", "A3", "C4"]], [44, ["C3", "G3", "C4", "E4", "G4"]], [50, ["F2", "C3", "F3", "A3", "E4"]]],
-  "crops": {
-    "portfolio": { "shot": "portfolio", "x": 16, "y": 240, "w": 358, "h": 270 },
-    "deadlines": { "shot": "overview", "x": 16, "y": 264, "w": 358, "h": 214 },
-    "fields": { "shot": "scan", "x": 16, "y": 528, "w": 358, "h": 184 },
-    "dossier": { "shot": "accountant", "x": 26, "y": 284, "w": 338, "h": 284 },
-    "dossierBusy": { "shot": "accountantBusy", "x": 26, "y": 284, "w": 338, "h": 284 }
-  }
+  "bpm": 120, "beats": 52, "fps": 30, "cover": 24.6,
+  "scenes": [5, 15, 26, 36, 46],
+  "turns": [26, 36],
+  "reveal": 5,
+  "rowsOver": [7.0, 7.6, 8.2, 8.8],
+  "sheetUp": 16.6,
+  "fill": [18.4, 19.1],
+  "ticks": [19.2, 19.6, 20.0],
+  "rowsDocs": [28.0, 28.5, 29.0, 29.5, 30.0, 30.5],
+  "taps": [16.4, 39.0],
+  "packUp": 40.0,
+  "rowsPack": [40.8, 41.3, 41.8, 42.3, 42.8],
+  "entries": [0, 0.8, 1.6, 5.6, 15.3, 26.3, 36.3, 46, 46.4, 46.8],
+  "bells": [0, 46],
+  "chords": [[0, ["A2", "E3", "A3", "C4", "E4"]], [5, ["F2", "C3", "F3", "A3", "C4"]], [15, ["C3", "G3", "C4", "E4", "G4"]], [26, ["G2", "D3", "G3", "B3", "D4"]], [36, ["A2", "E3", "A3", "C4", "E4"]], [46, ["F2", "C3", "F3", "A3", "E4"]]]
 }
 </script>
 <script>
@@ -104,278 +143,270 @@ const BEAT = 60 / TL.bpm, FPS = TL.fps, HALF = 4 / FPS;
 const B = (b) => b * BEAT;
 const fmt = new URLSearchParams(location.search).get('f') === '45' ? '45' : '916';
 const W = 1080, H = fmt === '45' ? 1350 : 1920;
-
-// ── Ο ΤΟΠΟΣ ΤΗΣ ΚΑΘΕ ΜΟΡΦΗΣ ──────────────────────────────────────────────
-// 9:16: ό,τι διαβάζεται μένει στο y 250 έως 1536. Το τηλέφωνο είναι 1.000 px,
-// το 78% του ύψους της ζώνης· η λεζάντα πάνω του. Τα κοντινά: 960 px πλάτος.
-const L = fmt === '916' ? {
-  phone: { x: 302, y: 528, w: 476, h: 1000, r: 66, bez: 12 },
-  capTop: 268, capW: 980, capSize: 76, eyebrowTop: 254, cardW: 960, cardCy: 1010, msgTop: 600, msgSize: 104, msgGap: 132, brandY: 452, brandSz: 64, urlY: 1170,
-  hookPill: { cx: 540, cy: 780, w: 940, h: 220 }, dateSize: 136, hookLineTop: 960, lineSize: 58, lineW: 860,
-  card: { cx: 540, cy: 840, w: 880, h: 400 }, numSize: 176, eyebrow16Top: 700, label16Top: 1090,
-  bar: { cx: 540, cy: 1040, w: 160, h: 10 }, condTop: 820, condSize: 64,
-  footTop: 1440, footSize: 26,
-  brandTop: 720, brandSize: 104, brandLineTop: 880, urlPill: { cx: 540, cy: 1170, w: 540, h: 124 }, urlSize: 48,
-  badgeSize: 24, cursorScale: 1.15,
-} : {
-  phone: { x: 288, y: 222, w: 504, h: 1100, r: 68, bez: 12 },
-  capTop: 50, capW: 1040, capSize: 60, eyebrowTop: 18, cardW: 960, cardCy: 772, msgTop: 420, msgSize: 96, msgGap: 122, brandY: 250, brandSz: 58, urlY: 930,
-  hookPill: { cx: 540, cy: 560, w: 900, h: 210 }, dateSize: 128, hookLineTop: 720, lineSize: 54, lineW: 860,
-  card: { cx: 540, cy: 600, w: 860, h: 380 }, numSize: 164, eyebrow16Top: 470, label16Top: 840,
-  bar: { cx: 540, cy: 840, w: 160, h: 10 }, condTop: 580, condSize: 60,
-  footTop: 1220, footSize: 24,
-  brandTop: 470, brandSize: 96, brandLineTop: 620, urlPill: { cx: 540, cy: 930, w: 520, h: 116 }, urlSize: 46,
-  badgeSize: 22, cursorScale: 1.05,
-};
-const P = L.phone;
-const SCR = { x: P.x + P.bez, y: P.y + P.bez, w: P.w - 2 * P.bez, h: P.h - 2 * P.bez, r: P.r - P.bez };
-const APP_W = 390, K = SCR.w / APP_W;     // px κάδρου ανά px εφαρμογής, για ολόκληρο το τηλέφωνο
-
-const stage = document.getElementById('stage');
-stage.style.width = W + 'px'; stage.style.height = H + 'px';
+const px = Math.round, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const $ = (id) => document.getElementById(id);
-const px = Math.round;
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-
-// ── Ελατήρια (kinisi/references/texniki.md) ─────────────────────────────
-function stepR(tau, { w, z }) {
-  if (tau <= 0) return 0;
-  if (z >= 1) { const x = w * tau; return 1 - Math.exp(-x) * (1 + x); }
-  const wd = w * Math.sqrt(1 - z * z);
-  return 1 - Math.exp(-z * w * tau) * (Math.cos(wd * tau) + (z * w / wd) * Math.sin(wd * tau));
-}
-class Track {
-  constructor(v0) { this.v0 = v0; this.cur = v0; this.ev = []; }
-  to(t, v, sp) { if (v !== this.cur) { this.ev.push([t, v - this.cur, sp]); this.cur = v; } return this; }
-  at(t) { let v = this.v0; for (const [ti, d, sp] of this.ev) v += d * stepR(t - ti, sp); return v; }
-  // Μετά από 8 καρέ από κάθε αλλαγή η τιμή είναι ΑΚΡΙΒΩΣ ο στόχος: καμία ουρά κάτω από κείμενο.
-  snap(t) {
-    const active = this.ev.filter(([ti]) => ti <= t);
-    if (active.some(([ti]) => t < ti + 2 * HALF)) return this.at(t);
-    return active.reduce((v, [, d]) => v + d, this.v0);
-  }
-}
-function dipAt(t, list = TL.dips) {
-  let o = 1;
-  for (const b of list) { const d = Math.abs(t - B(b)); if (d < HALF) o = Math.min(o, d / HALF); }
-  return o;
-}
-function vis(t, tin, tout) {
-  if (t < tin || t >= tout) return 0;
-  return clamp(Math.min((t - tin) / HALF, (tout - t) / HALF), 0, 1);
-}
-
-// ── ΤΟ ΣΧΗΜΑ ─────────────────────────────────────────────────────────────
-const rectOf = (c) => ({ x: c.cx - c.w / 2, y: c.cy - c.h / 2, w: c.w, h: c.h, r: Math.min(c.h / 2, c.r ?? c.h / 2) });
-const SH = {
-  hook: { ...rectOf(L.hookPill), accent: 1, strong: 0, soft: 0, fill: 0 },
-  card: { ...rectOf({ ...L.card, r: 48 }), accent: 0, strong: 0, soft: 1, fill: 0 },
-  bar: { ...rectOf(L.bar), accent: 0, strong: 0, soft: 0, fill: 1 },
-  phone: { x: P.x, y: P.y, w: P.w, h: P.h, r: P.r, accent: 0, strong: 1, soft: 0, fill: 0 },
-  url: { ...rectOf(L.urlPill), accent: 1, strong: 0, soft: 0, fill: 0 },
+const ease = (u) => (u <= 0 ? 0 : u >= 1 ? 1 : u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
+const tween = (t, b, dur) => ease((t - B(b)) / dur);
+// Τα κουτιά της εφαρμογής (px εφαρμογής, από το work/shots6/boxes.json).
+const BOX = {
+  pending: { x: 16, y: 264, w: 358, h: 398 }, enfia: { x: 17, y: 307, w: 356, h: 67 }, scanBtn: { x: 16, y: 206, w: 175, h: 36 },
+  fields: { x: 16, y: 528, w: 358, h: 184 }, updates: { x: 21, y: 460, w: 348, h: 40 },
+  prov: { x: 24, y: 584, w: 342, h: 41 }, afm: { x: 24, y: 661, w: 166, h: 43 }, date: { x: 202, y: 663, w: 162, h: 39 },
+  docs: { x: 16, y: 366, w: 358, h: 383 }, docEnfia: { x: 22, y: 470, w: 346, h: 54 },
+  card: { x: 26, y: 284, w: 338, h: 284 }, download: { x: 38, y: 523, w: 119, h: 36 },
+  pack: { x: 0, y: 380, w: 390, h: 464 },
 };
-const SHAPE_AT = [[0, 'bar'], [6, 'phone'], [38, 'hook'], [44, 'url']];
-const geo = {}, SP_SHAPE = { w: 15, z: .84 }, SP_FADE = { w: 40, z: 1 };
-for (const k of ['x', 'y', 'w', 'h', 'r']) geo[k] = new Track(SH.bar[k]);
-for (const k of ['accent', 'strong', 'soft', 'fill']) geo[k] = new Track(SH.bar[k]);
-for (const [b, name] of SHAPE_AT.slice(1)) {
-  // Η μεταμόρφωση ξεκινά στην αρχή της βύθισης· στο κλείσιμο, αφού σβήσει η οθόνη.
-  const s = SH[name], t0 = b === 38 ? B(b) : B(b) - HALF;
-  for (const k of ['x', 'y', 'w', 'h', 'r']) geo[k].to(t0, s[k], SP_SHAPE);
-  for (const k of ['accent', 'strong', 'soft', 'fill']) geo[k].to(t0, s[k], SP_FADE);
-}
-
-// ── ΟΙ ΤΕΣΣΕΡΙΣ ΣΤΙΓΜΕΣ ──────────────────────────────────────────────────
-// Κάθε στιγμή: ολόκληρο το τηλέφωνο με πλαίσιο στο component (1,5 χτύπος),
-// μετά το component ΣΗΚΩΝΕΤΑΙ από την οθόνη και μεγαλώνει στα 960 px, από
-// δική του λήψη ×9 (όχι μεγέθυνση της λήψης της οθόνης). Γυρίζει στη θέση του
-// πριν από το πάτημα που φέρνει την επόμενη στιγμή.
-const MOMENTS = [
-  { T: 6, shot: 'portfolio', crop: 'portfolio', lift: 7.5, drop: 12.5 },
-  { T: 14, shot: 'overview', crop: 'deadlines', lift: 15, drop: 20.5 },
-  { T: 22, shot: 'scan', crop: 'fields', lift: 23, drop: 28.5 },
-  { T: 30, shot: 'accountant', crop: 'dossier', lift: 31, drop: 38 },
+const PROV_N = 22;
+// Τα περιεχόμενα του zip: PACK_FILES του lib/accounting/meetingPack.ts, με τη σειρά του packEntries
+// και του meetingPackExport.ts (το «04 ΑΑΔΕ» μπαίνει μόνο όταν έχει ανέβει το προσυμπληρωμένο Ε2).
+const ZIP = 'Φάκελος λογιστή 2026 ΑΦΜ 099123456.zip';
+const PACK = [
+  ['doc', '00 Σύνοψη.pdf', ''],
+  ['sheet', '01 Ε2 2026.xlsx', ''],
+  ['sheet', '02 Έλεγχος φακέλου.xlsx', ''],
+  ['folder', '03 Παραστατικά', 'ένας φάκελος ανά ακίνητο'],
+  ['sheet', '05 Κωδικοί Ε1 και Ε2.xlsx', ''],
 ];
-const SWAP = { b: 34, shot: 'accountantBusy', crop: 'dossierBusy' };   // το «Κατέβασε» γίνεται «Ετοιμάζεται» με το πάτημα
-const momentAt = (t) => { let m = null; for (const x of MOMENTS) if (t >= B(x.T)) m = x; return m; };
-function shotAt(t) {
-  const m = momentAt(t);
-  if (!m) return 'portfolio';
-  return m.crop === 'dossier' && t >= B(SWAP.b) ? SWAP.shot : m.shot;
-}
-function cropAt(t) {
-  const m = momentAt(t);
-  if (!m) return null;
-  return m.crop === 'dossier' && t >= B(SWAP.b) ? SWAP.crop : m.crop;
-}
-const CROPS = TL.crops;
-// Πού κάθεται το κοντινό όταν είναι σηκωμένο: 960 px πλάτος, στο κέντρο του τηλεφώνου.
-function cardDst(name) {
-  const c = CROPS[name], w = L.cardW, h = w * c.h / c.w;
-  return { x: (W - w) / 2, y: L.cardCy - h / 2, w, h };
-}
-const cardSrc = (name) => { const c = CROPS[name]; return { x: SCR.x + c.x * K, y: SCR.y + c.y * K, w: c.w * K, h: c.h * K }; };
-const lift = new Track(0), SP_LIFT = { w: 30, z: 1 };
-for (const m of MOMENTS) { lift.to(B(m.lift) - HALF, 1, SP_LIFT); lift.to(B(m.drop) - HALF, 0, SP_LIFT); }
-function cardRect(t) {
-  const m = momentAt(t);
-  if (!m) return null;
-  const k = clamp(lift.snap(t), 0, 1.05);
-  if (k <= 0.0005) return null;
-  const s = cardSrc(m.crop), d = cardDst(m.crop);
-  return { x: s.x + (d.x - s.x) * k, y: s.y + (d.y - s.y) * k, w: s.w + (d.w - s.w) * k, h: s.h + (d.h - s.h) * k, k, crop: cropAt(t) };
-}
-// Από px εφαρμογής σε px κάδρου: στο σηκωμένο κοντινό αν υπάρχει, αλλιώς στην οθόνη.
-function cardPoint(name, ax, ay) { const c = CROPS[name], d = cardDst(name); return { x: d.x + (ax - c.x) * d.w / c.w, y: d.y + (ay - c.y) * d.h / c.h }; }
-const appPoint = (ax, ay) => ({ x: SCR.x + ax * K, y: SCR.y + ay * K });
 
-// ── ΤΑ ΚΕΙΜΕΝΑ ───────────────────────────────────────────────────────────
-const textsEl = $('texts');
-const T = [];
-function text(cls, html, style, tin, tout) {
-  const el = document.createElement('div');
-  el.className = 'txt ' + cls; el.innerHTML = html;
-  Object.assign(el.style, style);
-  textsEl.appendChild(el);
-  T.push({ el, tin: B(tin), tout: B(tout) });
-  return el;
+// ── ΔΙΑΤΑΞΗ: ίδιο τηλέφωνο, ίδια κλίμακα κοντινού σε κάθε σκηνή ──────────
+const L = fmt === '916'
+  ? { K: 2.0, Zc: 1.4, zoneH: 470, fade: 110, capTop: 246, capSize: 72, capW: 1000, badgeY: 418, wideY: 560, closeY: 1050,
+      msgY: 700, msgSize: 116, msgGap: 140, logoW: 640, logoY: 690, cMsgY: 860, cMsgSize: 84, cMsgGap: 100, urlY: 1200, urlSize: 46 }
+  : { K: 1.62, Zc: 1.7, zoneH: 230, fade: 70, capTop: 40, capSize: 56, capW: 1020, badgeY: 182, wideY: 270, closeY: 790,
+      msgY: 470, msgSize: 104, msgGap: 124, logoW: 560, logoY: 420, cMsgY: 560, cMsgSize: 76, cMsgGap: 90, urlY: 880, urlSize: 42 };
+const K = L.K, SB = 47, APPW = 390, APPH = 844;
+const SW = APPW * K, SH = (SB + APPH) * K, BEZ = 13, PW = SW + 2 * BEZ, PH = SH + 2 * BEZ, RAD = 54 * K, PRAD = RAD + BEZ;
+const stage = $('stage');
+stage.style.width = W + 'px'; stage.style.height = H + 'px';
+Object.assign($('rig').style, { width: PW + 'px', height: PH + 'px' });
+Object.assign($('body').style, { borderRadius: PRAD + 'px' });
+Object.assign($('screen').style, { left: BEZ + 'px', top: BEZ + 'px', width: SW + 'px', height: SH + 'px', borderRadius: RAD + 'px' });
+const btn = (id, side, y, h) => Object.assign($(id).style, { left: (side < 0 ? -4 : PW - 1) + 'px', top: y * K + 'px', width: '5px', height: h * K + 'px' });
+btn('b1', -1, 120, 30); btn('b2', -1, 175, 58); btn('b3', -1, 245, 58); btn('b4', 1, 200, 92);
+Object.assign($('status').style, { height: SB * K + 'px' });
+Object.assign($('island').style, { left: (SW - 124 * K) / 2 + 'px', top: 11 * K + 'px', width: 124 * K + 'px', height: 36 * K + 'px' });
+Object.assign(document.querySelector('#status .time').style, { left: 34 * K + 'px', top: 15 * K + 'px', fontSize: 17 * K + 'px', lineHeight: 1 });
+const ico = (id, x, w, h) => Object.assign($(id).style, { left: x * K + 'px', top: (23 - h / 2) * K + 'px', width: w * K + 'px', height: h * K + 'px' });
+ico('sig', 286, 18, 12); ico('wifi', 310, 16, 12); ico('batt', 332, 27, 13);
+Object.assign($('app').style, { top: SB * K + 'px', width: SW + 'px', height: APPH * K + 'px' });
+for (const l of document.querySelectorAll('.layer')) Object.assign(l.style, { width: SW + 'px', height: APPH * K + 'px' });
+const place = (el, r) => Object.assign(el.style, { left: r.x * K + 'px', top: r.y * K + 'px', width: r.w * K + 'px', height: r.h * K + 'px' });
+for (const id of ['overEmpty', 'overBase', 'scanBase', 'docsEmpty', 'docsBase', 'accBase', 'accBusy']) Object.assign($(id).style, { width: SW + 'px', height: APPH * K + 'px' });
+place($('scanFields'), BOX.fields); place($('accCard'), BOX.card); place($('accCardBusy'), BOX.card);
+const stateImgs = (clipId, prefix, idx, r) => {
+  const c = $(clipId); place(c, r);
+  return idx.map((i) => { const im = document.createElement('img'); im.src = `work/shots6/${prefix}-${i < 10 && prefix !== 'pend' && prefix !== 'docs' ? String(i).padStart(2, '0') : i}.png`;
+    Object.assign(im.style, { width: '100%', height: '100%', visibility: 'hidden' }); c.appendChild(im); return im; });
+};
+// Η άδεια κάρτα (λήψη της εφαρμογής με τις γραμμές κρυμμένες) και οι γραμμές της μία μία, από την ίδια λήψη ×9.
+const ROWS_OV = [[307, 67], [374, 108], [482, 89], [571, 86]], ROWS_DOC = Array.from({ length: 6 }, (_, i) => [419 + 53 * i, 53]);
+const rowImgs = (clipId, prefix, rows, box) => rows.map(([y, h], i) => { const im = document.createElement('img'); im.src = `work/shots6/${prefix}-${i}.png`;
+  Object.assign(im.style, { left: 0, top: (y - box.y) * K + 'px', width: box.w * K + 'px', height: h * K + 'px', visibility: 'hidden' }); $(clipId).appendChild(im); return im; });
+const pendEmpty = stateImgs('pendClip', 'pend', [0], BOX.pending)[0], pendRows = rowImgs('pendClip', 'prow', ROWS_OV, BOX.pending);
+const docsEmpty = stateImgs('docsClip', 'docs', [0], BOX.docs)[0], docsRows = rowImgs('docsClip', 'drow', ROWS_DOC, BOX.docs);
+const provs = stateImgs('provClip', 'prov', Array.from({ length: PROV_N + 1 }, (_, i) => i), BOX.prov);
+const afms = stateImgs('afmClip', 'afm', [0, 9], BOX.afm);
+const TICKS = [[BOX.prov, 't1', 32], [BOX.afm, 't2', 32], [BOX.date, 't3', 62]];
+for (const [r, id, off] of TICKS) Object.assign($(id).style, { left: (r.x + r.w - off) * K + 'px', top: (r.y + r.h / 2 - 11) * K + 'px', width: 22 * K + 'px', height: 22 * K + 'px' });
+// Το φύλλο του πακέτου.
+const pack = $('pack'); place(pack, BOX.pack);
+Object.assign(pack.style, { borderRadius: `${20 * K}px ${20 * K}px 0 0` });
+Object.assign(pack.querySelector('.grab').style, { left: (195 - 18) * K + 'px', top: 8 * K + 'px', width: 36 * K + 'px', height: 5 * K + 'px' });
+Object.assign(pack.querySelector('.title').style, { left: 22 * K + 'px', top: 26 * K + 'px', width: 346 * K + 'px', fontSize: 17 * K + 'px' });
+pack.querySelector('.title').textContent = ZIP;
+const ICON = { doc: 'M6 3 H13 L17 7 V20 H6 Z M13 3 V7 H17', sheet: 'M5 4 H18 V19 H5 Z M5 9 H18 M5 14 H18 M10 4 V19', folder: 'M3 7 H9 L11 9 H20 V18 H3 Z' };
+const packRows = PACK.map(([kind, name, sub], i) => {
+  const r = document.createElement('div'); r.className = 'row';
+  Object.assign(r.style, { left: 22 * K + 'px', top: (80 + i * 62) * K + 'px', width: 346 * K + 'px', height: 62 * K + 'px', gap: 12 * K + 'px' });
+  r.innerHTML = `<div class="ic" style="width:${36 * K}px;height:${36 * K}px"><svg viewBox="0 0 23 23" width="${22 * K}" height="${22 * K}"><path d="${ICON[kind]}"/></svg></div>`
+    + `<div><div class="nm" style="font-size:${16 * K}px">${name}</div>${sub ? `<div class="sub" style="font-size:${13 * K}px;margin-top:${2 * K}px">${sub}</div>` : ''}</div>`;
+  pack.appendChild(r); return r;
+});
+
+// ── Η ΚΑΜΕΡΑ: δύο κλίμακες (ολόκληρο, κοντινό), κατά μέτωπο όσο φαίνεται κείμενο ──
+// [χτύπος, ζουμ 0|1, κέντρο σε px εφαρμογής]· κάθε αλλαγή σε 0,5″, χωρίς υπερακόντιση.
+// Στο 4:5 το φύλλο δεν χωρά ολόκληρο στο κοντινό: η κάμερα και ο προβολέας κρατούν τις γραμμές των αρχείων.
+const PACK_FOCUS = fmt === '916' ? BOX.pack.y + 200 : BOX.pack.y + 236;
+const PACK_SPOT = fmt === '916' ? { x: 12, y: BOX.pack.y + 6, w: 366, h: 392 } : { x: 12, y: BOX.pack.y + 72, w: 366, h: 326 };
+const CAMK = [
+  [5, 0, 0], [6.2, 1, BOX.pending.y + BOX.pending.h / 2], [13.6, 0, 0],
+  [17.4, 1, BOX.fields.y + BOX.fields.h / 2 - 50], [24.6, 0, 0],
+  [27.0, 1, BOX.docs.y + BOX.docs.h / 2], [34.6, 0, 0],
+  [37.0, 1, BOX.card.y + BOX.card.h / 2], [40.2, 1, PACK_FOCUS], [46, 1, PACK_FOCUS],
+];
+function camAt(t) {
+  let z = 0, ay = 0;
+  for (let k = 0; k < CAMK.length; k++) {
+    const [b, zz, a] = CAMK[k];
+    if (k === 0) { z = zz; ay = a; continue; }
+    const u = tween(t, b, 0.5);
+    z += (zz - z) * u; ay += (a - ay) * u;
+  }
+  return { z, ay };
+}
+const SC = TL.scenes;
+function camera(t) {
+  const { z, ay: aFocus } = camAt(t);
+  const Z = 1 + (L.Zc - 1) * z;
+  const ay = (1 - z) * (-SB) + z * aFocus;
+  const Y = (1 - z) * (L.wideY + BEZ) + z * L.closeY;
+  const enterU = tween(t, TL.reveal, 0.4), exitU = tween(t, SC[4], 0.35);
+  let ry = 0;
+  for (const b of TL.turns) { const u = (t - B(b) + 0.2) / 0.4; if (u > 0 && u < 1) ry = 7 * Math.sin(Math.PI * u); }
+  const rx = 14 * (1 - enterU) * (t >= B(TL.reveal) ? 1 : 0);
+  const dy = (1 - enterU) * H * 0.9 + exitU * H * 0.9;
+  return { Z, ay, Y: Y + dy, rx, ry, z };
+}
+
+// ── ΚΕΙΜΕΝΑ ──────────────────────────────────────────────────────────────
+const texts = $('texts'), T = [];
+function text(cls, s, style, tin, tout) {
+  const el = document.createElement('div'); el.className = 'txt ' + cls; el.textContent = s;
+  Object.assign(el.style, style); texts.appendChild(el); T.push({ el, tin: B(tin), tout: B(tout) }); return el;
 }
 const centered = (top, w, size) => ({ left: px((W - w) / 2) + 'px', top: top + 'px', width: w + 'px', fontSize: size + 'px' });
 const END = TL.beats + 1;
-const dateTop = (pill, size) => px(pill.cy - size * 0.5);
-// ΕΝΑ μήνυμα: στα 2 πρώτα δευτερόλεπτα και στο κλείσιμο.
 const MSG = ['Κάθε ακίνητο.', 'Κάθε υποχρέωση.', 'Ένα μέρος.'];
-const msg = (tins, tout) => MSG.forEach((m, i) => text('date', m, { ...centered(L.msgTop + i * L.msgGap, 1040, L.msgSize), color: i === 2 ? 'var(--mkt-accent)' : '' }, tins[i], tout));
-msg([-1, 1, 2], 6);
+MSG.forEach((m, i) => text('msg', m, { ...centered(L.msgY + i * L.msgGap, 1060, L.msgSize), color: i === 2 ? 'var(--mkt-accent)' : '' }, [-1, 0.8, 1.6][i], 5));
 const CAPS = [
-  [6, 14, 'Όλα τα ακίνητα. Μία ματιά.'],
-  [14, 22, 'Κάθε προθεσμία, μετρημένη.'],
-  [22, 30, 'Σάρωσε. Συμπληρώνεται μόνο του.'],
-  [30, 38, 'Ο λογιστής, με ένα πάτημα.'],
+  [5.6, 15, 'Οι προθεσμίες, μόνες τους.'],
+  [15.3, 26, 'Φωτογράφισε. Τέλος.'],
+  [26.3, 36, 'Κάθε αρχείο στη θέση του.'],
+  [36.3, 46, 'Όπως τα θέλει ο λογιστής.'],
 ];
 for (const [a, b, s] of CAPS) text('cap', s, centered(L.capTop, L.capW, L.capSize), a, b);
-// Μία γρήγορη κάρτα: η προθεσμία της ανακαίνισης (RENO_39B_TO).
-text('date', '31/12/2026', centered(dateTop(L.hookPill, L.dateSize), 900, L.dateSize), 38, 44);
-text('line', 'Τελευταία μέρα για έκπτωση ανακαίνισης', centered(L.hookLineTop, L.lineW, L.lineSize), 38.5, 44);
-text('foot', 'Άρθρο 39Β ΚΦΕ · δαπάνες 01/01/2024 έως 31/12/2026', centered(L.footTop, 900, L.footSize), 38.5, 44);
-// Κλείσιμο: το ίδιο μήνυμα, η μάρκα, η διεύθυνση.
-text('', 'PROPERWISE', { ...centered(L.brandY, 1000, L.brandSz), fontWeight: 800, letterSpacing: '.06em', lineHeight: 1 }, 44, END);
-msg([44, 44.5, 45], END);
-text('', 'properwise.gr', { ...centered(px(L.urlPill.cy - L.urlSize * 0.62), 600, L.urlSize), color: 'var(--mkt-accent)', fontWeight: 650 }, 46, END);
-
-// ── Ο ΔΡΟΜΕΑΣ ────────────────────────────────────────────────────────────
-// [χτύπος άφιξης, πού: «off» σε px κάδρου, «app» σε px εφαρμογής στην οθόνη, ή όνομα κοντινού σε px εφαρμογής]
-const CUR = [
-  [5.4, 'off', W + 60, H * 0.7],
-  [9.0, 'portfolio', 300, 300],         // δίπλα στο καθαρό του έτους, στο κοντινό
-  [11.0, 'portfolio', 330, 470],        // οι ανεξόφλητες
-  [13.4, 'app', 300, 562],              // «Ακίνητο 1»
-  [16.4, 'deadlines', 250, 300],        // δίπλα στο «7 ημέρες ακόμη»
-  [18.6, 'deadlines', 362, 296],
-  [21.4, 'app', 104, 224],              // «Σάρωσε έγγραφο»
-  [24.4, 'fields', 230, 604],           // ο πάροχος, διαβασμένος
-  [26.6, 'fields', 160, 682],           // ο ΑΦΜ του παρόχου
-  [29.4, 'app', 195, 812],              // «Καταχώρηση»
-  [33.2, 'dossier', 120, 545],          // «Κατέβασε», στο κοντινό
-  [35.8, 'dossier', 300, 470],
-  [37.8, 'off', W + 60, H * 0.62],
-];
-const SP_CUR = { w: 8.5, z: .86 };
-const curX = new Track(CUR[0][2]), curY = new Track(CUR[0][3]);
-for (const [b, kind, x, y] of CUR.slice(1)) {
-  const t0 = B(b) - 0.3;          // στόχος που πρέπει να ΦΤΑΣΕΙ στο Τ δίνεται 0,3″ νωρίτερα
-  const p = kind === 'off' ? { x, y } : kind === 'app' ? appPoint(x, y) : cardPoint(kind, x, y);
-  curX.to(t0, p.x, SP_CUR); curY.to(t0, p.y, SP_CUR);
+MSG.forEach((m, i) => text('msg', m, { ...centered(L.cMsgY + i * L.cMsgGap, 1060, L.cMsgSize), color: i === 2 ? 'var(--mkt-accent)' : '' }, 46.4 + i * 0.3, END));
+function vis(t, tin, tout) {
+  if (tin < 0) return t < tout ? clamp((tout - t) / HALF, 0, 1) : 0;
+  if (t < tin || t >= tout) return 0;
+  return clamp(Math.min((t - tin) / (6 / FPS), (tout - t) / HALF), 0, 1);
 }
+const badge = $('badge'), logo = $('logo'), url = $('url'), zone = $('zone');
+Object.assign(badge.style, { fontSize: (fmt === '916' ? 26 : 22) + 'px', padding: '8px 18px' });
+Object.assign(logo.style, { width: L.logoW + 'px', left: (W - L.logoW) / 2 + 'px', top: L.logoY + 'px' });
+Object.assign(url.style, { fontSize: L.urlSize + 'px', width: '520px', left: (W - 520) / 2 + 'px', top: L.urlY + 'px', padding: '22px 0' });
+Object.assign(zone.style, { height: L.zoneH + L.fade + 'px',
+  background: `linear-gradient(180deg, var(--mkt-bg-base) 0px, var(--mkt-bg-base) ${L.zoneH}px, transparent ${L.zoneH + L.fade}px)` });
 
-// ── render(t): κάθε στυλ από τον χρόνο, τίποτα από το προηγούμενο καρέ ────
-const imgs = {}; document.querySelectorAll('#screen img').forEach((im) => { imgs[im.dataset.shot] = im; });
-const crops = {}; document.querySelectorAll('#card img').forEach((im) => { crops[im.dataset.crop] = im; });
-const shapeEl = $('shape'), screenEl = $('screen'), focusEl = $('focus'), dimEl = $('dim'), cardEl = $('card');
-const badge = $('badge'), cursor = $('cursor'), who = $('who'), ripple = $('ripple');
-badge.style.fontSize = L.badgeSize + 'px'; badge.style.padding = `${px(L.badgeSize * .36)}px ${px(L.badgeSize * .7)}px`;
-who.style.fontSize = px(22 * L.cursorScale) + 'px'; who.style.padding = '4px 12px';
-Object.assign(screenEl.style, { left: SCR.x + 'px', top: SCR.y + 'px', width: SCR.w + 'px', height: SCR.h + 'px', borderRadius: SCR.r + 'px' });
-for (const k in imgs) Object.assign(imgs[k].style, { width: px(SCR.w) + 'px', height: px(SCR.w * 844 / 390) + 'px' });
+// Προβολέας ανά σκηνή: [από χτύπο, ως χτύπο, κουτί]· αλλάζει κουτί με ομαλή μετακίνηση 0,3″.
+const SPOTS = [
+  [9.6, 13.4, BOX.enfia],
+  [17.9, 20.8, BOX.fields], [20.8, 24.4, BOX.updates],
+  [31.0, 34.4, BOX.docEnfia],
+  [37.8, 39.9, BOX.card], [43.4, 46, PACK_SPOT],
+];
 
+// ── render(t) ────────────────────────────────────────────────────────────
+const S = (el) => el.style;
+const stepCount = (t, list) => list.filter((b) => t >= B(b)).length;
 window.render = function render(t) {
   const sig = [];
-  const set = (el, prop, v) => { el.style[prop] = v; sig.push(v); };
-  // Σχήμα.
-  const g = {}; for (const k in geo) g[k] = geo[k].at(t);
-  set(shapeEl, 'left', px(g.x) + 'px'); set(shapeEl, 'top', px(g.y) + 'px');
-  set(shapeEl, 'width', px(g.w) + 'px'); set(shapeEl, 'height', px(g.h) + 'px');
-  set(shapeEl, 'borderRadius', px(clamp(g.r, 2, Math.min(g.w, g.h) / 2)) + 'px');
-  for (const [id, v] of [['ringAccent', g.accent], ['ringStrong', g.strong], ['ringSoft', g.soft], ['fillAccent', g.fill]]) set($(id), 'opacity', clamp(v, 0, 1).toFixed(3));
+  Object.assign(S($('g1')), { width: '1300px', height: '1300px', left: px(-260 + 180 * Math.sin(t / 4.2)) + 'px', top: px(H * 0.2 + 120 * Math.cos(t / 5.3)) + 'px' });
+  Object.assign(S($('g2')), { width: '1100px', height: '1100px', left: px(420 + 160 * Math.cos(t / 3.7)) + 'px', top: px(H * 0.55 + 110 * Math.sin(t / 4.9)) + 'px' });
 
-  // Οθόνη: μπαίνει όταν κάτσει το τηλέφωνο, φεύγει πριν αλλάξει σχήμα.
-  const scrIn = clamp((t - (B(TL.reveal) + 0.30)) / 0.22, 0, 1), scrOut = clamp((B(38) - t) / HALF, 0, 1);
-  const on = Math.min(scrIn, scrOut);
-  const d = dipAt(t);
-  const so = on * (0.22 + 0.78 * d);
-  const blur = (1 - d) * 5 + (1 - on) * 4;
-  set(screenEl, 'opacity', so.toFixed(3)); set(screenEl, 'filter', blur > 0.01 ? `blur(${blur.toFixed(2)}px)` : 'none');
-  const name = shotAt(t);
-  for (const k in imgs) imgs[k].style.visibility = k === name ? 'visible' : 'hidden';
-  sig.push(name);
-  // Πλαίσιο στο component, όσο το τηλέφωνο φαίνεται ολόκληρο πριν από το σήκωμα.
-  const m = momentAt(t);
-  const fo = m && t >= B(m.T) && t < B(m.lift) ? 1 : 0;
-  set(focusEl, 'opacity', String(fo));
-  if (m) { const c = CROPS[m.crop]; set(focusEl, 'left', px(c.x * K - 4) + 'px'); set(focusEl, 'top', px(c.y * K - 4) + 'px'); set(focusEl, 'width', px(c.w * K + 8) + 'px'); set(focusEl, 'height', px(c.h * K + 8) + 'px'); }
-  // Κοντινό.
-  const cr = cardRect(t);
-  set(dimEl, 'opacity', (cr ? 0.62 * clamp(cr.k, 0, 1) : 0).toFixed(3));
-  if (cr && on > 0) {
-    set(cardEl, 'display', 'block');
-    set(cardEl, 'left', px(cr.x) + 'px'); set(cardEl, 'top', px(cr.y) + 'px');
-    set(cardEl, 'width', px(cr.w) + 'px'); set(cardEl, 'height', px(cr.h) + 'px');
-    set(cardEl, 'borderRadius', px(10 + 18 * clamp(cr.k, 0, 1)) + 'px');
-    const cb = (1 - d) * 5;
-    set(cardEl, 'filter', cb > 0.01 ? `blur(${cb.toFixed(2)}px)` : 'none');
-    set(cardEl, 'opacity', Math.min(on, 0.3 + 0.7 * d).toFixed(3));
-    for (const k in crops) crops[k].style.visibility = k === cr.crop ? 'visible' : 'hidden';
-    sig.push(cr.crop);
-  } else set(cardEl, 'display', 'none');
-
-  // Ετικέτα επίδειξης: σε κάθε καρέ με οθόνη της εφαρμογής.
-  set(badge, 'opacity', on.toFixed(3));
-  const bw = badge.offsetWidth, bh = badge.offsetHeight;
-  if (fmt === '916') { badge.style.left = px(P.x + P.w - bw) + 'px'; badge.style.top = px(P.y - bh - 14) + 'px'; }
-  else { badge.style.left = px(P.x + P.w + 18) + 'px'; badge.style.top = px(P.y + 18) + 'px'; }
-
-  // Κείμενα.
-  for (const { el, tin, tout } of T) {
-    const o = tin < 0 && t < tout ? clamp((tout - t) / HALF, 0, 1) : vis(t, tin, tout);
-    el.style.display = o > 0 ? 'block' : 'none';
-    el.style.opacity = o.toFixed(3);
-    el.style.filter = o < 1 ? `blur(${((1 - o) * 6).toFixed(2)}px)` : 'none';
-    sig.push(o.toFixed(3));
+  const c = camera(t);
+  const on = t >= B(TL.reveal) && t < B(SC[4]) + 0.4;
+  S($('rig')).display = on ? 'block' : 'none';
+  if (on) {
+    const fx = BEZ + 195 * K, fy = BEZ + (SB + c.ay) * K;
+    const x0 = px(W / 2 - fx * c.Z), y0 = px(c.Y - fy * c.Z);
+    const rot = c.rx || c.ry ? ` translate(${fx}px, ${fy}px) rotateX(${c.rx.toFixed(3)}deg) rotateY(${c.ry.toFixed(3)}deg) translate(${-fx}px, ${-fy}px)` : '';
+    const tr = `translate(${x0}px, ${y0}px) scale(${c.Z.toFixed(5)})${rot}`;
+    S($('rig')).transform = tr; sig.push(tr);
   }
-  // Δρομέας.
-  const cv = t > B(5.5) && t < B(38.2);
-  set(cursor, 'display', cv ? 'block' : 'none');
-  if (cv) {
-    const x = curX.at(t), y = curY.at(t);
-    const vx = (curX.at(t + 1 / 240) - curX.at(t - 1 / 240)) * 120;
-    let press = 0;
-    for (const b of TL.taps) press = Math.max(press, Math.exp(-Math.pow((t - B(b)) / 0.045, 2)));
-    const sc = (1 - 0.16 * press) * L.cursorScale;
-    const tilt = clamp(-vx * 0.0045, -14, 14);
-    set(cursor, 'transform', `translate(${px(x - 4)}px, ${px(y - 3)}px) rotate(${tilt.toFixed(1)}deg) scale(${sc.toFixed(3)})`);
-    cursor.style.transformOrigin = '4px 3px';
-    set(who, 'left', px(30 - clamp(vx * 0.012, -18, 18)) + 'px'); who.style.top = '44px';
-    let rp = -1;
-    for (const b of TL.taps) { const dt = t - B(b); if (dt >= 0 && dt < 0.4) rp = dt / 0.4; }
-    if (rp >= 0) {
-      const r = px(14 + 46 * rp);
-      Object.assign(ripple.style, { display: 'block', left: px(x - r) + 'px', top: px(y - r) + 'px', width: 2 * r + 'px', height: 2 * r + 'px', opacity: (1 - rp).toFixed(3) });
-      sig.push(r);
-    } else ripple.style.display = 'none';
-  } else ripple.style.display = 'none';
+  const sharp = c.z > 0.5;
+  for (const id of ['scanFields', 'accCard', 'accCardBusy']) S($(id)).visibility = sharp ? 'visible' : 'hidden';
+  // Οθόνες.
+  const layer = t < B(SC[2]) ? 'Lover' : t < B(SC[3]) ? 'Ldocs' : 'Lacc';
+  for (const id of ['Lover', 'Ldocs', 'Lacc']) S($(id)).display = id === layer ? 'block' : 'none';
+  const up = layer === 'Lover' ? tween(t, TL.sheetUp, 0.4) : 0;
+  S($('Lscan')).display = up > 0 ? 'block' : 'none';
+  S($('Lscan')).transform = `translateY(${px((1 - up) * (APPH - 84 + 20) * K)}px)`;
+  S($('Lscan')).clipPath = `inset(${84 * K}px 0 0 0)`;
+  S($('dimOver')).opacity = (0.55 * up).toFixed(3);
+  sig.push(layer, up.toFixed(4), sharp);
+  // Η λίστα των προθεσμιών εμφανίζεται μόνη της, γραμμή γραμμή.
+  const np = stepCount(t, TL.rowsOver);
+  S($('overEmpty')).display = np < 4 ? 'block' : 'none'; S($('overBase')).display = np < 4 ? 'none' : 'block';
+  const pv = np < 4 || sharp;
+  pendEmpty.style.visibility = pv ? 'visible' : 'hidden';
+  pendRows.forEach((im, i) => { im.style.visibility = pv && i < np ? 'visible' : 'hidden'; });
+  // Τα πεδία γεμίζουν από τη σάρωση (ο Πάροχος, μετά ο ΑΦΜ) και παίρνουν ✓.
+  const pu = clamp((t - B(TL.fill[0])) / (B(TL.fill[1]) - B(TL.fill[0])), 0, 1), pi = Math.floor(pu * PROV_N + 1e-6);
+  provs.forEach((im, i) => { im.style.visibility = i === pi ? 'visible' : 'hidden'; });
+  const afmOn = t >= B(TL.ticks[1]) - 0.1 ? 1 : 0;
+  afms.forEach((im, i) => { im.style.visibility = i === afmOn ? 'visible' : 'hidden'; });
+  TL.ticks.forEach((b, k) => {
+    const u = clamp((t - B(b)) / 0.18, 0, 1), el = $('t' + (k + 1));
+    el.style.display = u > 0 && up > 0.99 ? 'block' : 'none';
+    el.style.opacity = u.toFixed(3); el.style.transform = `scale(${(0.6 + 0.4 * u).toFixed(3)})`; sig.push(u.toFixed(3));
+  });
+  // Ο Φάκελος ακινήτου οργανώνεται μόνος του σε φακέλους.
+  const nd = stepCount(t, TL.rowsDocs);
+  S($('docsEmpty')).display = nd < 6 ? 'block' : 'none'; S($('docsBase')).display = nd < 6 ? 'none' : 'block';
+  const dv = nd < 6 || sharp;
+  docsEmpty.style.visibility = dv ? 'visible' : 'hidden';
+  docsRows.forEach((im, i) => { im.style.visibility = dv && i < nd ? 'visible' : 'hidden'; });
+  // «Κατέβασε» → «Ετοιμάζεται». Μετά ανεβαίνει το πακέτο με τα περιεχόμενά του.
+  const busy = t >= B(TL.taps[1]) + 0.06;
+  S($('accBase')).display = busy ? 'none' : 'block'; S($('accBusy')).display = busy ? 'block' : 'none';
+  S($('accCard')).opacity = busy ? '0' : '1'; S($('accCardBusy')).opacity = busy ? '1' : '0';
+  const pk = tween(t, TL.packUp, 0.4);
+  S(pack).display = pk > 0 ? 'block' : 'none';
+  S(pack).transform = `translateY(${px((1 - pk) * (BOX.pack.h + 20) * K)}px)`;
+  const nr = stepCount(t, TL.rowsPack);
+  packRows.forEach((r, i) => { r.style.opacity = i < nr ? clamp((t - B(TL.rowsPack[i])) / 0.15, 0, 1).toFixed(3) : '0'; });
+  sig.push(np, nd, pi, afmOn, busy, pk.toFixed(4), nr);
+  // Προβολέας.
+  let sp = null, so = 0;
+  for (let k = 0; k < SPOTS.length; k++) {
+    const [a, b, r] = SPOTS[k];
+    if (t >= B(a) && t < B(b)) {
+      const prev = k > 0 && SPOTS[k - 1][1] === a ? SPOTS[k - 1][2] : null;
+      const u = prev ? ease((t - B(a)) / 0.3) : 1;
+      sp = prev ? { x: prev.x + (r.x - prev.x) * u, y: prev.y + (r.y - prev.y) * u, w: prev.w + (r.w - prev.w) * u, h: prev.h + (r.h - prev.h) * u } : r;
+      const next = k + 1 < SPOTS.length && SPOTS[k + 1][0] === b;
+      so = Math.min(prev ? 1 : clamp((t - B(a)) / 0.25, 0, 1), next ? 1 : clamp((B(b) - t) / 0.2, 0, 1));
+    }
+  }
+  Object.assign(S($('spot')), { display: sp && so > 0 ? 'block' : 'none', opacity: so.toFixed(3) });
+  if (sp) Object.assign(S($('spot')), { left: (sp.x - 4) * K + 'px', top: (sp.y - 4) * K + 'px', width: (sp.w + 8) * K + 'px', height: (sp.h + 8) * K + 'px' });
+  sig.push(so.toFixed(3), sp ? sp.y.toFixed(2) : '');
+  // Δάχτυλο: δύο πατήματα σε όλη την ταινία.
+  const TAPS = [[TL.taps[0], [BOX.scanBtn.x + 80, BOX.scanBtn.y + 18]], [TL.taps[1], [BOX.download.x + 60, BOX.download.y + 18]]];
+  let fxy = null, press = 0, ring = -1;
+  for (const [b, p] of TAPS) {
+    const d = t - B(b);
+    if (d > -0.18 && d < 0.12) { fxy = p; press = d < 0 ? clamp((d + 0.18) / 0.12, 0, 1) : clamp(1 - d / 0.12, 0, 1); }
+    if (d >= 0 && d < 0.45) { ring = d / 0.45; fxy = fxy || p; }
+  }
+  const tr = $('touch'), rg = $('touchRing');
+  if (fxy && press > 0.01) {
+    const r = 22 * K * (1.12 - 0.12 * press);
+    Object.assign(tr.style, { display: 'block', left: (fxy[0] * K - r).toFixed(1) + 'px', top: (fxy[1] * K - r).toFixed(1) + 'px', width: 2 * r + 'px', height: 2 * r + 'px', opacity: (0.95 * press).toFixed(3) });
+    sig.push(press.toFixed(3));
+  } else tr.style.display = 'none';
+  if (fxy && ring >= 0) {
+    const r = 22 * K * (1 + 1.1 * ease(ring));
+    Object.assign(rg.style, { display: 'block', left: (fxy[0] * K - r).toFixed(1) + 'px', top: (fxy[1] * K - r).toFixed(1) + 'px', width: 2 * r + 'px', height: 2 * r + 'px', opacity: (0.8 * (1 - ring)).toFixed(3) });
+    sig.push(ring.toFixed(3));
+  } else rg.style.display = 'none';
+
+  for (const { el, tin, tout } of T) {
+    const o = vis(t, tin, tout);
+    el.style.display = o > 0 ? 'block' : 'none'; el.style.opacity = o.toFixed(3); sig.push(o.toFixed(3));
+  }
+  const ao = on ? clamp(Math.min((t - B(TL.reveal)) / 0.3, (B(SC[4]) - t) / HALF), 0, 1) : 0;
+  S(zone).opacity = on ? '1' : '0';
+  S(badge).opacity = ao.toFixed(3);
+  const bw = badge.offsetWidth;
+  S(badge).left = px(W - 56 - bw) + 'px'; S(badge).top = L.badgeY + 'px';
+  const co = clamp((t - B(SC[4]) - 0.1) / HALF, 0, 1), uo = clamp((t - B(SC[4] + 1.2)) / HALF, 0, 1);
+  S(logo).opacity = co.toFixed(3); S(logo).display = co > 0 ? 'block' : 'none';
+  S(url).opacity = uo.toFixed(3); S(url).display = uo > 0 ? 'block' : 'none';
+  sig.push(ao.toFixed(3), co.toFixed(3), uo.toFixed(3));
   return sig.join('|');
 };
-
 window.ready = async () => {
   await Promise.all([...document.images].map((im) => im.decode()));
   await document.fonts.load('700 50px Inter', 'ΑΒΓαβγ€0123'); await document.fonts.ready;

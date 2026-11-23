@@ -16,8 +16,11 @@ const plan = readFileSync(join(here, 'plan.md'), 'utf8');
 // Οι ορατές συμβολοσειρές: ό,τι περνά στο text(…), οι λεζάντες, η ετικέτα και ο δρομέας.
 const visible: string[] = [];
 for (const m of film.matchAll(/text\('[^']*',\s*'([^']+)'/g)) visible.push(m[1]);
-for (const m of film.matchAll(/\[\d+, \d+, '([^']+)'\]/g)) visible.push(m[1]);
+for (const m of film.matchAll(/\[[\d.]+, [\d.]+, '([^']+)'\]/g)) visible.push(m[1]);
 for (const m of film.matchAll(/<div id="(?:badge|who)">([^<]+)<\/div>/g)) visible.push(m[1]);
+// Το πακέτο του λογιστή: το όνομα του zip και οι γραμμές του (όνομα, δευτερεύουσα γραμμή).
+for (const m of film.matchAll(/const ZIP = '([^']+)'/g)) visible.push(m[1]);
+for (const m of film.matchAll(/\['(?:doc|sheet|folder)', '([^']+)', '([^']*)'\]/g)) { visible.push(m[1]); if (m[2]) visible.push(m[2]); }
 for (const m of film.matchAll(/const MSG = \[([^\]]+)\]/g)) for (const x of m[1].matchAll(/'([^']+)'/g)) visible.push(x[1]);
 
 const sections = copy.split(/^## /m).slice(1).map((s) => ({ where: s.split('\n')[0], text: s.slice(s.indexOf('\n') + 1).trim() }));

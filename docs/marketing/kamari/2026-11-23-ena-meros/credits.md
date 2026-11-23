@@ -8,7 +8,8 @@
 Inter (SIL Open Font License 1.1), από το `public/fonts/` της εφαρμογής, με το ελληνικό υποσύνολο `inter-greek.woff2`, όπως τη δηλώνει το `app/globals.css`.
 
 ## Εικόνα
-Οι οθόνες είναι η εφαρμογή PROPERWISE, αποδοσμένη από τον πάγκο κινητού (`scripts/perf-bench/mobile.tsx`) με δεδομένα επίδειξης. Κανένα δεδομένο ιδιοκτήτη ή χρήστη. Η συσκευή είναι σχέδιο σε CSS, χωρίς σήμα κατασκευαστή. Χρώματα μόνο από τα `--mkt-*` του `app/globals.css`.
+Λογότυπο: `public/brand/properwise-logotypo-lefko.svg`, του ίδιου του PROPERWISE.
+Οι οθόνες είναι η εφαρμογή PROPERWISE, αποδοσμένη από τον πάγκο κινητού (`scripts/perf-bench/mobile.tsx`) με δεδομένα επίδειξης. Κανένα δεδομένο ιδιοκτήτη ή χρήστη. Η συσκευή είναι σχέδιο σε CSS, χωρίς σήμα κατασκευαστή· τα εικονίδια της γραμμής κατάστασης είναι SVG του φακέλου. Χρώματα μόνο από τα `--mkt-*` του `app/globals.css`.
 
 ## Μέθοδος
 `kamari` (προσαρμογή του `brag-slim`, MIT) και `kinisi` (από το `product-launch-motion`, MIT). Οι άδειες είναι στο `.claude/skills/kamari/references/proeleusi.md`.

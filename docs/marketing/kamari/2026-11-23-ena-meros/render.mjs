@@ -22,12 +22,12 @@ const [mode, fmt = '916', out, a4, a5] = process.argv.slice(2);
 const W = 1080, H = fmt === '45' ? 1350 : 1920;
 
 // Ο διακομιστής: public/ ως ρίζα (για τα /fonts), το app/globals.css ως /globals.css, ο φάκελος της ταινίας στο /.
-const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.woff2': 'font/woff2', '.png': 'image/png', '.js': 'text/javascript' };
+const TYPES = { '.svg': 'image/svg+xml', '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.woff2': 'font/woff2', '.png': 'image/png', '.js': 'text/javascript' };
 const server = createServer((req, res) => {
   const p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
   let f;
   if (p === '/globals.css') f = join(root, 'app/globals.css');
-  else if (p.startsWith('/fonts/')) f = join(root, 'public', p);
+  else if (p.startsWith('/fonts/') || p.startsWith('/brand/')) f = join(root, 'public', p);
   else f = join(here, p);
   if (!f.startsWith(root) || !existsSync(f)) { res.writeHead(404); res.end(); return; }
   res.writeHead(200, { 'Content-Type': TYPES[extname(f)] || 'application/octet-stream' });
@@ -36,7 +36,7 @@ const server = createServer((req, res) => {
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const url = `http://127.0.0.1:${server.address().port}/film.html?f=${fmt}`;
 
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH, args: ['--disable-dev-shm-usage'] });   // μεγάλες εικόνες: όχι στο μικρό /dev/shm
 async function openPage(dsf) {
   const pg = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: dsf });
   pg.on('pageerror', (e) => console.error('σφάλμα σελίδας:', e.message));
@@ -62,7 +62,12 @@ const X264 = ['-c:v', 'libx264', '-crf', '12', '-preset', 'slow', '-tune', 'stil
   '-x264-params', 'keyint=300:min-keyint=30:scenecut=40:deblock=-2,-2:aq-mode=3:psy-rd=1.0,0',
   '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'tv'];
 
-const s = await openPage(mode === 'full' ? 3 : 1);
+// Η φόρτωση των μεγάλων εικόνων ρίχνει καμιά φορά τη σελίδα: ξαναδοκίμασε σε νέα σελίδα.
+let s;
+for (let k = 0; ; k++) {
+  try { s = await openPage(mode === 'full' ? 3 : 1); break; }
+  catch (e) { if (k >= 3) throw e; console.error('νέα προσπάθεια φόρτωσης:', e.message.split('\n')[0]); }
+}
 const TL = await s.pg.evaluate(() => window.TL);
 const FPS = TL.fps, N = Math.round(TL.beats * 60 / TL.bpm * FPS);
 
@@ -78,6 +83,22 @@ if (mode === 'stills') {
   await run(['-y', '-v', 'error', '-framerate', String(FPS), '-f', 'image2pipe', '-c:v', 'png', '-i', '-',
     '-vf', 'format=yuv420p', '-c:v', 'libx264', '-crf', '20', '-preset', 'veryfast', out], async (stdin) => {
     for (let i = 0; i < N; i++) await write(stdin, await grab(s, i === 0 ? TL.cover : i / FPS));
+    stdin.end();
+  });
+} else if (mode === 'crisp') {
+  // v5: ένα δείγμα ανά καρέ (κανένα θόλωμα κίνησης), λήψη 3× και σμίκρυνση lanczos (κανένα gblur),
+  // x264 -crf 14 -tune animation με όριο 14 Mbps. Το καρέ 0 είναι το εξώφυλλο.
+  const from = Number(a4 || 0), to = Number(a5 || N);
+  const t0 = Date.now();
+  await run(['-y', '-v', 'error', '-framerate', String(FPS), '-f', 'image2pipe', '-c:v', 'png', '-i', '-',
+    '-vf', `scale=${W}:${H}:flags=lanczos+accurate_rnd+full_chroma_int,format=yuv420p`,
+    '-r', String(FPS), '-c:v', 'libx264', '-crf', '14', '-preset', 'slow', '-tune', 'animation', '-profile:v', 'high', '-level', '4.2',
+    '-maxrate', '14M', '-bufsize', '28M', '-x264-params', 'keyint=300:min-keyint=30:scenecut=40',
+    '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'tv', '-an', out], async (stdin) => {
+    for (let i = from; i < to; i++) {
+      await write(stdin, await grab(s, i === 0 ? TL.cover : i / FPS));
+      if (i % 60 === 0) console.log(`καρέ ${i}/${to} · ${((Date.now() - t0) / 1000).toFixed(0)}″`);
+    }
     stdin.end();
   });
 } else if (mode === 'full') {
