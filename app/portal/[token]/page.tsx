@@ -22,6 +22,7 @@ import { callPortalWrite, portalWriteMessage, portalWriteOutcome, PORTAL_SAY, ty
 import { linkLoad, LINK_SAY } from '@/lib/portal/linkLoad';
 import { useToolDict } from '@/lib/i18n/toolEn';
 import LangSwitcher from '@/app/LangSwitcher';
+import { payLink, groupIban, hasDue as owes } from '@/lib/portal/view';
 
 interface DueItem { id: string; year: number; month: number; amount: number; due_date: string | null; declared: boolean }
 
@@ -273,6 +274,12 @@ export default function TenantPortal() {
     setSent(true); setTitle(''); setDesc(''); setContact('');
   };
 
+  // ΔΕΥΤΕΡΟ ΑΙΤΗΜΑ ΧΩΡΙΣ ΝΕΑ ΦΟΡΤΩΣΗ. Η επιβεβαίωση έμενε για πάντα και η
+  // μόνη έξοδος ήταν η ανανέωση της σελίδας, που σε σύνδεσμο με κωδικό
+  // σημαίνει να τον ξαναγράψει. Και το μήνυμα για χαμένες φωτογραφίες λέει
+  // «στείλε δεύτερο αίτημα»: τώρα υπάρχει κουμπί που το κάνει.
+  const newRequest = () => { setSent(false); setLostPhotos(0); setPhotoLimitHit(false); setErr(''); };
+
   const wrap: React.CSSProperties = { maxWidth: 560, margin: '0 auto', padding: '0 clamp(16px,5vw,24px)' };
   const card: React.CSSProperties = { background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 'clamp(18px,4vw,24px)', marginBottom: 16 };
   const field: React.CSSProperties = { width: '100%', boxSizing: 'border-box', background: 'var(--bg-base)', border: '1px solid var(--border-control)', borderRadius: T.radius.xs, padding: '10px 16px', color: 'var(--text-primary)', fontSize: 14, fontFamily: 'inherit' };
@@ -283,8 +290,8 @@ export default function TenantPortal() {
   // γράμματα αραιωμένα σαν κωδικός. Το `T.font.num` είναι η ίδια Inter της
   // σελίδας με ΨΗΦΙΑ ίσου πλάτους — τα ποσά στοιχίζονται κάθετα, οι λέξεις
   // διαβάζονται σαν λέξεις.
-  const row = (k: string, v: string) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, padding: '10px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+  const row = (k: string, v: string, last = false) => (
+    <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, padding: '12px 0', borderBottom: last ? 'none' : '1px solid var(--border-subtle)' }}>
       <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{k}</span>
       <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{v}</span>
     </div>
@@ -298,8 +305,8 @@ export default function TenantPortal() {
    * είναι το πρόσωπο του ιδιοκτήτη προς τον ενοικιαστή του και ένα μηδενικό
    * ενοίκιο εκεί κοστίζει περισσότερο από μια γραμμή που λείπει.
    */
-  const rowIf = (k: string, v: number | string | null, fmt: (x: never) => string) =>
-    v == null || v === '' || v === 0 ? null : row(k, fmt(v as never));
+  const fact = (k: string, v: number | string | null, fmt: (x: never) => string): [string, string] | null =>
+    v == null || v === '' || v === 0 ? null : [k, fmt(v as never)];
 
   return (
     <div style={{ background: 'var(--bg-base)', minHeight: '100vh', color: 'var(--text-primary)', fontFamily: T.font.sans, paddingBottom: 40 }}>
@@ -366,7 +373,8 @@ export default function TenantPortal() {
                 // κειμένου» σε κάθε διόρθωση. Το πεδίο έχει και ορατό τίτλο από
                 // πάνω («Απαιτείται κωδικός»), αλλά τίποτα δεν τα συνδέει.
                 aria-label={E ? E.pinLabel : 'Κωδικός πύλης'}
-                style={{ ...field, textAlign: 'center', letterSpacing: '0.3em' }}
+                // Το αραίωμα είναι για τα ψηφία· στο placeholder έβγαζε «Κ ω δ ι κ ό ς».
+                style={{ ...field, textAlign: 'center', letterSpacing: pin ? '0.3em' : undefined }}
               />
               {pinErr && <div style={{ background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: 10, padding: '10px 16px', fontSize: 13, color: 'var(--negative)' }}>{pinErr}</div>}
               {/* size="lg" γιατί είναι δημόσια σελίδα κινητού: το ύψος πεδίου φτάνει τα 44 στο δάχτυλο. */}
@@ -377,38 +385,91 @@ export default function TenantPortal() {
 
         {state === 'ok' && data && (
           <>
+            {/* ═══ ΠΟΙΟ ΣΠΙΤΙ, ΠΡΙΝ ΑΠΟ ΚΑΘΕ ΠΟΣΟ ═══════════════════════════════════
+                Το όνομα του ακινήτου ζούσε στην τρίτη κάρτα, κάτω από την οφειλή
+                και τον IBAN. Ο ενοικιαστής που ανοίγει έναν σύνδεσμο από μήνυμα
+                έβλεπε «1.300,00€» χωρίς να ξέρει ακόμη για ποιο σπίτι. Τώρα είναι
+                ο τίτλος της σελίδας, χωρίς κάρτα: ταυτότητα, όχι ενότητα. */}
+            <section data-section="place" style={{ margin: '0 0 20px' }}>
+              <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.01em', lineHeight: 1.25, margin: 0 }}>{data.property.name || (E ? E.property : 'Ακίνητο')}</h2>
+              {(data.property.type || data.property.address) && (
+                <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, lineHeight: 1.5 }}>{[data.property.type, data.property.address].filter(Boolean).join(' · ')}</div>
+              )}
+            </section>
+
+            {/* ═══ ΠΟΣΑ ΚΑΙ ΠΩΣ, ΣΕ ΜΙΑ ΚΑΡΤΑ ═══════════════════════════════════════
+                Ηταν δύο κάρτες και η σειρά ήταν ανάποδη: πρώτα «Δήλωσα την
+                πληρωμή» για κάθε μήνα, ΜΕΤΑ, σε άλλη κάρτα, «Πληρωμή τώρα» και ο
+                IBAN. Τώρα: το ποσό, ο τρόπος πληρωμής και οι μήνες με τη δήλωση
+                από κάτω, δηλαδή η σειρά με την οποία γίνονται.
+
+                Ο τρόπος πληρωμής μένει και όταν δεν οφείλεται τίποτα: ο
+                ενοικιαστής που θέλει να στήσει πάγια εντολή βρίσκει τον IBAN
+                ακριβώς όταν είναι εντάξει.
+
+                Το «Συνολικό εκκρεμές ποσό προς εξόφληση» κάτω από το ποσό έφυγε:
+                η ετικέτα «Οφειλή» από πάνω λέει ήδη το ίδιο. */}
             {(() => {
-              const hasDue = data.total_due > 0 && data.due.length > 0;
+              const due = owes(data);
+              const link = payLink(data.payment_link);
+              const iban = data.tenant.rent_iban;
+              const pay = (link || iban) ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16, ...(due ? { marginBottom: 20 } : { borderTop: '1px solid var(--border-subtle)', marginTop: 14, paddingTop: 16 }) }}>
+                  {!due && <div style={{ ...label, marginBottom: 0 }}>{E ? E.payMethod : 'Τρόπος πληρωμής'}</div>}
+                  {link && (
+                    <div>
+                      <a href={link} target="_blank" rel="noopener noreferrer"
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 48, borderRadius: T.radius.pill, background: 'var(--accent)', color: 'var(--accent-text)', fontSize: 15, fontWeight: 700, textDecoration: 'none', fontFamily: 'inherit' }}>
+                        {E ? E.payNow : 'Πληρωμή τώρα'}
+                      </a>
+                      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 8, lineHeight: 1.5 }}>{E ? E.payNowNote : 'Η πληρωμή γίνεται στον πάροχο του ιδιοκτήτη.'}</div>
+                    </div>
+                  )}
+                  {iban && (
+                    <div>
+                      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8, lineHeight: 1.5 }}>{E ? E.ibanNote : 'Τραπεζικό έμβασμα στον IBAN και μετά δήλωσε την πληρωμή.'}</div>
+                      {/* Σε τετράδες, όπως στο βιβλιάριο: στα 390 σπάει σε κενό, όχι
+                          στη μέση του αριθμού. Η αντιγραφή παίρνει την αρχική τιμή. */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', overflowWrap: 'anywhere', flex: '1 1 200px' }}>{groupIban(iban)}</span>
+                        <Btn variant="secondary" onClick={() => copyIban(data.tenant.rent_iban as string)}>{copied ? (E ? E.copied : 'Αντιγράφηκε') : (E ? E.copy : 'Αντιγραφή')}</Btn>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : null;
               return (
-                <div style={card}>
-                  {/* ═══ ΤΟ ΜΕΓΑΛΟ ΚΟΥΤΙ ΓΙΑ ΤΟ ΜΗΔΕΝ ══════════════════════════════
-                      Οταν δεν οφείλεται τίποτα, η οθόνη έβγαζε πράσινο πλαίσιο
-                      ύψους πενήντα εικονοστοιχείων για να πει μια καλή είδηση που
-                      δεν ζητά καμία ενέργεια — και το πράσινο το κρατάμε για όσα
-                      ΣΗΜΑΙΝΟΥΝ κάτι. Μία γραμμή, στο ίδιο ιδίωμα με τις γραμμές
-                      της μίσθωσης από κάτω: ετικέτα αριστερά, τιμή δεξιά. */}
-                  {!hasDue ? (
+                <section data-section="money" style={card}>
+                  {/* ═══ ΤΟ ΜΗΔΕΝ ΣΕ ΜΙΑ ΓΡΑΜΜΗ ══════════════════════════════════
+                      Οταν δεν οφείλεται τίποτα, μία γραμμή: ετικέτα αριστερά,
+                      τιμή δεξιά. Το πράσινο το κρατάμε για όσα ΣΗΜΑΙΝΟΥΝ κάτι. */}
+                  {!due ? (
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
                       <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{E ? E.due : 'Οφειλή'}</span>
                       <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.num }}>{E ? E.nothingDue : 'Καμία εκκρεμής'}</span>
                     </div>
                   ) : (
                     <>
-                      <div style={{ ...label, marginBottom: 12 }}>{E ? E.due : 'Οφειλή'}</div>
-                      <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.02em', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)', marginBottom: 4 }}>{money(data.total_due)}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: T.sp.lg }}>{E ? E.dueTotal : 'Συνολικό εκκρεμές ποσό προς εξόφληση'}</div>
+                      <div style={{ ...label, marginBottom: 4 }}>{E ? E.due : 'Οφειλή'}</div>
+                      <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.02em', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)', marginBottom: 16 }}>{money(data.total_due)}</div>
+                    </>
+                  )}
 
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 4 }}>
-                        {data.due.map(item => (
-                          <div key={item.id} style={{ border: '1px solid var(--border-subtle)', borderRadius: 10, padding: '12px 16px' }}>
+                  {pay}
+
+                  {due && (
+                    <>
+                      <div style={{ display: 'flex', flexDirection: 'column', borderTop: '1px solid var(--border-subtle)' }}>
+                        {data.due.map((item, i) => (
+                          <div key={item.id} style={{ padding: '14px 0 0', ...(i < data.due.length - 1 ? { paddingBottom: 14, borderBottom: '1px solid var(--border-subtle)' } : {}) }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
                               <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{monthOf(item.month, item.year)}</span>
                               <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{money(item.amount)}</span>
                             </div>
-                            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>{E ? E.dueBy : 'Λήξη προθεσμίας'}: {day(item.due_date)}</div>
-                            <div style={{ marginTop: 12 }}>
+                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>{E ? E.dueBy : 'Λήξη προθεσμίας'}: {day(item.due_date)}</div>
+                            <div style={{ marginTop: 10 }}>
                               {item.declared ? (
-                                <span style={{ display: 'inline-block', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', color: 'var(--warning)', fontSize: 12, fontWeight: 600, borderRadius: T.radius.pill, padding: '6px 12px' }}>
+                                <span style={{ display: 'inline-block', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', color: 'var(--warning)', fontSize: 12, fontWeight: 600, lineHeight: 1.4, borderRadius: T.radius.chip, padding: '6px 12px' }}>
                                   {E ? E.declared : 'Δηλώθηκε, σε επιβεβαίωση από τον ιδιοκτήτη'}
                                 </span>
                               ) : (
@@ -418,120 +479,58 @@ export default function TenantPortal() {
                           </div>
                         ))}
                       </div>
-
-                      {declareErr && <div style={{ background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: 10, padding: '10px 16px', fontSize: 13, color: 'var(--negative)', marginTop: 12 }}>{declareErr}</div>}
-
+                      {declareErr && <div role="alert" style={{ background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: 10, padding: '10px 16px', fontSize: 13, color: 'var(--negative)', marginTop: 12 }}>{declareErr}</div>}
                     </>
                   )}
-                </div>
+                </section>
               );
             })()}
 
-            {/* ═══ Ο ΤΡΟΠΟΣ ΠΛΗΡΩΜΗΣ ΒΓΗΚΕ ΑΠΟ ΤΗΝ ΟΦΕΙΛΗ ══════════════════════════
-                Ζούσε ΜΕΣΑ στο κουτί της οφειλής, δηλαδή υπήρχε μόνο όσο χρωστούσε
-                κάποιος. Ο ενοικιαστής που θέλει να πληρώσει νωρίτερα, ή απλώς να
-                αντιγράψει τον IBAN για να στήσει πάγια εντολή, δεν είχε πουθενά
-                να τον βρει: η πληροφορία εξαφανιζόταν ακριβώς όταν ήταν εντάξει.
-
-                Δική του κάρτα, κάτω από την οφειλή: όταν χρωστάει, το κουμπί
-                είναι η επόμενη κίνηση· όταν όχι, είναι ο τρόπος για την επόμενη
-                φορά. */}
-            {(() => {
-              const link = data.payment_link;
-              const hasLink = typeof link === 'string' && link.startsWith('https://');
-              const hasIban = Boolean(data.tenant.rent_iban);
-              if (!hasLink && !hasIban) return null;
-              return (
-                <div style={card}>
-                  <div style={label}>{E ? E.payMethod : 'Τρόπος πληρωμής'}</div>
-                  {hasLink && (
-                    <div style={{ marginBottom: hasIban ? 18 : 0 }}>
-                      <a href={link as string} target="_blank" rel="noopener noreferrer"
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, borderRadius: T.radius.pill, background: 'var(--accent)', color: 'var(--accent-text)', fontSize: 15, fontWeight: 700, textDecoration: 'none', fontFamily: 'inherit' }}>
-                        {E ? E.payNow : <>
-                          Πληρωμή τώρα
-                        </>}
-                      </a>
-                      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 8, lineHeight: 1.5 }}>{E ? E.payNowNote : 'Η πληρωμή γίνεται στον πάροχο του ιδιοκτήτη.'}</div>
-                    </div>
-                  )}
-                  {hasIban && (
-                    <>
-                      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 10, lineHeight: 1.5 }}>{E ? E.ibanNote : 'Τραπεζικό έμβασμα στον IBAN και μετά δήλωσε την πληρωμή.'}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', wordBreak: 'break-all', flex: 1 }}>{data.tenant.rent_iban}</span>
-                        <Btn variant="secondary" onClick={() => copyIban(data.tenant.rent_iban as string)}>{copied ? (E ? E.copied : 'Αντιγράφηκε') : (E ? E.copy : 'Αντιγραφή')}</Btn>
-                      </div>
-                    </>
-                  )}
-                </div>
-              );
-            })()}
-
-            {/* ═══ ΤΟ ΣΠΙΤΙ ΚΑΙ ΜΟΝΟ ΟΣΑ ΞΕΡΟΥΜΕ ΓΙ' ΑΥΤΟ ══════════════════════════
-                Οι τέσσερις γραμμές γράφονταν πάντα, ακόμη κι όταν ήταν κενές:
-                ο ενοικιαστής διάβαζε «Μηνιαίο ενοίκιο 0,00€» και δύο φορές
-                «Χωρίς ημερομηνία». Οταν δεν ξέρουμε τίποτα, το λέει μία γραμμή
-                αντί για τέσσερις που μοιάζουν με απάντηση. */}
-            {(() => {
-              const rows = [
-                rowIf(E ? E.rent : 'Μηνιαίο ενοίκιο', data.tenant.rent, money),
-                rowIf(E ? E.leaseStart : 'Έναρξη μίσθωσης', data.tenant.lease_start, day),
-                rowIf(E ? E.leaseEnd : 'Λήξη μίσθωσης', data.tenant.lease_end, day),
-                rowIf(E ? E.deposit : 'Εγγύηση', data.tenant.deposit, money),
-              ].filter(Boolean);
-              return (
-                <div style={card}>
-                  <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.01em', marginBottom: 2 }}>{data.property.name}</div>
-                  <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 16 }}>{[data.property.type, data.property.address].filter(Boolean).join(' · ') || (E ? E.property : 'Ακίνητο')}</div>
-                  {rows.length > 0 ? rows : (
-                    <div style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.6 }}>
-                      {E ? E.noLease : 'Τα στοιχεία της μίσθωσης δεν έχουν συμπληρωθεί ακόμη.'}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-
-            <div style={card}>
+            <section data-section="request" style={card}>
               {/* Ο ΤΙΤΛΟΣ ΔΕΝ ΕΧΕΙ ΚΑΘΕΤΟ ΚΑΙ Ο ΥΠΟΤΙΤΛΟΣ ΔΕΝ ΕΧΕΙ ΟΡΟΛΟΓΙΑ. Το
                   «Αίτημα βλάβης / επικοινωνία» ζητά από τον ενοικιαστή να
                   διαλέξει κατηγορία πριν γράψει· το «πάνελ διαχείρισης» είναι
-                  λέξη του ιδιοκτήτη, όχι δική του. */}
-              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>{E ? E.requestTitle : 'Στείλε αίτημα στον ιδιοκτήτη'}</div>
-              <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 16, lineHeight: 1.5 }}>{E ? E.requestSub : 'Βλάβη, ερώτηση ή ό,τι χρειάζεσαι. Το βλέπει αμέσως.'}</div>
+                  λέξη του ιδιοκτήτη, όχι δική του. Επικεφαλίδα, ώστε η πλοήγηση
+                  ανά επικεφαλίδα να προσγειώνεται εδώ. */}
+              <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px' }}>{E ? E.requestTitle : 'Στείλε αίτημα στον ιδιοκτήτη'}</h2>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16, lineHeight: 1.5 }}>{E ? E.requestSub : 'Βλάβη, ερώτηση ή ό,τι χρειάζεσαι. Το βλέπει αμέσως.'}</div>
 
               {sent ? (
-                <div style={{ background: 'var(--positive-soft)', border: '1px solid var(--positive-border)', borderRadius: 10, padding: '14px 16px', color: 'var(--positive)', fontSize: 14, fontWeight: 600 }}>
-                  {E ? E.sent : 'Το αίτημα στάλθηκε. Ευχαριστούμε!'}
-                  {/* Η ΕΠΙΒΕΒΑΙΩΣΗ ΛΕΕΙ ΚΑΙ ΤΙ ΔΕΝ ΕΓΙΝΕ. Ενα «στάλθηκε» που
-                      κρύβει τις φωτογραφίες που χάθηκαν είναι χειρότερο από
-                      σφάλμα: ο ενοικιαστής φεύγει ήσυχος. */}
-                  {lostPhotos > 0 && (
-                    <div style={{ marginTop: 8, fontWeight: 500, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                      {E ? (photoLimitHit
-                        ? `${(lostPhotos === 1 ? E.photosLostOne : E.photosLostMany).replace('{n}', String(lostPhotos))} ${E.photoLimit}`
-                        : `${(lostPhotos === 1 ? E.photosLostNetOne : E.photosLostNetMany).replace('{n}', String(lostPhotos))} ${E.photosResend}`)
-                      : photoLimitHit
-                        ? `${lostPhotos === 1 ? 'Μία φωτογραφία δεν ανέβηκε' : `${lostPhotos} φωτογραφίες δεν ανέβηκαν`}. ${PORTAL_SAY.photoLimit}`
-                        : <>
-                            {lostPhotos === 1
-                              ? 'Μία φωτογραφία δεν ανέβηκε, μάλλον λόγω σύνδεσης.'
-                              : `${lostPhotos} φωτογραφίες δεν ανέβηκαν, μάλλον λόγω σύνδεσης.`}{' '}
-                            Στείλε δεύτερο αίτημα με τις φωτογραφίες όταν έχεις καλύτερο σήμα.
-                          </>}
-                    </div>
-                  )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-start' }}>
+                  <div role="status" style={{ alignSelf: 'stretch', background: 'var(--positive-soft)', border: '1px solid var(--positive-border)', borderRadius: 10, padding: '14px 16px', color: 'var(--positive)', fontSize: 14, fontWeight: 600 }}>
+                    {E ? E.sent : 'Το αίτημα στάλθηκε. Ευχαριστούμε!'}
+                    {/* Η ΕΠΙΒΕΒΑΙΩΣΗ ΛΕΕΙ ΚΑΙ ΤΙ ΔΕΝ ΕΓΙΝΕ. Ενα «στάλθηκε» που
+                        κρύβει τις φωτογραφίες που χάθηκαν είναι χειρότερο από
+                        σφάλμα: ο ενοικιαστής φεύγει ήσυχος. */}
+                    {lostPhotos > 0 && (
+                      <div style={{ marginTop: 8, fontWeight: 500, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                        {E ? (photoLimitHit
+                          ? `${(lostPhotos === 1 ? E.photosLostOne : E.photosLostMany).replace('{n}', String(lostPhotos))} ${E.photoLimit}`
+                          : `${(lostPhotos === 1 ? E.photosLostNetOne : E.photosLostNetMany).replace('{n}', String(lostPhotos))} ${E.photosResend}`)
+                        : photoLimitHit
+                          ? `${lostPhotos === 1 ? 'Μία φωτογραφία δεν ανέβηκε' : `${lostPhotos} φωτογραφίες δεν ανέβηκαν`}. ${PORTAL_SAY.photoLimit}`
+                          : <>
+                              {lostPhotos === 1
+                                ? 'Μία φωτογραφία δεν ανέβηκε, μάλλον λόγω σύνδεσης.'
+                                : `${lostPhotos} φωτογραφίες δεν ανέβηκαν, μάλλον λόγω σύνδεσης.`}{' '}
+                              Στείλε δεύτερο αίτημα με τις φωτογραφίες όταν έχεις καλύτερο σήμα.
+                            </>}
+                      </div>
+                    )}
+                  </div>
+                  <Btn variant="secondary" onClick={newRequest}>{E ? E.newRequest : 'Νέο αίτημα'}</Btn>
                 </div>
               ) : (
                 <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   <div><label htmlFor="portal-title" style={label}>{E ? E.subject : 'Θέμα'}</label><input id="portal-title" required value={title} onChange={e => setTitle(e.target.value)} placeholder={E ? E.subjectPlaceholder : 'Διαρροή στο μπάνιο'} style={field} /></div>
                   <div><label htmlFor="portal-desc" style={label}>{E ? E.description : 'Περιγραφή'}</label><textarea id="portal-desc" value={desc} onChange={e => setDesc(e.target.value)} placeholder={E ? E.descriptionPlaceholder : 'Περίγραψε το πρόβλημα…'} rows={4} style={{ ...field, resize: 'vertical' }} /></div>
-                  <div><label htmlFor="portal-contact" style={label}>{E ? E.phone : 'Τηλέφωνο επικοινωνίας (προαιρετικό)'}</label><input id="portal-contact" value={contact} onChange={e => setContact(e.target.value)} placeholder="69XXXXXXXX" style={field} /></div>
+                  {/* Πληκτρολόγιο τηλεφώνου και αυτόματη συμπλήρωση: στο κινητό ο
+                      αριθμός μπαίνει με ένα πάτημα αντί για εναλλαγή πληκτρολογίου. */}
+                  <div><label htmlFor="portal-contact" style={label}>{E ? E.phone : 'Τηλέφωνο επικοινωνίας (προαιρετικό)'}</label><input id="portal-contact" type="tel" inputMode="tel" autoComplete="tel" value={contact} onChange={e => setContact(e.target.value)} placeholder="69XXXXXXXX" style={field} /></div>
 
                   <div>
                     <label style={label}>{E ? E.photos : 'Φωτογραφίες (προαιρετικό)'}</label>
-                    <label className="po-file-pick" style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--bg-base)', border: '1px solid var(--border-default)', color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, borderRadius: T.radius.chip, padding: '9px 14px', cursor: photos.length >= MAX_PHOTOS ? 'not-allowed' : 'pointer', opacity: photos.length >= MAX_PHOTOS ? 0.6 : 1, fontFamily: 'inherit' }}>
+                    <label className="po-file-pick" style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44, boxSizing: 'border-box', background: 'var(--bg-base)', border: '1px solid var(--border-default)', color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, borderRadius: T.radius.chip, padding: '9px 14px', cursor: photos.length >= MAX_PHOTOS ? 'not-allowed' : 'pointer', opacity: photos.length >= MAX_PHOTOS ? 0.6 : 1, fontFamily: 'inherit' }}>
                       {E ? E.addPhotos : 'Προσθήκη φωτογραφιών'}
                       <input type="file" accept="image/*" multiple aria-label={E ? E.photosLabel : 'Φωτογραφίες του προβλήματος'} disabled={photos.length >= MAX_PHOTOS} onChange={onPickFiles} className="sr-only" />
                     </label>
@@ -555,15 +554,37 @@ export default function TenantPortal() {
                         ))}
                       </div>
                     )}
-                    {photoNote && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8, lineHeight: 1.5 }}>{photoNote}</div>}
+                    {photoNote && <div role="status" style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 8, lineHeight: 1.5 }}>{photoNote}</div>}
                   </div>
 
-                  {err && <div style={{ background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: 10, padding: '10px 16px', fontSize: 13, color: 'var(--negative)' }}>{err}</div>}
+                  {err && <div role="alert" style={{ background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: 10, padding: '10px 16px', fontSize: 13, color: 'var(--negative)' }}>{err}</div>}
                   <Btn variant="primary" size="lg" type="submit" disabled={sending || !title.trim()}>{sending ? (L ? L.sending : 'Αποστολή…') : (E ? E.send : 'Αποστολή αιτήματος')}</Btn>
                 </form>
               )}
-            </div>
+            </section>
 
+            {/* ═══ Η ΜΙΣΘΩΣΗ, ΓΙΑ ΑΝΑΦΟΡΑ ══════════════════════════════════════════
+                Τελευταία, γιατί δεν ζητά καμία κίνηση. Οι γραμμές χωρίς τιμή δεν
+                γράφονται: ο ενοικιαστής διάβαζε «Μηνιαίο ενοίκιο 0,00€» και δύο
+                φορές «Χωρίς ημερομηνία». Οταν δεν ξέρουμε τίποτα, το λέει μία
+                γραμμή αντί για τέσσερις που μοιάζουν με απάντηση. */}
+            {(() => {
+              const rows = [
+                fact(E ? E.rent : 'Μηνιαίο ενοίκιο', data.tenant.rent, money),
+                fact(E ? E.leaseStart : 'Έναρξη μίσθωσης', data.tenant.lease_start, day),
+                fact(E ? E.leaseEnd : 'Λήξη μίσθωσης', data.tenant.lease_end, day),
+                fact(E ? E.deposit : 'Εγγύηση', data.tenant.deposit, money),
+              ].filter((r): r is [string, string] => r !== null);
+              return (
+                <section data-section="lease" style={{ ...card, paddingTop: rows.length > 0 ? 8 : undefined, paddingBottom: rows.length > 0 ? 8 : undefined }}>
+                  {rows.length > 0 ? rows.map(([k, v], i) => row(k, v, i === rows.length - 1)) : (
+                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                      {E ? E.noLease : 'Τα στοιχεία της μίσθωσης δεν έχουν συμπληρωθεί ακόμη.'}
+                    </div>
+                  )}
+                </section>
+              );
+            })()}
             <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-tertiary)', marginTop: 8 }}>{L ? L.poweredBy : 'Με το PROPERWISE'} · <a href={L ? '/en/privacy' : '/privacy'} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-secondary)', textDecoration: 'underline' }}>{L ? L.privacy : 'Απόρρητο'}</a></div>
           </>
         )}
