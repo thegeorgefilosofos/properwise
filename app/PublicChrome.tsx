@@ -47,11 +47,12 @@ import { COMMERCIAL_STAMP_DUTY } from '@/lib/billing/commercialLease';
 import { TRANSFER_TAX_MAIN_RATE, MUNICIPAL_SURCHARGE_RATE, NEW_BUILD_VAT_RATE, NEW_BUILD_VAT_SUSPENDED_UNTIL } from '@/lib/accounting/transfer';
 import type { Locale } from '@/lib/i18n/locale';
 import { CHROME_EN, enLinks } from '@/lib/i18n/en/chrome';
-import { enTools } from '@/lib/i18n/en/tools';
+import { enTools, enToolLabel } from '@/lib/i18n/en/tools';
 import { signupCtaEn } from '@/lib/billing/trialOffer';
 import LangSwitcher from './LangSwitcher';
 import { TOOL_SHELL_EN, TOOL_SOURCES_EN } from '@/lib/i18n/en/tools/shell';
 import { localHref } from '@/lib/i18n/paths';
+import { WITHDRAWAL_LABEL, WITHDRAWAL_PATH } from '@/lib/legal/withdrawalLabels';
 
 /**
  * ΕΝΑ ΜΕΤΡΟ ΓΙΑ ΟΛΕΣ ΤΙΣ ΔΗΜΟΣΙΕΣ ΣΕΛΙΔΕΣ — ΤΟ ΙΔΙΟ ΜΕ ΤΗΣ ΑΡΧΙΚΗΣ.
@@ -194,37 +195,26 @@ export function PublicHeader({ current, locale = 'el' }: { current?: 'paketa' | 
 }
 
 /** Μία στήλη συνδέσμων. Ίδια γεωμετρία σε κάθε δημόσια σελίδα. */
-// ΠΕΝΤΕ ΑΝΑ ΣΤΗΛΗ, ΤΑ ΥΠΟΛΟΙΠΑ ΣΕ «ΕΠΙΠΛΕΟΝ» (04/11/2026). Οι υπολογισμοί
-// είχαν φτάσει τους έντεκα και η στήλη έπεφτε δύο φορές πιο χαμηλά από τις
-// διπλανές. Ο ιδιοκτήτης ζήτησε πέντε σε κάθε στήλη και τα υπόλοιπα σε
-// αναδιπλούμενη λίστα. Εγγενές <details>: δουλεύει χωρίς JavaScript, με
-// πληκτρολόγιο και αναγνώστη οθόνης· δεν βαραίνει καμία σελίδα.
-export const FOOT_VISIBLE = 5;
-type FootMore = { label: string; links: [string, string][] };
-
-function FootCol({ label, links, more }: { label: string; links: [string, string][]; more?: FootMore }) {
+// ΠΕΝΤΕ ΓΡΑΜΜΕΣ ΑΝΑ ΣΤΗΛΗ, ΟΧΙ ΠΑΡΑΠΑΝΩ (23/11/2026). Από 04/11 οι στήλες είχαν
+// πέντε συνδέσμους και από κάτω ένα «Επιπλέον εργαλεία +» ή «Επιπλέον οδηγοί +»
+// με τα υπόλοιπα, ενώ η Εμπιστοσύνη είχε έξι: 5, 6, 6, 6 σειρές. Ο ιδιοκτήτης:
+// «ακριβώς 5 γραμμές, όχι παραπάνω». Τώρα κάθε στήλη έχει ακριβώς πέντε και ο
+// πέμπτος των Υπολογισμών και των Οδηγών είναι ο κόμβος τους, από όπου φτάνει
+// κανείς σε όλους (app/publicFooter.test.ts).
+function FootCol({ label, links }: { label: string; links: [string, string][] }) {
   // ΤΟ ΚΕΝΟ ΗΤΑΝ 12 ΠΑΝΤΟΥ, ΑΡΑ Η ΚΕΦΑΛΙΔΑ ΔΕΝ ΑΝΗΚΕ ΠΟΥΘΕΝΑ. Δέκα ανάμεσα στους
   // συνδέσμους και δεκαοκτώ κάτω από την κεφαλίδα (.lp-foothead, .lp-footlinks).
   // ΔΥΟ ΤΙΤΛΟΙ, ΕΝΑΣ ΑΝΑ ΠΛΑΤΟΣ, ΧΩΡΙΣ JAVASCRIPT (04/11/2026). Στον υπολογιστή
   // ο τίτλος είναι τίτλος και η λίστα φαίνεται πάντα· ως τα 1024 η στήλη είναι
   // σειρά που ανοίγει. Ενα συστατικό του πελάτη γι' αυτό ανέβαζε το βάρος του
   // διακομιστή πάνω από το όριο (server-weight, 190,1 στα 189,9 MB).
-  // Ενας κώδικας για τους συνδέσμους και ένα εικονίδιο, όχι δύο: το κομμάτι
-  // ανεβαίνει σε 49 συναρτήσεις και κάθε byte του μετρά 49 φορές (server-weight).
-  const list = (l: [string, string][]) => l.map(([href, text]) => <Link key={href} href={href} className="lp-link lp-footlink">{text}</Link>);
   return (
     <div className="lp-footcol">
       <p className="lp-foothead lp-foot-wide">{label}</p>
       <details className="lp-footacc">
         <summary className="lp-foothead lp-foot-narrow">{label}{FOOT_I}</summary>
         <div className="lp-footlinks">
-          {list(links)}
-          {more && more.links.length > 0 && (
-            <details className="lp-footmore">
-              <summary className="lp-link lp-footmore-s">{more.label}{FOOT_I}</summary>
-              <div className="lp-footmore-list">{list(more.links)}</div>
-            </details>
-          )}
+          {links.map(([href, text]) => <Link key={href} href={href} className="lp-link lp-footlink">{text}</Link>)}
         </div>
       </details>
     </div>
@@ -232,31 +222,26 @@ function FootCol({ label, links, more }: { label: string; links: [string, string
 }
 const FOOT_I = <span aria-hidden className="lp-foot-i" />;
 
-/** Οι πρώτοι FOOT_VISIBLE φαίνονται· οι υπόλοιποι και ο κόμβος πάνε στο «Επιπλέον». */
-function splitFoot(links: [string, string][], hub: [string, string] | null, moreLabel: string): { links: [string, string][]; more?: FootMore } {
-  const shown = links.slice(0, FOOT_VISIBLE);
-  const rest = [...links.slice(FOOT_VISIBLE), ...(hub ? [hub] : [])];
-  return rest.length ? { links: shown, more: { label: moreLabel, links: rest } } : { links: shown };
-}
+// ΤΕΣΣΕΡΙΣ ΥΠΟΛΟΓΙΣΜΟΙ ΜΕ ΤΗ ΣΕΙΡΑ ΣΠΟΥΔΑΙΟΤΗΤΑΣ (23/11/2026): ΕΝΦΙΑ, φόρος
+// ενοικίων, έκπτωση ανακαίνισης, καθαρή απόδοση. Οι διαδρομές μόνο· το λεκτικό
+// από τον κατάλογο (PUBLIC_TOOLS, TOOL_EN), ώστε να μη γράφεται δεύτερη φορά.
+const FOOT_TOOLS = ['/ypologismos-enfia', '/ypologismos-forou-enoikion', '/ypologismos-ekptosis-anakainisis', '/kathari-apodosi'] as const;
 
-// Η ΣΕΙΡΑ ΤΩΝ ΟΔΗΓΩΝ ΚΑΘΡΕΦΤΙΖΕΙ ΤΟΥΣ ΠΕΝΤΕ ΠΡΩΤΟΥΣ ΥΠΟΛΟΓΙΣΜΟΥΣ: ΕΝΦΙΑ,
-// έκπτωση ανακαίνισης, φορολογία ενοικίων, καθαρή απόδοση, βραχυχρόνια. Η λίστα
+// ΟΙ ΟΔΗΓΟΙ ΔΕΝ ΞΑΝΑΛΕΝΕ ΟΣΑ ΛΕΝΕ ΟΙ ΥΠΟΛΟΓΙΣΜΟΙ ΔΙΠΛΑ (23/11/2026). Ως τότε η
+// στήλη καθρέφτιζε τους υπολογισμούς γραμμή προς γραμμή: «Έκπτωση φόρου
+// ανακαίνισης» αριστερά και «Έκπτωση φόρου για ανακαίνιση» δεξιά, το ίδιο με
+// τη φορολογία ενοικίων, την καθαρή απόδοση και τον ΕΝΦΙΑ. Ο ιδιοκτήτης το
+// διάβασε ως επανάληψη. Ο οδηγός κάθε υπολογισμού είναι ήδη ένα πάτημα μακριά,
+// στη σελίδα του υπολογισμού (ToolGuides)· εδώ μπαίνουν τέσσερα ΑΛΛΑ θέματα:
+// βραχυχρόνια, προθεσμίες, επαγγελματικές μισθώσεις, στεγαστικό. Η λίστα
 // είναι γραμμένη εδώ επίτηδες: ο κατάλογος των οδηγών δεν μπαίνει στο κέλυφος
 // (~6 KB gzip σε κάθε δημόσια σελίδα). Το guides.test ελέγχει ότι κάθε σύνδεσμος
-// εδώ είναι δημοσιευμένος οδηγός. Ο οδηγός ΑΜΑ έμενε έξω από τα κοινά κομμάτια
-// με την απόφαση της 13/10· μπήκε στον κατάλογο στις 27/10/2026 και από
-// 14/11/2026 ακολουθεί τον οδηγό Airbnb στη λίστα, το ίδιο θέμα.
+// εδώ είναι δημοσιευμένος οδηγός και το publicFooter.test ότι κανένας δεν είναι
+// ο οδηγός υπολογισμού που ήδη φαίνεται.
 const FOOT_GUIDES: [string, string][] = [
-  ['/odigos/pos-ypologizetai-o-enfia', 'Πώς υπολογίζεται ο ΕΝΦΙΑ'],
-  ['/odigos/ekptosi-forou-anakainisis', 'Έκπτωση φόρου για ανακαίνιση'],
-  ['/odigos/forologia-enoikion-2026', 'Φορολογία ενοικίων 2026'],
-  ['/odigos/kathari-apodosi-akinitou', 'Καθαρή απόδοση ακινήτου'],
   ['/odigos/airbnb-takk-2026', 'Φορολογία Airbnb 2026'],
-  ['/odigos/vraxyxronia-ama-prodiagrafes-2026', 'Βραχυχρόνια: ΑΜΑ και προδιαγραφές'],
   ['/odigos/forologikes-prothesmies-idioktiton', 'Φορολογικές προθεσμίες ιδιοκτήτη'],
-  ['/odigos/enfia-2026-pliromi-doseis-pistopoiitiko', 'ΕΝΦΙΑ 2026: πληρωμή και δόσεις'],
-  ['/odigos/enoikio-meso-trapezas', 'Ενοίκιο μέσω τράπεζας'],
-  ['/odigos/plafon-3-emporikes-misthoseis-2026', 'Πλαφόν επαγγελματικών μισθώσεων'],
+  ['/odigos/plafon-3-emporikes-misthoseis-2026', 'Πλαφόν επαγγελματικών ενοικίων'],
   ['/odigos/spiti-mou-3-ti-allazei', 'Σπίτι μου ΙΙΙ: τι αλλάζει'],
 ];
 
@@ -268,20 +253,24 @@ function footFor(locale: Locale) {
     const e = CHROME_EN.foot;
     return {
       home: '/en', about: e.about, db: e.db,
-      privacy: enLinks([e.privacy])[0] ?? null,
+      // ΤΟ ΑΠΟΡΡΗΤΟ ΜΙΑ ΦΟΡΑ (23/11/2026). Στα αγγλικά δεν υπάρχει σελίδα
+      // μεθοδολογίας για πέμπτη γραμμή της Εμπιστοσύνης· το «Privacy» μένει
+      // στη στήλη και φεύγει από τη γραμμή του τέλους, αντί να φαίνεται δύο φορές.
+      privacy: null as [string, string] | null,
       siteMap: enLinks([e.siteMap])[0] ?? null,
       social: e.social,
       cols: [
         { label: e.product, links: enLinks([['/', e.home], ['/signup', signupCtaEn()], ['/paketa', e.pricing], ['/logistes', e.accountants], ['/#faq', e.faq]]) },
-        { label: CHROME_EN.nav.calcs, ...splitFoot(enTools().map(t => [t.href, t.label] as [string, string]), enLinks([['/ergaleia', CHROME_EN.nav.allTools]])[0] ?? null, e.moreTools) },
-        { label: e.guides, ...splitFoot(enLinks(e.guideLinks.filter(([h]) => h !== '/odigos')), enLinks([['/odigos', e.allGuides]])[0] ?? null, e.moreGuides) },
+        { label: CHROME_EN.nav.calcs, links: enLinks([...FOOT_TOOLS.map(h => [h, enToolLabel(h)] as [string, string]), [TOOLS_HUB.href, e.allCalcs]]) },
+        { label: e.guides, links: enLinks([...e.guideLinks, ['/odigos', e.allGuides]]) },
         // Η ΥΠΑΝΑΧΩΡΗΣΗ ΜΕΝΕΙ ΚΑΙ ΣΤΑ ΑΓΓΛΙΚΑ. Το άρθ. 11α της Οδηγίας 2011/83/ΕΕ
         // θέλει τη λειτουργία εμφανή σε κάθε σελίδα· από 03.11.2026 η φόρμα
         // υπάρχει και στα αγγλικά (/en/withdrawal, ζεύγος στο PAGE_PAIRS).
-        { label: e.trust, links: enLinks([...e.trustLinks, ['/ypanaxorisi', e.withdraw]]) },
+        { label: e.trust, links: enLinks([...e.trustLinks, [WITHDRAWAL_PATH, e.withdraw]]) },
       ],
     };
   }
+  const toolLabel = new Map(PUBLIC_TOOLS.map(t => [t.href, t.label]));
   return {
     home: '/',
     about: ['Έξοδα, φόροι και προθεσμίες ακινήτων στην Ελλάδα.', 'Για ιδιοκτήτες και επαγγελματίες.'],
@@ -293,9 +282,11 @@ function footFor(locale: Locale) {
     social: (net: string, newTab: boolean) => newTab ? `Το PROPERWISE στο ${net} (ανοίγει σε νέα καρτέλα)` : `Το PROPERWISE στο ${net}`,
     cols: [
       { label: 'Προϊόν', links: [['/', 'Αρχική'], ['/signup', signupCta()], ['/paketa', 'Πακέτα και τιμές'], ['/logistes', 'Για λογιστές'], ['/#faq', 'Συχνές ερωτήσεις']] as [string, string][] },
-      { label: 'Υπολογισμοί', ...splitFoot(PUBLIC_TOOLS.map(t => [t.href, t.label] as [string, string]), [TOOLS_HUB.href, 'Όλα τα εργαλεία'], 'Επιπλέον εργαλεία') },
-      { label: 'Οδηγοί', ...splitFoot(FOOT_GUIDES, ['/odigos', 'Όλοι οι οδηγοί'], 'Επιπλέον οδηγοί') },
-      { label: 'Εμπιστοσύνη', links: [['/trust', 'Ποιοι είμαστε'], ['/methodologia', 'Πώς υπολογίζουμε'], ['/privacy', 'Απόρρητο'], ['/terms', 'Όροι χρήσης'], ['/ypanaxorisi', 'Υπαναχώρηση από τη σύμβαση εδώ'], ['/trust#epikoinonia', 'Επικοινωνία']] as [string, string][] },
+      { label: 'Υπολογισμοί', links: [...FOOT_TOOLS.map(h => [h, toolLabel.get(h) ?? ''] as [string, string]), [TOOLS_HUB.href, 'Όλοι οι υπολογισμοί']] as [string, string][] },
+      { label: 'Οδηγοί', links: [...FOOT_GUIDES, ['/odigos', 'Όλοι οι οδηγοί']] as [string, string][] },
+      // ΤΟ «ΑΠΟΡΡΗΤΟ» ΒΓΗΚΕ ΑΠΟ ΤΗ ΣΤΗΛΗ (23/11/2026): η γραμμή του τέλους έχει
+      // ήδη την «Πολιτική απορρήτου», την ίδια σελίδα. Η υπαναχώρηση μένει.
+      { label: 'Εμπιστοσύνη', links: [['/trust', 'Ποιοι είμαστε'], ['/methodologia', 'Πώς υπολογίζουμε'], ['/terms', 'Όροι χρήσης'], [WITHDRAWAL_PATH, WITHDRAWAL_LABEL], ['/trust#epikoinonia', 'Επικοινωνία']] as [string, string][] },
     ],
   };
 }
@@ -337,20 +328,14 @@ export function PublicFooter({ locale = 'el' }: { locale?: Locale } = {}) {
           {/* ΚΑΙ Ο ΛΟΓΙΣΤΗΣ ΕΧΕΙ ΠΟΡΤΑ (03.10.2026). Το «Για ιδιοκτήτες και
               επαγγελματίες» από αριστερά δεν έδειχνε πουθενά τον άνθρωπο που
               παίρνει τον φάκελο· η σελίδα του μπαίνει δίπλα στα πακέτα. */}
-          {f.cols.map(c => c.links.length > 0 && <FootCol key={c.label} label={c.label} links={c.links} more={'more' in c ? c.more : undefined} />)}
+          {f.cols.map(c => c.links.length > 0 && <FootCol key={c.label} label={c.label} links={c.links} />)}
           {/* Υπολογισμοί χωρίς εγγραφή: απαντούν «πόσο» πριν μας γνωρίσει κανείς. */}
-          {/* Ο ΠΕΜΠΤΟΣ ΚΑΙ Ο ΕΚΤΟΣ ΜΠΑΙΝΟΥΝ ΤΕΛΕΥΤΑΙΟΙ. Η δόση στεγαστικού και η σύγκριση
-              ρεύματος δεν έχουν ακόμη οδηγό στη διπλανή στήλη, οπότε στέκουν κάτω από τα τέσσερα
-              ζευγάρια και δεν σπάνε τη στοίχιση «πόσο / γιατί» από πάνω. */}
-          {/* ΚΑΙ Ο ΚΟΜΒΟΣ ΤΟΥΣ ΤΕΛΕΥΤΑΙΟΣ (27.10.2026), όπως το «Όλοι οι οδηγοί» δίπλα. */}
           {/* ΟΙ ΟΔΗΓΟΙ ΘΕΛΟΥΝ ΔΙΚΗ ΤΟΥΣ ΣΤΗΛΗ, ΜΕ ΤΟ ΟΝΟΜΑ ΤΟΥ ΚΑΘΕΝΟΣ. Ενας
               σύνδεσμος «Οδηγοί» κρυμμένος στο τέλος των εργαλείων διαβαζόταν ως
-              πάρεργο. Ξεχωριστή στήλη απαντά στο «γιατί» δίπλα στο «πόσο» και
-              δείχνει το βάθος του περιεχομένου· η κεφαλή /odigos τους μαζεύει.
-              Η ΣΕΙΡΑ ΚΑΘΡΕΦΤΙΖΕΙ ΤΗ ΣΤΗΛΗ ΤΩΝ ΥΠΟΛΟΓΙΣΜΩΝ: κάθε οδηγός στέκεται
-              στην ίδια γραμμή με το εργαλείο του (ΕΝΦΙΑ δίπλα σε ΕΝΦΙΑ, καθαρή
-              απόδοση δίπλα σε καθαρή απόδοση), ώστε το ζευγάρι «πόσο / γιατί»
-              να διαβάζεται οριζόντια. */}
+              πάρεργο. Ξεχωριστή στήλη δείχνει το βάθος του περιεχομένου· η
+              κεφαλή /odigos τους μαζεύει. Ως 23/11/2026 η σειρά καθρέφτιζε τους
+              υπολογισμούς (ΕΝΦΙΑ δίπλα σε ΕΝΦΙΑ)· διαβαζόταν ως το ίδιο θέμα δύο
+              φορές, οπότε η στήλη έχει πλέον άλλα θέματα (FOOT_GUIDES). */}
           {/* ΚΑΙ Ο ΚΟΜΒΟΣ ΕΧΕΙ ΣΥΝΔΕΣΜΟ (05/10/2026): τέσσερις από τους δέκα
               φαίνονταν εδώ και κανένας δρόμος προς τους άλλους έξι. */}
           {/* ΚΑΜΙΑ ΔΗΜΟΣΙΑ ΣΕΛΙΔΑ ΔΕΝ ΕΔΙΝΕ ΤΡΟΠΟ ΝΑ ΜΑΣ ΜΙΛΗΣΕΙ ΚΑΝΕΙΣ. Η
