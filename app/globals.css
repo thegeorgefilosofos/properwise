@@ -6872,6 +6872,17 @@ tr.po-row-more { display: none; }
   .pf-table-card { display: none; }
   .pf-cards { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
 }
+/* Η ΓΡΑΜΜΗ ΤΗΣ ΚΑΡΤΑΣ ΔΕΝ ΞΕΦΕΥΓΕΙ ΠΟΤΕ. Δοχείο με το δικό της πλάτος· κάτω από
+   όσο χωρά «Ανεξόφλητες 342,00€ · 2 εκκρεμότητες», το δεύτερο μέρος κρύβεται και
+   το ποσό μένει. Τα αποσιωπητικά είναι το τελευταίο δίχτυ. */
+.pf-card-line { flex: 1; min-width: 0; container-type: inline-size; }
+.pf-card-text { display: block; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Τα κατώφλια είναι πλάτος ΓΡΑΜΜΗΣ (όχι οθόνης), με περιθώριο για ποσά τεσσάρων
+   ψηφίων και για τις μετρήσεις του Safari: 260 χωρά ποσό και εκκρεμότητες, 290 ποσό
+   και πληρότητα, 380 και τα τρία. */
+@container (max-width: 259px) { .pf-card-more { display: none; } }
+@container (max-width: 289px) { .pf-card-occ { display: none; } }
+@container (max-width: 379px) { .pf-card-occ-3 { display: none; } }
 
 /* Η ΟΝΟΜΑΣΙΑ ΤΗΣ ΓΡΑΜΜΗΣ ΜΕΝΕΙ ΟΣΟ ΚΥΛΑ Ο ΠΙΝΑΚΑΣ ΤΩΝ ΠΑΚΕΤΩΝ.
    Χωρίς αυτό, μόλις ο επισκέπτης σύρει δεξιά για να δει το τελευταίο πακέτο,

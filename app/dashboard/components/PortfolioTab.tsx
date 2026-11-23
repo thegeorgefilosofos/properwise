@@ -814,7 +814,18 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
                   (e2e:vertical). Τώρα «Ανεξόφλητες 342,00€ · 2 εκκρεμότητες» σε μία
                   γραμμή, ίδια λέξη με το πλακίδιο της σύνοψης· τόνος προσοχής μόνο στο
                   ποσό, αποσιωπητικά μόνο αν δεν χωρά. */}
-              <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {/* ΣΤΑ 320 ΦΕΥΓΕΙ ΠΡΩΤΑ ΤΟ ΔΕΥΤΕΡΕΥΟΝ (Safari αφής, 320×640: «· 2 εκκρεμότητες»
+                  περίσσευε 3 εικονοστοιχεία). Η γραμμή είναι δοχείο· κάτω από το πλάτος
+                  που χωρά τα μέρη της, οι εκκρεμότητες και η πληρότητα κρύβονται
+                  (`.pf-card-more`, `.pf-card-occ`, globals.css) και μένουν ολόκληρες στο κείμενο για τον αναγνώστη οθόνης. */}
+              <span className="pf-card-line">
+                <span className="sr-only">{[
+                r.owed > 0 ? `${UNPAID_LABEL} ${eur(r.owed)}` : null,
+                r.tasks > 0 ? `${r.tasks} ${r.tasks === 1 ? 'εκκρεμότητα' : 'εκκρεμότητες'}` : null,
+                r.owed <= 0 && r.tasks === 0 ? 'Τίποτα ανοιχτό' : null,
+                r.occupancy != null ? `Πληρότητα ${fp(r.occupancy)}` : null,
+              ].filter(Boolean).join(' · ')}</span>
+                <span className="pf-card-text" aria-hidden="true">
                 {r.owed > 0 && (
                   <span title={`${r.unpaid} ${r.unpaid === 1 ? 'ανεξόφλητη' : 'ανεξόφλητες'}, ${eur(r.owed)}`}>
                     {`${UNPAID_LABEL} `}
@@ -822,12 +833,13 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
                   </span>
                 )}
                 {r.tasks > 0 && (
-                  <span title={`${r.tasks} ${r.tasks === 1 ? 'εκκρεμότητα' : 'εκκρεμότητες'} με προθεσμία που πέρασε ή κρίσιμη`}>
+                  <span className={r.owed > 0 ? 'pf-card-more' : undefined} title={`${r.tasks} ${r.tasks === 1 ? 'εκκρεμότητα' : 'εκκρεμότητες'} με προθεσμία που πέρασε ή κρίσιμη`}>
                     {`${r.owed > 0 ? ' · ' : ''}${r.tasks} ${r.tasks === 1 ? 'εκκρεμότητα' : 'εκκρεμότητες'}`}
                   </span>
                 )}
                 {r.owed <= 0 && r.tasks === 0 && 'Τίποτα ανοιχτό'}
-                {r.occupancy != null && ` · Πληρότητα ${fp(r.occupancy)}`}
+                {r.occupancy != null && <span className={r.owed > 0 && r.tasks > 0 ? 'pf-card-occ-3' : 'pf-card-occ'}>{` · Πληρότητα ${fp(r.occupancy)}`}</span>}
+                </span>
               </span>
               <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6" /></svg>
             </div>
