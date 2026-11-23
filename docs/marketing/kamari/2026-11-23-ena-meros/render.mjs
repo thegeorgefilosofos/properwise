@@ -48,8 +48,11 @@ async function openPage(dsf) {
 async function grab({ pg, cdp }, t) {
   await pg.evaluate((t) => window.render(t), t);
   await pg.evaluate(() => document.fonts.ready);
-  const r = await cdp.send('Page.captureScreenshot', { format: 'png', optimizeForSpeed: true });
-  return Buffer.from(r.data, 'base64');
+  // Η λήψη αποτυγχάνει σπάνια με «Unable to capture screenshot»: ξαναδοκίμασε στο ίδιο t.
+  for (let k = 0; ; k++) {
+    try { const r = await cdp.send('Page.captureScreenshot', { format: 'png', optimizeForSpeed: true }); return Buffer.from(r.data, 'base64'); }
+    catch (e) { if (k >= 4) throw e; await new Promise((ok) => setTimeout(ok, 400)); await pg.evaluate((t) => window.render(t), t); }
+  }
 }
 const run = (args, input) => new Promise((ok, no) => {
   const p = spawn('ffmpeg', args, { stdio: [input ? 'pipe' : 'ignore', 'inherit', 'inherit'] });

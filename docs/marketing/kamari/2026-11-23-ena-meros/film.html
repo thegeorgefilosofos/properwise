@@ -28,13 +28,13 @@
   .layer { position: absolute; left: 0; top: 0; overflow: hidden; }
   .layer img, .clip img { position: absolute; left: 0; top: 0; max-width: none; }
   .clip { position: absolute; overflow: hidden; }
-  #dimOver { position: absolute; inset: 0; background: var(--mkt-bg-base); }
+  #dimOver, #dimAcc { position: absolute; inset: 0; background: var(--mkt-bg-base); }
   #glass { position: absolute; inset: 0; pointer-events: none;
     background: linear-gradient(118deg, color-mix(in srgb, var(--mkt-text-primary) 6%, transparent) 0%, transparent 32%); }
   /* Προβολέας: σκιά στο υπόλοιπο, λεπτό περίγραμμα στο στοιχείο. Καμία θόλωση. */
   #spot { position: absolute; border: 2px solid var(--mkt-accent); border-radius: 12px;
     box-shadow: 0 0 0 3000px color-mix(in srgb, var(--mkt-bg-base) 65%, transparent); }
-  .tick { position: absolute; border-radius: 50%; background: var(--mkt-positive); }
+  .tick { position: absolute; border-radius: 50%; background: var(--mkt-accent); }
   .tick svg { position: absolute; inset: 0; width: 100%; height: 100%; }
   .tick path { fill: none; stroke: var(--mkt-bg-base); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
   #touch { position: absolute; border-radius: 50%; background: color-mix(in srgb, var(--mkt-text-primary) 38%, transparent);
@@ -56,7 +56,11 @@
   .cap { font-weight: 740; line-height: 1.06; letter-spacing: -0.02em; }
   #badge { position: absolute; color: var(--mkt-text-secondary); background: var(--mkt-bg-surface);
     border: 1.5px solid var(--mkt-border-default); border-radius: 999px; font-weight: 600; white-space: nowrap; }
-  #logo { position: absolute; }
+  #logo { position: absolute; transform-origin: 8% 50%; }
+  /* Ο μετρητής πατημάτων: ανεβαίνει τη στιγμή κάθε πατήματος. */
+  #taps { position: absolute; color: var(--mkt-text-primary); background: var(--mkt-bg-surface); border: 1.5px solid var(--mkt-accent);
+    border-radius: 999px; font-weight: 650; white-space: nowrap; transform-origin: 50% 50%; }
+  #taps span { color: var(--mkt-accent); font-weight: 760; }
   #url { position: absolute; border: 2px solid var(--mkt-accent); border-radius: 999px; color: var(--mkt-accent); font-weight: 650; text-align: center; }
 </style>
 </head>
@@ -90,6 +94,7 @@
           <img id="accBusy" src="work/shots6/accountantBusy.png" alt="">
           <img id="accCard" src="work/shots6/crop-dossier.png" alt="">
           <img id="accCardBusy" src="work/shots6/crop-dossierBusy.png" alt="">
+          <div id="dimAcc"></div>
           <div id="pack"><div class="grab"></div><div class="title"></div></div>
         </div>
         <div id="spot"></div>
@@ -111,29 +116,33 @@
   <div id="zone"></div>
   <div id="texts"></div>
   <div id="badge">Δεδομένα επίδειξης</div>
+  <div id="taps">Πατήματα: <span id="tapN">0</span></div>
   <img id="logo" src="/brand/properwise-logotypo-lefko.svg" alt="PROPERWISE">
   <div id="url">properwise.gr</div>
 </div>
 
 <!-- ΤΟ ΧΡΟΝΟΛΟΓΙΟ, ΜΙΑ ΠΗΓΗ: η ταινία και ο ήχος (sound.ts). Χτύποι των 120 BPM (0,5″).
-     «Σχεδόν τίποτα δεν πατάς»: δύο πατήματα σε όλη την ταινία (Σάρωσε έγγραφο, Κατέβασε). -->
+     «Σχεδόν τίποτα δεν πατάς»: δύο πατήματα σε όλη την ταινία (Σάρωσε έγγραφο, Κατέβασε), με μετρητή στη ζώνη. -->
 <script id="timeline" type="application/json">
 {
-  "bpm": 120, "beats": 52, "fps": 30, "cover": 24.6,
-  "scenes": [5, 15, 26, 36, 46],
-  "turns": [26, 36],
-  "reveal": 5,
-  "rowsOver": [7.0, 7.6, 8.2, 8.8],
-  "sheetUp": 16.6,
-  "fill": [18.4, 19.1],
-  "ticks": [19.2, 19.6, 20.0],
-  "rowsDocs": [28.0, 28.5, 29.0, 29.5, 30.0, 30.5],
-  "taps": [16.4, 39.0],
-  "packUp": 40.0,
-  "rowsPack": [40.8, 41.3, 41.8, 42.3, 42.8],
-  "entries": [0, 0.8, 1.6, 5.6, 15.3, 26.3, 36.3, 46, 46.4, 46.8],
-  "bells": [0, 46],
-  "chords": [[0, ["A2", "E3", "A3", "C4", "E4"]], [5, ["F2", "C3", "F3", "A3", "C4"]], [15, ["C3", "G3", "C4", "E4", "G4"]], [26, ["G2", "D3", "G3", "B3", "D4"]], [36, ["A2", "E3", "A3", "C4", "E4"]], [46, ["F2", "C3", "F3", "A3", "E4"]]]
+  "bpm": 120, "beats": 53.5, "fps": 30, "cover": 25.6,
+  "hook": [0, 0.4, 0.8],
+  "msg": [3, 3.6, 4.2],
+  "scenes": [7.5, 17.5, 27.5, 37.5, 47.5],
+  "turns": [27.5, 37.5],
+  "reveal": 7.5,
+  "rowsOver": [8.0, 8.4, 8.8, 9.2],
+  "sheetUp": 18.2,
+  "fill": [18.6, 19.6],
+  "ticks": [19.7, 20.0, 20.3],
+  "dings": [20.5, 42.0],
+  "rowsDocs": [27.8, 28.2, 28.6, 29.0, 29.4, 29.8],
+  "taps": [18.1, 39.0],
+  "packUp": 39.6,
+  "rowsPack": [40.2, 40.6, 41.0, 41.4, 41.8],
+  "entries": [3, 3.6, 4.2, 7.6, 17.6, 27.6, 37.6, 48.5, 48.8, 49.1],
+  "bells": [47.5],
+  "chords": [[0, ["A2", "E3", "A3", "C4", "E4"]], [7.5, ["F2", "C3", "F3", "A3", "C4"]], [17.5, ["C3", "G3", "C4", "E4", "G4"]], [27.5, ["G2", "D3", "G3", "B3", "D4"]], [37.5, ["A2", "E3", "A3", "C4", "E4"]], [47.5, ["F2", "C3", "F3", "A3", "E4"]]]
 }
 </script>
 <script>
@@ -170,10 +179,10 @@ const PACK = [
 
 // ── ΔΙΑΤΑΞΗ: ίδιο τηλέφωνο, ίδια κλίμακα κοντινού σε κάθε σκηνή ──────────
 const L = fmt === '916'
-  ? { K: 2.0, Zc: 1.4, zoneH: 470, fade: 110, capTop: 246, capSize: 72, capW: 1000, badgeY: 418, wideY: 560, closeY: 1050,
-      msgY: 700, msgSize: 116, msgGap: 140, logoW: 640, logoY: 690, cMsgY: 860, cMsgSize: 84, cMsgGap: 100, urlY: 1200, urlSize: 46 }
-  : { K: 1.62, Zc: 1.7, zoneH: 230, fade: 70, capTop: 40, capSize: 56, capW: 1020, badgeY: 182, wideY: 270, closeY: 790,
-      msgY: 470, msgSize: 104, msgGap: 124, logoW: 560, logoY: 420, cMsgY: 560, cMsgSize: 76, cMsgGap: 90, urlY: 880, urlSize: 42 };
+  ? { K: 2.0, Zc: 1.31, zoneH: 470, fade: 110, capTop: 246, capSize: 72, capW: 1000, badgeY: 418, wideY: 560, closeY: 1050,
+      msgY: 700, msgSize: 116, msgGap: 140, hookY: 620, hookSize: 156, hookGap: 176, logoW: 640, logoY: 690, cMsgY: 860, cMsgSize: 84, cMsgGap: 100, urlY: 1200, urlSize: 46 }
+  : { K: 1.62, Zc: 1.6, zoneH: 230, fade: 70, capTop: 40, capSize: 56, capW: 1020, badgeY: 182, wideY: 270, closeY: 790,
+      msgY: 470, msgSize: 104, msgGap: 124, hookY: 360, hookSize: 134, hookGap: 150, logoW: 560, logoY: 420, cMsgY: 560, cMsgSize: 76, cMsgGap: 90, urlY: 880, urlSize: 42 };
 const K = L.K, SB = 47, APPW = 390, APPH = 844;
 const SW = APPW * K, SH = (SB + APPH) * K, BEZ = 13, PW = SW + 2 * BEZ, PH = SH + 2 * BEZ, RAD = 54 * K, PRAD = RAD + BEZ;
 const stage = $('stage');
@@ -225,14 +234,14 @@ const packRows = PACK.map(([kind, name, sub], i) => {
 
 // ── Η ΚΑΜΕΡΑ: δύο κλίμακες (ολόκληρο, κοντινό), κατά μέτωπο όσο φαίνεται κείμενο ──
 // [χτύπος, ζουμ 0|1, κέντρο σε px εφαρμογής]· κάθε αλλαγή σε 0,5″, χωρίς υπερακόντιση.
-// Στο 4:5 το φύλλο δεν χωρά ολόκληρο στο κοντινό: η κάμερα και ο προβολέας κρατούν τις γραμμές των αρχείων.
-const PACK_FOCUS = fmt === '916' ? BOX.pack.y + 200 : BOX.pack.y + 236;
-const PACK_SPOT = fmt === '916' ? { x: 12, y: BOX.pack.y + 6, w: 366, h: 392 } : { x: 12, y: BOX.pack.y + 72, w: 366, h: 326 };
+// Ο τίτλος του zip ολόκληρος κάτω από τη ζώνη της λεζάντας, οι πέντε γραμμές ολόκληρες πάνω από την κάτω άκρη.
+const PACK_FOCUS = fmt === '916' ? 560 : 570;   // η κορυφή του φύλλου ακριβώς στο τέλος της διαβάθμισης: κανένα κείμενο της κάρτας από πάνω
+const PACK_SPOT = { x: 12, y: BOX.pack.y + 6, w: 366, h: 388 };
 const CAMK = [
-  [5, 0, 0], [6.2, 1, BOX.pending.y + BOX.pending.h / 2], [13.6, 0, 0],
-  [17.4, 1, BOX.fields.y + BOX.fields.h / 2 - 50], [24.6, 0, 0],
-  [27.0, 1, BOX.docs.y + BOX.docs.h / 2], [34.6, 0, 0],
-  [37.0, 1, BOX.card.y + BOX.card.h / 2], [40.2, 1, PACK_FOCUS], [46, 1, PACK_FOCUS],
+  [7.5, 0, 0], [8.0, 1, BOX.pending.y + BOX.pending.h / 2], [16.6, 0, 0],
+  [18.5, 1, BOX.fields.y + BOX.fields.h / 2 - 50], [26.6, 0, 0],
+  [28.0, 1, BOX.docs.y + BOX.docs.h / 2], [36.6, 0, 0],
+  [38.0, 1, BOX.card.y + BOX.card.h / 2], [39.8, 1, PACK_FOCUS], [47.5, 1, PACK_FOCUS],
 ];
 function camAt(t) {
   let z = 0, ay = 0;
@@ -250,11 +259,11 @@ function camera(t) {
   const Z = 1 + (L.Zc - 1) * z;
   const ay = (1 - z) * (-SB) + z * aFocus;
   const Y = (1 - z) * (L.wideY + BEZ) + z * L.closeY;
-  const enterU = tween(t, TL.reveal, 0.4), exitU = tween(t, SC[4], 0.35);
+  const enterU = tween(t, TL.reveal, 0.35), exitU = tween(t, SC[4], 0.35);
   let ry = 0;
   for (const b of TL.turns) { const u = (t - B(b) + 0.2) / 0.4; if (u > 0 && u < 1) ry = 7 * Math.sin(Math.PI * u); }
   const rx = 14 * (1 - enterU) * (t >= B(TL.reveal) ? 1 : 0);
-  const dy = (1 - enterU) * H * 0.9 + exitU * H * 0.9;
+  const dy = (1 - enterU) * H * 0.32 + exitU * H * 0.9;   // μπαίνει ήδη ορατό: κανένα κενό καρέ
   return { Z, ay, Y: Y + dy, rx, ry, z };
 }
 
@@ -267,15 +276,19 @@ function text(cls, s, style, tin, tout) {
 const centered = (top, w, size) => ({ left: px((W - w) / 2) + 'px', top: top + 'px', width: w + 'px', fontSize: size + 'px' });
 const END = TL.beats + 1;
 const MSG = ['Κάθε ακίνητο.', 'Κάθε υποχρέωση.', 'Ένα μέρος.'];
-MSG.forEach((m, i) => text('msg', m, { ...centered(L.msgY + i * L.msgGap, 1060, L.msgSize), color: i === 2 ? 'var(--mkt-accent)' : '' }, [-1, 0.8, 1.6][i], 5));
+// Αγκίστρι (0 έως 1,5″): λέξεις που μπαίνουν με μικρή σμίκρυνση. Η ροή της ταινίας έχει δύο πατήματα,
+// όχι «όλη τη χρονιά» με δύο πατήματα· γι' αυτό η φράση είναι η τίμια.
+const HOOK = ['Σχεδόν', 'κανένα', 'πάτημα.'];
+HOOK.forEach((w, i) => text('msg hookw', w, { ...centered(L.hookY + i * L.hookGap, 1060, L.hookSize), color: i === 1 ? 'var(--mkt-accent)' : '' }, i === 0 ? -1 : TL.hook[i], TL.msg[0]));
+MSG.forEach((m, i) => text('msg', m, { ...centered(L.msgY + i * L.msgGap, 1060, L.msgSize), color: i === 2 ? 'var(--mkt-accent)' : '' }, TL.msg[i], SC[0]));
 const CAPS = [
-  [5.6, 15, 'Οι προθεσμίες, μόνες τους.'],
-  [15.3, 26, 'Φωτογράφισε. Τέλος.'],
-  [26.3, 36, 'Κάθε αρχείο στη θέση του.'],
-  [36.3, 46, 'Όπως τα θέλει ο λογιστής.'],
+  [7.6, 17.5, 'Προθεσμίες: μόνες τους.'],
+  [17.6, 27.5, 'Παραστατικά: μία φωτογραφία.'],
+  [27.6, 37.5, 'Αρχεία: στη θέση τους.'],
+  [37.6, 47.5, 'Φάκελος λογιστή: ένα πάτημα.'],
 ];
 for (const [a, b, s] of CAPS) text('cap', s, centered(L.capTop, L.capW, L.capSize), a, b);
-MSG.forEach((m, i) => text('msg', m, { ...centered(L.cMsgY + i * L.cMsgGap, 1060, L.cMsgSize), color: i === 2 ? 'var(--mkt-accent)' : '' }, 46.4 + i * 0.3, END));
+MSG.forEach((m, i) => text('msg', m, { ...centered(L.cMsgY + i * L.cMsgGap, 1060, L.cMsgSize), color: i === 2 ? 'var(--mkt-accent)' : '' }, 48.5 + i * 0.3, END));
 function vis(t, tin, tout) {
   if (tin < 0) return t < tout ? clamp((tout - t) / HALF, 0, 1) : 0;
   if (t < tin || t >= tout) return 0;
@@ -283,6 +296,7 @@ function vis(t, tin, tout) {
 }
 const badge = $('badge'), logo = $('logo'), url = $('url'), zone = $('zone');
 Object.assign(badge.style, { fontSize: (fmt === '916' ? 26 : 22) + 'px', padding: '8px 18px' });
+Object.assign($('taps').style, { fontSize: (fmt === '916' ? 26 : 22) + 'px', padding: '8px 18px' });
 Object.assign(logo.style, { width: L.logoW + 'px', left: (W - L.logoW) / 2 + 'px', top: L.logoY + 'px' });
 Object.assign(url.style, { fontSize: L.urlSize + 'px', width: '520px', left: (W - 520) / 2 + 'px', top: L.urlY + 'px', padding: '22px 0' });
 Object.assign(zone.style, { height: L.zoneH + L.fade + 'px',
@@ -290,10 +304,10 @@ Object.assign(zone.style, { height: L.zoneH + L.fade + 'px',
 
 // Προβολέας ανά σκηνή: [από χτύπο, ως χτύπο, κουτί]· αλλάζει κουτί με ομαλή μετακίνηση 0,3″.
 const SPOTS = [
-  [9.6, 13.4, BOX.enfia],
-  [17.9, 20.8, BOX.fields], [20.8, 24.4, BOX.updates],
-  [31.0, 34.4, BOX.docEnfia],
-  [37.8, 39.9, BOX.card], [43.4, 46, PACK_SPOT],
+  [9.8, 16.4, BOX.enfia],
+  [19.0, 22.4, BOX.fields], [22.4, 26.4, BOX.updates],
+  [30.2, 36.4, BOX.docEnfia],
+  [38.4, 39.5, BOX.card], [42.2, 47.5, PACK_SPOT],
 ];
 
 // ── render(t) ────────────────────────────────────────────────────────────
@@ -353,6 +367,7 @@ window.render = function render(t) {
   S($('accCard')).opacity = busy ? '0' : '1'; S($('accCardBusy')).opacity = busy ? '1' : '0';
   const pk = tween(t, TL.packUp, 0.4);
   S(pack).display = pk > 0 ? 'block' : 'none';
+  S($('dimAcc')).opacity = (0.96 * pk).toFixed(3);   // το σκίαστρο πίσω από το φύλλο, όπως στην εφαρμογή
   S(pack).transform = `translateY(${px((1 - pk) * (BOX.pack.h + 20) * K)}px)`;
   const nr = stepCount(t, TL.rowsPack);
   packRows.forEach((r, i) => { r.style.opacity = i < nr ? clamp((t - B(TL.rowsPack[i])) / 0.15, 0, 1).toFixed(3) : '0'; });
@@ -395,14 +410,29 @@ window.render = function render(t) {
   for (const { el, tin, tout } of T) {
     const o = vis(t, tin, tout);
     el.style.display = o > 0 ? 'block' : 'none'; el.style.opacity = o.toFixed(3); sig.push(o.toFixed(3));
+    // Οι λέξεις του αγκίστρου μπαίνουν με σμίκρυνση 0,3″ και μετά κάθονται ακίνητες.
+    if (el.classList.contains('hookw')) { const u = tin < 0 ? 1 : ease((t - tin) / 0.3); el.style.transform = u < 1 ? `scale(${(1 + 0.14 * (1 - u)).toFixed(4)})` : 'none'; sig.push(u.toFixed(3)); }
   }
+  // Πατήματα: 0 → 1 → 2, τη στιγμή του πατήματος, με μικρό χτύπο κλίμακας.
+  const tapsEl = $('taps'), nTaps = TL.taps.filter((b) => t >= B(b)).length;
+  $('tapN').textContent = String(nTaps);
+  const lastTap = nTaps ? B(TL.taps[nTaps - 1]) : -9, pu2 = clamp((t - lastTap) / 0.3, 0, 1);
+  const tao = on ? clamp(Math.min((t - B(TL.reveal)) / 0.3, (B(SC[4]) - t) / HALF), 0, 1) : 0;
+  Object.assign(tapsEl.style, { opacity: tao.toFixed(3), display: tao > 0 ? 'block' : 'none', left: '56px', top: L.badgeY + 'px',
+    transform: pu2 < 1 ? `scale(${(1 + 0.18 * (1 - ease(pu2))).toFixed(4)})` : 'none' });
+  sig.push(nTaps, pu2.toFixed(3), tao.toFixed(3));
   const ao = on ? clamp(Math.min((t - B(TL.reveal)) / 0.3, (B(SC[4]) - t) / HALF), 0, 1) : 0;
   S(zone).opacity = on ? '1' : '0';
   S(badge).opacity = ao.toFixed(3);
   const bw = badge.offsetWidth;
   S(badge).left = px(W - 56 - bw) + 'px'; S(badge).top = L.badgeY + 'px';
-  const co = clamp((t - B(SC[4]) - 0.1) / HALF, 0, 1), uo = clamp((t - B(SC[4] + 1.2)) / HALF, 0, 1);
+  // Κλείσιμο: πρώτα σχηματίζεται το εικονίδιο του λογότυπου, μετά αποκαλύπτεται το όνομα.
+  const l0 = B(SC[4]) + 0.1, co = clamp((t - l0) / 0.3, 0, 1), name = ease((t - l0 - 0.4) / 0.45);
+  const uo = clamp((t - B(SC[4] + 2.4)) / HALF, 0, 1);   // properwise.gr στον χτύπο 49,9
   S(logo).opacity = co.toFixed(3); S(logo).display = co > 0 ? 'block' : 'none';
+  S(logo).clipPath = `inset(0 ${(84 * (1 - name)).toFixed(2)}% 0 0)`;
+  S(logo).transform = co < 1 ? `scale(${(0.82 + 0.18 * ease(co)).toFixed(4)})` : 'none';
+  sig.push(name.toFixed(4));
   S(url).opacity = uo.toFixed(3); S(url).display = uo > 0 ? 'block' : 'none';
   sig.push(ao.toFixed(3), co.toFixed(3), uo.toFixed(3));
   return sig.join('|');
