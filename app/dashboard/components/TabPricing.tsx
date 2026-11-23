@@ -1118,7 +1118,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                 </div>
               </div>
               {priceLine(sel.date, sel.price)}
-              {gaps.length === 0 && priceAnatomy}
+              {gaps.length === 0 && <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.65, fontFamily: T.font.sans }}>{priceAnatomy}</div>}
             </div>
           )}
         </>
