@@ -24,12 +24,21 @@ import type { ReactNode } from 'react';
 import { T, fe, Btn } from '@/components/Theme';
 import { cashSideNote, type CashPosition, type CashSide } from '@/lib/home/cash';
 import { navLabel } from '@/lib/nav/labels';
+import { CASH_LABELS } from '@/lib/facts/labels';
 import { ArrowDownLeft, ArrowUpRight, Wallet } from 'lucide-react';
 import { useAppEn } from '@/lib/i18n/appEn';
 
-function Side({ label, side, kind, onOpen, actionLabel, action, compact }: {
+function Side({ label, side, kind, onOpen, actionLabel, action, compact, solo }: {
   label: string; side: CashSide; kind: 'in' | 'out';
   onOpen: () => void; actionLabel: string;
+  /**
+   * ΜΟΝΗ ΠΛΕΥΡΑ, ΟΧΙ ΔΕΥΤΕΡΟΣ ΗΡΩΑΣ (αξιολόγηση 2, Μ13). Σε βραχυχρόνιο ή κενό
+   * ακίνητο το «Οφείλεις» έπιανε όλο το πλάτος με αριθμό 40 εικονοστοιχείων, ίσο
+   * με το καθαρό της κορυφής: δύο εστίες ίσου βάρους και στα 1440 εννιακόσια
+   * εικονοστοιχεία λευκό δεξιά. Ως μόνη πλευρά γίνεται μία σειρά: ετικέτα και
+   * σημείωση αριστερά, το ποσό δεξιά σε μέγεθος δευτερεύοντος.
+   */
+  solo?: boolean;
   /**
    * ΗΣΥΧΗ ΜΟΡΦΗ: ΕΤΙΚΕΤΑ ΚΑΙ ΛΕΞΕΙΣ ΣΕ ΜΙΑ ΣΕΙΡΑ. Μόνο όταν ΟΛΟ το ταμείο είναι
    * ήσυχο (βλ. `quiet` πιο κάτω): τότε η κάρτα είναι μία γραμμή.
@@ -66,8 +75,13 @@ function Side({ label, side, kind, onOpen, actionLabel, action, compact }: {
       type="button"
       onClick={onOpen}
       title={actionLabel}
-      className="cash-btn"
-      style={compact ? {
+      className={solo ? 'cash-btn cash-btn--solo' : 'cash-btn'}
+      style={solo ? {
+        display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', columnGap: 16, rowGap: 4, alignItems: 'center',
+        width: '100%', minWidth: 0, padding: '16px 20px',
+        background: 'transparent', border: 'none', borderRadius: T.radius.inner,
+        textAlign: 'left', cursor: 'pointer',
+      } : compact ? {
         display: 'flex', flexDirection: 'row', gap: 10, alignItems: 'center',
         width: '100%', minWidth: 0, minHeight: T.h.lg, padding: '0 18px',
         background: 'transparent', border: 'none', borderRadius: T.radius.inner,
@@ -158,7 +172,7 @@ export default function CashHero({ cash, showIncome, onNavigate, onRecordRent }:
   if (quiet) {
     return (
       <div className="card cash-hero" style={{ padding: 0, marginBottom: 20 }}>
-        <Side compact label={C ? C.calm : 'Ταμείο'} side={cash.owedByMe} kind="out"
+        <Side compact label={C ? C.calm : CASH_LABELS.calm} side={cash.owedByMe} kind="out"
               actionLabel={openIn('finances', `Άνοιγμα στις ${navLabel('finances')}`)} onOpen={() => onNavigate('finances')} />
       </div>
     );
@@ -185,14 +199,14 @@ export default function CashHero({ cash, showIncome, onNavigate, onRecordRent }:
       <div className="cash-sides" data-pair={showIncome ? '' : undefined}>
         {showIncome && (
           <>
-            <Side label={C ? C.owedToMe : 'Σου οφείλουν'} side={cash.owedToMe} kind="in"
+            <Side label={C ? C.owedToMe : CASH_LABELS.owedToMe} side={cash.owedToMe} kind="in"
                   actionLabel={openIn('tenant', `Άνοιγμα στους ${navLabel('tenant')}`)} onOpen={() => onNavigate('tenant')}
                   action={onRecordRent && <Btn onClick={onRecordRent}>{C ? C.rentIn : 'Μπήκε το ενοίκιο'}</Btn>} />
             {/* Ο διαχωριστής είναι η δήλωση ότι τα δύο ΔΕΝ αθροίζονται. */}
             <div aria-hidden className="cash-divider" />
           </>
         )}
-        <Side label={C ? C.owedByMe : 'Οφείλεις'} side={cash.owedByMe} kind="out"
+        <Side solo={!showIncome} label={C ? C.owedByMe : CASH_LABELS.owedByMe} side={cash.owedByMe} kind="out"
               actionLabel={openIn('finances', `Άνοιγμα στις ${navLabel('finances')}`)} onOpen={() => onNavigate('finances')} />
       </div>
     </div>

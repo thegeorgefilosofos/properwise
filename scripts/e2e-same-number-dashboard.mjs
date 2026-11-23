@@ -45,7 +45,9 @@ const PAIRS = [
   { fact: 'tax-year', what: 'φόρος ενοικίων του έτους', screens: ['overview', 'roi', 'pricing'] },
   { fact: 'income-year', what: 'έσοδα του έτους (εισπραγμένα + κλεισμένα έως 31/12)', screens: ['overview', 'roi', 'pricing'] },
   { fact: 'yield-gross', what: 'μεικτή απόδοση', screens: ['overview', 'roi'] },
-  { fact: 'yield-net-recorded', what: 'καθαρή απόδοση προ φόρου, μόνο με καταγραφές', screens: ['overview', 'roi', 'budgetPro'] },
+  // Η Επισκόπηση δεν γράφει καθαρή απόδοση (αξιολόγηση 2, Υ4): το καθαρό της
+  // χρονιάς λέγεται εκεί σε ευρώ και η καθαρή απόδοση ζει στην Απόδοση.
+  { fact: 'yield-net-recorded', what: 'καθαρή απόδοση προ φόρου, μόνο με καταγραφές', screens: ['roi', 'budgetPro'] },
   { fact: 'occ-year', what: 'πληρότητα του έτους', screens: ['overview', 'portfolio'] },
 ];
 
@@ -96,7 +98,7 @@ for (const v of VIEWS) {
       places.map(p => `${p.screen}: ${p.value ?? '(κενό)'}`).join(' · '));
   }
   // ── Η ΔΙΑΦΟΡΑ ΘΕΛΕΙ ΟΝΟΜΑ ──────────────────────────────────────────────
-  // Η καθαρή που δείχνουν οι Αποδόσεις (με εκτιμήσεις) απέναντι στην καθαρή της Επισκόπησης.
+  // Η καθαρή που δείχνουν οι Αποδόσεις (με εκτιμήσεις) απέναντι στην ίδια μόνο με καταγραφές.
   const roiNet = await (async () => {
     const p = await ctx.newPage();
     await p.goto(benchUrl('roi', 6), { waitUntil: 'networkidle' });
@@ -113,13 +115,14 @@ for (const v of VIEWS) {
     await p.close();
     return r;
   })();
-  const ovNet = by.overview.find(f => f.name === 'yield-net-recorded')?.value;
-  if (roiNet && ovNet) {
-    const differs = hund(roiNet.value) !== hund(ovNet);
+  const recNet = by.roi.find(f => f.name === 'yield-net-recorded')?.value;
+  ok(`${v.name}: η Επισκόπηση δεν γράφει δεύτερη καθαρή απόδοση`, !by.overview.some(f => f.name === 'yield-net-recorded'));
+  if (roiNet && recNet) {
+    const differs = hund(roiNet.value) !== hund(recNet);
     table.push({ view: v.name, what: 'καθαρή απόδοση όπως γράφεται', screen: `Αποδόσεις «${roiNet.label}»`, value: roiNet.value });
-    ok(`${v.name}: η καθαρή των Αποδόσεων που διαφέρει από της Επισκόπησης λέγεται «Εκτιμώμενη»`,
-      !differs || /^Εκτιμώμενη/.test(roiNet.label), `Αποδόσεις «${roiNet.label}» ${roiNet.value} · Επισκόπηση ${ovNet}`);
-  } else ok(`${v.name}: η καθαρή εμφανίζεται στις Αποδόσεις και στην Επισκόπηση`, false, JSON.stringify({ roiNet, ovNet }));
+    ok(`${v.name}: η καθαρή των Αποδόσεων που διαφέρει από τις καταγραφές λέγεται «Εκτιμώμενη»`,
+      !differs || /^Εκτιμώμενη/.test(roiNet.label), `Αποδόσεις «${roiNet.label}» ${roiNet.value} · μόνο με καταγραφές ${recNet}`);
+  } else ok(`${v.name}: η καθαρή εμφανίζεται στις Αποδόσεις`, false, JSON.stringify({ roiNet, recNet }));
   await ctx.close();
 }
 await browser.close();

@@ -373,8 +373,8 @@ export function portfolio(n: number): Bench {
       inventory_items: inventory,
       calendar_events: calendar,
       // Η συνδρομή ημερολογίου ΔΕΝ έχει συνδεθεί ακόμη: έτσι φαίνεται η πρόταση
-      // «Βάλε τις προθεσμίες στο ημερολόγιο του κινητού σου» στην Επισκόπηση και
-      // στο Ημερολόγιο (CalendarQuickAdd), όπως τη βλέπει ο νέος χρήστης.
+      // «Βάλε τις προθεσμίες στο ημερολόγιο του κινητού σου» στο Ημερολόγιο
+      // (CalendarQuickAdd), όπως τη βλέπει ο νέος χρήστης.
       calendar_feed_tokens: [{ user_id: 'u1', token: '0123456789abcdef0123456789abcdef', created_at: `${YEAR}-01-01`, expires_at: null, last_fetched_at: null }],
       contacts,
       loans,

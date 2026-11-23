@@ -39,19 +39,20 @@
 // όχι με κόκκινο. Το κόκκινο θα ήταν ετυμηγορία· η σειρά είναι πληροφορία.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import type { ReactNode } from 'react';
 import { T, fe } from '@/components/Theme';
 import { ListChecks } from 'lucide-react';
 import { itemDue, overdueCount, ENFIA_IMPORT_TAB, type AgendaItem, type DueParts } from '@/lib/home/agenda';
 import { openMyaadeImport } from './myaadeOpen';
 import { useAppEn } from '@/lib/i18n/appEn';
+import { navLabel } from '@/lib/nav/labels';
 
 /** Ο τίτλος της λίστας. Σταθερά, γιατί τον αναφέρουν οδηγίες άλλων οθονών (guard-dangling-refs).
  *  «Εκκρεμότητες», όπως λέγονται παντού αλλού στην εφαρμογή (feedback χρήστη #1, 23/11/2026):
- *  ήταν «Τι χρειάζεται τώρα», δεύτερο όνομα για το ίδιο πράγμα. */
-const AGENDA_LABEL = 'Εκκρεμότητες';
+ *  ήταν «Τι χρειάζεται τώρα», δεύτερο όνομα για το ίδιο πράγμα. Από το μενού
+ *  (lib/nav/labels.ts), ώστε η λίστα και η καρτέλα όπου οδηγεί να μη χωρίσουν ποτέ. */
+const AGENDA_LABEL = navLabel('checklist');
 
-export default function AgendaPanel({ items, total, onNavigate, incomplete = false, footer }: {
+export default function AgendaPanel({ items, total, onNavigate, incomplete = false }: {
   items: AgendaItem[];
   /** Πόσα υπάρχουν συνολικά — η λίστα δείχνει τα πρώτα. */
   total: number;
@@ -61,12 +62,6 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
    * «δεν ξέρουμε». Ως τις 08/10/2026 η αποτυχία έγραφε «Δεν εκκρεμεί τίποτα».
    */
   incomplete?: boolean;
-  /**
-   * Η τελευταία γραμμή της κάρτας, κάτω από το «Όλες οι εκκρεμότητες». Εκεί
-   * κάθεται η πρόταση «Βάλε τις προθεσμίες στο ημερολόγιο του κινητού σου»:
-   * δίπλα στις ίδιες τις προθεσμίες, όχι στον Λογαριασμό.
-   */
-  footer?: ReactNode;
 }) {
   // Τα αγγλικά της λίστας και τα ονόματα των καρτελών, ή `null` στα ελληνικά.
   const E = useAppEn('overview');
@@ -82,7 +77,6 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
   /** Το όνομα της ενέργειας: η καρτέλα όπως τη λέει το μενού. */
   const actionLabel = (it: AgendaItem) => (S && A && it.action ? (S.nav[it.action.tab] ?? A.actions[it.action.tab] ?? it.action.label) : it.action?.label ?? '');
   const late = overdueCount(items);
-  // «Σε σειρά προθεσμίας» μόνο όταν υπάρχουν προθεσμίες· αλλιώς το πλήθος.
   const dated = items.some(i => i.daysLeft != null);
 
   return (
@@ -92,13 +86,13 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
       <div className="agenda-head">
         {/* Τίτλος ενότητας για τον αναγνώστη οθόνης· η εμφάνιση μένει ίδια. */}
         <h2 className="agenda-title"><ListChecks size={15} aria-hidden="true" className="section-ico" />{A ? A.title : AGENDA_LABEL}</h2>
-        {items.length > 0 && (
+        {/* ΠΛΗΘΟΣ ΜΟΝΟ ΟΤΑΝ ΚΑΤΙ ΕΧΕΙ ΛΗΞΕΙ (αξιολόγηση 2, Υ1 και Χ1). Το «5 κατά
+            προτεραιότητα» μετρούσε τις γραμμές που φαίνονται ήδη από κάτω και,
+            δίπλα στο «3» της καρτέλας με το ίδιο όνομα, διαβαζόταν ως αντίφαση.
+            Το ληξιπρόθεσμο είναι είδηση· το πλήθος των γραμμών δεν είναι. */}
+        {late > 0 && (
           <span className="agenda-count">
-            {A ? (late > 0 ? A.late(late) : dated ? A.byPriority(items.length) : A.items(items.length)) : late > 0
-              ? `${late} ${late === 1 ? 'ληξιπρόθεσμο' : 'ληξιπρόθεσμα'}`
-              : dated
-                ? `${items.length} κατά προτεραιότητα`
-                : `${items.length} ${items.length === 1 ? 'θέμα' : 'θέματα'}`}
+            {A ? A.late(late) : `${late} ${late === 1 ? 'ληξιπρόθεσμο' : 'ληξιπρόθεσμα'}`}
           </span>
         )}
       </div>
@@ -169,11 +163,11 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
                 {/* ΠΟΣΟ ΚΑΙ ΕΝΕΡΓΕΙΑ ΣΤΗΝ ΙΔΙΑ ΘΕΣΗ ΣΕ ΚΑΘΕ ΓΡΑΜΜΗ. Η δόση ΕΝΦΙΑ
                     ερχόταν χωρίς ποσό και χωρίς κουμπί, ενώ οι γειτονικές είχαν
                     κουμπί: τρεις μορφές γραμμής σε μία λίστα πέντε γραμμών. */}
+                {/* ΙΔΙΑ ΑΝΑΤΟΜΙΑ ΣΕ ΚΑΘΕ ΓΡΑΜΜΗ (αξιολόγηση 2, Μ11): ποσό αν υπάρχει,
+                    βέλος αν η γραμμή ανοίγει. Η δόση ΕΝΦΙΑ με ποσό έχανε το βέλος
+                    της, ενώ πατιόταν όπως οι υπόλοιπες. */}
                 {(it.amount || it.action) && (
                   <div className="agenda-side">
-                    {toCalendar && !it.amount && (
-                      <svg aria-hidden="true" className="agenda-chev" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
-                    )}
                     {it.amount && (
                       <span className="agenda-amt">
                         {fmt(it.amount.value)}
@@ -184,6 +178,9 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
                       <button type="button" className="agenda-go" onClick={() => it.action!.tab === ENFIA_IMPORT_TAB ? openMyaadeImport() : onNavigate(it.action!.tab)}>
                         {actionLabel(it)}
                       </button>
+                    )}
+                    {toCalendar && (
+                      <svg aria-hidden="true" className="agenda-chev" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
                     )}
                   </div>
                 )}
@@ -217,7 +214,6 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
           {A ? (total > items.length ? A.more : A.all) : total > items.length ? 'Δες λοιπές εκκρεμότητες' : 'Όλες οι εκκρεμότητες'}
         </button>
       </div>
-      {footer}
 
       <style jsx>{`
         .agenda {
@@ -342,6 +338,7 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
         }
         .agenda-cover:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
         .agenda-chev { color: var(--text-tertiary); flex: none; }
+        .agenda-row--link .agenda-side { flex-direction: row; align-items: center; gap: 8px; }
         .agenda-foot { border-top: 1px solid var(--border-subtle); }
         .agenda-more {
           display: inline-flex; align-items: center; min-height: 44px; text-align: left;
@@ -395,7 +392,11 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
           .agenda-amt { grid-area: amt; align-self: start; }
           .agenda-note { grid-area: note; margin-top: 4px; }
           .agenda-go { grid-area: go; justify-self: start; margin-top: 10px; }
-          .agenda-chev { grid-area: amt; align-self: center; justify-self: end; }
+          /* Ποσό και βέλος μαζί, στη δεξιά άκρη της σειράς του τίτλου. */
+          .agenda-row--link .agenda-side {
+            display: flex; grid-area: amt; flex-direction: row; align-items: center; gap: 8px; align-self: start;
+          }
+          .agenda-row--link .agenda-amt { grid-area: auto; }
           .agenda-num { font-size: 15px; }
           /* Στο κινητό ο χρόνος είναι γραμμή ΠΑΝΩ από τον τίτλο, όχι στήλη:
              το «εκκρεμεί» δεν κρατά άξονα εδώ, μόνο ύψος. */
