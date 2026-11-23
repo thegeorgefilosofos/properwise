@@ -8,7 +8,7 @@ import { LocaleOverrideContext } from '@/lib/i18n/useLocale';
 // ελληνικά, ίδια ως το byte.
 const useAppIsEn = () => useContext(LocaleOverrideContext) === 'en';
 import { createPortal } from 'react-dom';
-import { Btn, IconBtn, ChipToggle } from '@/components/ThemeCore';
+import { Btn, IconBtn, Segmented } from '@/components/ThemeCore';
 import { T, localDay } from '@/components/tokens';
 import { Z } from '@/components/tokens';
 import { acceptNumeric, forDisplay } from '@/lib/core/numInput';
@@ -1857,32 +1857,11 @@ interface SegmentOption { value: string; label: string; }
  * σχήμα είναι χειρότερη από μία ατελή. Ένα ιδίωμα ανά στοιχείο.
  */
 export function SegmentControl({ options, value, onChange, ariaLabel }: { options: SegmentOption[]; value: string; onChange: (v: string) => void; ariaLabel?: string }) {
-  return (
-    // ══ ΤΟ ΕΠΙΛΕΓΜΕΝΟ ΠΛΑΚΙΔΙΟ ΗΤΑΝ ΠΙΟ ΣΚΟΥΡΟ ΑΠΟ ΤΗ ΡΑΓΑ ΤΟΥ ═══════════════
-    // ΜΕΤΡΗΜΕΝΟ ΣΤΟ ΣΚΟΥΡΟ ΘΕΜΑ: η ράγα ήταν `--bg-elevated`, rgb(53,54,58)· και
-    // το επιλεγμένο κουμπί `--bg-surface`, rgb(41,42,45). Δηλαδή αυτό που είναι
-    // ΕΝΕΡΓΟ βυθιζόταν και ό,τι δεν είναι έμοιαζε να επιπλέει. Η αντίθεση του
-    // κειμένου ήταν μια χαρά (6,67:1)· ανάποδη ήταν η ΕΠΙΦΑΝΕΙΑ· και γι' αυτό
-    // το ανεπίλεκτο διαβαζόταν ως «πολύ σκούρο».
-    //
-    // Η ΜΠΑΡΑ ΦΑΚΩΝ ΤΟΥ ΔΑΝΕΙΟΥ ΤΟ ΕΚΑΝΕ ΗΔΗ ΣΩΣΤΑ: ράγα `--bg-surface`,
-    // ενεργό `--bg-elevated` με σκιά. Ιδιο χειριστήριο, δύο υλοποιήσεις, η μία
-    // ανεστραμμένη. Πλέον μία: η ράγα βυθισμένη, το ενεργό σηκωμένο.
-    <div role="group" aria-label={ariaLabel} style={{
-      display: 'flex',
-      background: 'var(--bg-surface)',
-      border: '1px solid var(--border-subtle)',
-      borderRadius: T.radius.chip,
-      padding: 4,
-      gap: 2,
-    }}>
-      {/* `seg` γιατί η ράγα από πάνω έχει ήδη περίγραμμα: δεύτερο περίγραμμα ανά
-          πλακίδιο θα έδινε διπλή γραμμή. Το ενεργό ξεχωρίζει με επιφάνεια και σκιά. */}
-      {options.map(o => (
-        <ChipToggle key={o.value} shape="seg" grow on={o.value === value} onClick={() => onChange(o.value)}>
-          {o.label}
-        </ChipToggle>
-      ))}
-    </div>
-  );
+  // ══ ΛΕΠΤΟ ΠΕΡΙΤΥΛΙΓΜΑ ΤΟΥ `Segmented` (αξιολόγηση σχεδίασης 3, 23/11/2026) ══
+  // Ηταν δεύτερη υλοποίηση της ίδιας ράγας, με δική της επιφάνεια και δικό της
+  // γέμισμα: η Συνδρομή έδειχνε άλλο σχήμα από το Ημερολόγιο δίπλα. Η όψη ζει
+  // πια σε ένα σημείο (`.po-segmented`), με τη ράγα βυθισμένη και το ενεργό
+  // σηκωμένο, όπως το είχε ήδη η μπάρα φακών του δανείου. Εδώ μένει μόνο το
+  // συμβόλαιο που ξέρουν οι καλούντες.
+  return <Segmented fill label={ariaLabel ?? ''} value={value} onChange={onChange} options={options} />;
 }

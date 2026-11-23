@@ -28,12 +28,12 @@ const joinedFullName = (v: unknown): string | null => {
   if (!one || typeof one !== 'object' || !('full_name' in one)) return null
   return typeof one.full_name === 'string' ? one.full_name : null
 }
-import { T, Btn, IconBtn, ChipToggle, LinkBtn, Skeleton, EmptyState, PageTitle, fe, localDay } from '@/components/Theme'
+import { T, Btn, IconBtn, ChipToggle, Segmented, LinkBtn, Skeleton, EmptyState, PageTitle, fe, localDay } from '@/components/Theme'
 import type { XlsxSheet, XlsxCol } from './exportXlsx';
 import { downloadXlsx } from './sheets';
 import {
   AlertTriangle, Plus, X, ChevronLeft, ChevronRight,
-  Calendar, List, FileText,
+  FileText,
   Shield, Filter, Download,
   ChevronDown, RotateCcw,
   RefreshCw,
@@ -62,7 +62,7 @@ import {
   type EventCategory, type EventStatus, type ViewMode, type CalEvent,
   type FormState, CATEGORIES, STATUSES, canonicalCategory,
   EMPTY_FORM, fmt, fmtShort,
-  athensNow, daysUntil, isOverdue, isPastNotice, pastStateOf, isThisWeek, isThisMonth, isExpiring, todayStr, addDaysStr,
+  athensNow, daysUntil, isOverdue, isPastNotice, pastStateOf, isThisWeek, isThisMonth, isExpiring, EXPIRING_WINDOW_DAYS, todayStr, addDaysStr,
 } from './calendar/model'
 import { EventCard, Section } from './calendar/EventCard'
 import { usePointerDrag, DaySheet, MonthView } from './calendar/MonthView'
@@ -108,6 +108,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
   const [showOverdue,setShowOverdue]=useState(false)
   const [showAutoPull,setShowAutoPull]=useState(false)
   const [searchQ,setSearchQ]=useState('')
+  const [searchOpen,setSearchOpen]=useState(false)
   const [bulkMode,setBulkMode]=useState(false)
   const [selectedIds,setSelectedIds]=useState<Set<string>>(new Set())
   const [showMenu,setShowMenu]=useState(false)
@@ -577,7 +578,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
         <div style={{ display:'flex', alignItems:'flex-start', gap: 12, background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderLeft:'3px solid var(--warning)', borderRadius:T.radius.card, padding:'12px 16px' }}>
           <Shield size={14} color="var(--warning)" aria-hidden="true" style={{ flexShrink:0, marginTop:2 }}/>
           <p style={{ fontSize:14, lineHeight:1.45, color:'var(--text-secondary)', fontFamily: T.font.sans, letterSpacing:'0.1px', margin:0 }}>
-            {expiring.length} συμβόλαι{expiring.length===1?'ο λήγει':'α λήγουν'} εντός 60 ημερών · <span style={{ color:'var(--text-primary)' }}>{expiring.map(e=>`${e.title} (${fmtShort(e.event_date)})`).join(', ')}</span>
+            {expiring.length} συμβόλαι{expiring.length===1?'ο λήγει':'α λήγουν'} εντός {EXPIRING_WINDOW_DAYS} ημερών · <span style={{ color:'var(--text-primary)' }}>{expiring.map(e=>`${e.title} (${fmtShort(e.event_date)})`).join(', ')}</span>
           </p>
         </div>
       )}
@@ -593,25 +594,23 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
           στην άκρη και η εύρεση με τις δύο ενέργειες. Οι κανόνες ζουν στην
           `.cal-toolbar` του globals.css (02/11/2026). */}
       <div className="cal-toolbar" style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-        {/* Το κουτί της ομάδας παίρνει το ύψος από τα κουμπιά της: 32 συν 3
-            γέμισμα και 1 περίγραμμα πάνω κάτω, δηλαδή 40, όσο και τα υπόλοιπα
-            χειριστήρια της γραμμής. Με γέμισμα 2 έβγαινε 38. */}
-        <div className="cal-seg" style={{ display:'flex', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:10, padding: 4, gap:2 }}>
-          {/* shape="seg" και όχι "chip": το κουτί από πάνω έχει ήδη δικό του περίγραμμα. */}
-          {([['month','Μήνας',Calendar],['agenda','Ατζέντα',List]] as [ViewMode,string,typeof Calendar][]).map(([v,label,Icon])=>(
-            <ChipToggle key={v} on={viewMode===v} shape="seg" onClick={()=>setViewMode(v)}>
-              <Icon size={13}/>{label}
-            </ChipToggle>
-          ))}
-        </div>
+        {/* ΤΟ ΕΝΙΑΙΟ `Segmented`, ΧΩΡΙΣ ΕΙΚΟΝΙΔΙΑ (αξιολόγηση σχεδίασης 3). Ηταν
+            δική του ράγα με εικονίδιο σε κάθε όψη: τρίτο σχήμα «καρτέλας» δίπλα
+            στις Δαπάνες και στον Φάκελο. Η λέξη λέει ήδη την όψη. */}
+        <Segmented className="cal-seg" label="Προβολή" value={viewMode} onChange={setViewMode}
+          options={[{ value: 'month', label: 'Μήνας' }, { value: 'agenda', label: 'Ατζέντα' }]} />
 
         {viewMode!=='agenda'&&(
           <div className="cal-nav" style={{ display:'flex', alignItems:'center', gap:4 }}>
-            <IconBtn label="Προηγούμενο" title="Προηγούμενο" size="md" round onClick={prevPeriod}><ChevronLeft size={18}/></IconBtn>
+            <IconBtn label="Προηγούμενο" title="Προηγούμενο" size="md" onClick={prevPeriod}><ChevronLeft size={18}/></IconBtn>
             <span aria-live="polite" className="cal-period" style={{ fontSize:15, fontWeight:600, fontFamily: T.font.sans, color:'var(--text-primary)', minWidth:150, textAlign:'center', letterSpacing:'0.1px', whiteSpace:'nowrap' }}>{periodLabel()}</span>
-            <IconBtn label="Επόμενο" title="Επόμενο" size="md" round onClick={nextPeriod}><ChevronRight size={18}/></IconBtn>
-            {/* size="lg" γιατί η γραμμή εργαλείων είναι όλη στα 40, μαζί με το πεδίο αναζήτησης δίπλα. */}
-            <Btn size="lg" className="cal-today" onClick={()=>setCurrentDate(athensNow())}>Σήμερα</Btn>
+            <IconBtn label="Επόμενο" title="Επόμενο" size="md" onClick={nextPeriod}><ChevronRight size={18}/></IconBtn>
+            {/* size="lg" γιατί η γραμμή εργαλείων είναι όλη στα 40, μαζί με το πεδίο αναζήτησης δίπλα.
+                ΗΣΥΧΟ ΚΕΙΜΕΝΟ-ΚΟΥΜΠΙ, ΟΠΩΣ ΣΤΟ ΗΜΕΡΟΛΟΓΙΟ ΤΟΥ iPHONE (αξιολόγηση
+                σχεδίασης 3). Με περίγραμμα ήταν τέταρτο σχήμα στη σειρά, δίπλα σε
+                στρογγυλά βέλη, χάπι εύρεσης και γεμάτο «Νέο». Είναι επιστροφή,
+                όχι ενέργεια. */}
+            <Btn size="lg" variant="ghost" className="cal-today" onClick={()=>setCurrentDate(athensNow())}>Σήμερα</Btn>
           </div>
         )}
 
@@ -631,10 +630,20 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
               όπως στην αναζήτηση του Φακέλου· το πλήρες νόημα το έχει η ετικέτα.
               Η λέξη είναι «Εύρεση» και όχι «Αναζήτηση»: στα 360 το πεδίο δίνει 82
               και η «Αναζήτηση» θέλει 89. */}
+          {/* ΠΙΣΩ ΑΠΟ ΤΟΝ ΦΑΚΟ (αξιολόγηση σχεδίασης 3). Το πεδίο ήταν μόνιμο χάπι
+              ανάμεσα στο μήνα και στο «Νέο», τρίτο σχήμα στη σειρά εργαλείων. Η
+              εύρεση είναι σπάνια κίνηση: ο φακός κρατά τη θέση της και ανοίγει το
+              πεδίο στο πάτημα. Με γραμμένη αναζήτηση το πεδίο μένει ανοιχτό,
+              για να φαίνεται γιατί η λίστα είναι μικρότερη. */}
+          {searchOpen||searchQ ? (<>
           <Search size={15} aria-hidden="true" style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:'var(--text-tertiary)', pointerEvents:'none' }}/>
-          <input className="po-field" aria-label="Αναζήτηση γεγονότος με τον τίτλο του" placeholder="Εύρεση" value={searchQ} onChange={e=>setSearchQ(e.target.value)}
-            style={{ width:'100%', height:T.h.lg, background:'var(--bg-surface)', border:'1px solid var(--border-control)', borderRadius: T.radius.modal, padding:'0 10px 0 34px', color:'var(--text-primary)', fontSize:14, fontFamily: T.font.sans, outline:'none' }}
-            onFocus={e=>e.currentTarget.style.borderColor='var(--accent)'} onBlur={e=>e.currentTarget.style.borderColor='var(--border-control)'}/>
+          <input className="po-field" aria-label="Αναζήτηση γεγονότος με τον τίτλο του" placeholder="Εύρεση" value={searchQ} onChange={e=>setSearchQ(e.target.value)} autoFocus={searchOpen}
+            onKeyDown={e=>{ if(e.key==='Escape'&&!searchQ) setSearchOpen(false) }}
+            style={{ width:'100%', height:T.h.lg, background:'var(--bg-surface)', border:'1px solid var(--border-control)', borderRadius: T.radius.btn, padding:'0 10px 0 34px', color:'var(--text-primary)', fontSize:14, fontFamily: T.font.sans, outline:'none' }}
+            onFocus={e=>e.currentTarget.style.borderColor='var(--accent)'} onBlur={e=>{ e.currentTarget.style.borderColor='var(--border-control)'; if(!e.currentTarget.value) setSearchOpen(false) }}/>
+          </>) : (
+            <IconBtn label="Εύρεση γεγονότος" title="Εύρεση" size="md" onClick={()=>setSearchOpen(true)} style={{ width:T.h.lg, height:T.h.lg, minWidth:T.h.lg, minHeight:T.h.lg }}><Search size={17}/></IconBtn>
+          )}
         </div>
 
         <Btn variant="primary" size="lg" onClick={()=>openNew()} title="Νέο γεγονός">

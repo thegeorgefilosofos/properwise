@@ -817,6 +817,56 @@ export function ChipToggle({ children, on, onClick, shape = 'chip', disabled, ti
   );
 }
 
+// ═══ Segmented · ΕΝΑ ΣΧΗΜΑ ΓΙΑ ΚΑΘΕ ΤΜΗΜΑΤΙΚΟ ΕΠΙΛΟΓΕΑ ══════════════════
+//
+// ΠΕΝΤΕ ΣΧΗΜΑΤΑ ΓΙΑ ΤΟ ΙΔΙΟ ΧΕΙΡΙΣΤΗΡΙΟ (αξιολόγηση σχεδίασης 3, 23/11/2026).
+// Δαπάνες με γεμάτο accent σε ράγα χαπιού, Ημερολόγιο με εικονίδια σε ράγα
+// ακτίνας 10, Φάκελος με δύο ράγες χαπιού δίπλα δίπλα, Τιμολόγηση με πρόθεμα
+// «Έτος», Συνδρομή με άλλο component και πακέτα χωρίς ράγα. Ο χρήστης έβλεπε
+// τρία είδη «καρτέλας» σε τρεις γειτονικές οθόνες.
+//
+// Τώρα ένα: βυθισμένη ράγα, το ενεργό ανασηκωμένο με επιφάνεια και σκιά,
+// γράμματα του κειμένου και όχι του accent. Το accent μένει στην κύρια
+// ενέργεια της οθόνης, ώστε να υπάρχει ένα γεμάτο σχήμα ανά οθόνη και όχι δύο.
+// Η όψη ζει στην `.po-segmented` του globals.css.
+//
+// ΓΙΑΤΙ `aria-pressed` ΚΑΙ ΟΧΙ `tablist`. Ο κανόνας του `SegmentControl` ισχύει
+// εδώ: ένα ιδίωμα ανά στοιχείο. Και ο σαρωτής διάταξης ανοίγει κάθε κατάσταση
+// πίσω από `aria-pressed="false"`, άρα κάθε όψη που αλλάζει από εδώ μετριέται.
+export interface SegmentedOption<V extends string> {
+  value: V;
+  label: ReactNode;
+  /** Για επιλογή χωρίς λέξη ή με λέξη που χρειάζεται εξήγηση. */
+  title?: string;
+  disabled?: boolean;
+}
+export function Segmented<V extends string>({ options, value, onChange, label, fill, stack, className }: {
+  options: readonly SegmentedOption<V>[];
+  value: V;
+  onChange: (v: V) => void;
+  /** Το όνομα της ομάδας για τον αναγνώστη οθόνης («Προβολή», «Έτος»). */
+  label: string;
+  /** Οι επιλογές μοιράζονται ίσα όλο το πλάτος (φόρμες, κάρτες). */
+  fill?: boolean;
+  /** Μία επιλογή ανά γραμμή, για λεκτικά που δεν χωρούν δίπλα δίπλα (πακέτα). */
+  stack?: boolean;
+  /** Διάταξη από τον γονέα (π.χ. `cal-seg`), όχι όψη. */
+  className?: string;
+}) {
+  return (
+    <div role="group" aria-label={label}
+      className={className ? `po-segmented ${className}` : 'po-segmented'}
+      data-fill={fill || undefined} data-stack={stack || undefined}>
+      {options.map(o => (
+        <ChipToggle key={o.value} shape="seg" grow={fill || stack} on={o.value === value}
+          title={o.title} disabled={o.disabled} onClick={() => onChange(o.value)}>
+          {o.label}
+        </ChipToggle>
+      ))}
+    </div>
+  );
+}
+
 // ═══ LinkBtn · ΕΝΕΡΓΕΙΑ ΠΟΥ ΔΙΑΒΑΖΕΤΑΙ ΩΣ ΣΥΝΔΕΣΜΟΣ ═══════════════════════
 //
 // ΓΙΑΤΙ ΟΧΙ `<a>`. Δεν πάει πουθενά: ανοίγει πεδίο, επαναφέρει τιμή, αποκαλύπτει

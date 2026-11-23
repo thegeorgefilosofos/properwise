@@ -35,7 +35,7 @@ import * as billStore from '@/lib/data/bills';
 import * as expenses from '@/lib/data/expenses'
 import * as calendar from '@/lib/data/calendar'
 import { AadePill } from '@/components/AadeLink';
-import { T, PageTitle, KPIGrid, InfoBanner, Btn, ChipToggle, ExportButton, SecHdr, EmptyState, Skeleton, SkeletonKPIs, fe, feWhole, fd, fp, fn, pressable, formGrid, fieldRow, Bar, ABSENT_SHORT } from '@/components/Theme';
+import { T, PageTitle, KPIGrid, InfoBanner, Btn, Segmented, SecHdr, EmptyState, Skeleton, SkeletonKPIs, fe, feWhole, fd, fp, fn, pressable, formGrid, fieldRow, Bar, ABSENT_SHORT } from '@/components/Theme';
 import { navLabel } from '@/lib/nav/labels';
 import { isTabPurchasable } from '@/lib/billing/entitlements';
 import { shortTermYearSummary, isHouseType } from '@/lib/tax/shortTermTax';
@@ -50,6 +50,7 @@ import { ledgerYearTotal, type LedgerBill, type LedgerExpense } from '@/lib/expe
 import { notify, notifyOk, notifyError } from '@/components/Toast';
 import { saved } from '@/components/dbWrite';
 import { Tag } from 'lucide-react';
+import { ActionMenu } from '@/components/ActionMenu';
 import { NumberInput, WEEKDAYS_SHORT } from './UIComponents';
 import { exportPricingWorkbook } from './sheets';
 import {
@@ -686,9 +687,17 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
           φόρτωσε». Το ίδιο πράγμα σε δύο σημεία δεν ήταν αισθητικό πρόβλημα εδώ:
           ήταν το σφάλμα. */}
 
-      <PageTitle title="Βραχυχρόνια μίσθωση" titleHint="Προτεινόμενη τιμή ανά νύχτα από τα δικά σου δεδομένα και την ελληνική εποχικότητα. Οι τιμές είναι προτάσεις, τις εφαρμόζεις εσύ στα κανάλια."
+      {/* ΤΟ ΟΝΟΜΑ ΤΗΣ ΚΑΡΤΕΛΑΣ, ΟΧΙ ΤΟ CHIP ΑΠΟ ΠΑΝΩ (απόφαση ιδιοκτήτη, 23/11/2026).
+          Ο τίτλος «Βραχυχρόνια μίσθωση» ήταν ίδιος με το chip κατάστασης της
+          μπάρας. Η καρτέλα λέγεται «Τιμές», από την ίδια πηγή με το μενού. */}
+      <PageTitle title={navLabel('pricing')} titleHint="Προτεινόμενη τιμή ανά νύχτα από τα δικά σου δεδομένα και την ελληνική εποχικότητα. Οι τιμές είναι προτάσεις, τις εφαρμόζεις εσύ στα κανάλια."
         sub="Τι να ζητήσεις ανά νύχτα, ποιες μέρες μένουν κενές και τι σου μένει στο χέρι μετά από έξοδα, τέλη και φόρο."
-        right={rows.length > 0 ? <ExportButton onClick={exportXlsx} label="Εξαγωγή Excel" /> : undefined} />
+        right={rows.length > 0 ? (
+          // ΤΟ ΔΕΥΤΕΡΕΥΟΝ ΔΕΝ ΕΙΝΑΙ ΤΟ ΠΡΩΤΟ ΧΕΙΡΙΣΤΗΡΙΟ ΤΗΣ ΣΕΛΙΔΑΣ (αξιολόγηση
+          // σχεδίασης 3). Η «Εξαγωγή Excel» καθόταν κάτω από τον τίτλο πριν από
+          // κάθε πεδίο τιμής. Μένει ένα πάτημα μακριά, στο «⋯».
+          <ActionMenu iconOnly label="Περισσότερα" items={[{ key: 'xlsx', label: 'Εξαγωγή σε Excel', onClick: exportXlsx }]} />
+        ) : undefined} />
 
       {/* Ήταν τέσσερις γραμμές πριν φανεί το πρώτο πεδίο και τρεις από αυτές
           εξηγούσαν τι ΔΕΝ κάνει η οθόνη. Το ουσιώδες χωρά σε μία: οι τιμές είναι
@@ -713,23 +722,12 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
           έπιανε στήλη, τα πέντε πραγματικά πεδία στρίμωχναν και η «Προσαύξηση
           σαββατοκύριακου» έσπαγε σε δύο γραμμές. Είναι επιλογή προβολής του
           ημερολογίου από κάτω: μικρότερο, πιο διακριτικό, στη θέση του. */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '4px 0 14px' }}>
-        <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>Έτος</span>
-        {/* ΤΟ ΚΑΡΦΩΜΕΝΟ ΥΨΟΣ ΕΚΟΒΕ ΤΟΝ ΣΤΟΧΟ ΑΦΗΣ ΣΤΗ ΜΕΣΗ. Με «height: 28» και
-            «overflow: hidden», τα δύο κουμπιά έπαιρναν κανονικά το δάπεδο των 44
-            σε συσκευή αφής και το κουτί τα έκοβε στα 28: ο στόχος έμενε 28 ΚΑΙ
-            τα ψηφία έβγαιναν εκτός κέντρου, γιατί το ορατό κομμάτι ήταν η μέση
-            ενός ψηλότερου κουμπιού. Μετρημένο στην Αξιοποίηση, 360×800.
-
-            Με ΕΛΑΧΙΣΤΟ ύψος, το κουτί ακολουθεί τα πλακίδιά του: παίρνει το ύψος
-            της κλίμακας στο ποντίκι και τα 44 στο δάχτυλο. */}
-        <div style={{ display: 'inline-flex', border: '1px solid var(--border-subtle)', borderRadius: T.radius.pill, overflow: 'hidden', minHeight: 28 }}>
-          {/* `seg` επειδή η πιλούλα από πάνω έχει ήδη δικό της περίγραμμα: ένα
-              δεύτερο ανά τμήμα θα έδινε διπλή γραμμή στη μέση. */}
-          {[nowYear, nowYear + 1].map(y => (
-            <ChipToggle key={y} shape="seg" on={pyear === y} onClick={() => setPyear(y)}>{y}</ChipToggle>
-          ))}
-        </div>
+      {/* ΤΟ ΕΝΙΑΙΟ `Segmented` (αξιολόγηση σχεδίασης 3). Ηταν δική του ράγα χαπιού
+          με πρόθεμα «Έτος», πέμπτο σχήμα για τον ίδιο επιλογέα. Το όνομα το
+          κρατά η ομάδα για τον αναγνώστη οθόνης· στο μάτι το λέει ο αριθμός. */}
+      <div style={{ margin: '4px 0 14px' }}>
+        <Segmented label="Έτος" value={String(pyear)} onChange={v => setPyear(Number(v))}
+          options={[nowYear, nowYear + 1].map(y => ({ value: String(y), label: String(y) }))} />
       </div>
       <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: 16, minHeight: 16 }}>
         {adr > 0 && <>Μέση πραγματική τιμή (ADR): <strong style={{ color: 'var(--text-secondary)', fontFamily: T.font.num }}>{fe(adr)}</strong>/νύχτα από {stays.length} διαμονές. </>}

@@ -38,7 +38,7 @@ const VIEWS = [
   { name: '390', ctx: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 } },
 ];
 // Οι οθόνες και το ακίνητο: όλες δείχνουν το p0 του πάγκου.
-const SCREENS = { overview: 'Επισκόπηση', roi: 'Αποδόσεις', pricing: 'Βραχυχρόνια', portfolio: 'Χαρτοφυλάκιο', budgetPro: 'Προϋπολογισμός' };
+const SCREENS = { overview: 'Επισκόπηση', roi: 'Αποδόσεις', pricing: 'Τιμές', portfolio: 'Χαρτοφυλάκιο', budgetPro: 'Προϋπολογισμός' };
 const PROPERTY = 'p0';
 // Τα ζεύγη που ΠΡΕΠΕΙ να είναι ίσα, με τις οθόνες που τα δείχνουν.
 const PAIRS = [

@@ -247,7 +247,9 @@ export function CompactRow({ contact, onOpen, onEdit, onDelete, selected, onSele
 }
 
 // ─── Group Divider ────────────────────────────────────────────────────────────
-export function GroupDivider({ group, count }: { group: typeof GROUPS[0]; count: number }) {
+// Χωρίς μετρητή: το πλήθος της ομάδας το λέει ήδη το chip της από πάνω
+// (αξιολόγηση σχεδίασης 3). Ο ίδιος αριθμός δύο φορές σε 100 εικονοστοιχεία.
+export function GroupDivider({ group }: { group: typeof GROUPS[0] }) {
   const GroupIcon = group.Icon
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
@@ -256,7 +258,6 @@ export function GroupDivider({ group, count }: { group: typeof GROUPS[0]; count:
       </div>
       <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--accent)', fontFamily: T.font.sans }}>{group.label}</span>
       <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, var(--accent-border), transparent)' }} />
-      <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', background: 'var(--bg-surface)', padding: '2px 10px', borderRadius: T.radius.pill, border: '1px solid var(--border-subtle)' }}>{count}</span>
     </div>
   )
 }

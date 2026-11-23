@@ -22,8 +22,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { T, TT, Card, Btn, Skeleton, Chip, EmptyState } from '@/components/Theme';
-import { TextInput, CustomSelect, Toggle } from '@/app/dashboard/components/UIComponents';
+import { T, TT, Card, Btn, Skeleton, Chip, EmptyState, Modal } from '@/components/Theme';
+import { TextInput, CustomSelect } from '@/app/dashboard/components/UIComponents';
 import { ActionMenu } from '@/components/ActionMenu';
 import {
   myFirm, myFirmInvites, answerInvite, acceptFirmTerms, termsGap, clientLevels, assign, dropFirmClient, saveFirm,
@@ -132,6 +132,8 @@ export default function AccountantWorkspace() {
   // «Δεν διαβάστηκε» δεν είναι «δεν υπάρχουν». Δες lib/data/accountant.ts.
   const [readFailed, setReadFailed] = useState(false);
   const [token, setToken] = useState('');
+  // Η προσθήκη πελάτη σε φύλλο, μόλις υπάρχει λίστα (αξιολόγηση σχεδίασης 3).
+  const [addOpen, setAddOpen] = useState(false);
   const [adding, setAdding] = useState(false);
   const [notice, setNotice] = useState('');
   // ── ΤΑ ΠΟΣΑ ΕΙΝΑΙ ΕΠΙΛΟΓΗ, ΟΧΙ ΠΡΟΕΠΙΛΟΓΗ ──────────────────────────────
@@ -539,6 +541,38 @@ export default function AccountantWorkspace() {
     );
   }
 
+  // Ενα σημείο για το πεδίο και το κουμπί της προσθήκης: η κάρτα της κενής
+  // λίστας και το φύλλο του «⋯» αποδίδουν το ίδιο.
+  const addForm = (
+    <>
+        {/* ΤΟ ΠΕΔΙΟ ΚΑΙ ΤΟ ΚΟΥΜΠΙ ΕΙΝΑΙ ΤΑ ΚΟΙΝΑ ΤΗΣ ΕΦΑΡΜΟΓΗΣ. Ηταν ζωγραφισμένα
+            εδώ, με δικό τους ύψος, δικό τους περίγραμμα και δική τους
+            απενεργοποίηση: η μία οθόνη που βλέπει ο λογιστής πρώτη έμοιαζε με
+            άλλο προϊόν από τις υπόλοιπες. */}
+        <div style={{ display: 'flex', gap: T.sp.sm, marginTop: T.sp.sm, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ flex: '1 1 340px' }}>
+            <TextInput
+              ariaLabel="Σύνδεσμος που σου έστειλε ο ιδιοκτήτης"
+              value={token}
+              onChange={v => { setToken(v); setNotice(''); }}
+              onKeyDown={e => { if (e.key === 'Enter') void addClient(); }}
+              placeholder="Ο σύνδεσμος του ιδιοκτήτη"
+            />
+          </div>
+          {/* Στο τηλέφωνο, όταν πέφτει κάτω από το πεδίο, πιάνει όλο το πλάτος του. */}
+          <style>{`@media (max-width:560px){.np-add{flex:1 1 100%;display:grid}}`}</style>
+          <div className="np-add">
+            <Btn variant="primary" size="lg" onClick={() => void addClient()} disabled={adding || !token.trim()}>
+              {adding ? 'Προσθήκη…' : 'Πρόσθεσε'}
+            </Btn>
+          </div>
+        </div>
+        {notice && (
+          <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-secondary)', margin: '10px 0 0', fontFamily: T.font.sans }}>{notice}</p>
+        )}
+    </>
+  );
+
   return (
     <div className="po-floor" style={{ background: 'var(--bg-base)', minHeight: '100vh', paddingBottom: 72 }}>
       <PortalBar year={year} onYear={setYear} firmOnly={firm?.firmOnly} firmLink={firm ? (team ? 'Το γραφείο' : 'Το γραφείο μου') : undefined} />
@@ -567,20 +601,28 @@ export default function AccountantWorkspace() {
             <>
               {/* ΜΙΑ ΚΥΡΙΑ ΕΝΕΡΓΕΙΑ, ΟΧΙ ΤΕΣΣΕΡΙΣ ΙΣΟΒΑΡΕΙΣ (Μ18, 23/11/2026). Ηταν
                   «Το γραφείο», «Δείξε ποσά», «Κατέβασε τα βιβλία» και «Ο φάκελος»
-                  στο ίδιο σχήμα, δηλαδή 2 × 2 στο τηλέφωνο χωρίς να λέει ποιο
-                  μετρά. Το γραφείο πήγε στο μενού του λογαριασμού (το «D»), τα
-                  ποσά έγιναν διακόπτης, γιατί είναι κατάσταση της λίστας και όχι
-                  ενέργεια. Η λήψη των βιβλίων είναι η κύρια κίνηση. */}
-              <Toggle on={showMoney} onChange={() => { if (busy !== 'money') void toggleMoney(); }} label={busy === 'money' ? 'Φόρτωση…' : 'Ποσά'} />
-              {/* ΟΙ ΦΑΚΕΛΟΙ ΚΑΙ ΟΧΙ ΤΑ ΒΙΒΛΙΑ. Τα βιβλία δίνουν τις καταστάσεις
-                  εσόδων και δαπανών· αυτό δίνει ό,τι έστειλε κάθε πελάτης: Ε2,
-                  έλεγχο, παραστατικά και κωδικούς. */}
-              {packRefs.length > 0 && (
-                <Btn variant="secondary" onClick={() => void downloadAllPacks()} disabled={busy !== null}
-                  title={bundleMode(packRefs) === 'one' ? undefined : 'Πολλοί ή βαριοί φάκελοι: κατεβαίνουν ένας ένας'}>
-                  {busy === 'packs' ? `Κατεβαίνουν${packProgress ? ` ${packProgress}` : '…'}` : packRefs.length === 1 ? 'Το πακέτο' : `Τα ${packRefs.length} πακέτα`}
-                </Btn>
-              )}
+                  στο ίδιο σχήμα. Το γραφείο πήγε στο μενού του λογαριασμού (το «D»).
+
+                  ΚΑΙ Ο ΔΙΑΚΟΠΤΗΣ ΚΑΙ ΤΑ ΠΑΚΕΤΑ ΣΤΟ «⋯» (αξιολόγηση σχεδίασης 3).
+                  Διακόπτης, δευτερεύον και κύριο στην ίδια σειρά ήταν τρία σχήματα
+                  για τρία πράγματα που ο λογιστής κάνει σπάνια. Στο «⋯» μπαίνει και
+                  η προσθήκη πελάτη, που καθόταν μόνιμα πάνω από τη λίστα. Στην
+                  κεφαλίδα μένει η λήψη των βιβλίων, η κύρια κίνηση. */}
+              <ActionMenu iconOnly label="Περισσότερα" items={[
+                { key: 'add', label: 'Νέος πελάτης', description: 'Με τον σύνδεσμο που σου έστειλε ο ιδιοκτήτης.', onClick: () => { setNotice(''); setAddOpen(true); } },
+                { key: 'money', label: showMoney ? 'Κρύψε τα ποσά' : 'Δείξε τα ποσά', busy: busy === 'money', busyLabel: 'Φόρτωση…', onClick: () => { void toggleMoney(); } },
+                // ΟΙ ΦΑΚΕΛΟΙ ΚΑΙ ΟΧΙ ΤΑ ΒΙΒΛΙΑ. Τα βιβλία δίνουν τις καταστάσεις
+                // εσόδων και δαπανών· αυτό δίνει ό,τι έστειλε κάθε πελάτης: Ε2,
+                // έλεγχο, παραστατικά και κωδικούς.
+                ...(packRefs.length > 0 ? [{
+                  key: 'packs',
+                  label: packRefs.length === 1 ? 'Το πακέτο' : `Τα ${packRefs.length} πακέτα`,
+                  description: bundleMode(packRefs) === 'one' ? undefined : 'Πολλοί ή βαριοί φάκελοι: κατεβαίνουν ένας ένας',
+                  busy: busy === 'packs', busyLabel: `Κατεβαίνουν${packProgress ? ` ${packProgress}` : '…'}`,
+                  disabled: busy !== null,
+                  onClick: () => { void downloadAllPacks(); },
+                }] : []),
+              ]} />
               <Btn variant="primary" onClick={() => void downloadEverything()} disabled={busy !== null}>
                 {busy === 'zip' ? 'Ετοιμάζεται…' : 'Κατέβασε τα βιβλία'}
               </Btn>
@@ -637,34 +679,19 @@ export default function AccountantWorkspace() {
       )}
 
       {actor && <>
+      {/* ΣΠΑΝΙΑ ΚΙΝΗΣΗ, ΟΧΙ ΜΟΝΙΜΗ ΚΑΡΤΑ (αξιολόγηση σχεδίασης 3). Με λίστα
+          πελατών η φόρμα καθόταν πάνω από τα φίλτρα, με απενεργοποιημένο κουμπί,
+          σε κάθε επίσκεψη. Τώρα ανοίγει από το «⋯» σε φύλλο. Χωρίς πελάτες μένει
+          εδώ, γιατί τότε είναι η πρώτη κίνηση. */}
+      {ordered.length === 0 && (
       <Card gap={false} className="po-noprint">
         <p style={label}>Νέος πελάτης</p>
-        {/* ΤΟ ΠΕΔΙΟ ΚΑΙ ΤΟ ΚΟΥΜΠΙ ΕΙΝΑΙ ΤΑ ΚΟΙΝΑ ΤΗΣ ΕΦΑΡΜΟΓΗΣ. Ηταν ζωγραφισμένα
-            εδώ, με δικό τους ύψος, δικό τους περίγραμμα και δική τους
-            απενεργοποίηση: η μία οθόνη που βλέπει ο λογιστής πρώτη έμοιαζε με
-            άλλο προϊόν από τις υπόλοιπες. */}
-        <div style={{ display: 'flex', gap: T.sp.sm, marginTop: T.sp.sm, flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ flex: '1 1 340px' }}>
-            <TextInput
-              ariaLabel="Σύνδεσμος που σου έστειλε ο ιδιοκτήτης"
-              value={token}
-              onChange={v => { setToken(v); setNotice(''); }}
-              onKeyDown={e => { if (e.key === 'Enter') void addClient(); }}
-              placeholder="Ο σύνδεσμος του ιδιοκτήτη"
-            />
-          </div>
-          {/* Στο τηλέφωνο, όταν πέφτει κάτω από το πεδίο, πιάνει όλο το πλάτος του. */}
-          <style>{`@media (max-width:560px){.np-add{flex:1 1 100%;display:grid}}`}</style>
-          <div className="np-add">
-            <Btn variant="primary" size="lg" onClick={() => void addClient()} disabled={adding || !token.trim()}>
-              {adding ? 'Προσθήκη…' : 'Πρόσθεσε'}
-            </Btn>
-          </div>
-        </div>
-        {notice && (
-          <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-secondary)', margin: '10px 0 0', fontFamily: T.font.sans }}>{notice}</p>
-        )}
+        {addForm}
       </Card>
+      )}
+      <Modal open={addOpen && ordered.length > 0} onClose={() => setAddOpen(false)} title="Νέος πελάτης" size="sm">
+        {addForm}
+      </Modal>
 
       {/* Η ΠΡΟΣΚΛΗΣΗ ΜΕ EMAIL ΖΗΤΑ ΠΑΚΕΤΟ (20261021120000)· ο λογαριασμός
           γραφείου δεν έχει πακέτο ούτε βλέπει οθόνη αγοράς. Μένει για όσους

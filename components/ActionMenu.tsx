@@ -159,7 +159,9 @@ export function ActionMenu({
   }, [open, place]);
 
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
+    // `po-more`: το «⋯» κρατά το τετράγωνό του σε σειρά ενεργειών που μοιράζει
+    // το πλάτος ίσα (globals.css, μπλοκ της αξιολόγησης σχεδίασης 3).
+    <div ref={ref} className={iconOnly ? 'po-more' : undefined} style={{ position: 'relative' }}>
       <button
         type="button"
         title={title}

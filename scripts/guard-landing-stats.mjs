@@ -26,7 +26,14 @@ const page = read('app/page.tsx');
 const block = page.match(/const STATS = \[([\s\S]*?)\n\];/);
 if (!block) { console.error('✗ ΖΩΝΗ ΜΕΤΡΗΣΕΩΝ: δεν βρέθηκε ο πίνακας STATS στο app/page.tsx'); process.exit(1); }
 const said = {};
-for (const m of block[1].matchAll(/\{\s*n:\s*'(\d+)',\s*u:\s*'([^']+)'/g)) said[m[2]] = Number(m[1]);
+// Δύο μορφές: ψηφίο γραμμένο με το χέρι (`n: '13'`) ή μήκος σταθεράς
+// (`n: String(RENTAL_TAX_BRACKETS_2026.length)`). Η δεύτερη δεν μπορεί να μείνει
+// πίσω από την πηγή της, οπότε μετριέται ως «από τον κώδικα» (`computed`).
+const computed = {};
+for (const m of block[1].matchAll(/\{\s*n:\s*(?:'(\d+)'|String\(([A-Z0-9_]+)\.length\)),\s*u:\s*'([^']+)'/g)) {
+  if (m[1] !== undefined) said[m[3]] = Number(m[1]);
+  else { computed[m[3]] = m[2]; said[m[3]] = null; }
+}
 if (Object.keys(said).length !== 4) {
   console.error(`✗ ΖΩΝΗ ΜΕΤΡΗΣΕΩΝ: διαβάστηκαν ${Object.keys(said).length} μετρήσεις αντί για 4`);
   process.exit(1);
@@ -90,9 +97,18 @@ const checks = [
   ['κλιμάκια φόρου',     brackets,  'RENTAL_TAX_BRACKETS_2026 (lib/billing/greekTax.ts)'],
 ];
 
+// Τα κλιμάκια ΔΕΝ γράφονται με το χέρι (κανόνας αξιολόγησης: ψηφίο φόρου μόνο
+// από τον κώδικα). Ο φρουρός δέχεται γι' αυτά μόνο το μήκος της κλίμακας.
+const MUST_COMPUTE = { 'κλιμάκια φόρου': 'RENTAL_TAX_BRACKETS_2026' };
+
 for (const [unit, actual, source] of checks) {
   if (!(actual > 0)) { fail(`«${unit}»: η πηγή μέτρησε 0. Άλλαξε γραφή ή θέση το ${source} και ο φρουρός σταμάτησε να ελέγχει.`); continue; }
   if (!(unit in said)) { fail(`«${unit}»: η ζώνη μετρήσεων δεν το αναφέρει πια. Πηγή: ${source}.`); continue; }
+  if (MUST_COMPUTE[unit] && computed[unit] !== MUST_COMPUTE[unit]) { fail(`«${unit}»: γράφεται ως String(${MUST_COMPUTE[unit]}.length), όχι με το χέρι. Πηγή: ${source}.`); continue; }
+  if (unit in computed) {
+    if (computed[unit] !== MUST_COMPUTE[unit]) fail(`«${unit}»: το μήκος του ${computed[unit]} δεν είναι η πηγή του ελέγχου (${source}).`);
+    continue;
+  }
   if (said[unit] !== actual) fail(`«${unit}»: η αρχική λέει ${said[unit]}, η πηγή έχει ${actual}. Πηγή: ${source}.`);
 }
 
