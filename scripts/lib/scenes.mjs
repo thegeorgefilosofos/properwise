@@ -31,10 +31,13 @@ export const SCENES = [
   // Η Επισκόπηση με την ενημέρωση των γραφείων (ΑΠ-11, lib/legal/policyNotice.ts).
   'overviewFirmNotice',
   // myDATA μέσω λογιστή (scripts/perf-bench/mydata.tsx): η κάρτα του λογιστή σε
-  // πέντε όψεις, η άδεια του πελάτη σε τέσσερις, τα Εισερχόμενα «Από το myDATA».
+  // πέντε όψεις, η άδεια του πελάτη σε τέσσερις, τα Εισερχόμενα «Από το myDATA»
+  // με τα επίπεδα του Α2.
   'mydataNone', 'mydataRejected', 'mydataSyncing', 'mydataReady', 'mydataDown',
   'mydataConsentNone', 'mydataConsent', 'mydataConsentDenied', 'mydataConsentPaused', 'mydataInbox',
   'mydataInboxCancelled',
+  // Α2: τα επίπεδα (για έλεγχο με δύο ακίνητα, όλα αυτόματα).
+  'mydataInboxTwo', 'mydataInboxAuto',
 ];
 
 // ═══ ΟΙ ΣΚΗΝΕΣ ΤΗΣ ΠΥΛΗΣ ΤΟΥ ΛΟΓΙΣΤΗ ════════════════════════════════════════

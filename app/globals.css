@@ -1240,6 +1240,12 @@ body {
 .inbound-row > .inbound-who { flex: 0 0 auto; max-width: 40%; }
 .inbound-row > .inbound-what { flex: 1 1 0; min-width: 0; }
 .inbound-row > .inbound-sum { white-space: nowrap; flex: 0 0 auto; }
+/* Α2: τα «Από το myDATA» σε δύο σειρές, χωρίς αποσιώπηση. Ο πάροχος και το ποσό
+   στην πρώτη, ο τύπος με την ημερομηνία στη δεύτερη: τίποτα δεν κόβεται στα 360,
+   γιατί το όνομα του παρόχου είναι αυτό που ψάχνει ο χρήστης. */
+.inbound-row.md-row-2 { flex-wrap: wrap; }
+.inbound-row.md-row-2 > .md-row-who { flex: 1 1 0; min-width: 0; overflow-wrap: anywhere; }
+.inbound-row.md-row-2 > .md-row-what { flex: 1 1 100%; min-width: 0; }
 
 /* Η ΚΕΦΑΛΙΔΑ ΜΗΝΑ ΤΟΥ ΑΡΧΕΙΟΥ ══════════════════════════════════════════════
    Αδελφή της .po-disclosure, με δύο διαφορές που δικαιολογούν χωριστή κλάση:
@@ -9375,6 +9381,10 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
   /* Και στα «Από το myDATA»: το ποσό στο τέλος της γραμμής έπεφτε κάτω από το «Ν»
      στο πρώτο κάδρο (360). Το κουτί μένει σε όλο το πλάτος, το ποσό φεύγει από τη γωνία. */
   :root:has(.pa-fab-wrap) .md-row { padding-right: calc(var(--fab-lane, 64px) - 16px); }
+  /* Α2: οι κλειστές γραμμές σε δύο σειρές είναι πιο ψηλές και περισσότερες· η
+     γραμμή σταματά πριν από τη λωρίδα του «Ν», όπως το .set-item-btn, ώστε το
+     χειριστήριο να μη βρίσκεται κάτω από το κουμπί σε κορυφή ή μέση. */
+  :root:has(.pa-fab-wrap) .md-row-2 { width: calc(100% - var(--fab-lane, 64px) + 16px); padding-right: 14px; }
 }
 /* Το κελί του «Τι έρχεται» (SettingsRoadmap): αιώρηση σε CSS, ουδέτερο εικονίδιο. */
 .rm-item { border: 1px solid var(--border-subtle); transition: border-color .15s, box-shadow .15s; }

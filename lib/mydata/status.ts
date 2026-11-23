@@ -124,6 +124,28 @@ export function sortRows(rows: ClientRow[], key: SortKey): ClientRow[] {
   });
 }
 
+export interface RowGroup { key: string; label: string; fix: string; tone: Tone; rank: number; rows: ClientRow[] }
+
+/**
+ * Α2: οι πελάτες σε ομάδες ανά κατάσταση, για το τηλέφωνο. Στον πίνακα η ίδια
+ * πρόταση («Ο σύνδεσμος με τον πελάτη χρειάζεται ανανέωση…») επαναλαμβανόταν σε
+ * κάθε γραμμή· εδώ λέγεται ΜΙΑ φορά ανά ομάδα και οι πελάτες ακολουθούν. Ομάδα
+ * σημαίνει ίδια ετικέτα ΚΑΙ ίδια λύση. Πρώτα όσοι θέλουν κάτι, αλφαβητικά μέσα.
+ */
+export function groupRows(rows: ClientRow[]): RowGroup[] {
+  const by = new Map<string, RowGroup>();
+  for (const r of rows) {
+    const st = rowState(r);
+    const key = `${st.label}|${st.fix}`;
+    const g = by.get(key) ?? { key, label: st.label, fix: st.fix, tone: st.tone, rank: st.rank, rows: [] };
+    g.rows.push(r);
+    by.set(key, g);
+  }
+  const groups = [...by.values()];
+  for (const g of groups) g.rows.sort((a, b) => a.name.localeCompare(b.name, 'el'));
+  return groups.sort((a, b) => a.rank - b.rank || b.rows.length - a.rows.length || a.label.localeCompare(b.label, 'el'));
+}
+
 /** Φίλτρο αναζήτησης χωρίς τόνους και κεφαλαία. */
 export function filterRows(rows: ClientRow[], q: string): ClientRow[] {
   const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
@@ -242,4 +264,7 @@ export const LOG_ACTION: Record<string, string> = {
   cancel_flagged: 'Ακυρώθηκε στην ΑΑΔΕ παραστατικό που είχες καταχωρήσει',
   cancel_removed_expense: 'Ακυρώθηκε στην ΑΑΔΕ· η δαπάνη αφαιρέθηκε',
   key_read: 'Ο λογιστής χρησιμοποίησε το κλειδί του myDATA',
+  auto_filed: 'Λογαριασμοί γνωστών παρόχων καταχωρήθηκαν μόνοι τους',
+  auto_undone: 'Αναίρεσες αυτόματη καταχώρηση',
+  not_property: 'Παραστατικά που δεν αφορούν ακίνητα δεν κρατήθηκαν',
 };

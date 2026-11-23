@@ -280,5 +280,27 @@ ok('έλεγχος κλειδιού: χωρίς διπλή κάθετο', pu.pat
 const h = aadeHeaders('logistis1', 'K')
 ok('κεφαλίδες §4.1', h['aade-user-id'] === 'logistis1' && h['Ocp-Apim-Subscription-Key'] === 'K' && Object.keys(h).length === 3)
 
+// ── Α2: ΤΑ ΣΥΝΟΛΑ ΚΛΕΙΝΟΥΝ ΟΠΩΣ ΤΑ ΔΙΝΕΙ Η ΑΑΔΕ ─────────────────────────────────
+// totalGrossValue = καθαρό + ΦΠΑ − παρακρατήσεις + τέλη + χαρτόσημο + λοιποί φόροι
+// − κρατήσεις (InvoiceSummaryType). Ο έλεγχος δεν ξαναϋπολογίζει ποσό: μόνο λέει
+// αν τα οκτώ σύνολα συμφωνούν, για να μη γίνει αυτόματα κάτι που δεν κλείνει.
+{
+  const first = (xml: string) => {
+    const r = parseRequestedDoc(xml)
+    if (!r.ok) return null
+    const m = toInboxDoc(r.invoices[0], CLIENT)
+    return m.kind === 'doc' ? m : null
+  }
+  ok('Α2: το δείγμα κλείνει (100,00 + 24,00 = 124,00)', first(fx('page1.xml'))?.amountsClose === true)
+  const off = fx('page1.xml').replace('<totalGrossValue>124.00</totalGrossValue>', '<totalGrossValue>125.00</totalGrossValue>')
+  ok('Α2: μικτό ένα ευρώ πάνω: δεν κλείνει', first(off)?.amountsClose === false)
+  const taxed = off.replace('<totalOtherTaxesAmount>0.00</totalOtherTaxesAmount>', '<totalOtherTaxesAmount>1.00</totalOtherTaxesAmount>')
+  ok('Α2: με λοιπούς φόρους 1,00 κλείνει ξανά', first(taxed)?.amountsClose === true)
+  const withheld = fx('page1.xml').replace('<totalWithheldAmount>0.00</totalWithheldAmount>', '<totalWithheldAmount>4.00</totalWithheldAmount>')
+    .replace('<totalGrossValue>124.00</totalGrossValue>', '<totalGrossValue>120.00</totalGrossValue>')
+  ok('Α2: η παρακράτηση αφαιρείται', first(withheld)?.amountsClose === true)
+  ok('Α2: το μικτό μένει όπως το έδωσε η ΑΑΔΕ', first(off)?.grossCents === 12500)
+}
+
 console.log(`mydata: ${pass} ✓ · ${fail} ✗`)
 if (fail) process.exit(1)

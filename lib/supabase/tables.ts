@@ -1633,6 +1633,7 @@ export interface MydataConsentsRow {
   last_error_code: string | null;
   failures: number;
   next_retry_at: string | null;
+  not_property: number | null;
 }
 
 export interface MydataDocsRow {
@@ -1658,6 +1659,10 @@ export interface MydataDocsRow {
   needs_attention: string | null;
   fetched_at: string;
   decided_at: string | null;
+  tier: string | null;
+  category: string | null;
+  review_reasons: string[] | null;
+  filed_by: string | null;
 }
 
 export interface MydataIgnoredProvidersRow {
