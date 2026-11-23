@@ -1722,6 +1722,13 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
      ως εναλλακτικό για τα ελάχιστα προγράμματα που δεν το ξέρουν. */
   height: calc(100vh / var(--zoom, 1));
   overflow: hidden;
+  /* ΤΟ ΚΕΛΥΦΟΣ ΚΡΑΤΑ ΜΕΣΑ ΤΟΥ Ο,ΤΙ ΚΑΘΕΤΑΙ ΑΠΟΛΥΤΑ (feedback χρήστη, 23/11/2026).
+     Χωρίς τοποθετημένο πρόγονο, τα `.sr-only` των μακριών οθονών (τα βήματα
+     της Αξιοποίησης) μετριούνταν από τη σελίδα: όσα έπεφταν κάτω από το ύψος
+     του παραθύρου τη μάκραιναν, 737 σε παράθυρο 560. Στο τέλος της κύλισης η
+     ρόδα κυλούσε ΟΛΗ τη σελίδα, η μπάρα της κορυφής έφευγε πάνω και το κάτω
+     μέρος της οθόνης έμενε κομμένο. Στα ≤1024 ίσχυε ήδη· τώρα παντού. */
+  position: relative;
   background: var(--bg-base);
 }
 @supports (height: 100dvh) { .app-shell { height: calc(100dvh / var(--zoom, 1)); } }
@@ -3443,8 +3450,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 /* ── TABLET & ΚΑΤΩ (≤1024px): πλαϊνό μενού → συρόμενο drawer ─────────────── */
 @media (max-width: 1024px) {
-  .app-shell { position: relative; }
-
   .app-sidebar {
     position: fixed;
     top: 0; left: 0; bottom: 0;
@@ -7237,6 +7242,27 @@ tr.po-row-more { display: none; }
   .dp-pop { width: min(340px, calc(calc(100vw / var(--zoom, 1)) - 20px)) !important; padding: 12px !important; }
   .dp-day { aspect-ratio: auto !important; min-height: 44px; }
 }
+
+/* ── ΤΟ ΗΜΕΡΟΛΟΓΙΟ: ΚΕΦΑΛΙΔΑ, ΧΡΟΝΙΕΣ ΚΑΙ ΜΗΝΕΣ (23/11/2026) ─────────────────
+   Η κεφαλίδα «Σεπ 2026» είναι κουμπί που ανοίγει χρονιές και μήνες (DatePickerPanel
+   στο UIComponents.tsx). Το πέρασμα του δείκτη σε CSS και όχι σε χειριστές του
+   ποντικιού· το επιλεγμένο κελί κρατά το γέμισμά του. Τα κελιά χρονιάς και
+   μήνα είναι 44 ψηλά παντού: τρεις στήλες χωρούν άνετα και τα 44 στα 280. */
+.dp-title {
+  min-height: 36px; padding: 0 10px; border: none; border-radius: var(--radius-inner, 10px);
+  background: none; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600;
+  color: var(--text-primary); letter-spacing: 0.1px;
+}
+.dp-cell {
+  min-height: 44px; border: none; border-radius: var(--radius-inner, 10px); background: transparent;
+  cursor: pointer; font-family: inherit; font-size: var(--fs-base); font-weight: 400; color: var(--text-primary);
+}
+.dp-cell[data-now] { color: var(--accent); font-weight: 700; }
+.dp-cell[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); }
+.dp-day:not([aria-pressed="true"]):hover,
+.dp-cell:not([aria-pressed="true"]):hover,
+.dp-title:hover { background: var(--bg-hover) !important; }
+.dp-title:focus-visible, .dp-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* ── Η ΣΕΙΡΑ ΣΥΓΚΡΙΣΗΣ ΤΙΜΟΛΟΓΙΩΝ ΣΠΑΕΙ ΣΕ ΔΥΟ, ΔΕΝ ΣΤΡΙΜΩΧΝΕΤΑΙ ΣΕ ΤΡΙΑ ──
    ΜΕΤΡΗΜΕΝΟ ΣΤΑ 430. Τρεις στήλες («θέση», «πάροχος και τιμολόγιο», «τιμή»)

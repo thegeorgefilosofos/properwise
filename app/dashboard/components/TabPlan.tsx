@@ -720,8 +720,13 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
           αξιοποιηθεί» και αμέσως μετά η καρτέλα τύπωνε «ΚΕΝΟ · Όνομα» και τον
           δικό της τίτλο: τέσσερα μπλοκ επικεφαλίδας στη σειρά, με τη λέξη
           «Κενό» δύο φορές μέσα σε εξήντα εικονοστοιχεία. Μία κεφαλίδα, από το
-          κοινό PageTitle που χρησιμοποιούν οι άλλες έντεκα καρτέλες. */}
-      <PageTitle over={`Αξιοποίηση · ${plan.label}`} title={plan.headline} lede={plan.lede} />
+          κοινό PageTitle που χρησιμοποιούν οι άλλες έντεκα καρτέλες.
+
+          ΚΑΙ Η ΚΑΤΑΣΤΑΣΗ ΕΦΥΓΕ ΑΠΟ ΤΟ ΥΠΕΡΤΙΤΛΟ (feedback χρήστη, 23/11/2026).
+          «Αξιοποίηση · Προς πώληση» έγραφε ξανά ό,τι λέει το σήμα κατάστασης
+          στην πάνω μπάρα, δίπλα στο όνομα του ακινήτου. Μένει το όνομα της
+          καρτέλας, όπως σε κάθε άλλη. */}
+      <PageTitle over={navLabel('plan')} title={plan.headline} lede={plan.lede} />
 
       {/* ── ΤΙ ΕΙΔΟΥΣ ΕΚΚΡΕΜΟΤΗΤΑ: αλλάζει ΟΛΗ τη σειρά, άρα ρωτιέται πρώτο ──
           Ο υπότιτλος ήταν η εξήγηση του ΕΠΙΛΕΓΜΕΝΟΥ είδους, τυπωμένη κάτω από
@@ -931,9 +936,13 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
         </Panel>
       )}
 
-      {/* ── ΤΙ ΜΕΝΕΙ ΚΑΘΑΡΟ (πώληση, όταν υπάρχει καταχωρημένη αξία) ─────── */}
+      {/* ── ΚΑΘΑΡΑ ΕΣΟΔΑ ΠΩΛΗΣΗΣ (όταν υπάρχει καταχωρημένη αξία) ────────── */}
       {plan.status === 'for_sale' && sale && (
-        <Panel label="Τι μένει καθαρό"
+        /* «ΚΑΘΑΡΑ ΕΣΟΔΑ ΠΩΛΗΣΗΣ» ΚΑΙ ΡΗΤΑ ΕΝΔΕΙΚΤΙΚΑ (feedback χρήστη, 23/11/2026).
+           Το «Τι μένει καθαρό» δεν έλεγε καθαρό ΑΠΟ ΤΙ. Ο όρος του χρήστη το λέει·
+           το «ενδεικτικά» μένει πάνω στο σύνολο, γιατί είναι εκτίμηση και δεν
+           πρέπει να διαβάζεται ως βέβαιο ποσό. Ίδια ποσά, ίδιος υπολογισμός. */
+        <Panel label="Καθαρά έσοδα πώλησης"
           info={<InfoHint label="Πάνω σε τι υπολογίζεται">
             <Tip lead={`Ενδεικτικά, με βάση την αξία που έχεις καταχωρήσει (${feAuto(sale.price)}).`} />
           </InfoHint>}
@@ -970,7 +979,7 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
             </div>
           ))}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, padding: '14px 0 0', borderTop: '1px solid var(--border-default)', marginTop: 4 }}>
-            <span style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)' }}>Ενδεικτικό καθαρό</span>
+            <span style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)' }}>Καθαρά έσοδα πώλησης, ενδεικτικά</span>
             <span style={{ ...TT.kpi, fontSize: 20 }}>{feAuto(sale.net)}</span>
           </div>
           {/* Η ΕΠΙΦΥΛΑΞΗ ΣΤΕΚΕΤΑΙ ΚΑΤΩ ΑΠΟ ΤΟ ΣΥΝΟΛΟ, ΟΧΙ ΠΙΣΩ ΑΠΟ ΤΟ ⓘ. Το

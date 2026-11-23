@@ -22,10 +22,10 @@
 // «Από πού ξεκινάς». Δεν ανοίγει ποτέ μόνη της: ο δρόμος ως τον πρώτο φόρο
 // είναι τέσσερα πατήματα χωρίς κανένα πέπλο ανάμεσα.
 // ═══════════════════════════════════════════════════════════════════════════
-import { useEffect, useId, useLayoutEffect, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { T, TT, Btn, IconBtn, useOverlayShell } from '@/components/Theme';
 import { useBackButton } from '@/components/useBackButton';
-import { TOUR_STEPS, isVisibleRect, placeCard, type TourStep, type Box, type CardPlace } from '@/lib/onboarding/tour';
+import { TOUR_STEPS, isVisibleRect, cardPlacer, type TourStep, type Box, type CardPlace } from '@/lib/onboarding/tour';
 
 interface Props {
   /** Τέλος ή απόρριψη: ο γονέας γράφει ότι έγινε και κλείνει. */
@@ -53,6 +53,8 @@ export default function ProductTour({ onDone }: Props) {
   const [i, setI] = useState(0);
   const [spot, setSpot] = useState<(Box & { radius: number }) | null>(null);
   const [pos, setPos] = useState<CardPlace | null>(null);
+  // Μία θέση ανά βήμα: δες `cardPlacer` (η κάρτα τρεμόπαιζε σε χαμηλό παράθυρο).
+  const placer = useRef(cardPlacer());
   const titleId = useId();
   const bodyId = useId();
   const dismiss = () => onDone('dismissed');
@@ -95,6 +97,7 @@ export default function ProductTour({ onDone }: Props) {
     let detach = () => {};
     let timer = 0;
     let tries = 0;
+    placer.current.reset();
     const attach = () => {
       const el = findTarget(step);
       if (!el) {
@@ -120,8 +123,7 @@ export default function ProductTour({ onDone }: Props) {
           const own = parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0;
           setSpot({ ...box, radius: Math.min(own, r.height / 2) + PAD });
           const card = panelRef.current;
-          const size = { width: 360, height: card?.offsetHeight || 220 };
-          setPos(placeCard(box, size, window.innerWidth, window.innerHeight, 16));
+          setPos(placer.current.place(box, card?.offsetHeight || 220, window.innerWidth, window.innerHeight, 16));
         });
       };
       measure();

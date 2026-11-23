@@ -165,12 +165,12 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
   const suggestedTotal = suggestTarget(priorTotals);
 
   // ── ΤΟ ΠΑΡΑΔΕΙΓΜΑ ΚΑΙ ΤΑ ΠΑΛΙΑ ΔΕΙΓΜΑΤΑ ────────────────────────────────────
-  const demoBar = demo ? (
-    <div className="bud-note" role="status">
-      <span style={{ ...TT.bodySm, color: 'var(--text-secondary)', flex: '1 1 200px' }}>Βλέπεις ένα παράδειγμα. Δεν αποθηκεύεται τίποτα και δεν αγγίζει τις δαπάνες σου.</span>
-      <Btn variant="secondary" onClick={() => setDemo(false)}>Κλείσιμο παραδείγματος</Btn>
-    </div>
-  ) : demoIds.length > 0 ? (
+  // ΤΟ ΠΑΡΑΔΕΙΓΜΑ ΑΝΟΙΓΕΙ ΣΕ ΠΑΡΑΘΥΡΟ (feedback χρήστη, 23/11/2026). Γέμιζε το
+  // ίδιο το ταμπλό με ψεύτικα ποσά, πάνω από μία λωρίδα «Βλέπεις ένα
+  // παράδειγμα»: ο χρήστης δεν ήξερε πια ποια νούμερα είναι δικά του. Τώρα το
+  // παράδειγμα ζει μέσα σε παράθυρο με δικό του τίτλο και πίσω του η οθόνη
+  // μένει όπως ήταν, άδεια. Τα δεδομένα του παραδείγματος είναι τα ίδια.
+  const demoBar = demoIds.length > 0 && !demo ? (
     <div className="bud-note">
       <span style={{ ...TT.bodySm, color: 'var(--text-secondary)', flex: '1 1 200px' }}>Υπάρχουν δαπάνες δείγματος από παλιότερη έκδοση της εφαρμογής.</span>
       <Btn variant="secondary" onClick={removeDemo} disabled={demoBusy}>{demoBusy ? 'Αφαίρεση…' : 'Αφαίρεση δείγματος'}</Btn>
@@ -678,12 +678,16 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
       {/* ΚΟΥΜΠΙ ΣΤΟ ΜΕΓΕΘΟΣ ΤΗΣ ΛΕΞΗΣ, Ο ΥΠΟΤΙΤΛΟΣ ΑΠΟ ΚΑΤΩ. Ως κάρτα σε όλο το
           πλάτος, το «Περισσότερα» ήταν το τελευταίο πράγμα της στήλης και στο
           τηλέφωνο περνούσε ολόκληρο κάτω από τη Νόα στην κύλιση (e2e-noa-cover). */}
+      {/* Η ΠΕΡΙΛΗΨΗ ΜΟΝΟ ΟΣΟ ΕΙΝΑΙ ΚΛΕΙΣΤΟ (feedback χρήστη, 23/11/2026). Λέει τι
+          κρύβεται από κάτω· μόλις ανοίξει, οι κάρτες λένε μόνες τους τι είναι.
+          Με μία μόνο κάρτα η οθόνη διάβαζε «Ρυθμίσεις» και αμέσως από κάτω τον
+          τίτλο «Ρυθμίσεις»: η ίδια λέξη δύο φορές, χωρίς λόγο. */}
       <div className="bud-more-head">
-        <button type="button" className="bud-more" aria-expanded={moreOpen} aria-controls="bud-more-body" aria-describedby="bud-more-sum" onClick={() => toggleCollapse('more')}>
+        <button type="button" className="bud-more" aria-expanded={moreOpen} aria-controls="bud-more-body" aria-describedby={moreOpen ? undefined : 'bud-more-sum'} onClick={() => toggleCollapse('more')}>
           <span>Περισσότερα</span>
           <Chevron dir={moreOpen ? 'down' : 'right'} />
         </button>
-        <p id="bud-more-sum" className="bud-more-sum">{moreSummary}</p>
+        {!moreOpen && <p id="bud-more-sum" className="bud-more-sum">{moreSummary}</p>}
       </div>
       {moreOpen && <div id="bud-more-body" className="bud-col">{moreItems.map((x, i) => <div key={i}>{x}</div>)}</div>}
     </div>
@@ -694,6 +698,14 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
       {demoBar}
       {isEmpty ? emptyCard : <>{hero}{!wide && attentionBlock}{categories}</>}
     </div>
+  );
+  // Στο παράθυρο μία στήλη: το πλάτος του δεν σηκώνει τις δύο της οθόνης.
+  const demoModal = demo && (
+    <Modal open onClose={() => setDemo(false)} size="xl" title="Ένα παράδειγμα προϋπολογισμού"
+      subtitle="Δεν αποθηκεύεται τίποτα και δεν αγγίζει τις δαπάνες σου."
+      footer={<Btn variant="primary" onClick={() => setDemo(false)}>Κλείσιμο παραδείγματος</Btn>}>
+      <div className="bud-col">{hero}{attentionBlock}{categories}{recurringCard}{annualCard}</div>
+    </Modal>
   );
   const right = (
     <div className="bud-col">
@@ -707,7 +719,10 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
   return (
     <div className="bud">
       {header}
-      <div className="bud-grid">{left}{right}</div>
+      {demo
+        ? <div className="bud-grid"><div className="bud-col">{emptyCard}</div></div>
+        : <div className="bud-grid">{left}{right}</div>}
+      {demoModal}
       {sheet}{targetSheet}{addSheet}
       <BudgetStyles />
     </div>

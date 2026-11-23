@@ -654,19 +654,13 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
             -webkit-line-clamp: 2;
           }
         }
-        /* ΣΤΟ ΤΗΛΕΦΩΝΟ Η ΑΝΑΖΗΤΗΣΗ ΠΙΑΝΕΙ ΤΟ ΠΛΑΤΟΣ ΤΩΝ ΚΑΡΤΩΝ. Ο διαχωριστής
-           που τη σπρώχνει δεξιά στον υπολογιστή, μαζί με το ταβάνι των 320,
-           άφηνε στα 390 μια λωρίδα 46 εικονοστοιχείων αριστερά της. */
+        /* ΣΤΟ ΤΗΛΕΦΩΝΟ Η ΑΝΑΖΗΤΗΣΗ ΠΙΑΝΕΙ ΤΟ ΠΛΑΤΟΣ ΤΩΝ ΚΑΡΤΩΝ. Το ταβάνι των 320
+           άφηνε στα 390 μια λωρίδα 46 εικονοστοιχείων δίπλα της.
+           ΠΡΩΤΑ Η ΑΝΑΖΗΤΗΣΗ, ΜΕΤΑ ΤΟ ΚΟΥΜΠΙ (16/11/2026): σε δεύτερη σειρά η
+           αναζήτηση καθόταν κάτω από τη Νόα (e2e-noa-cover, 48×36 στα 360). Η
+           σειρά αυτή είναι πλέον η σειρά του κώδικα, σε κάθε πλάτος. */
         @media (max-width: 620px) {
-          .ledger-spacer { display: none; }
           .ledger-search { flex-basis: 100% !important; max-width: none !important; }
-          /* ΠΡΩΤΑ Η ΑΝΑΖΗΤΗΣΗ, ΜΕΤΑ ΤΟ ΚΟΥΜΠΙ (16/11/2026). Σε δεύτερη σειρά, σε όλο
-             το πλάτος, η αναζήτηση καθόταν στη μέση της κύλισης ολόκληρη κάτω από
-             τη Νόα (e2e-noa-cover, 48×36 στα 360), αφού τα φίλτρα της λίστας
-             μπήκαν από πάνω. Πάνω από το κουμπί, το πεδίο μένει δίπλα στα φίλτρα
-             που επίσης στενεύουν τη λίστα και το κουμπί, στοιχισμένο αριστερά,
-             δεν φτάνει ποτέ στη γωνία του «Ν». */
-          .ledger-search { order: -1; }
         }
         @media (max-width: 360px) {
           .exp-row { padding-left: 6px; padding-right: 4px; column-gap: 10px; }
@@ -830,24 +824,28 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
           θα έψαχνε σε τίποτα. Όσο η φόρμα είναι ανοιχτή η γραμμή μένει, γιατί
           κρατά την «Ακύρωση». */}
       {(entries.length > 0 || adding) && <div style={{ display: 'flex', gap: T.sp.sm, flexWrap: 'wrap', alignItems: 'center', marginBottom: T.sp.lg }}>
+        {/* ΤΟ ΠΕΔΙΟ ΤΩΝ ΑΛΛΩΝ ΛΙΣΤΩΝ (17/11/2026): εικονίδιο, σχήμα χαπιού,
+            εστίαση στο accent, όπως στους Ενοικιαστές και στο Αρχείο (`.po-search`).
+            Η υπόδειξη λέει ΤΙ ψάχνεται· το «Αναζήτηση» ζει στην ετικέτα του
+            αναγνώστη οθόνης. Δύο λέξεις, γιατί το «Περιγραφή, κατηγορία ή
+            πάροχος» κοβόταν σε κάθε iPhone στα 320· η αναζήτηση πιάνει και την
+            κατηγορία.
+
+            ΑΡΙΣΤΕΡΑ, ΠΡΩΤΗ ΣΤΗ ΣΕΙΡΑ (feedback χρήστη, 23/11/2026). Ενας
+            διαχωριστής την έσπρωχνε στη δεξιά άκρη: το μάτι, που διαβάζει τη
+            λίστα από αριστερά, την έβρισκε τελευταία. Τώρα κάθεται εκεί που
+            ξεκινούν οι γραμμές από κάτω, όπως ήδη στο τηλέφωνο. */}
+        <div className="po-search ledger-search">
+          <Search size={15} aria-hidden="true" className="po-search-icon" />
+          <input type="search" value={q} onChange={ev => setQ(ev.target.value)}
+            placeholder={E ? E.search : 'Περιγραφή ή πάροχος'} className="po-search-input" aria-label={E ? E.searchLabel : 'Αναζήτηση δαπανών'} />
+        </div>
         {/* ΜΙΑ «ΝΕΑ ΔΑΠΑΝΗ» ΣΤΗΝ ΟΘΟΝΗ. Όταν η καρτέλα έχει ήδη τη δική της στην
             κεφαλίδα (`onScan`, με τη χειροκίνητη καταχώρηση μέσα), εδώ μένει
             μόνο η «Ακύρωση» της ανοιχτής φόρμας, ως δευτερεύουσα. */}
         {(adding || !onScan) && (
           <Btn variant={adding ? 'ghost' : onScan ? 'secondary' : 'primary'} onClick={() => { setSeed(undefined); setAdding(v => !v); }}>{E ? (adding ? E.cancel : E.newExpense) : adding ? 'Ακύρωση' : 'Νέα δαπάνη'}</Btn>
         )}
-        <div className="ledger-spacer" style={{ flex: 1 }} />
-        {/* ΤΟ ΠΕΔΙΟ ΤΩΝ ΑΛΛΩΝ ΛΙΣΤΩΝ (17/11/2026): εικονίδιο, σχήμα χαπιού,
-            εστίαση στο accent, όπως στους Ενοικιαστές και στο Αρχείο (`.po-search`).
-            Η υπόδειξη λέει ΤΙ ψάχνεται· το «Αναζήτηση» ζει στην ετικέτα του
-            αναγνώστη οθόνης. Δύο λέξεις, γιατί το «Περιγραφή, κατηγορία ή
-            πάροχος» κοβόταν σε κάθε iPhone στα 320· η αναζήτηση πιάνει και την
-            κατηγορία. */}
-        <div className="po-search ledger-search">
-          <Search size={15} aria-hidden="true" className="po-search-icon" />
-          <input type="search" value={q} onChange={ev => setQ(ev.target.value)}
-            placeholder={E ? E.search : 'Περιγραφή ή πάροχος'} className="po-search-input" aria-label={E ? E.searchLabel : 'Αναζήτηση δαπανών'} />
-        </div>
       </div>}
 
 
