@@ -105,6 +105,19 @@ badInv('ανύπαρκτη ημερομηνία', swap('<issueDate>2026-11-02</i
 badInv('άγνωστος τύπος', swap('<invoiceType>2.1</invoiceType>', '<invoiceType>99.9</invoiceType>'))
 badInv('διπλό μικτό', swap('<totalGrossValue>124.00</totalGrossValue>', '<totalGrossValue>124.00</totalGrossValue><totalGrossValue>1.00</totalGrossValue>'))
 
+// H1: το άκυρο δεν πετιέται. Επιστρέφει ΜΑΡΚ (όταν διαβάζεται) και αιτία ως κωδικό.
+{
+  const q = (xml: string) => { const r = parseRequestedDoc(xml); return r.ok && Array.isArray(r.quarantine) ? r.quarantine : null }
+  const t = q(swap('<invoiceType>2.1</invoiceType>', '<invoiceType>99.9</invoiceType>'))
+  ok('H1 καραντίνα: άγνωστος τύπος με ΜΑΡΚ και αιτία', t !== null && t.length === 1 && t[0]?.mark === '400001000000101' && t[0]?.reason === 'invoice_type')
+  const n = q(swap('<totalVatAmount>24.00</totalVatAmount>', '<totalVatAmount>-24.00</totalVatAmount>'))
+  ok('H1 καραντίνα: αρνητικό ποσό', n !== null && n[0]?.mark === '400001000000101' && n[0]?.reason === 'total_vat_amount')
+  const m = q(swap('<mark>400001000000101</mark>', '<mark>4000x1</mark>'))
+  ok('H1 καραντίνα: ΜΑΡΚ που δεν διαβάζεται γίνεται null, όχι το κείμενό του', m !== null && m[0]?.mark === null && m[0]?.reason === 'mark')
+  const d = q(swap('<totalGrossValue>124.00</totalGrossValue>', '<totalGrossValue>124.00</totalGrossValue><totalGrossValue>1.00</totalGrossValue>'))
+  ok('H1 καραντίνα: διπλό στοιχείο', d !== null && d[0]?.reason === 'total_gross_value')
+}
+
 // ── 3. ΠΟΣΑ: ΑΚΕΡΑΙΑ ΛΕΠΤΑ ΑΠΟ ΚΕΙΜΕΝΟ, ΠΟΤΕ ΑΠΟ ΚΙΝΗΤΗ ΥΠΟΔΙΑΣΤΟΛΗ ──────────────
 ok('0 → 0', amountToCents('0') === 0)
 ok('0.1 → 10', amountToCents('0.1') === 10)

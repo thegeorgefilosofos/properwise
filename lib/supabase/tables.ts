@@ -1592,6 +1592,13 @@ export interface MydataAccessLogRow {
   detail: string | null;
 }
 
+export interface MydataAfmConfirmationsRow {
+  accountant_id: string;
+  client_id: string;
+  afm: string;
+  confirmed_at: string;
+}
+
 export interface MydataConnectionsRow {
   accountant_id: string | null;
   aade_user_id: string;
@@ -1602,6 +1609,8 @@ export interface MydataConnectionsRow {
   last_error_code: string | null;
   lease_id: string | null;
   lease_at: string | null;
+  lease_kind: string | null;
+  lease_actor: string | null;
   last_manual_at: string | null;
   created_at: string;
   updated_at: string;
@@ -1646,6 +1655,7 @@ export interface MydataDocsRow {
   status: string;
   cancellation_mark: number | null;
   expense_id: string | null;
+  needs_attention: string | null;
   fetched_at: string;
   decided_at: string | null;
 }
@@ -1654,6 +1664,16 @@ export interface MydataIgnoredProvidersRow {
   client_id: string;
   counterpart_afm: string;
   created_at: string;
+}
+
+export interface MydataQuarantineRow {
+  id: number | null;
+  consent_id: string;
+  client_id: string;
+  client_afm: string;
+  mark: number | null;
+  reason: string;
+  seen_at: string;
 }
 
 export interface Tables {
@@ -1723,10 +1743,12 @@ export interface Tables {
   mobile_waitlist: MobileWaitlistRow;
   myaade_imports: MyaadeImportsRow;
   mydata_access_log: MydataAccessLogRow;
+  mydata_afm_confirmations: MydataAfmConfirmationsRow;
   mydata_connections: MydataConnectionsRow;
   mydata_consents: MydataConsentsRow;
   mydata_docs: MydataDocsRow;
   mydata_ignored_providers: MydataIgnoredProvidersRow;
+  mydata_quarantine: MydataQuarantineRow;
   notification_log: NotificationLogRow;
   notification_preferences: NotificationPreferencesRow;
   onboarding_progress: OnboardingProgressRow;

@@ -26,11 +26,25 @@
 --   αρχείο πρόσβασης), 17 (διαγραφή με την ανάκληση).
 --
 -- ΤΟ ΑΥΣΤΗΡΟ ΟΡΙΟ (ιδιοκτήτης): συγχρονίζεται ΜΟΝΟ πελάτης που (α) είναι χρήστης
--- PROPERWISE, (β) έχει συνδέσει ΑΥΤΟΝ τον λογιστή μέσα στο PROPERWISE
--- (`accountant_link_live`, ο ίδιος έλεγχος που κρατά όλη την πύλη) και (γ) έχει
--- πατήσει «Επιτρέπω». Ποτέ οι άλλοι πελάτες του λογιστή. Ο έλεγχος γίνεται ΣΤΗ
--- ΒΑΣΗ σε κάθε κλήση (`mydata_consent_live` και ξανά μέσα στην εγγραφή), όχι
--- μόνο στην οθόνη.
+-- PROPERWISE, (β) έχει συνδέσει ΑΥΤΟΝ τον λογιστή μέσα στο PROPERWISE με δική
+-- του γραμμή (`accountant_link_live`, ο ίδιος έλεγχος που κρατά όλη την πύλη)
+-- και (γ) έχει πατήσει «Επιτρέπω». Ποτέ οι άλλοι πελάτες του λογιστή. Ο έλεγχος
+-- γίνεται ΣΤΗ ΒΑΣΗ σε κάθε κλήση (`mydata_consent_live` και ξανά μέσα στην
+-- εγγραφή), όχι μόνο στην οθόνη.
+--
+-- ΤΟ ΑΦΜ ΔΕΝ ΤΟ ΔΗΛΩΝΕΙ ΜΟΝΟΣ ΤΟΥ Ο ΠΕΛΑΤΗΣ. Το ΑΦΜ του προφίλ χρέωσης το
+-- γράφει ελεύθερα ο χρήστης· αν αρκούσε, ένας πελάτης θα έγραφε το ΑΦΜ άλλου
+-- πελάτη του ίδιου λογιστή και θα έβλεπε τα παραστατικά του. Γι' αυτό ο
+-- λογιστής ΕΠΙΒΕΒΑΙΩΝΕΙ στον χώρο του το ΑΦΜ κάθε πελάτη
+-- (`mydata_afm_confirmations`) και η άδεια δίνεται μόνο όταν το ΑΦΜ του
+-- προφίλ είναι ΑΚΡΙΒΩΣ αυτό. Αλλαγή του ενός ή του άλλου ανακαλεί την άδεια.
+-- Ενα ΑΦΜ έχει το πολύ μία ενεργή άδεια.
+--
+-- ΠΑΥΣΗ ή ΑΝΑΚΛΗΣΗ. Οροι γραφείου που δεν έχουν γίνει δεκτοί ή σύνδεσμος που
+-- έληξε ΠΑΓΩΝΟΥΝ την άδεια (τίποτα δεν ζητείται, τίποτα δεν σβήνει). Ρητή
+-- ανάκληση, αποσύνδεση, νέο token συνδέσμου, αφαίρεση από το γραφείο ή την
+-- ανάθεση και διαγραφή λογαριασμού την ΑΝΑΚΑΛΟΥΝ αμέσως, με σκανδάλες που
+-- τρέχουν στο τέλος της ίδιας συναλλαγής (`mydata_revoke_dead`).
 --
 -- ΤΟ ΚΛΕΙΔΙ. Ζει στο Supabase Vault, κρυπτογραφημένο. Η αναφορά του σε ιδιωτικό
 -- πίνακα (`private.mydata_vault`), εκτός PostgREST. Το διαβάζει ΜΟΝΟ ο ρόλος
@@ -58,6 +72,15 @@ as $$
   ) = substr(p,9,1)::int
 $$;
 
+-- Το ΑΦΜ όπως το γράφει ο χρήστης («099 000 013», «099.000.013»), καθαρό.
+create or replace function private.mydata_clean_afm(p text)
+returns text
+language sql immutable
+set search_path = ''
+as $$
+  select regexp_replace(coalesce(p, ''), '[\s.\-]', '', 'g')
+$$;
+
 -- Ο κλειστός κατάλογος των κωδικών σφάλματος· ίδιος με το ERROR_CODES του
 -- supabase/functions/_shared/mydata.ts.
 create or replace function private.mydata_error_codes()
@@ -66,7 +89,7 @@ language sql immutable
 set search_path = ''
 as $$
   select array['auth','forbidden','rate','server','empty','bad_request','http','network','timeout',
-               'parse','aade_error','no_key','no_afm','not_linked','config','unknown']
+               'parse','aade_error','no_key','no_afm','not_linked','config','unknown','quarantine']
 $$;
 
 -- Πότε ξαναδοκιμάζεται πελάτης μετά από αποτυχίες στη σειρά: 15, 30, 60…
@@ -90,6 +113,8 @@ create table if not exists public.mydata_connections (
   last_error_code text,
   lease_id        uuid,
   lease_at        timestamptz,
+  lease_kind      text,
+  lease_actor     uuid,
   last_manual_at  timestamptz,
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
@@ -167,11 +192,11 @@ do $c$ begin
   end if;
   if not exists (select 1 from pg_constraint where conname = 'mydata_consents_status_known') then
     alter table public.mydata_consents add constraint mydata_consents_status_known
-      check (status in ('pending', 'ok', 'forbidden', 'error'));
+      check (status in ('pending', 'ok', 'forbidden', 'error', 'paused'));
   end if;
   if not exists (select 1 from pg_constraint where conname = 'mydata_consents_reason_known') then
     alter table public.mydata_consents add constraint mydata_consents_reason_known
-      check (revoke_reason is null or revoke_reason in ('client', 'unlinked', 'link_revoked', 'switched'));
+      check (revoke_reason is null or revoke_reason in ('client', 'unlinked', 'switched', 'afm_changed'));
   end if;
   if not exists (select 1 from pg_constraint where conname = 'mydata_consents_error_known') then
     alter table public.mydata_consents add constraint mydata_consents_error_known
@@ -188,6 +213,32 @@ create unique index if not exists mydata_consents_one_active
   on public.mydata_consents (client_id) where revoked_at is null;
 create index if not exists mydata_consents_accountant
   on public.mydata_consents (accountant_id) where revoked_at is null;
+-- ΕΝΑ ΑΦΜ, ΜΙΑ ΕΝΕΡΓΗ ΑΔΕΙΑ. Δύο λογαριασμοί με το ίδιο ΑΦΜ θα μοιράζονταν
+-- τα ίδια παραστατικά (μοναδικό κλειδί ΑΦΜ και ΜΑΡΚ).
+create unique index if not exists mydata_consents_one_per_afm
+  on public.mydata_consents (afm) where revoked_at is null;
+
+-- ── 2β. ΤΟ ΑΦΜ ΠΟΥ ΕΠΙΒΕΒΑΙΩΣΕ Ο ΛΟΓΙΣΤΗΣ ─────────────────────────────────────
+-- Ο λογιστής ξέρει το ΑΦΜ του πελάτη του (τον εξυπηρετεί στο myAADE). Το
+-- γράφει ο ίδιος, χωρίς να του το δείξει η οθόνη. Η άδεια δίνεται μόνο αν
+-- συμφωνεί με το προφίλ χρέωσης του πελάτη.
+create table if not exists public.mydata_afm_confirmations (
+  accountant_id uuid not null references auth.users (id) on delete cascade,
+  client_id     uuid not null references auth.users (id) on delete cascade,
+  afm           text not null,
+  confirmed_at  timestamptz not null default now(),
+  primary key (accountant_id, client_id)
+);
+
+do $c$ begin
+  if not exists (select 1 from pg_constraint where conname = 'mydata_afm_confirmations_afm_ok') then
+    alter table public.mydata_afm_confirmations add constraint mydata_afm_confirmations_afm_ok check (private.mydata_afm_ok(afm));
+  end if;
+end $c$;
+create index if not exists mydata_afm_confirmations_client on public.mydata_afm_confirmations (client_id);
+
+comment on table public.mydata_afm_confirmations is
+  'Το ΑΦΜ κάθε πελάτη όπως το επιβεβαίωσε ο λογιστής του. Η άδεια myDATA δίνεται μόνο όταν συμφωνεί με το προφίλ χρέωσης.';
 
 comment on table public.mydata_consents is
   'Η άδεια του πελάτη να φέρνει ο λογιστής του τα παραστατικά του από το myDATA. Ανακλητή· η γραμμή μένει ως απόδειξη (ΓΚΠΔ 7§1).';
@@ -213,6 +264,7 @@ create table if not exists public.mydata_docs (
   status            text not null default 'pending',
   cancellation_mark bigint,
   expense_id        uuid references public.expenses (id) on delete set null,
+  needs_attention   text,
   fetched_at        timestamptz not null default now(),
   decided_at        timestamptz,
   unique (client_afm, mark)
@@ -233,7 +285,14 @@ do $c$ begin
   if not exists (select 1 from pg_constraint where conname = 'mydata_docs_mark_positive') then
     alter table public.mydata_docs add constraint mydata_docs_mark_positive check (mark > 0);
   end if;
+  -- Ακύρωση από τον εκδότη ΑΦΟΥ ο χρήστης το καταχώρησε: η δαπάνη ΔΕΝ σβήνει
+  -- μόνη της, ο χρήστης αποφασίζει στα Εισερχόμενα.
+  if not exists (select 1 from pg_constraint where conname = 'mydata_docs_attention_known') then
+    alter table public.mydata_docs add constraint mydata_docs_attention_known
+      check (needs_attention is null or needs_attention in ('cancelled_after_filing'));
+  end if;
 end $c$;
+create index if not exists mydata_docs_client_attention on public.mydata_docs (client_id) where needs_attention is not null;
 
 create index if not exists mydata_docs_client_pending on public.mydata_docs (client_id, issue_date desc) where status = 'pending';
 create index if not exists mydata_docs_consent on public.mydata_docs (consent_id);
@@ -249,6 +308,31 @@ create table if not exists public.mydata_ignored_providers (
   created_at      timestamptz not null default now(),
   primary key (client_id, counterpart_afm)
 );
+
+-- ── 4β. ΚΑΡΑΝΤΙΝΑ: ΠΑΡΑΣΤΑΤΙΚΑ ΠΟΥ Η ΑΝΑΓΝΩΣΗ ΔΕΝ ΔΕΧΤΗΚΕ ───────────────────────
+-- Νέος τύπος, ποσό εκτός σχήματος, διπλό στοιχείο: δεν γίνεται δαπάνη ΚΑΙ δεν
+-- χάνεται. Μένει εδώ με ΜΑΡΚ και κωδικό αιτίας. Ο ΜΑΡΚ της άδειας σταματά πριν
+-- από αυτό ώστε να ξαναζητηθεί· ο πελάτης φαίνεται «Θέλει έλεγχο».
+create table if not exists public.mydata_quarantine (
+  id         bigint generated always as identity primary key,
+  consent_id uuid not null references public.mydata_consents (id) on delete cascade,
+  client_id  uuid not null references auth.users (id) on delete cascade,
+  client_afm text not null,
+  mark       bigint,
+  reason     text not null,
+  seen_at    timestamptz not null default now()
+);
+
+do $c$ begin
+  if not exists (select 1 from pg_constraint where conname = 'mydata_quarantine_reason_code') then
+    alter table public.mydata_quarantine add constraint mydata_quarantine_reason_code check (reason ~ '^[a-z_]{1,40}$');
+  end if;
+end $c$;
+create unique index if not exists mydata_quarantine_once on public.mydata_quarantine (consent_id, mark) where mark is not null;
+create index if not exists mydata_quarantine_client on public.mydata_quarantine (client_id);
+
+comment on table public.mydata_quarantine is
+  'Παραστατικά myDATA που δεν πέρασαν την αυστηρή ανάγνωση: ΜΑΡΚ και κωδικός αιτίας, κανένα άλλο πεδίο. Ξαναζητούνται.';
 
 -- ── 5. ΤΟ ΑΡΧΕΙΟ ΠΡΟΣΒΑΣΗΣ ──────────────────────────────────────────────────
 -- Ποιος, πότε, ποιο ΑΦΜ, τι. Μένει μετά την ανάκληση (ΓΚΠΔ 5§2). Φεύγει με τον
@@ -268,8 +352,10 @@ create table if not exists public.mydata_access_log (
 do $c$ begin
   if not exists (select 1 from pg_constraint where conname = 'mydata_access_log_action_known') then
     alter table public.mydata_access_log add constraint mydata_access_log_action_known check (action in (
-      'consent_granted', 'consent_revoked', 'key_saved', 'key_removed', 'key_rejected',
-      'sync_fetch', 'sync_failed', 'provider_ignored', 'cancel_removed_expense'));
+      'consent_granted', 'consent_revoked', 'consent_paused', 'afm_confirmed',
+      'key_saved', 'key_removed', 'key_rejected',
+      'sync_fetch', 'sync_done', 'sync_failed', 'page_rejected', 'invalid_quarantined',
+      'provider_ignored', 'cancel_flagged', 'cancel_removed_expense'));
   end if;
   if not exists (select 1 from pg_constraint where conname = 'mydata_access_log_detail_code') then
     alter table public.mydata_access_log add constraint mydata_access_log_detail_code
@@ -300,6 +386,14 @@ alter table public.mydata_consents          enable row level security;
 alter table public.mydata_docs              enable row level security;
 alter table public.mydata_ignored_providers enable row level security;
 alter table public.mydata_access_log        enable row level security;
+alter table public.mydata_afm_confirmations enable row level security;
+alter table public.mydata_quarantine        enable row level security;
+
+-- Το ΑΦΜ που επιβεβαίωσε ο λογιστής το βλέπει μόνο ο ίδιος (ο πελάτης έχει το
+-- δικό του στο προφίλ).
+drop policy if exists mydata_afm_confirmations_own on public.mydata_afm_confirmations;
+create policy mydata_afm_confirmations_own on public.mydata_afm_confirmations
+  for select to authenticated using (accountant_id = (select auth.uid()));
 
 drop policy if exists mydata_connections_own on public.mydata_connections;
 create policy mydata_connections_own on public.mydata_connections
@@ -333,6 +427,11 @@ create policy mydata_docs_parties on public.mydata_docs
   for select to authenticated using (
     client_id = (select auth.uid()) or private.mydata_accountant_sees(consent_id));
 
+drop policy if exists mydata_quarantine_parties on public.mydata_quarantine;
+create policy mydata_quarantine_parties on public.mydata_quarantine
+  for select to authenticated using (
+    client_id = (select auth.uid()) or private.mydata_accountant_sees(consent_id));
+
 drop policy if exists mydata_ignored_own on public.mydata_ignored_providers;
 create policy mydata_ignored_own on public.mydata_ignored_providers
   for select to authenticated using (client_id = (select auth.uid()));
@@ -360,12 +459,19 @@ create policy mfa_mydata_ignored on public.mydata_ignored_providers as restricti
 drop policy if exists mfa_mydata_access_log on public.mydata_access_log;
 create policy mfa_mydata_access_log on public.mydata_access_log as restrictive for all to authenticated
   using ((select private.mfa_satisfied())) with check ((select private.mfa_satisfied()));
+drop policy if exists mfa_mydata_afm_confirmations on public.mydata_afm_confirmations;
+create policy mfa_mydata_afm_confirmations on public.mydata_afm_confirmations as restrictive for all to authenticated
+  using ((select private.mfa_satisfied())) with check ((select private.mfa_satisfied()));
+drop policy if exists mfa_mydata_quarantine on public.mydata_quarantine;
+create policy mfa_mydata_quarantine on public.mydata_quarantine as restrictive for all to authenticated
+  using ((select private.mfa_satisfied())) with check ((select private.mfa_satisfied()));
 
 -- Καμία εγγραφή απευθείας από πελάτη: όλα περνούν από τις συναρτήσεις.
 revoke all on public.mydata_connections, public.mydata_consents, public.mydata_docs,
-              public.mydata_ignored_providers, public.mydata_access_log from anon, authenticated;
+              public.mydata_ignored_providers, public.mydata_access_log,
+              public.mydata_afm_confirmations, public.mydata_quarantine from anon, authenticated;
 grant select on public.mydata_connections, public.mydata_consents, public.mydata_docs,
-                public.mydata_access_log to authenticated;
+                public.mydata_access_log, public.mydata_afm_confirmations, public.mydata_quarantine to authenticated;
 grant select, delete on public.mydata_ignored_providers to authenticated;
 -- RLS χωρίς καμία πολιτική: κανένας ρόλος πελάτη δεν διαβάζει, ούτε αν κάποτε
 -- εκτεθεί το σχήμα. Τη διαβάζουν μόνο οι SECURITY DEFINER του ρόλου υπηρεσίας.
@@ -393,31 +499,140 @@ begin
   if not found then return 0; end if;
   delete from public.mydata_docs where consent_id = p_consent;
   get diagnostics v_n = row_count;
+  delete from public.mydata_quarantine where consent_id = p_consent;
   perform private.mydata_log(v.client_id, v.accountant_id, p_actor, v.afm, 'consent_revoked', v_n, p_reason);
   return v_n;
 end $$;
 
--- Ο πελάτης αλλάζει λογιστή ή ο λογιστής αφαιρεί τον πελάτη: η σύνδεση στο
--- PROPERWISE σβήνει ή απενεργοποιείται: η άδεια φεύγει μαζί της.
-create or replace function private.mydata_unlinked()
+-- Η ΣΥΝΔΕΣΗ ΣΤΟ PROPERWISE: ζωντανή, σε παύση ή νεκρή.
+--   live    ο έλεγχος της πύλης (`accountant_link_live`) περνά
+--   paused  η γραμμή του λογιστή, ο σύνδεσμος του πελάτη με το ίδιο token και
+--           η θέση στο γραφείο υπάρχουν, αλλά οι όροι του γραφείου δεν έχουν
+--           γίνει δεκτοί ή ο σύνδεσμος έληξε: ανανεώνεται, δεν σβήνει τίποτα
+--   dead    όλα τα άλλα: αποσύνδεση, νέο token, αφαίρεση από γραφείο ή ανάθεση
+create or replace function private.mydata_link_state(p_accountant uuid, p_owner uuid)
+returns text
+language sql stable
+security definer
+set search_path = ''
+as $$
+  select case
+    when public.accountant_link_live(p_accountant, p_owner) then 'live'
+    when exists (
+      select 1
+        from public.accountant_clients ac
+        join public.accountant_links al
+          on al.user_id = ac.owner_id and al.active and al.token = ac.claimed_token
+       where ac.accountant_id = p_accountant and ac.owner_id = p_owner and ac.active
+         and (ac.firm_id is null or exists (
+               select 1 from public.firm_members m
+                where m.firm_id = ac.firm_id and m.user_id = p_accountant and m.status = 'active'
+                  and (m.role = 'manager' or exists (
+                        select 1 from public.firm_client_assignees fa
+                         where fa.firm_id = ac.firm_id and fa.owner_id = p_owner and fa.user_id = p_accountant)))))
+      then 'paused'
+    else 'dead' end;
+$$;
+
+-- Το ΑΦΜ της άδειας είναι ΚΑΙ αυτό που επιβεβαίωσε ο λογιστής ΚΑΙ αυτό που
+-- γράφει σήμερα το προφίλ χρέωσης του πελάτη.
+create or replace function private.mydata_afm_bound(p_consent uuid)
+returns boolean
+language sql stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+      from public.mydata_consents c
+      join public.mydata_afm_confirmations f
+        on f.accountant_id = c.accountant_id and f.client_id = c.client_id and f.afm = c.afm
+      join public.billing_profiles bp on bp.user_id = c.client_id
+     where c.id = p_consent and private.mydata_clean_afm(bp.afm) = c.afm);
+$$;
+
+-- Η ΜΙΑ ΣΑΡΩΣΗ ΓΙΑ ΚΑΘΕ ΑΛΛΑΓΗ: νεκρή σύνδεση ή ΑΦΜ που άλλαξε ανακαλεί (και
+-- σβήνει τα παραστατικά), σύνδεση σε παύση παγώνει, σύνδεση που ξαναζωντάνεψε
+-- ξεπαγώνει. Την καλούν οι σκανδάλες, ο συγχρονισμός και το ημερήσιο καθάρισμα.
+create or replace function private.mydata_revoke_dead(p_owner uuid, p_accountant uuid)
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  r       record;
+  v_state text;
+  v_n     integer := 0;
+begin
+  for r in select c.id, c.client_id, c.accountant_id, c.afm, c.status
+             from public.mydata_consents c
+            where c.revoked_at is null
+              and (p_owner is null or c.client_id = p_owner)
+              and (p_accountant is null or c.accountant_id = p_accountant)
+            for update loop
+    if not private.mydata_afm_bound(r.id) then
+      perform private.mydata_revoke(r.id, 'afm_changed', auth.uid());
+      v_n := v_n + 1;
+      continue;
+    end if;
+    v_state := private.mydata_link_state(r.accountant_id, r.client_id);
+    if v_state = 'dead' then
+      perform private.mydata_revoke(r.id, 'unlinked', auth.uid());
+      v_n := v_n + 1;
+    elsif v_state = 'paused' and r.status <> 'paused' then
+      update public.mydata_consents set status = 'paused', resume = null, next_retry_at = null where id = r.id;
+      perform private.mydata_log(r.client_id, r.accountant_id, auth.uid(), r.afm, 'consent_paused', null, null);
+    elsif v_state = 'live' and r.status = 'paused' then
+      update public.mydata_consents set status = 'pending', last_error_code = null where id = r.id;
+    end if;
+  end loop;
+  return v_n;
+end $$;
+
+-- Οι σκανδάλες: ΜΕΤΑ από κάθε αλλαγή που μπορεί να κόψει τη σύνδεση, στο ΤΕΛΟΣ
+-- της συναλλαγής (deferred), ώστε μια περιστροφή token σε δύο βήματα να
+-- κρίνεται από την τελική κατάσταση.
+create or replace function private.mydata_link_changed()
 returns trigger
 language plpgsql
 security definer
 set search_path = ''
 as $$
-declare r record;
 begin
-  if tg_op = 'UPDATE' and (new.active or not old.active) then return new; end if;
-  for r in select id from public.mydata_consents
-            where client_id = old.owner_id and accountant_id = old.accountant_id and revoked_at is null loop
-    perform private.mydata_revoke(r.id, 'unlinked', auth.uid());
-  end loop;
-  return coalesce(new, old);
+  case tg_table_name
+    when 'accountant_links'          then perform private.mydata_revoke_dead(old.user_id, null);
+    when 'accountant_clients'        then perform private.mydata_revoke_dead(old.owner_id, null);
+    when 'firm_members'              then if old.user_id is not null then perform private.mydata_revoke_dead(null, old.user_id); end if;
+    when 'firm_client_assignees'     then perform private.mydata_revoke_dead(old.owner_id, old.user_id);
+    when 'billing_profiles'          then perform private.mydata_revoke_dead(old.user_id, null);
+    when 'mydata_afm_confirmations'  then perform private.mydata_revoke_dead(old.client_id, old.accountant_id);
+    else null;
+  end case;
+  return null;
 end $$;
 
 drop trigger if exists mydata_unlinked on public.accountant_clients;
-create trigger mydata_unlinked after update of active or delete on public.accountant_clients
-  for each row execute function private.mydata_unlinked();
+drop trigger if exists mydata_link_changed on public.accountant_clients;
+create constraint trigger mydata_link_changed after update of active, claimed_token, firm_id or delete on public.accountant_clients
+  deferrable initially deferred for each row execute function private.mydata_link_changed();
+drop trigger if exists mydata_link_changed on public.accountant_links;
+create constraint trigger mydata_link_changed after update of active, token, expires_at, user_id or delete on public.accountant_links
+  deferrable initially deferred for each row execute function private.mydata_link_changed();
+drop trigger if exists mydata_link_changed on public.firm_members;
+create constraint trigger mydata_link_changed after update of status, role, firm_id, user_id or delete on public.firm_members
+  deferrable initially deferred for each row execute function private.mydata_link_changed();
+drop trigger if exists mydata_link_changed on public.firm_client_assignees;
+create constraint trigger mydata_link_changed after update or delete on public.firm_client_assignees
+  deferrable initially deferred for each row execute function private.mydata_link_changed();
+drop trigger if exists mydata_link_changed on public.billing_profiles;
+create constraint trigger mydata_link_changed after update of afm on public.billing_profiles
+  deferrable initially deferred for each row
+  when (old.afm is distinct from new.afm)
+  execute function private.mydata_link_changed();
+drop trigger if exists mydata_link_changed on public.mydata_afm_confirmations;
+create constraint trigger mydata_link_changed after update or delete on public.mydata_afm_confirmations
+  deferrable initially deferred for each row execute function private.mydata_link_changed();
 
 -- ── 8. ΤΑ ΚΟΥΜΠΙΑ ΤΟΥ ΠΕΛΑΤΗ ───────────────────────────────────────────────
 -- «Επιτρέπω». Η περίοδος του πρώτου συγχρονισμού: 1/1 του τρέχοντος ή του
@@ -434,23 +649,38 @@ declare
   v_year integer := extract(year from (now() at time zone 'Europe/Athens'))::int;
   v_old  record;
   v_id   uuid;
+  v_conf text;
 begin
   if not private.mfa_satisfied() then
     raise exception 'mfa_required' using errcode = '42501';
   end if;
   if v_me is null then return json_build_object('ok', false, 'reason', 'anonymous'); end if;
   if p_accountant is null or p_accountant = v_me then return json_build_object('ok', false, 'reason', 'not_linked'); end if;
-  if not public.accountant_link_live(p_accountant, v_me) then
+  -- Μόνο λογιστής με ΔΙΚΗ ΤΟΥ γραμμή σύνδεσης: αυτός βλέπει τον πελάτη στον
+  -- πίνακά του και συγχρονίζει. Μέλος γραφείου χωρίς γραμμή (κλειδί σε επίπεδο
+  -- γραφείου) είναι η επόμενη φάση.
+  if not exists (select 1 from public.accountant_clients ac
+                  where ac.accountant_id = p_accountant and ac.owner_id = v_me and ac.active)
+     or not public.accountant_link_live(p_accountant, v_me) then
     return json_build_object('ok', false, 'reason', 'not_linked');
   end if;
   if p_from_year is null or p_from_year not in (v_year, v_year - 1) then
     return json_build_object('ok', false, 'reason', 'bad_period');
   end if;
   -- Το ΑΦΜ ζητείται ΠΡΙΝ τη συναίνεση: χωρίς σωστό ΑΦΜ δεν υπάρχει τι να ζητηθεί.
-  select regexp_replace(coalesce(bp.afm, ''), '[\s.\-]', '', 'g') into v_afm
+  select private.mydata_clean_afm(bp.afm) into v_afm
     from public.billing_profiles bp where bp.user_id = v_me;
   if v_afm is null or not private.mydata_afm_ok(v_afm) then
     return json_build_object('ok', false, 'reason', 'no_afm');
+  end if;
+  -- ΤΟ ΑΦΜ ΤΟ ΕΠΙΒΕΒΑΙΩΝΕΙ Ο ΛΟΓΙΣΤΗΣ, όχι μόνο ο πελάτης.
+  select f.afm into v_conf from public.mydata_afm_confirmations f
+   where f.accountant_id = p_accountant and f.client_id = v_me;
+  if v_conf is null then return json_build_object('ok', false, 'reason', 'afm_unconfirmed'); end if;
+  if v_conf <> v_afm then return json_build_object('ok', false, 'reason', 'afm_mismatch'); end if;
+  if exists (select 1 from public.mydata_consents k
+              where k.afm = v_afm and k.revoked_at is null and k.client_id <> v_me) then
+    return json_build_object('ok', false, 'reason', 'afm_taken');
   end if;
 
   select * into v_old from public.mydata_consents where client_id = v_me and revoked_at is null;
@@ -566,7 +796,70 @@ begin
   return json_build_object('ok', true);
 end $$;
 
+-- «Ακυρώθηκε από τον εκδότη» για παραστατικό που είχε ήδη γίνει δαπάνη: ο
+-- χρήστης αποφασίζει. «Σβήσε τη δαπάνη» σβήνει ΜΟΝΟ τη δαπάνη που γέννησε αυτό
+-- το παραστατικό· «Κράτησέ τη» απλώς κλείνει την ειδοποίηση.
+create or replace function public.mydata_cancel_ack(p_doc uuid, p_remove boolean)
+returns json
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_me uuid := auth.uid();
+  d    public.mydata_docs%rowtype;
+  v_n  integer := 0;
+begin
+  if not private.mfa_satisfied() then
+    raise exception 'mfa_required' using errcode = '42501';
+  end if;
+  select * into d from public.mydata_docs
+   where id = p_doc and client_id = v_me and needs_attention = 'cancelled_after_filing' for update;
+  if not found then return json_build_object('ok', false, 'reason', 'not_found'); end if;
+  if coalesce(p_remove, false) and d.expense_id is not null then
+    delete from public.expenses
+     where id = d.expense_id and user_id = v_me and dedup_hash = 'mydata:' || d.mark;
+    get diagnostics v_n = row_count;
+    if v_n > 0 then
+      perform private.mydata_log(v_me, null, v_me, d.client_afm, 'cancel_removed_expense', v_n, null);
+    end if;
+  end if;
+  update public.mydata_docs set needs_attention = null, decided_at = now() where id = d.id;
+  return json_build_object('ok', true, 'removed', v_n);
+end $$;
+
 -- ── 9. ΤΑ ΚΟΥΜΠΙΑ ΤΟΥ ΛΟΓΙΣΤΗ ───────────────────────────────────────────────
+-- «Επιβεβαίωση ΑΦΜ»: ο λογιστής γράφει το ΑΦΜ του πελάτη όπως το ξέρει από
+-- το myAADE. Μόνο για πελάτη με δική του, ζωντανή σύνδεση. Η απάντηση δεν λέει
+-- αν συμφωνεί με το προφίλ του πελάτη: το ΑΦΜ του πελάτη δεν περνά στον λογιστή.
+-- Αλλαγή ΑΦΜ ανακαλεί την άδεια που δόθηκε με το παλιό (σκανδάλη).
+create or replace function public.mydata_confirm_afm(p_owner uuid, p_afm text)
+returns json
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_me  uuid := auth.uid();
+  v_afm text := private.mydata_clean_afm(p_afm);
+begin
+  if not private.mfa_satisfied() then
+    raise exception 'mfa_required' using errcode = '42501';
+  end if;
+  if v_me is null then return json_build_object('ok', false, 'reason', 'anonymous'); end if;
+  if p_owner is null or not exists (
+       select 1 from public.accountant_clients ac where ac.accountant_id = v_me and ac.owner_id = p_owner and ac.active)
+     or not public.accountant_link_live(v_me, p_owner) then
+    return json_build_object('ok', false, 'reason', 'not_linked');
+  end if;
+  if not private.mydata_afm_ok(v_afm) then return json_build_object('ok', false, 'reason', 'bad_afm'); end if;
+  insert into public.mydata_afm_confirmations (accountant_id, client_id, afm)
+  values (v_me, p_owner, v_afm)
+  on conflict (accountant_id, client_id) do update set afm = excluded.afm, confirmed_at = now();
+  perform private.mydata_log(p_owner, v_me, v_me, v_afm, 'afm_confirmed', null, null);
+  return json_build_object('ok', true);
+end $$;
+
 -- «Αφαίρεση κλειδιού». Το μυστικό σβήνει από το Vault με τη σκανδάλη.
 create or replace function public.mydata_key_remove()
 returns json
@@ -615,14 +908,17 @@ begin
         'lastNew',     c.last_new,
         'error',       c.last_error_code,
         'nextRetryAt', c.next_retry_at,
-        'pending',     (select count(*) from public.mydata_docs d where d.consent_id = c.id and d.status = 'pending')
+        'pending',     (select count(*) from public.mydata_docs d where d.consent_id = c.id and d.status = 'pending'),
+        'afmConfirmed', exists (select 1 from public.mydata_afm_confirmations f
+                                 where f.accountant_id = v_me and f.client_id = ac.owner_id),
+        'quarantined', (select count(*) from public.mydata_quarantine q where q.consent_id = c.id)
       ) as r
       from public.accountant_clients ac
       left join public.billing_profiles bp on bp.user_id = ac.owner_id
       left join public.mydata_consents c
         on c.client_id = ac.owner_id and c.accountant_id = v_me and c.revoked_at is null
       where ac.accountant_id = v_me and ac.active
-        and public.accountant_link_live(v_me, ac.owner_id)
+        and private.mydata_link_state(v_me, ac.owner_id) <> 'dead'
     ) s
   ), '[]'::json);
 end $$;
@@ -699,7 +995,7 @@ $$;
 --   manual:  όχι πιο συχνά από μία φορά ανά 5 λεπτά
 --   auto:    μόνο αν ο τελευταίος είναι τουλάχιστον 12 ώρες πίσω
 --   nightly, retry: πάντα (από το cron)
-create or replace function public.mydata_sync_begin(p_accountant uuid, p_kind text)
+create or replace function public.mydata_sync_begin(p_accountant uuid, p_kind text, p_actor uuid default null)
 returns json
 language plpgsql
 security definer
@@ -723,8 +1019,11 @@ begin
   if c.lease_id is not null and c.lease_at > now() - interval '10 minutes' then
     return json_build_object('ok', false, 'reason', 'busy');
   end if;
+  -- Ποιος ξεκίνησε το τρέξιμο: ο λογιστής («τώρα», αυτόματο) ή κανείς (cron).
+  -- Γράφεται σε κάθε γραμμή του αρχείου πρόσβασης αυτού του τρεξίματος.
   update public.mydata_connections
-     set lease_id = v_lease, lease_at = now(),
+     set lease_id = v_lease, lease_at = now(), lease_kind = p_kind,
+         lease_actor = case when p_kind in ('manual', 'auto') and p_actor = p_accountant then p_actor end,
          last_manual_at = case when p_kind = 'manual' then now() else last_manual_at end
    where accountant_id = p_accountant;
   return json_build_object('ok', true, 'lease', v_lease);
@@ -740,26 +1039,22 @@ as $$
                     and lease_at > now() - interval '10 minutes');
 $$;
 
--- Ποιοι πελάτες, με τη σειρά «ο πιο παλιός συγχρονισμός πρώτος». Οσοι έχουν
--- άδεια αλλά η σύνδεση στο PROPERWISE δεν ζει πια, ανακαλούνται ΕΔΩ.
+-- Ποιοι πελάτες, με τη σειρά «ο πιο παλιός συγχρονισμός πρώτος». Πρώτα η
+-- σάρωση: νεκρή σύνδεση ή ΑΦΜ που άλλαξε ανακαλεί, παύση παγώνει (και ο
+-- πελάτης σε παύση δεν ζητείται).
 create or replace function public.mydata_sync_targets(p_accountant uuid, p_lease uuid, p_kind text)
 returns table (consent_id uuid, afm text, window_from date, last_mark bigint, resume jsonb)
 language plpgsql
 security definer
 set search_path = ''
 as $$
-declare r record;
 begin
   if not private.mydata_lease_ok(p_lease, p_accountant) then return; end if;
-  for r in select c.id from public.mydata_consents c
-            where c.accountant_id = p_accountant and c.revoked_at is null
-              and not public.accountant_link_live(c.accountant_id, c.client_id) loop
-    perform private.mydata_revoke(r.id, 'link_revoked', null);
-  end loop;
+  perform private.mydata_revoke_dead(null, p_accountant);
   return query
     select c.id, c.afm, c.window_from, c.last_mark, c.resume
       from public.mydata_consents c
-     where c.accountant_id = p_accountant and c.revoked_at is null
+     where c.accountant_id = p_accountant and c.revoked_at is null and c.status <> 'paused'
        and (p_kind <> 'retry' or (c.next_retry_at is not null and c.next_retry_at <= now()))
        -- «forbidden» (η ΑΑΔΕ αρνείται τον ΑΦΜ) δεν ξαναδοκιμάζεται κάθε 15
        -- λεπτά: μόνο στον νυχτερινό ή όταν το ζητήσει ο λογιστής.
@@ -767,9 +1062,10 @@ begin
      order by c.last_sync_at nulls first, c.granted_at;
 end $$;
 
--- Ο έλεγχος ΠΡΙΝ ΑΠΟ ΚΑΘΕ ΚΛΗΣΗ ΣΤΗΝ ΑΑΔΕ: άδεια σε ισχύ, σύνδεση ζωντανή,
--- μίσθωση του ίδιου τρεξίματος.
-create or replace function public.mydata_consent_live(p_consent uuid, p_lease uuid)
+-- Ο έλεγχος ΠΡΙΝ ΑΠΟ ΚΑΘΕ ΚΛΗΣΗ ΣΤΗΝ ΑΑΔΕ: άδεια σε ισχύ και όχι σε παύση,
+-- σύνδεση ζωντανή, ΑΦΜ δεμένο (λογιστής και προφίλ συμφωνούν σήμερα), μίσθωση
+-- του ίδιου τρεξίματος.
+create or replace function private.mydata_consent_ok(p_consent uuid, p_lease uuid)
 returns boolean
 language sql
 stable
@@ -778,9 +1074,20 @@ set search_path = ''
 as $$
   select exists (
     select 1 from public.mydata_consents c
-     where c.id = p_consent and c.revoked_at is null
+     where c.id = p_consent and c.revoked_at is null and c.status <> 'paused'
        and private.mydata_lease_ok(p_lease, c.accountant_id)
-       and public.accountant_link_live(c.accountant_id, c.client_id));
+       and public.accountant_link_live(c.accountant_id, c.client_id)
+       and private.mydata_afm_bound(c.id));
+$$;
+
+create or replace function public.mydata_consent_live(p_consent uuid, p_lease uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select private.mydata_consent_ok(p_consent, p_lease);
 $$;
 
 -- Η ΕΓΓΡΑΦΗ ΜΙΑΣ ΣΕΛΙΔΑΣ. Ξαναελέγχει άδεια και μίσθωση στην ΙΔΙΑ συναλλαγή
@@ -791,11 +1098,16 @@ $$;
 --   · χειροκίνητη ή σαρωμένη δαπάνη με ίδιο ΑΦΜ παρόχου (ή, χωρίς ΑΦΜ, ίδιο
 --     όνομα), ίδιο ποσό και ημερομηνία ±3 ημέρες: «linked», δεμένο, χωρίς
 --     δεύτερη εγγραφή
---   · ακύρωση: «cancelled»· αν η δαπάνη γεννήθηκε από αυτό το παραστατικό, σβήνει·
---     αν ήταν του χρήστη (linked), μένει και σημειώνεται
+--   · ακύρωση: «cancelled». Δαπάνη που είχε ήδη καταχωρηθεί ΔΕΝ σβήνει ποτέ
+--     μόνη της: σημειώνεται («cancelled_after_filing») και ο χρήστης αποφασίζει
+--     στα Εισερχόμενα
+--   · ό,τι η ανάγνωση δεν δέχτηκε μπαίνει σε καραντίνα (ΜΑΡΚ και αιτία)
+--   · κάθε σελίδα γράφεται στο αρχείο πρόσβασης με όσα ανακτήθηκαν· σελίδα
+--     που ήρθε αφού κόπηκε η άδεια απορρίπτεται και γράφεται κι αυτή
 --   · ο ΜΑΡΚ προχωρά μόνο όταν τελειώσουν οι σελίδες (p_done)
 create or replace function public.mydata_ingest(
-  p_lease uuid, p_consent uuid, p_docs jsonb, p_cancels jsonb, p_max_mark bigint, p_resume jsonb, p_done boolean)
+  p_lease uuid, p_consent uuid, p_docs jsonb, p_cancels jsonb, p_quarantine jsonb, p_fetched integer,
+  p_max_mark bigint, p_resume jsonb, p_done boolean)
 returns json
 language plpgsql
 security definer
@@ -810,13 +1122,22 @@ declare
   v_added  integer := 0;
   v_status text;
   d        public.mydata_docs%rowtype;
+  k        public.mydata_connections%rowtype;
+  v_n      integer := greatest(coalesce(p_fetched, 0), 0);
 begin
   select * into c from public.mydata_consents where id = p_consent for update;
-  if not found or c.revoked_at is not null
-     or not private.mydata_lease_ok(p_lease, c.accountant_id)
-     or not public.accountant_link_live(c.accountant_id, c.client_id) then
+  if not found then return json_build_object('ok', false, 'added', 0); end if;
+  select * into k from public.mydata_connections where accountant_id = c.accountant_id;
+  if not private.mydata_lease_ok(p_lease, c.accountant_id) then
     return json_build_object('ok', false, 'added', 0);
   end if;
+  if not private.mydata_consent_ok(c.id, p_lease) then
+    -- Η σελίδα ζητήθηκε από την ΑΑΔΕ, αλλά η άδεια κόπηκε στο μεταξύ: δεν
+    -- γράφεται τίποτα, γράφεται μόνο ότι έγινε.
+    perform private.mydata_log(c.client_id, c.accountant_id, k.lease_actor, c.afm, 'page_rejected', v_n, k.lease_kind);
+    return json_build_object('ok', false, 'added', 0);
+  end if;
+  perform private.mydata_log(c.client_id, c.accountant_id, k.lease_actor, c.afm, 'sync_fetch', v_n, k.lease_kind);
 
   for x in select * from jsonb_array_elements(coalesce(p_docs, '[]'::jsonb)) loop
     if exists (select 1 from public.mydata_ignored_providers ip
@@ -863,19 +1184,32 @@ begin
 
   for x in select * from jsonb_array_elements(coalesce(p_cancels, '[]'::jsonb)) loop
     select * into d from public.mydata_docs
-     where client_afm = c.afm and mark = (x->>'invoice_mark')::bigint for update;
+     where client_id = c.client_id and client_afm = c.afm and mark = (x->>'invoice_mark')::bigint for update;
     if not found or d.status = 'cancelled' then continue; end if;
-    if d.status = 'filed' and d.expense_id is not null then
-      delete from public.expenses
-       where id = d.expense_id and user_id = c.client_id and dedup_hash = 'mydata:' || d.mark;
-      if found then
-        perform private.mydata_log(c.client_id, c.accountant_id, null, c.afm, 'cancel_removed_expense', 1, null);
-      end if;
-    end if;
     update public.mydata_docs
-       set status = 'cancelled', cancellation_mark = (x->>'cancellation_mark')::bigint, decided_at = now()
+       set status = 'cancelled', cancellation_mark = (x->>'cancellation_mark')::bigint, decided_at = now(),
+           needs_attention = case when d.status = 'filed' and d.expense_id is not null then 'cancelled_after_filing' end
      where id = d.id;
+    if d.status = 'filed' and d.expense_id is not null then
+      perform private.mydata_log(c.client_id, c.accountant_id, k.lease_actor, c.afm, 'cancel_flagged', 1, k.lease_kind);
+    end if;
   end loop;
+
+  for x in select * from jsonb_array_elements(coalesce(p_quarantine, '[]'::jsonb)) loop
+    if nullif(x->>'mark', '') is not null then
+      insert into public.mydata_quarantine (consent_id, client_id, client_afm, mark, reason)
+      values (c.id, c.client_id, c.afm, (x->>'mark')::bigint, left(coalesce(x->>'reason', 'unknown'), 40))
+      on conflict (consent_id, mark) where mark is not null do update set seen_at = now(), reason = excluded.reason;
+    elsif not exists (select 1 from public.mydata_quarantine q
+                       where q.consent_id = c.id and q.mark is null and q.reason = left(coalesce(x->>'reason', 'unknown'), 40)) then
+      insert into public.mydata_quarantine (consent_id, client_id, client_afm, mark, reason)
+      values (c.id, c.client_id, c.afm, null, left(coalesce(x->>'reason', 'unknown'), 40));
+    end if;
+  end loop;
+  if jsonb_array_length(coalesce(p_quarantine, '[]'::jsonb)) > 0 then
+    perform private.mydata_log(c.client_id, c.accountant_id, k.lease_actor, c.afm, 'invalid_quarantined',
+                               jsonb_array_length(p_quarantine), k.lease_kind);
+  end if;
 
   if p_done then
     update public.mydata_consents set last_mark = greatest(last_mark, coalesce(p_max_mark, 0)), resume = null where id = c.id;
@@ -895,29 +1229,59 @@ set search_path = ''
 as $$
 declare
   c public.mydata_consents%rowtype;
+  k public.mydata_connections%rowtype;
   v_err text := case when p_error is null then null
                      when p_error = any (private.mydata_error_codes()) then p_error else 'unknown' end;
+  v_transient boolean;
 begin
   select * into c from public.mydata_consents where id = p_consent;
   if not found or c.revoked_at is not null or not private.mydata_lease_ok(p_lease, c.accountant_id) then return; end if;
+  select * into k from public.mydata_connections where accountant_id = c.accountant_id;
   if v_err is null then
     update public.mydata_consents
        set status = 'ok', last_error_code = null, failures = 0, last_sync_at = now(),
            last_new = greatest(coalesce(p_added, 0), 0),
            next_retry_at = case when p_more then now() + interval '1 minute' end
      where id = p_consent;
-    perform private.mydata_log(c.client_id, c.accountant_id, null, c.afm, 'sync_fetch', greatest(coalesce(p_added, 0), 0), null);
+    -- Ολόκληρο τρέξιμο χωρίς κανένα άκυρο: ό,τι ήταν σε καραντίνα διαβάστηκε
+    -- αυτή τη φορά (ο ΜΑΡΚ είχε σταματήσει πριν από αυτό).
+    if not coalesce(p_more, false) then delete from public.mydata_quarantine where consent_id = p_consent; end if;
+    perform private.mydata_log(c.client_id, c.accountant_id, k.lease_actor, c.afm, 'sync_done', greatest(coalesce(p_added, 0), 0), k.lease_kind);
   elsif v_err = 'not_linked' then
     return;
   else
+    v_transient := v_err in ('rate','server','empty','network','timeout','unknown');
+    -- ΣΗΜΕΙΟ ΣΥΝΕΧΕΙΑΣ ΠΟΥ ΔΕΝ ΚΟΛΛΑ: σε μη παροδικό σφάλμα, ή μετά από τρεις
+    -- αποτυχίες στη σειρά, το token φεύγει και η επόμενη φορά ξεκινά από τον
+    -- ΜΑΡΚ (ιδιοδύναμο χάρη στο μοναδικό ΑΦΜ και ΜΑΡΚ).
     update public.mydata_consents
        set status = case when v_err = 'forbidden' then 'forbidden' else 'error' end,
            last_error_code = v_err, failures = failures + 1,
-           next_retry_at = case when v_err in ('rate','server','empty','network','timeout','unknown')
-                                then now() + private.mydata_retry_after(failures + 1) end
+           resume = case when v_transient and failures + 1 < 3 then resume end,
+           next_retry_at = case when v_transient then now() + private.mydata_retry_after(failures + 1) end
      where id = p_consent;
-    perform private.mydata_log(c.client_id, c.accountant_id, null, c.afm, 'sync_failed', null, v_err);
+    perform private.mydata_log(c.client_id, c.accountant_id, k.lease_actor, c.afm, 'sync_failed', null, v_err);
   end if;
+end $$;
+
+-- ΚΑΝΕΝΑΣ ΔΕΝ ΜΕΝΕΙ ΓΙΑ ΤΗΝ ΑΛΛΗ ΝΥΧΤΑ: όσοι πελάτες (ή όλοι οι πελάτες ενός
+-- λογιστή) δεν πρόλαβαν μέσα στο όριο χρόνου παίρνουν νέα προσπάθεια σε ένα
+-- λεπτό, που την πιάνει η επανάληψη κάθε 15 λεπτών.
+create or replace function public.mydata_defer(p_accountant uuid, p_consents uuid[])
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare v_n integer;
+begin
+  update public.mydata_consents
+     set next_retry_at = now() + interval '1 minute'
+   where accountant_id = p_accountant and revoked_at is null and status not in ('paused', 'forbidden')
+     and (p_consents is null or id = any (p_consents))
+     and (next_retry_at is null or next_retry_at > now() + interval '1 minute');
+  get diagnostics v_n = row_count;
+  return v_n;
 end $$;
 
 -- Το τέλος του τρεξίματος. Το 401 γυρίζει τη σύνδεση σε «invalid»: καμία νέα
@@ -932,7 +1296,7 @@ declare v_err text := case when p_error is null then null
                            when p_error = any (private.mydata_error_codes()) then p_error else 'unknown' end;
 begin
   update public.mydata_connections
-     set lease_id = null, lease_at = null,
+     set lease_id = null, lease_at = null, lease_kind = null, lease_actor = null,
          last_sync_at = case when v_err is null then now() else last_sync_at end,
          last_sync_new = case when v_err is null then greatest(coalesce(p_added, 0), 0) else last_sync_new end,
          last_error_code = v_err,
@@ -965,33 +1329,37 @@ $$;
 -- ── 11. ΔΙΚΑΙΩΜΑΤΑ ΣΤΙΣ ΣΥΝΑΡΤΗΣΕΙΣ ─────────────────────────────────────────
 revoke all on function private.mydata_afm_ok(text), private.mydata_error_codes(), private.mydata_retry_after(integer),
   private.mydata_vault_drop(), private.mydata_log(uuid, uuid, uuid, text, text, integer, text),
-  private.mydata_revoke(uuid, text, uuid), private.mydata_unlinked(), private.mydata_lease_ok(uuid, uuid)
+  private.mydata_revoke(uuid, text, uuid), private.mydata_lease_ok(uuid, uuid), private.mydata_clean_afm(text),
+  private.mydata_link_state(uuid, uuid), private.mydata_afm_bound(uuid), private.mydata_revoke_dead(uuid, uuid),
+  private.mydata_link_changed(), private.mydata_consent_ok(uuid, uuid)
   from public, anon, authenticated;
 
 revoke all on function
   public.mydata_consent_grant(uuid, integer), public.mydata_consent_revoke(uuid), public.mydata_ignore_provider(text),
   public.mydata_doc_dismiss(uuid), public.mydata_doc_filed(uuid, uuid), public.mydata_key_remove(),
-  public.mydata_clients_status(), public.mydata_my_consent()
+  public.mydata_clients_status(), public.mydata_my_consent(), public.mydata_confirm_afm(uuid, text),
+  public.mydata_cancel_ack(uuid, boolean)
   from public, anon;
 grant execute on function
   public.mydata_consent_grant(uuid, integer), public.mydata_consent_revoke(uuid), public.mydata_ignore_provider(text),
   public.mydata_doc_dismiss(uuid), public.mydata_doc_filed(uuid, uuid), public.mydata_key_remove(),
-  public.mydata_clients_status(), public.mydata_my_consent()
+  public.mydata_clients_status(), public.mydata_my_consent(), public.mydata_confirm_afm(uuid, text),
+  public.mydata_cancel_ack(uuid, boolean)
   to authenticated;
 
 revoke all on function
-  public.mydata_key_store(uuid, text, text), public.mydata_key_read(uuid), public.mydata_sync_begin(uuid, text),
+  public.mydata_key_store(uuid, text, text), public.mydata_key_read(uuid), public.mydata_sync_begin(uuid, text, uuid),
   public.mydata_sync_targets(uuid, uuid, text), public.mydata_consent_live(uuid, uuid),
-  public.mydata_ingest(uuid, uuid, jsonb, jsonb, bigint, jsonb, boolean),
+  public.mydata_ingest(uuid, uuid, jsonb, jsonb, jsonb, integer, bigint, jsonb, boolean),
   public.mydata_client_done(uuid, uuid, text, integer, boolean), public.mydata_sync_end(uuid, uuid, text, integer),
-  public.mydata_due_accountants(text)
+  public.mydata_due_accountants(text), public.mydata_defer(uuid, uuid[])
   from public, anon, authenticated;
 grant execute on function
-  public.mydata_key_store(uuid, text, text), public.mydata_key_read(uuid), public.mydata_sync_begin(uuid, text),
+  public.mydata_key_store(uuid, text, text), public.mydata_key_read(uuid), public.mydata_sync_begin(uuid, text, uuid),
   public.mydata_sync_targets(uuid, uuid, text), public.mydata_consent_live(uuid, uuid),
-  public.mydata_ingest(uuid, uuid, jsonb, jsonb, bigint, jsonb, boolean),
+  public.mydata_ingest(uuid, uuid, jsonb, jsonb, jsonb, integer, bigint, jsonb, boolean),
   public.mydata_client_done(uuid, uuid, text, integer, boolean), public.mydata_sync_end(uuid, uuid, text, integer),
-  public.mydata_due_accountants(text)
+  public.mydata_due_accountants(text), public.mydata_defer(uuid, uuid[])
   to service_role;
 
 -- ── 12. ΤΟ ΟΡΙΟ ΤΩΝ ΔΟΚΙΜΩΝ ΣΥΝΔΕΣΗΣ ─────────────────────────────────────────
@@ -1030,6 +1398,10 @@ security definer
 set search_path = ''
 as $$
 begin
+  -- Η ίδια σάρωση με τις σκανδάλες, μία φορά τη μέρα: πιάνει ό,τι αλλάζει με
+  -- τον χρόνο και όχι με εγγραφή (σύνδεσμος που έληξε, νέα έκδοση όρων) ή
+  -- λογιστές χωρίς κλειδί, που δεν συγχρονίζουν ποτέ.
+  perform private.mydata_revoke_dead(null, null);
   delete from public.mydata_access_log where at < now() - interval '24 months';
   delete from public.mydata_docs
    where status <> 'pending' and coalesce(decided_at, fetched_at) < now() - interval '400 days';

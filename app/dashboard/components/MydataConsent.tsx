@@ -29,6 +29,10 @@ const GRANT_FAIL: Record<string, string> = {
   no_afm: 'Συμπλήρωσε πρώτα το ΑΦΜ σου στα «Στοιχεία τιμολόγησης».',
   not_linked: 'Ο λογιστής δεν είναι πια συνδεδεμένος. Στείλε του ξανά τον σύνδεσμο.',
   bad_period: 'Διάλεξε περίοδο ξανά.',
+  // Το ΑΦΜ το επιβεβαιώνει ο λογιστής: κανείς δεν παίρνει τα παραστατικά άλλου.
+  afm_unconfirmed: 'Ο λογιστής σου επιβεβαιώνει πρώτα το ΑΦΜ σου από τον δικό του χώρο. Ζήτησέ του το.',
+  afm_mismatch: 'Το ΑΦΜ στα «Στοιχεία τιμολόγησης» δεν είναι αυτό που επιβεβαίωσε ο λογιστής σου. Έλεγξέ το μαζί του.',
+  afm_taken: 'Αυτό το ΑΦΜ έχει ήδη άδεια myDATA από άλλον λογαριασμό.',
 };
 
 export default function MydataConsent({ userId }: { userId: string }) {
@@ -86,6 +90,7 @@ export default function MydataConsent({ userId }: { userId: string }) {
 
   // Η ΚΑΤΑΣΤΑΣΗ ΣΕ ΜΙΑ ΠΡΟΤΑΣΗ, ΜΕ ΤΗ ΛΥΣΗ ΟΤΑΝ ΚΑΤΙ ΔΕΝ ΠΗΓΕ ΚΑΛΑ.
   const state = !consent ? ''
+    : consent.status === 'paused' ? 'Ο σύνδεσμος με τον λογιστή χρειάζεται ανανέωση. Ως τότε δεν έρχονται νέα παραστατικά και τίποτα δεν σβήνει.'
     : consent.status === 'forbidden' ? 'Η ΑΑΔΕ αρνείται την πρόσβαση. Όρισε ξανά τον λογιστή σου στο myAADE.'
     : consent.status === 'error' && consent.nextRetryAt ? `Η ΑΑΔΕ δεν απαντά. Νέα προσπάθεια στις ${athensClock(consent.nextRetryAt)}.`
     : consent.status === 'error' && consent.error === 'no_afm' ? GRANT_FAIL.no_afm
@@ -124,7 +129,9 @@ export default function MydataConsent({ userId }: { userId: string }) {
       {note && <p aria-live="polite" style={{ ...TT.bodySm, margin: `${T.sp.sm}px 0 0`, color: 'var(--text-secondary)' }}>{note}</p>}
       {log.length > 0 && (
         <details style={{ marginTop: T.sp.md }}>
-          <summary style={{ ...TT.bodySm, cursor: 'pointer', color: 'var(--text-secondary)', padding: '12px 0', width: 'fit-content' }}>Ιστορικό πρόσβασης</summary>
+          {/* Στόχος αφής 44, ο ίδιος σταθερός πάτος με την `.po-disclosure` (με μόνο
+              γέμισμα έβγαινε 43,x). Το `list-item` κρατά το εγγενές βέλος. */}
+          <summary style={{ ...TT.bodySm, cursor: 'pointer', color: 'var(--text-secondary)', display: 'list-item', minHeight: 44, lineHeight: '44px', width: 'fit-content' }}>Ιστορικό πρόσβασης</summary>
           <ul style={{ listStyle: 'none', padding: 0, margin: `${T.sp.xs}px 0 0`, display: 'grid', gap: 4 }}>
             {log.map(l => (
               <li key={`${l.at}${l.action}`} style={{ ...TT.bodySm, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>

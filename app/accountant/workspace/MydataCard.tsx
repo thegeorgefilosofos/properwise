@@ -67,6 +67,11 @@ export default function MydataCard({ db, userId }: { db: SupabaseClient; userId:
   const [find, setFind] = useState('');
   const [sort, setSort] = useState<SortKey>('status');
   const [now, setNow] = useState(() => new Date());
+  // «Επιβεβαίωση ΑΦΜ»: ο λογιστής το γράφει ο ίδιος, χωρίς προσυμπλήρωση. Η άδεια
+  // του πελάτη δίνεται μόνο αν συμφωνεί με το προφίλ του.
+  const [afmFor, setAfmFor] = useState<string | null>(null);
+  const [afmVal, setAfmVal] = useState('');
+  const [afmSay, setAfmSay] = useState('');
   const autoTried = useRef(false);
   const hintId = useId();
 
@@ -135,6 +140,18 @@ export default function MydataCard({ db, userId }: { db: SupabaseClient; userId:
     setBusy(null);
     if (!r.ok) { notifyError('Το κλειδί δεν αφαιρέθηκε'); return; }
     setSay('');
+    await load();
+  };
+
+  const saveAfm = async (ownerId: string, name: string) => {
+    if (busy) return;
+    const r = await mydata.confirmAfm(db, ownerId, afmVal);
+    if (!r.ok) {
+      setAfmSay(r.reason === 'bad_afm' ? 'Το ΑΦΜ δεν είναι σωστό. Έλεγξε τα 9 ψηφία.' : 'Δεν αποθηκεύτηκε. Ξαναδοκίμασε.');
+      return;
+    }
+    setAfmFor(null); setAfmVal(''); setAfmSay('');
+    setSay(`Το ΑΦΜ του πελάτη ${name} επιβεβαιώθηκε. Μπορεί τώρα να πατήσει «Επιτρέπω».`);
     await load();
   };
 
@@ -252,6 +269,23 @@ export default function MydataCard({ db, userId }: { db: SupabaseClient; userId:
                       <td>
                         <span style={{ color: TONE_COLOR[st.tone], fontWeight: st.tone === 'warn' ? 600 : 400 }}>{st.label}</span>
                         {st.fix && !(allDown && st.tone === 'wait') && <span style={{ ...TT.bodySm, display: 'block', color: 'var(--text-tertiary)' }}>{st.fix}</span>}
+                        {!r.consent && afmFor !== r.ownerId && (
+                          <Btn variant="ghost" onClick={() => { setAfmFor(r.ownerId); setAfmVal(''); setAfmSay(''); }}>
+                            {r.afmConfirmed ? 'Αλλαγή ΑΦΜ' : 'Επιβεβαίωση ΑΦΜ'}
+                          </Btn>
+                        )}
+                        {!r.consent && afmFor === r.ownerId && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'end', gap: 8, marginTop: 6 }}>
+                            <div style={{ maxWidth: 180 }}>
+                              <TextInput label={`ΑΦΜ του πελάτη ${r.name}`} value={afmVal} inputMode="numeric" mono
+                                onChange={v => { setAfmVal(v); setAfmSay(''); }}
+                                onKeyDown={e => { if (e.key === 'Enter') void saveAfm(r.ownerId, r.name); if (e.key === 'Escape') setAfmFor(null); }} />
+                            </div>
+                            <Btn variant="primary" onClick={() => void saveAfm(r.ownerId, r.name)} disabled={!afmVal.trim()}>Αποθήκευση</Btn>
+                            <Btn variant="ghost" onClick={() => setAfmFor(null)}>Άκυρο</Btn>
+                            {afmSay && <p role="alert" style={{ ...TT.bodySm, margin: 0, flexBasis: '100%', color: 'var(--warning-on-container)' }}>{afmSay}</p>}
+                          </div>
+                        )}
                       </td>
                       <td className="md-when-col md-when">{r.lastSyncAt ? athensStamp(r.lastSyncAt) : ''}</td>
                       <td className="md-num md-new-col">{r.consent && r.lastSyncAt ? r.lastNew.toLocaleString('el-GR') : ''}</td>

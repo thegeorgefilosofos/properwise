@@ -18,11 +18,19 @@
 //     τελειώσουν ΟΛΕΣ οι σελίδες· ως τότε κρατιέται το σημείο συνέχισης
 //     (nextPartitionKey/nextRowKey), ώστε ένα κόψιμο να συνεχίζει από εκεί.
 //   · ΟΡΙΟ ΧΡΟΝΟΥ: οι συναρτήσεις άκρου κόβονται. Ο κινητήρας σταματά πριν από
-//     το όριο και ό,τι έμεινε το παίρνει η επόμενη εκτέλεση.
+//     το όριο και όσοι πελάτες δεν πρόλαβαν παίρνουν νέα προσπάθεια σε ένα
+//     λεπτό (`defer`), όχι την επόμενη νύχτα.
+//   · ΤΙΠΟΤΑ ΔΕΝ ΧΑΝΕΤΑΙ ΣΙΩΠΗΛΑ: παραστατικό που η ανάγνωση δεν δέχτηκε μπαίνει
+//     σε καραντίνα, ο ΜΑΡΚ σταματά ΠΡΙΝ από αυτό (ή δεν προχωρά καθόλου, όταν
+//     ούτε ο ΜΑΡΚ του διαβάζεται), ο πελάτης φαίνεται «Θέλει έλεγχο» και
+//     φεύγει ειδοποίηση σε εμάς μόνο με κωδικό.
+//   · ΙΔΙΟ ΕΡΩΤΗΜΑ ΣΕ ΟΛΗ ΤΗ ΣΕΛΙΔΟΠΟΙΗΣΗ: το `dateTo` παγώνει μέσα στο σημείο
+//     συνέχισης, ώστε μια συνέχιση την άλλη μέρα να στέλνει το token με το
+//     ερώτημα που το γέννησε.
 // ═══════════════════════════════════════════════════════════════════════════
 import {
   parseRequestedDoc, toInboxDoc, classifyHttp, retryDelayMs, requestDocsUrl, aadeHeaders,
-  athensIso, maxMark, safeErrorCode, type ContinuationToken, type ErrorCode, type ParseError,
+  athensIso, maxMark, safeErrorCode, type ContinuationToken, type ErrorCode, type ParseError, type InvalidDoc,
 } from './mydata.ts'
 
 export type SyncKind = 'manual' | 'auto' | 'nightly' | 'retry'
@@ -32,7 +40,23 @@ export interface Target {
   afm: string
   windowFrom: string
   lastMark: string
-  resume: { partitionKey: string; rowKey: string; fromMark: string; maxMark: string } | null
+  resume: Resume | null
+}
+
+/**
+ * Το σημείο συνέχισης. `dateTo` παγώνει το ερώτημα· `capMark` είναι ο
+ * μεγαλύτερος ΜΑΡΚ που επιτρέπεται να γραφτεί ως «τελευταίος» (κάτω από το
+ * πρώτο παραστατικό σε καραντίνα) και `block` σημαίνει ότι ο ΜΑΡΚ δεν προχωρά
+ * καθόλου (άκυρο χωρίς αναγνώσιμο ΜΑΡΚ).
+ */
+export interface Resume {
+  partitionKey: string
+  rowKey: string
+  fromMark: string
+  maxMark: string
+  dateTo?: string
+  capMark?: string | null
+  block?: boolean
 }
 
 export interface IngestDoc {
@@ -57,14 +81,18 @@ export interface IngestInput {
   consentId: string
   docs: IngestDoc[]
   cancels: { invoice_mark: string; cancellation_mark: string }[]
-  maxMark: string
+  quarantine: InvalidDoc[]
+  /** Πόσα ήρθαν από την ΑΑΔΕ σε αυτή τη σελίδα (για το αρχείο πρόσβασης). */
+  fetched: number
+  /** null: ο ΜΑΡΚ δεν προχωρά. */
+  maxMark: string | null
   resume: Target['resume']
   done: boolean
 }
 
 /** Η βάση, όπως τη χρειάζεται ο κινητήρας. Κάθε μέθοδος ελέγχει μόνη της ό,τι γράφει. */
 export interface Store {
-  begin(accountantId: string, kind: SyncKind): Promise<{ ok: true; lease: string } | { ok: false; reason: string; retryAt?: string | null }>
+  begin(accountantId: string, kind: SyncKind, actor: string | null): Promise<{ ok: true; lease: string } | { ok: false; reason: string; retryAt?: string | null }>
   credentials(accountantId: string): Promise<{ aadeUserId: string; key: string } | null>
   targets(accountantId: string, lease: string, kind: SyncKind): Promise<Target[]>
   consentLive(consentId: string, lease: string): Promise<boolean>
@@ -72,6 +100,8 @@ export interface Store {
   /** Η βάση γράφει κατάσταση και, για παροδικό σφάλμα, πότε ξαναδοκιμάζεται (ίδιος κανόνας με το `nextRetryAt`). */
   clientDone(lease: string, consentId: string, error: ErrorCode | null, added: number, more: boolean): Promise<void>
   end(accountantId: string, lease: string, error: ErrorCode | null, added: number): Promise<void>
+  /** Νέα προσπάθεια σε ένα λεπτό για όσους δεν πρόλαβαν (null: όλοι του λογιστή). */
+  defer(accountantId: string, consentIds: string[] | null): Promise<void>
 }
 
 export interface EngineDeps {
@@ -83,7 +113,7 @@ export interface EngineDeps {
   /** Πότε πρέπει να έχει σταματήσει το τρέξιμο (χιλιοστά epoch). */
   deadline: number
   /** Σφάλμα σχήματος: η ΑΑΔΕ άλλαξε κάτι. Ποτέ με σώμα απάντησης ή ΑΦΜ. */
-  alert?: (code: ParseError, aadeCodes: string[]) => void
+  alert?: (code: ParseError | 'invalid_invoice', aadeCodes: string[]) => void
   rand?: () => number
 }
 
@@ -153,9 +183,9 @@ async function fetchPage(d: EngineDeps, url: string, headers: Record<string, str
  * Ενα τρέξιμο για έναν λογιστή. Επιστρέφει πάντα αποτέλεσμα· δεν πετά.
  * Κανένα μήνυμα εδώ δεν περιέχει κλειδί, ΑΦΜ ή σώμα απάντησης.
  */
-export async function runAccountant(d: EngineDeps, accountantId: string, kind: SyncKind): Promise<RunResult> {
+export async function runAccountant(d: EngineDeps, accountantId: string, kind: SyncKind, actor: string | null = null): Promise<RunResult> {
   const out: RunResult = { ok: false, clients: 0, added: 0, failed: 0, partial: false }
-  const begun = await d.store.begin(accountantId, kind)
+  const begun = await d.store.begin(accountantId, kind, actor)
   if (!begun.ok) return { ...out, reason: begun.reason, retryAt: begun.retryAt ?? null }
   const lease = begun.lease
   let connError: ErrorCode | null = null
@@ -166,14 +196,24 @@ export async function runAccountant(d: EngineDeps, accountantId: string, kind: S
     const targets = await d.store.targets(accountantId, lease, kind)
     let lastRequest = 0
 
-    for (const t of targets) {
-      if (Date.now() > d.deadline - RESERVE_MS) { out.partial = true; break }
+    for (let ti = 0; ti < targets.length; ti++) {
+      const t = targets[ti]
+      if (Date.now() > d.deadline - RESERVE_MS) {
+        out.partial = true
+        await d.store.defer(accountantId, targets.slice(ti).map(x => x.consentId))
+        break
+      }
       out.clients++
       let added = 0
       let error: ErrorCode | null = null
       let more = false
       const fromMark = t.resume?.fromMark ?? t.lastMark
       let seen = t.resume?.maxMark ?? t.lastMark
+      // Το ερώτημα παγώνει για όλη τη σελιδοποίηση, ακόμη και μετά από διακοπή.
+      const dateTo = t.resume?.dateTo ?? athensIso(d.now())
+      let capMark: string | null = t.resume?.capMark ?? null
+      let block = t.resume?.block === true
+      let quarantined = false
       let next: ContinuationToken | null = t.resume ? { partitionKey: t.resume.partitionKey, rowKey: t.resume.rowKey } : null
       try {
         for (let page = 0; ; page++) {
@@ -184,7 +224,7 @@ export async function runAccountant(d: EngineDeps, accountantId: string, kind: S
           if (wait > 0) await d.sleep(wait)
           lastRequest = Date.now()
           const url = requestDocsUrl(d.base, {
-            mark: fromMark, entityVatNumber: t.afm, dateFrom: t.windowFrom, dateTo: athensIso(d.now()), next,
+            mark: fromMark, entityVatNumber: t.afm, dateFrom: t.windowFrom, dateTo, next,
           })
           const got = await fetchPage(d, url, headers)
           if (got.kind === 'fail') {
@@ -211,17 +251,40 @@ export async function runAccountant(d: EngineDeps, accountantId: string, kind: S
           }
           // Ο ΜΑΡΚ μετρά ΚΑΙ όσα δεν έγιναν δαπάνη: αλλιώς θα ζητιούνταν ξανά κάθε φορά.
           seen = maxMark([...parsed.invoices.map(i => i.mark), ...parsed.cancellations.map(c => c.cancellationMark)], seen)
+          // ΚΑΡΑΝΤΙΝΑ: ο ΜΑΡΚ σταματά πριν από το πρώτο άκυρο, ώστε να ξαναζητηθεί.
+          if (parsed.quarantine.length) {
+            quarantined = true
+            for (const q of parsed.quarantine) {
+              if (q.mark === null) { block = true; continue }
+              const below = (BigInt(q.mark) - BigInt(1)).toString()
+              if (capMark === null || BigInt(below) < BigInt(capMark)) capMark = below
+            }
+          }
+          const allowed = block ? null : (capMark !== null && BigInt(capMark) < BigInt(seen) ? capMark : seen)
           const done = parsed.next === null
           const r = await d.store.ingest({
             lease, consentId: t.consentId, docs,
             cancels: parsed.cancellations.map(c => ({ invoice_mark: c.invoiceMark, cancellation_mark: c.cancellationMark })),
-            maxMark: seen,
-            resume: done ? null : { partitionKey: parsed.next!.partitionKey, rowKey: parsed.next!.rowKey, fromMark, maxMark: seen },
+            quarantine: parsed.quarantine,
+            fetched: parsed.invoices.length + parsed.cancellations.length + parsed.quarantine.length,
+            maxMark: allowed,
+            resume: done ? null : {
+              partitionKey: parsed.next!.partitionKey, rowKey: parsed.next!.rowKey, fromMark, maxMark: seen,
+              dateTo, capMark, block,
+            },
             done,
           })
           if (!r.ok) { error = 'not_linked'; break }
           added += r.added
-          if (done) break
+          if (done) {
+            // Τα άκυρα δεν περνούν ως «OK»: ο πελάτης θέλει έλεγχο και εμείς
+            // μαθαίνουμε ότι η ΑΑΔΕ έστειλε κάτι που δεν διαβάζουμε.
+            if (quarantined || block || capMark !== null) {
+              error = 'quarantine'
+              d.alert?.('invalid_invoice', [])
+            }
+            break
+          }
           next = parsed.next
         }
       } catch (e) {

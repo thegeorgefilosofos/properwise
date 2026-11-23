@@ -184,7 +184,7 @@ const respond: Responder = (call) => {
   if (call.table === 'inbound_messages') return { data: inboundRows, error: null };
   const firmRows = firmRespond(which, call.table);
   if (firmRows) return firmRows;
-  const mydataRows = mydataRespond(which, call.table);
+  const mydataRows = mydataRespond(which, call.table, call.filters);
   if (mydataRows) return { data: call.single && Array.isArray(mydataRows.data) ? (mydataRows.data[0] ?? null) : mydataRows.data, error: null };
   const rows = bench.rows[call.table];
   if (!rows) return { data: call.single ? null : [], error: null };

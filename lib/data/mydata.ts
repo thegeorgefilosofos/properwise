@@ -54,6 +54,16 @@ export function sync(db: Db, kind: 'manual' | 'auto'): Promise<FnAnswer> {
   return invoke(db, { action: 'sync', kind });
 }
 
+/**
+ * «Επιβεβαίωση ΑΦΜ»: ο λογιστής γράφει το ΑΦΜ του πελάτη όπως το ξέρει. Η βάση
+ * δεν λέει αν συμφωνεί με το προφίλ του πελάτη· η άδεια το ελέγχει.
+ */
+export async function confirmAfm(db: Db, ownerId: string, afm: string): Promise<{ ok: boolean; reason?: string; error: DbError | null }> {
+  const { data, error } = await db.rpc('mydata_confirm_afm', { p_owner: ownerId, p_afm: afm.trim() });
+  const r = data as { ok?: boolean; reason?: string } | null;
+  return { ok: !error && r?.ok === true, reason: r?.reason, error: error as DbError | null };
+}
+
 /** «Αφαίρεση κλειδιού». Το μυστικό σβήνει και από το Vault. */
 export async function removeKey(db: Db): Promise<{ ok: boolean; error: DbError | null }> {
   const { data, error } = await db.rpc('mydata_key_remove');
@@ -66,7 +76,7 @@ export interface MyConsent {
   accountantId: string;
   windowFrom: string;
   grantedAt: string;
-  status: 'pending' | 'ok' | 'forbidden' | 'error';
+  status: 'pending' | 'ok' | 'forbidden' | 'error' | 'paused';
   lastSyncAt: string | null;
   lastNew: number;
   error: string | null;
@@ -165,6 +175,22 @@ export async function fileDoc(db: Db, d: PendingDoc, scope: { propertyId: string
 export async function dismissDoc(db: Db, id: string): Promise<{ error: DbError | null }> {
   const { error } = await db.rpc('mydata_doc_dismiss', { p_doc: id });
   return { error: error as DbError | null };
+}
+
+/**
+ * Ακυρώσεις από τον εκδότη για παραστατικά που ο χρήστης είχε ήδη καταχωρήσει.
+ * Η δαπάνη δεν σβήστηκε: περιμένει την απόφασή του.
+ */
+export async function attentionDocs(db: Db, clientId: string): Promise<{ rows: PendingDoc[]; error: DbError | null }> {
+  const { data, error } = await db.from('mydata_docs').select(DOC_COLUMNS)
+    .eq('client_id', clientId).eq('needs_attention', 'cancelled_after_filing').order('issue_date', { ascending: false }).limit(20);
+  return { rows: (data as PendingDoc[] | null) ?? [], error: error as DbError | null };
+}
+
+/** «Σβήσε τη δαπάνη» (remove) ή «Κράτησέ τη». Σβήνει μόνο τη δαπάνη που γέννησε αυτό το παραστατικό. */
+export async function cancelAck(db: Db, docId: string, remove: boolean): Promise<{ ok: boolean; error: DbError | null }> {
+  const { data, error } = await db.rpc('mydata_cancel_ack', { p_doc: docId, p_remove: remove });
+  return { ok: !error && (data as { ok?: boolean } | null)?.ok === true, error: error as DbError | null };
 }
 
 export async function ignoreProvider(db: Db, counterpartAfm: string): Promise<{ dismissed: number; error: DbError | null }> {

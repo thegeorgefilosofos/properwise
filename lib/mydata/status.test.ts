@@ -5,7 +5,7 @@
 // αναζήτηση για 200 πελάτες, όριο «Συγχρονισμός τώρα», έλεγχος μορφής κλειδιού.
 import {
   athensStamp, syncedLine, clientSyncedLine, newCount, centsLabel, rowState, sortRows, filterRows,
-  cardPhase, progressLine, attention, aadeDownLine, manualWaitMinutes, keyShape, runReason, connectReason, type ClientRow, type Connection,
+  cardPhase, progressLine, attention, aadeDownLine, manualWaitMinutes, keyShape, runReason, connectReason, LOG_ACTION, type ClientRow, type Connection,
 } from './status';
 
 let pass = 0, fail = 0;
@@ -41,6 +41,14 @@ ok('χωρίς ΑΦΜ: λύση', /ΑΦΜ/.test(rowState(row({ status: 'error', 
 ok('σχήμα: δεν φορτώνει τον λογιστή', rowState(row({ status: 'error', error: 'parse' })).tone === 'wait');
 ok('άγνωστο: λέει τι να πατήσει', rowState(row({ status: 'error', error: 'unknown' })).fix === 'Πάτα «Συγχρονισμός τώρα».');
 ok('εντάξει: χωρίς λύση', rowState(row({})).fix === '');
+// Αξιολόγηση 23/11/2026: οι νέες καταστάσεις έχουν όνομα και λύση.
+const sQ = rowState(row({ status: 'error', error: 'quarantine', quarantined: 2 }));
+ok('H1: καραντίνα: «Θέλει έλεγχο», όχι «Εντάξει»', sQ.label === 'Θέλει έλεγχο' && sQ.tone === 'warn');
+ok('H1: καραντίνα χωρίς σφάλμα στη γραμμή φαίνεται κι αυτή', rowState(row({ status: 'ok', quarantined: 1 })).label === 'Θέλει έλεγχο');
+const sP = rowState(row({ status: 'paused' }));
+ok('H2: παύση: «Σε παύση» με λύση ανανέωσης', sP.label === 'Σε παύση' && /ανανέωση/.test(sP.fix));
+ok('B1: χωρίς επιβεβαιωμένο ΑΦΜ: ο λογιστής ξέρει τι κάνει πρώτα', /ΑΦΜ/.test(rowState(row({ consent: false, status: null, afmConfirmed: false })).fix));
+ok('M4: κάθε νέα ενέργεια του αρχείου έχει λέξεις', ['consent_paused', 'afm_confirmed', 'sync_done', 'page_rejected', 'invalid_quarantined', 'cancel_flagged'].every(a => !!LOG_ACTION[a]));
 for (const e of ['forbidden', 'server', 'rate', 'no_afm', 'parse', 'unknown', 'network']) {
   const st = rowState(row({ status: e === 'forbidden' ? 'forbidden' : 'error', error: e }));
   ok(`κάθε σφάλμα έχει λύση (${e})`, st.fix.length > 0 && st.fix.endsWith('.'));

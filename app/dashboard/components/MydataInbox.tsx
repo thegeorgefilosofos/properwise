@@ -13,6 +13,10 @@
 // ΟΧΙ ΟΛΑ ΑΦΟΡΟΥΝ ΤΟ ΑΚΙΝΗΤΟ. Ενα σούπερ μάρκετ θα ερχόταν κι αυτό: γι' αυτό
 // τίποτα δεν καταχωρείται μόνο του (σε αυτή τη φάση) και υπάρχουν το «Δεν
 // είναι δαπάνη» και το «Πάντα αγνόησε αυτόν τον πάροχο».
+//
+// ΑΚΥΡΩΣΗ ΑΦΟΥ ΚΑΤΑΧΩΡΗΘΗΚΕ. Η δαπάνη δεν σβήνει μόνη της (μπορεί να έχει
+// πάρει ακίνητο, σημειώσεις, πληρωμή): εμφανίζεται εδώ και ο ιδιοκτήτης
+// διαλέγει «Σβήσε τη δαπάνη» ή «Κράτησέ τη».
 // ═══════════════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -42,6 +46,7 @@ const who = (d: mydata.PendingDoc): string => d.counterpart_name || `ΑΦΜ ${d.
 export default function MydataInbox({ propertyId, userId, properties = [], onFiled }: Props) {
   const supabase = useMemo(() => createClient(), []);
   const [rows, setRows] = useState<mydata.PendingDoc[]>([]);
+  const [alerts, setAlerts] = useState<mydata.PendingDoc[]>([]);
   const [open, setOpen] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, { slug: string; propertyId: string }>>({});
   const [busy, setBusy] = useState<string | null>(null);
@@ -50,6 +55,7 @@ export default function MydataInbox({ propertyId, userId, properties = [], onFil
   useEffect(() => {
     let live = true;
     mydata.pendingDocs(supabase, userId).then(({ rows: found }) => { if (live) setRows(found); });
+    mydata.attentionDocs(supabase, userId).then(({ rows: found }) => { if (live) setAlerts(found); });
     // Ο νυχτερινός συγχρονισμός ή το «Συγχρονισμός τώρα» του λογιστή φέρνει νέα: τα δείχνει χωρίς ανανέωση.
     const ch = supabase.channel(`mydata_inbox_${userId}_${Math.random().toString(36).slice(2, 8)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mydata_docs', filter: `client_id=eq.${userId}` }, () => { if (live) setNonce(n => n + 1); })
@@ -57,7 +63,7 @@ export default function MydataInbox({ propertyId, userId, properties = [], onFil
     return () => { live = false; void supabase.removeChannel(ch); };
   }, [supabase, userId, nonce]);
 
-  if (!rows.length) return null;
+  if (!rows.length && !alerts.length) return null;
 
   const many = properties.length > 1;
   const draftOf = (id: string) => drafts[id] ?? { slug: '', propertyId };
@@ -96,9 +102,34 @@ export default function MydataInbox({ propertyId, userId, properties = [], onFil
     notify(`Δεν θα έρχεται τίποτα από ${who(d)}`);
   };
 
+  const ack = async (d: mydata.PendingDoc, remove: boolean) => {
+    setBusy(d.id);
+    const r = await mydata.cancelAck(supabase, d.id, remove);
+    setBusy(null);
+    if (!r.ok) { notifyError('Η απόφαση δεν γράφτηκε'); return; }
+    setAlerts(list => list.filter(x => x.id !== d.id));
+    if (remove) { notify('Η δαπάνη σβήστηκε'); onFiled?.(); }
+  };
+
   return (
     <Card style={{ marginBottom: T.sp.lg }}>
       <SecHdr label="Από το myDATA" sub="Για έλεγχο. Καταχωρείς ό,τι αφορά το ακίνητο." />
+      {alerts.length > 0 && (
+        <div role="region" aria-label="Ακυρώσεις από τον εκδότη" style={{ display: 'grid', gap: 10, marginBottom: rows.length ? T.sp.md : 0 }}>
+          {alerts.map(d => (
+            <div key={d.id} style={{ display: 'grid', gap: 8, padding: '12px 14px', minWidth: 0, borderRadius: T.radius.card, background: 'var(--warning-soft)', border: '1px solid var(--warning-border)' }}>
+              <span style={{ ...TT.body, fontWeight: 600, color: 'var(--warning-on-container)' }}>Ακυρώθηκε από τον εκδότη</span>
+              <span style={{ ...TT.bodySm, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+                {who(d)} · {d.title}{"\u00a0"}· {fd(d.issue_date)} · {centsLabel(Number(d.gross_cents), d.is_credit)}. Την είχες καταχωρήσει ως δαπάνη.
+              </span>
+              <div className="act-row" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <Btn variant="primary" onClick={() => void ack(d, true)} disabled={busy === d.id}>Σβήσε τη δαπάνη</Btn>
+                <Btn variant="secondary" onClick={() => void ack(d, false)} disabled={busy === d.id}>Κράτησέ τη</Btn>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       <div style={{ display: 'grid', gap: 10 }}>
         {rows.map(d => {
           const amount = centsLabel(Number(d.gross_cents), d.is_credit);

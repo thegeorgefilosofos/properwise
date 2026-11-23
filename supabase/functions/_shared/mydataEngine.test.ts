@@ -8,7 +8,7 @@
 // scripts/db/mydata-probe.sql. Ο διακομιστής είναι ο scripts/mydata-fake/server.mjs.
 import { startFakeAade, FAKE_USER, FAKE_KEY } from '../../../scripts/mydata-fake/server.mjs'
 import { runAccountant, nextRetryAt, TRANSIENT, type Store, type Target, type SyncKind, type IngestInput } from './mydataEngine.ts'
-import type { ErrorCode } from './mydata.ts'
+import type { ErrorCode, InvalidDoc } from './mydata.ts'
 
 let pass = 0, fail = 0
 const ok = (name: string, cond: boolean) => { if (cond) pass++; else { fail++; console.error('✗ ' + name) } }
@@ -22,9 +22,14 @@ function memoryStore(consents: Consent[], opts: { key?: string; killAfterPages?:
   let lease: string | null = null
   const pagesSeen: Record<string, number> = {}
   const log: string[] = []
+  const quarantine: InvalidDoc[] = []
+  const ingests: IngestInput[] = []
+  const deferred: (string[] | null)[] = []
+  const actors: (string | null)[] = []
   let ended: { error: ErrorCode | null; added: number } | null = null
   const store: Store = {
-    async begin(_a: string, _k: SyncKind) {
+    async begin(_a: string, _k: SyncKind, actor: string | null) {
+      actors.push(actor)
       if (lease) return { ok: false, reason: 'busy' }
       lease = `L${Math.random()}`
       return { ok: true, lease }
@@ -44,6 +49,8 @@ function memoryStore(consents: Consent[], opts: { key?: string; killAfterPages?:
       const c = consents.find(x => x.id === i.consentId)!
       if (i.lease !== lease || !c.live) return { ok: false, added: 0 }
       pagesSeen[c.id] = (pagesSeen[c.id] ?? 0) + 1
+      ingests.push(i)
+      quarantine.push(...(i.quarantine ?? []))
       let added = 0
       for (const d of i.docs) {
         const k = `${c.afm}:${d.mark}`
@@ -52,7 +59,8 @@ function memoryStore(consents: Consent[], opts: { key?: string; killAfterPages?:
         if (!d.cancelled) added++
       }
       for (const x of i.cancels) { const d = docs.get(`${c.afm}:${x.invoice_mark}`); if (d) d.status = 'cancelled' }
-      if (i.done) { c.lastMark = i.maxMark; c.resume = null } else c.resume = i.resume
+      // Ιδιο με τη βάση: greatest(last_mark, p_max_mark). Το null δεν προχωρά.
+      if (i.done) { if (i.maxMark !== null && BigInt(i.maxMark) > BigInt(c.lastMark)) c.lastMark = i.maxMark; c.resume = null } else c.resume = i.resume
       return { ok: true, added }
     },
     async clientDone(l, id, error, added, more) {
@@ -62,8 +70,9 @@ function memoryStore(consents: Consent[], opts: { key?: string; killAfterPages?:
       log.push(`${id}:${error ?? 'ok'}`)
     },
     async end(_a, l, error, added) { if (l === lease) { lease = null; ended = { error, added } } },
+    async defer(_a, ids) { deferred.push(ids) },
   }
-  return { store, docs, log, get ended() { return ended }, holdLease: () => { lease = 'other' } }
+  return { store, docs, log, quarantine, ingests, deferred, actors, get ended() { return ended }, holdLease: () => { lease = 'other' } }
 }
 
 const consent = (id: string, afm: string): Consent => ({ id, afm, live: true, lastMark: '0', resume: null, status: 'new', error: null, added: 0, more: false })
@@ -243,6 +252,80 @@ void (async () => {
       await runAccountant(deps(f.url, m.store, { alert: (code: string) => alerts.push(code) }), 'acc1', 'nightly')
       ok('13: ResponseDoc: «aade_error», όχι ειδοποίηση σχήματος', cC.error === 'aade_error' && alerts.length === 0)
       await f.close()
+    }
+
+    // ── 16. Ακυρα παραστατικά: καραντίνα, ο ΜΑΡΚ σταματά πριν από αυτά ─────
+    {
+      const inv = (mark: string, type: string, gross: string) => `<invoice><mark>${mark}</mark>` +
+        `<issuer><vatNumber>099000049</vatNumber><country>GR</country><branch>0</branch></issuer>` +
+        `<counterpart><vatNumber>${C}</vatNumber><country>GR</country><branch>0</branch></counterpart>` +
+        `<invoiceHeader><series>Α</series><aa>${mark.slice(-3)}</aa><issueDate>2026-11-10</issueDate><invoiceType>${type}</invoiceType><currency>EUR</currency></invoiceHeader>` +
+        `<invoiceSummary><totalNetValue>10.00</totalNetValue><totalVatAmount>2.40</totalVatAmount><totalWithheldAmount>0.00</totalWithheldAmount>` +
+        `<totalFeesAmount>0.00</totalFeesAmount><totalStampDutyAmount>0.00</totalStampDutyAmount><totalOtherTaxesAmount>0.00</totalOtherTaxesAmount>` +
+        `<totalDeductionsAmount>0.00</totalDeductionsAmount><totalGrossValue>${gross}</totalGrossValue></invoiceSummary></invoice>`
+      const page = (body: string) => `<RequestedDoc xmlns="http://www.aade.gr/myDATA/invoice/v1.0"><invoicesDoc>${body}</invoicesDoc></RequestedDoc>`
+      const f = await startFakeAade({ plan: { [C]: [page(inv('100', '1.7', '12.40') + inv('101', '2.1', '-5.00') + inv('102', '2.1', '12.40'))] } })
+      const alerts: string[] = []
+      const cC = consent('c', C)
+      const m = memoryStore([cC])
+      const r = await runAccountant(deps(f.url, m.store, { alert: (code: string) => alerts.push(code) }), 'acc1', 'nightly')
+      ok('16 H1: το 102 γράφεται', m.docs.has(`${C}:102`) && m.docs.size === 1)
+      ok('16 H1: τα 100 και 101 μπαίνουν σε καραντίνα, δεν χάνονται', m.quarantine.map(q => q.mark).join(',') === '100,101')
+      ok('16 H1: η αιτία είναι κωδικός', m.quarantine.every(q => /^[a-z_]{1,40}$/.test(q.reason)) && m.quarantine[0]?.reason === 'invoice_type')
+      ok('16 H1: ο ΜΑΡΚ σταματά πριν από το πρώτο άκυρο (99), όχι στο 102', cC.lastMark === '99')
+      ok('16 H1: η κατάσταση ΔΕΝ είναι OK', cC.status === 'error' && cC.error === 'quarantine' && r.failed === 1)
+      ok('16 H1: ειδοποίηση σε εμάς μόνο με κωδικό', alerts.length === 1 && alerts[0] === 'invalid_invoice')
+      await f.close()
+
+      // Ακυρο χωρίς αναγνώσιμο ΜΑΡΚ: ο ΜΑΡΚ δεν προχωρά καθόλου.
+      const f2 = await startFakeAade({ plan: { [C]: [page(inv('abc', '2.1', '12.40') + inv('202', '2.1', '12.40'))] } })
+      const c2 = consent('c', C)
+      const m2 = memoryStore([c2])
+      await runAccountant(deps(f2.url, m2.store), 'acc1', 'nightly')
+      ok('16 H1: άκυρο χωρίς ΜΑΡΚ: καραντίνα με null', m2.quarantine.length === 1 && m2.quarantine[0]?.mark === null)
+      ok('16 H1: άκυρο χωρίς ΜΑΡΚ: ο ΜΑΡΚ μένει 0', c2.lastMark === '0' && c2.error === 'quarantine')
+      await f2.close()
+    }
+
+    // ── 17. Το dateTo παγώνει μέσα στο σημείο συνέχισης ──────────────────────
+    {
+      const cA = consent('a', A)
+      cA.resume = { partitionKey: '099000013-2026-11', rowKey: '400001000000102', fromMark: '0', maxMark: '400001000000101', dateTo: '2026-11-20' }
+      const m = memoryStore([cA])
+      const before = fake.requests.length
+      await runAccountant(deps(fake.url, m.store), 'acc1', 'nightly')
+      ok('17 H4: η συνέχεια στέλνει το dateTo του ερωτήματος που τη γέννησε', fake.requests[before].query.dateTo === '20/11/2026')
+      const cB = consent('a', A)
+      const m2 = memoryStore([cB])
+      const tight = deps(fake.url, m2.store)
+      const realIngest = m2.store.ingest.bind(m2.store)
+      m2.store.ingest = async (i) => { const r = await realIngest(i); tight.deadline = Date.now(); return r }
+      await runAccountant(tight, 'acc1', 'nightly')
+      ok('17 H4: το σημείο συνέχισης κρατά το dateTo', cB.resume?.dateTo === '2026-11-23')
+    }
+
+    // ── 18. Οσοι δεν πρόλαβαν ξαναμπαίνουν σε ένα λεπτό ─────────────────────
+    {
+      const cA = consent('a', A), cC = consent('c', C), cX = consent('x', '099000049')
+      const m = memoryStore([cA, cC, cX])
+      const tight = deps(fake.url, m.store)
+      const realDone = m.store.clientDone.bind(m.store)
+      m.store.clientDone = async (...a) => { await realDone(...a); tight.deadline = Date.now() }
+      const r = await runAccountant(tight, 'acc1', 'nightly')
+      ok('18 M3: σταματά μετά τον πρώτο', r.partial && cA.status === 'ok' && cC.status === 'new')
+      ok('18 M3: οι δύο που δεν πρόλαβαν παίρνουν νέα προσπάθεια', JSON.stringify(m.deferred) === JSON.stringify([['c', 'x']]))
+    }
+
+    // ── 19. Αρχείο πρόσβασης: ποιος ξεκίνησε, πόσα ήρθαν ανά σελίδα ─────────
+    {
+      const cA = consent('a', A)
+      const m = memoryStore([cA])
+      await runAccountant(deps(fake.url, m.store), 'acc1', 'manual', 'acc1')
+      ok('19 M4: η μίσθωση ξέρει ποιος πάτησε «τώρα»', m.actors[0] === 'acc1')
+      ok('19 M4: κάθε σελίδα λέει πόσα ήρθαν από την ΑΑΔΕ (2 και 5)', m.ingests.map(i => i.fetched).join(',') === '2,5')
+      const m2 = memoryStore([consent('a', A)])
+      await runAccountant(deps(fake.url, m2.store), 'acc1', 'nightly')
+      ok('19 M4: το cron δεν έχει πρόσωπο', m2.actors[0] === null)
     }
 
     // ── 14. Το δίκτυο κόβεται ───────────────────────────────────────────────

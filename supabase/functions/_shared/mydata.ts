@@ -3,7 +3,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 // Η συνάρτηση `mydata-sync` (Deno) μιλά με την ΑΑΔΕ και με τη βάση. Ολα όσα
 // ΑΠΟΦΑΣΙΖΟΥΝ ζουν εδώ και τρέχουν ίδια σε Deno και σε Node (mydata.test.ts).
-// Εισάγει μόνο το μητρώο διευθύνσεων της ΑΑΔΕ και τον κανόνα των 12 ωρών.
+// Εισάγει μόνο τις διευθύνσεις του myDATA και τον κανόνα των 12 ωρών.
 //
 // ΠΗΓΕΣ (ΑΑΔΕ, myDATA REST API, τεκμηρίωση για χρήστες ERP v2.0.2, 09/2026):
 //   · §4.2 «Μέθοδοι λήψης»: RequestDocs. Επιστρέφει όσα παραστατικά,
@@ -29,10 +29,10 @@
 // χαρακτηρισμοί, διευθύνσεις): ελαχιστοποίηση, άρθρο 5§1(γ) ΓΚΠΔ.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { MYDATA_API_DEV, MYDATA_API_PROD, MYDATA_INVOICE_NS } from '../../../lib/tax/aade.ts'
+import { MYDATA_API_DEV, MYDATA_API_PROD, MYDATA_INVOICE_NS } from '../../../lib/mydata/endpoints.ts'
 import { shouldAutoSync, AUTO_SYNC_HOURS } from '../../../lib/mydata/autoSync.ts'
 
-/** Ο χώρος ονομάτων του σχήματος παραστατικών της ΑΑΔΕ (μητρώο: lib/tax/aade.ts). */
+/** Ο χώρος ονομάτων του σχήματος παραστατικών της ΑΑΔΕ (lib/mydata/endpoints.ts). */
 export const INV_NS = MYDATA_INVOICE_NS
 
 /** Ανώτατο μέγεθος απάντησης που διαβάζουμε. Μία σελίδα της ΑΑΔΕ είναι πολύ μικρότερη. */
@@ -45,7 +45,7 @@ const MAX_ELEMENTS = 250_000
 // να βρίσκεται ΑΦΜ, όνομα ή κομμάτι της κεφαλίδας με το κλειδί.
 export const ERROR_CODES = [
   'auth', 'forbidden', 'rate', 'server', 'empty', 'bad_request', 'http', 'network', 'timeout',
-  'parse', 'aade_error', 'no_key', 'no_afm', 'not_linked', 'config', 'unknown',
+  'parse', 'aade_error', 'no_key', 'no_afm', 'not_linked', 'config', 'unknown', 'quarantine',
 ] as const
 export type ErrorCode = typeof ERROR_CODES[number]
 export function safeErrorCode(v: unknown): ErrorCode {
@@ -269,8 +269,15 @@ export interface ParsedCancellation { invoiceMark: string; cancellationMark: str
 
 export interface ContinuationToken { partitionKey: string; rowKey: string }
 
+/**
+ * Ενα παραστατικό που η αυστηρή ανάγνωση δεν δέχτηκε. Δεν πετιέται: πηγαίνει σε
+ * καραντίνα με τον ΜΑΡΚ του (όταν ο ίδιος ο ΜΑΡΚ διαβάζεται) και την αιτία ως
+ * κωδικό `[a-z_]`. Ο ΜΑΡΚ της άδειας σταματά πριν από αυτό.
+ */
+export interface InvalidDoc { mark: string | null; reason: string }
+
 export type ParseResult =
-  | { ok: true; invoices: ParsedInvoice[]; cancellations: ParsedCancellation[]; invalid: number; next: ContinuationToken | null }
+  | { ok: true; invoices: ParsedInvoice[]; cancellations: ParsedCancellation[]; invalid: number; quarantine: InvalidDoc[]; next: ContinuationToken | null }
   | { ok: false; error: ParseError; aadeCodes?: string[] }
 
 const TOP = new Set(['continuationToken', 'invoicesDoc', 'cancelledInvoicesDoc', 'incomeClassificationsDoc', 'expensesClassificationsDoc', 'paymentMethodsDoc'])
@@ -429,18 +436,34 @@ export function parseRequestedDoc(xml: string): ParseResult {
 
   const invoices: ParsedInvoice[] = []
   const cancellations: ParsedCancellation[] = []
-  let invalid = 0
+  const quarantine: InvalidDoc[] = []
   const invDoc = root.children.find(c => c.local === 'invoicesDoc')
   for (const c of invDoc?.children ?? []) {
     if (c.ns !== INV_NS || c.local !== 'invoice') return { ok: false, error: 'unknown_element' }
-    try { invoices.push(parseInvoice(c)) } catch { invalid++ }
+    try { invoices.push(parseInvoice(c)) } catch (e) { quarantine.push(invalidDoc(c, 'mark', 'invoice', e)) }
   }
   const canDoc = root.children.find(c => c.local === 'cancelledInvoicesDoc')
   for (const c of canDoc?.children ?? []) {
     if (c.ns !== INV_NS || c.local !== 'cancelledInvoice') return { ok: false, error: 'unknown_element' }
-    try { cancellations.push(parseCancellation(c)) } catch { invalid++ }
+    try { cancellations.push(parseCancellation(c)) } catch (e) { quarantine.push(invalidDoc(c, 'cancellationMark', 'cancellation', e)) }
   }
-  return { ok: true, invoices, cancellations, invalid, next }
+  return { ok: true, invoices, cancellations, invalid: quarantine.length, quarantine, next }
+}
+
+/** «invoiceType» → «invoice_type»: η αιτία γράφεται στη βάση μόνο ως κωδικός. */
+const reasonCode = (v: string): string => {
+  const s = v.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase().replace(/[^a-z_]/g, '').slice(0, 40)
+  return s || 'unknown'
+}
+
+/** Ο ΜΑΡΚ του άκυρου (μόνο αν διαβάζεται σωστά) και η αιτία, ποτέ άλλο πεδίο. */
+function invalidDoc(node: XNode, markField: string, fallback: string, e: unknown): InvalidDoc {
+  let mark: string | null = null
+  try {
+    const v = text(one(node, markField))
+    if (v !== undefined && isMark(v)) mark = v
+  } catch { mark = null }
+  return { mark, reason: reasonCode(e instanceof InvalidInvoice && e.message ? e.message : fallback) }
 }
 
 // ═══ 3. ΑΠΟ ΤΟ ΠΑΡΑΣΤΑΤΙΚΟ ΣΤΗ ΓΡΑΜΜΗ ΤΩΝ ΕΙΣΕΡΧΟΜΕΝΩΝ ═════════════════════

@@ -50,8 +50,8 @@ const json = (body: unknown, status = 200) =>
 
 /** Η βάση για τον κινητήρα. Καθε κλήση ελέγχει το `error` και πετά κωδικό, ποτέ δεδομένα. */
 const store: Store = {
-  async begin(accountantId, kind) {
-    const { data, error } = await admin.rpc('mydata_sync_begin', { p_accountant: accountantId, p_kind: kind })
+  async begin(accountantId, kind, actor) {
+    const { data, error } = await admin.rpc('mydata_sync_begin', { p_accountant: accountantId, p_kind: kind, p_actor: actor })
     if (error) throw new Error('db_begin')
     return data as Awaited<ReturnType<Store['begin']>>
   },
@@ -78,6 +78,7 @@ const store: Store = {
   async ingest(i) {
     const { data, error } = await admin.rpc('mydata_ingest', {
       p_lease: i.lease, p_consent: i.consentId, p_docs: i.docs, p_cancels: i.cancels,
+      p_quarantine: i.quarantine, p_fetched: i.fetched,
       p_max_mark: i.maxMark, p_resume: i.resume, p_done: i.done,
     })
     if (error) throw new Error('db_ingest')
@@ -91,6 +92,10 @@ const store: Store = {
   async end(accountantId, lease, err, added) {
     const { error } = await admin.rpc('mydata_sync_end', { p_accountant: accountantId, p_lease: lease, p_error: err, p_added: added })
     if (error) reportEdgeError('mydata-sync', new Error('db_end'))
+  },
+  async defer(accountantId, consentIds) {
+    const { error } = await admin.rpc('mydata_defer', { p_accountant: accountantId, p_consents: consentIds })
+    if (error) reportEdgeError('mydata-sync', new Error('db_defer'))
   },
 }
 
@@ -143,8 +148,14 @@ Deno.serve(async (req) => {
       const ids = ((data ?? []) as (string | { mydata_due_accountants: string })[])
         .map(r => typeof r === 'string' ? r : r.mydata_due_accountants)
       let done = 0, added = 0, failed = 0
-      for (const id of ids) {
-        if (Date.now() > started + BUDGET_MS - 10_000) break
+      for (let i = 0; i < ids.length; i++) {
+        const id = ids[i]
+        // Οσοι λογιστές δεν πρόλαβαν: οι πελάτες τους ξαναμπαίνουν σε ένα λεπτό
+        // και τους πιάνει η επανάληψη, όχι η επόμενη νύχτα.
+        if (Date.now() > started + BUDGET_MS - 10_000) {
+          for (const rest of ids.slice(i)) await store.defer(rest, null)
+          break
+        }
         // Ενας λογιστής που σκάει δεν σταματά τους υπόλοιπους.
         try {
           const r = await runAccountant(deps(BASE, started), id, kind)
@@ -208,7 +219,7 @@ Deno.serve(async (req) => {
 
     if (action === 'sync') {
       const kind: SyncKind = body.kind === 'auto' ? 'auto' : 'manual'
-      const r = await runAccountant(deps(BASE, started), me, kind)
+      const r = await runAccountant(deps(BASE, started), me, kind, me)
       return json(r)
     }
 

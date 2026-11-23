@@ -55,12 +55,16 @@ export interface ClientRow {
   ownerId: string;
   name: string;
   consent: boolean;
-  status: 'pending' | 'ok' | 'forbidden' | 'error' | null;
+  status: 'pending' | 'ok' | 'forbidden' | 'error' | 'paused' | null;
   lastSyncAt: string | null;
   lastNew: number;
   error: string | null;
   nextRetryAt: string | null;
   pending: number;
+  /** Ο λογιστής έχει επιβεβαιώσει το ΑΦΜ του πελάτη (χωρίς αυτό δεν δίνεται άδεια). */
+  afmConfirmed?: boolean;
+  /** Παραστατικά σε καραντίνα: η ανάγνωση δεν τα δέχτηκε, ξαναζητούνται. */
+  quarantined?: number;
 }
 
 export type Tone = 'ok' | 'wait' | 'warn' | 'off';
@@ -78,7 +82,16 @@ const DOWN = new Set(['rate', 'server', 'empty', 'network', 'timeout']);
 
 /** Τι λέει η γραμμή του πελάτη και τι κάνει ο λογιστής γι' αυτό. */
 export function rowState(r: ClientRow): RowState {
+  if (!r.consent && r.afmConfirmed === false) {
+    return { label: 'Χωρίς άδεια', fix: 'Επιβεβαίωσε πρώτα το ΑΦΜ του πελάτη.', tone: 'off', rank: 3 };
+  }
   if (!r.consent) return { label: 'Χωρίς άδεια', fix: 'Ο πελάτης πατά «Επιτρέπω» στον Λογαριασμό του.', tone: 'off', rank: 3 };
+  if (r.status === 'paused') {
+    return { label: 'Σε παύση', fix: 'Ο σύνδεσμος με τον πελάτη χρειάζεται ανανέωση ή αποδοχή των όρων του γραφείου.', tone: 'warn', rank: 0 };
+  }
+  if (r.error === 'quarantine' || (r.quarantined ?? 0) > 0) {
+    return { label: 'Θέλει έλεγχο', fix: 'Κάποια παραστατικά δεν διαβάστηκαν. Τα ελέγχουμε και ξαναζητούνται απόψε.', tone: 'warn', rank: 0 };
+  }
   if (r.status === 'forbidden') return { label: 'Άρνηση ΑΑΔΕ', fix: 'Ο πελάτης σε ορίζει ξανά λογιστή στο myAADE.', tone: 'warn', rank: 0 };
   if (r.status === 'error') {
     if (r.error && DOWN.has(r.error)) {
@@ -216,5 +229,11 @@ export const LOG_ACTION: Record<string, string> = {
   sync_fetch: 'Ο λογιστής έφερε παραστατικά',
   sync_failed: 'Ο συγχρονισμός δεν ολοκληρώθηκε',
   provider_ignored: 'Αγνοείς έναν πάροχο',
+  consent_paused: 'Η άδεια σε παύση ως την ανανέωση του συνδέσμου',
+  afm_confirmed: 'Ο λογιστής επιβεβαίωσε το ΑΦΜ σου',
+  sync_done: 'Ο συγχρονισμός ολοκληρώθηκε',
+  page_rejected: 'Μια σελίδα απορρίφθηκε γιατί η άδεια είχε κοπεί',
+  invalid_quarantined: 'Κάποια παραστατικά δεν διαβάστηκαν και ξαναζητούνται',
+  cancel_flagged: 'Ακυρώθηκε στην ΑΑΔΕ παραστατικό που είχες καταχωρήσει',
   cancel_removed_expense: 'Ακυρώθηκε στην ΑΑΔΕ· η δαπάνη αφαιρέθηκε',
 };
