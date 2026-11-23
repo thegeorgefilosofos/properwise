@@ -80,6 +80,7 @@ import TabRentROI from '@/app/dashboard/components/TabRentROI';
 // μετρηθεί ΔΕΝ σήμαινε ότι ήταν εντάξει· σήμαινε ότι δεν το ξέραμε.
 import TabAccounting from '@/app/dashboard/components/TabAccounting';
 import { FIRM_VIEWS, FIRM_PORTAL_SCENES, firmRpc, firmRespond } from './firms';
+import { MYDATA_VIEWS, mydataRpc, mydataRespond } from './mydata';
 import TabSettings from '@/app/dashboard/components/TabSettings';
 import TabCalendar from '@/app/dashboard/components/TabCalendar';
 import { DaySheet } from '@/app/dashboard/components/calendar/MonthView';
@@ -183,6 +184,8 @@ const respond: Responder = (call) => {
   if (call.table === 'inbound_messages') return { data: inboundRows, error: null };
   const firmRows = firmRespond(which, call.table);
   if (firmRows) return firmRows;
+  const mydataRows = mydataRespond(which, call.table, call.filters);
+  if (mydataRows) return { data: call.single && Array.isArray(mydataRows.data) ? (mydataRows.data[0] ?? null) : mydataRows.data, error: null };
   const rows = bench.rows[call.table];
   if (!rows) return { data: call.single ? null : [], error: null };
   const kept = which === 'portfolio' ? rows : applyEq(rows, call.filters);
@@ -190,7 +193,7 @@ const respond: Responder = (call) => {
 };
 window.__respond = respond;
 // Οι συναρτήσεις της βάσης: για τα γραφεία, οι απαντήσεις του scripts/perf-bench/firms.tsx.
-(window as unknown as { __rpc: (fn: string, args?: unknown) => unknown }).__rpc = (fn: string, args?: unknown) => firmRpc(which, fn, args);
+(window as unknown as { __rpc: (fn: string, args?: unknown) => unknown }).__rpc = (fn: string, args?: unknown) => mydataRpc(which, fn) ?? firmRpc(which, fn, args);
 // Η ΕΝΗΜΕΡΩΣΗ ΤΩΝ ΓΡΑΦΕΙΩΝ (ΑΠ-11). Ο ψεύτικος λογαριασμός δεν έχει ημερομηνία
 // δημιουργίας, οπότε η Επισκόπηση δείχνει τη γενική γραμμή. Εδώ είναι
 // ιδιοκτήτης από πριν από την έκδοση των γραφείων και βλέπει την κάρτα.
@@ -446,6 +449,7 @@ function ScanReviewScene() {
 const VIEWS: Record<string, () => React.ReactElement> = {
   // Τα λογιστικά γραφεία (scripts/perf-bench/firms.tsx).
   ...FIRM_VIEWS,
+  ...MYDATA_VIEWS,
   // Η εισαγωγή από το myAADE, σε όλες τις καταστάσεις της. Το ίδιο το
   // παράθυρο για την επιλογή αρχείου και την προεπισκόπηση· για το «Έτοιμο» και
   // το σφάλμα αρχείου οι ίδιες οθόνες του MyaadeSteps, με σταθερά δεδομένα.

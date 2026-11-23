@@ -1580,6 +1580,102 @@ export interface WithdrawalRequestsRow {
 }
 
 /** Όνομα πίνακα → τύπος γραμμής, για γενικούς βοηθούς. */
+export interface MydataAccessLogRow {
+  id: number | null;
+  at: string;
+  client_id: string | null;
+  accountant_id: string | null;
+  actor_id: string | null;
+  afm: string | null;
+  action: string;
+  n: number | null;
+  detail: string | null;
+}
+
+export interface MydataAfmConfirmationsRow {
+  accountant_id: string;
+  client_id: string;
+  afm: string;
+  confirmed_at: string;
+}
+
+export interface MydataConnectionsRow {
+  accountant_id: string | null;
+  aade_user_id: string;
+  has_key: boolean;
+  status: string;
+  last_sync_at: string | null;
+  last_sync_new: number;
+  last_error_code: string | null;
+  lease_id: string | null;
+  lease_at: string | null;
+  lease_kind: string | null;
+  lease_actor: string | null;
+  last_manual_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MydataConsentsRow {
+  id: string | null;
+  client_id: string;
+  accountant_id: string;
+  afm: string;
+  window_from: string;
+  granted_at: string;
+  revoked_at: string | null;
+  revoke_reason: string | null;
+  last_mark: number;
+  resume: Json | null;
+  status: string;
+  last_sync_at: string | null;
+  last_new: number;
+  last_error_code: string | null;
+  failures: number;
+  next_retry_at: string | null;
+}
+
+export interface MydataDocsRow {
+  id: string | null;
+  consent_id: string;
+  client_id: string;
+  client_afm: string;
+  mark: number;
+  counterpart_afm: string;
+  counterpart_name: string | null;
+  doc_type: string;
+  series: string;
+  aa: string;
+  issue_date: string;
+  title: string;
+  net_cents: number;
+  vat_cents: number;
+  gross_cents: number;
+  is_credit: boolean;
+  status: string;
+  cancellation_mark: number | null;
+  expense_id: string | null;
+  needs_attention: string | null;
+  fetched_at: string;
+  decided_at: string | null;
+}
+
+export interface MydataIgnoredProvidersRow {
+  client_id: string;
+  counterpart_afm: string;
+  created_at: string;
+}
+
+export interface MydataQuarantineRow {
+  id: number | null;
+  consent_id: string;
+  client_id: string;
+  client_afm: string;
+  mark: number | null;
+  reason: string;
+  seen_at: string;
+}
+
 export interface Tables {
   account_deletion_incidents: AccountDeletionIncidentsRow;
   accountant_clients: AccountantClientsRow;
@@ -1646,6 +1742,13 @@ export interface Tables {
   market_rates: MarketRatesRow;
   mobile_waitlist: MobileWaitlistRow;
   myaade_imports: MyaadeImportsRow;
+  mydata_access_log: MydataAccessLogRow;
+  mydata_afm_confirmations: MydataAfmConfirmationsRow;
+  mydata_connections: MydataConnectionsRow;
+  mydata_consents: MydataConsentsRow;
+  mydata_docs: MydataDocsRow;
+  mydata_ignored_providers: MydataIgnoredProvidersRow;
+  mydata_quarantine: MydataQuarantineRow;
   notification_log: NotificationLogRow;
   notification_preferences: NotificationPreferencesRow;
   onboarding_progress: OnboardingProgressRow;

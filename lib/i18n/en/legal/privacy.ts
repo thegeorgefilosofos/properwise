@@ -22,6 +22,8 @@ import { ACCOUNTANT_LINK_DAYS } from '@/lib/data/accountantLink';
 import { ACCOUNTANT_INVITE_RETENTION_DAYS } from '@/supabase/functions/_shared/accountantInvite';
 import { FIRM_ACCESS_LOG_MONTHS, FIRM_UNDO_DAYS } from '@/lib/legal/firms';
 import { LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE } from '@/lib/i18n/locale';
+import { MYDATA_ON } from '@/lib/mydata/flag';
+import { MYDATA_LOG_MONTHS, MYDATA_DECIDED_DAYS, MYDATA_PAUSE_DAYS } from '@/lib/mydata/retention';
 import { identityPendingEn, subprocessorLineEn, subprocessorNameEn, TRANSFER_SAFEGUARDS_EN } from './common';
 
 export const PRIVACY_EN = {
@@ -118,6 +120,21 @@ export function privacySectionsEn(): LegalSection[] {
       'Special categories of data: neither you nor the firm uploads or records special categories of data (Article 9 GDPR), such as health data, unless they are necessary for a legal tax obligation. When they are found without being needed, they are deleted: you delete the document or the record and the firm that finds them notifies you without delay.',
       'Legal basis: the firm’s access and its records happen because you asked for them, through a feature of the Service: performance of a contract (Article 6(1)(b)). The logs are kept so that you can check what happened in your account and undo mistakes and for the security of the Service: legitimate interest (Article 6(1)(f)). For your tenants’ data you remain the controller; for what it records in your account, the firm acts as a processor on your behalf (see “Processing agreement for third-party data” in the Terms of Use).',
     ] },
+    // Μετάφραση της ενότητας «Παραστατικά από το myDATA μέσω του λογιστή σου»,
+    // με την ίδια σημαία και τις ίδιες σταθερές (lib/mydata/flag.ts, retention.ts).
+    ...(MYDATA_ON ? [{ h: 'Documents from myDATA through your accountant', id: 'mydata', labelled: true, p: [
+      'If you press “Allow” in your Account, the accountant you have linked on the Service fetches from AADE’s myDATA the expense documents that others have issued to you. They use their own myDATA REST API key and the authorisation you have given them on myAADE. The following apply:',
+    ], list: [
+      'What we keep: the MARK, the issuer’s VAT number and name, document type, series and number, issue date, net amount, VAT and total. We do not keep the whole document, its lines, payment methods or addresses.',
+      'Who sees it: you and, while the permission and the link with your accountant last, the accountant you chose. None of their other clients and no other member of the Service. Nothing becomes an expense unless you record it.',
+      'Legal basis: your consent (Article 6(1)(a) GDPR). You withdraw it at any time from your Account, under “Data and privacy”, with one tap (Article 7(3)).',
+      'Your VAT number: your accountant confirms your VAT number from their own workspace. The permission is granted only if it matches the VAT number in your “Billing details”. If either changes, the permission is withdrawn. One VAT number has one permission at a time.',
+      'When you withdraw: your accountant stops fetching documents at once and the documents that arrived and you did not record are erased. Expenses you recorded stay. The same happens at once when you change accountant, cut the link with them or create a new link, when they remove you from their clients or when they leave the firm that serves you.',
+      `Pause: if the link with your accountant expires or their firm has not accepted the current terms, no new documents arrive until it is renewed. Nothing is erased during a pause. If it lasts more than ${MYDATA_PAUSE_DAYS}\u00a0days, the permission is withdrawn and the documents that arrived and you did not record are erased.`,
+      'If the issuer cancels on AADE a document you had already recorded, the expense is not erased on its own: we ask you in your Inbox. Documents that cannot be read correctly are kept only as a MARK and a reason code until they are requested again.',
+      `Access log: we keep who requested how many documents, when and for which VAT number, for ${MYDATA_LOG_MONTHS}\u00a0months, and you see it under “Access history”. Documents you recorded or dismissed are kept for ${MYDATA_DECIDED_DAYS}\u00a0days so they do not come back; those waiting for your decision stay until you decide.`,
+      'Your accountant’s key is stored encrypted and is never shown again to anyone, including them. AADE is the source of the data, not a processor acting for us.',
+    ] }] : []),
     { h: 'If you are a member of an accounting or tax firm', labelled: true, list: [
       'What we keep about you: your account details, as for any user. The firm you belong to, your role, when you were invited, when you joined and when you left. Which clients were assigned to you. The access history and the activity log described above.',
       'Who sees it: the members of your firm see your name, email and role. The Firm manager also sees the whole access history and all the firm’s actions. A client sees your name and role if you have taken on their file and whatever you did in their account. You see your own history and your own actions.',
