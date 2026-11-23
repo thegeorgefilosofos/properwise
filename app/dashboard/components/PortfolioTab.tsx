@@ -618,7 +618,12 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
           και τα υπόλοιπα γραμμές με εικονίδιο. Χρώμα μόνο όπου υπάρχει
           κατάσταση: οι εκκρεμότητες παίρνουν τον τόνο προσοχής όταν υπάρχουν
           ανοιχτά ποσά. Η πληρότητα δεν εμφανίζεται χωρίς βραχυχρόνια. */}
-      <section className="tn-sum pf-sum" aria-label="Σύνοψη χαρτοφυλακίου">
+      {/* ΚΑΝΕΝΑ ΠΟΣΟ ΔΕΝ ΚΟΒΕΤΑΙ (στιγμιότυπο ιδιοκτήτη, 23/11/2026): στα 390 το
+          «1.270.200,00€» ακουμπούσε την άκρη του πλακιδίου. Το CSS μικραίνει τα
+          ποσά όσο χρειάζεται για να χωρέσει το μακρύτερο (`--pf-chars`), όλα στο
+          ίδιο μέγεθος, πάντα ολόκληρα, με τα λεπτά τους. */}
+      <section className="tn-sum pf-sum" aria-label="Σύνοψη χαρτοφυλακίου"
+        style={{ ['--pf-chars' as string]: Math.max(eur(totalRevenue).length, eur(totalExpenses).length, eur(totalOwed).length, avgOcc != null ? fp(avgOcc).length : 0) }}>
         <div className="tn-sum-hero">
           <div className="tn-sum-label"><TrendingUp size={15} aria-hidden="true" />{`Καθαρό ${year} ως σήμερα`}</div>
           <div className="tn-sum-big">{eur(totalRevenue - totalExpenses)}</div>
@@ -803,28 +808,26 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
                 έχει «Ανεξόφλητες» και «Πληρότητα»· στο τηλέφωνο η κάρτα έδειχνε
                 μόνο τα τρία ποσά και τίποτα δεν έλεγε ότι πατιέται. */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, ...TT.caption }}>
-              <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                {/* ΣΤΗΝ ΙΔΙΑ ΣΕΙΡΑ, ΟΣΟ ΚΑΙ ΠΡΙΝ. Με λέξεις μέσα στα δύο σήματα
-                    («342,00€ ανεξόφλητες», «2 εκκρεμότητες») η σειρά τύλιγε στα 375 και
-                    κάθε κάρτα ψήλωνε (e2e:vertical). Οι λέξεις μένουν στο όνομα του σήματος. */}
+              {/* ΜΙΑ ΗΣΥΧΗ ΣΕΙΡΑ ΚΕΙΜΕΝΟΥ, ΜΕ ΛΕΞΕΙΣ (στιγμιότυπο ιδιοκτήτη, 23/11/2026).
+                  Τα σήματα «[εικονίδιο] 342,00€» και «[εικονίδιο] 2» δεν έλεγαν τι
+                  μετρούν· με λέξεις μέσα τους τύλιγαν στα 375 και η κάρτα ψήλωνε
+                  (e2e:vertical). Τώρα «Ανεξόφλητες 342,00€ · 2 εκκρεμότητες» σε μία
+                  γραμμή, ίδια λέξη με το πλακίδιο της σύνοψης· τόνος προσοχής μόνο στο
+                  ποσό, αποσιωπητικά μόνο αν δεν χωρά. */}
+              <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {r.owed > 0 && (
-                  <span className="pf-pending-chip" data-tone="warning" role="img"
-                    aria-label={`${eur(r.owed)} ${UNPAID_LABEL.toLowerCase()}`}
-                    title={`${r.unpaid} ${r.unpaid === 1 ? 'ανεξόφλητη' : 'ανεξόφλητες'}, ${eur(r.owed)}`}>
-                    <Receipt size={13} aria-hidden="true" />
-                    {eur(r.owed)}
+                  <span title={`${r.unpaid} ${r.unpaid === 1 ? 'ανεξόφλητη' : 'ανεξόφλητες'}, ${eur(r.owed)}`}>
+                    {`${UNPAID_LABEL} `}
+                    <span style={{ fontFamily: T.font.num, fontWeight: 600, color: 'var(--warning-on-container)', fontVariantNumeric: 'tabular-nums' }}>{eur(r.owed)}</span>
                   </span>
                 )}
                 {r.tasks > 0 && (
-                  <span className="pf-pending-chip" role="img"
-                    aria-label={`${r.tasks} ${r.tasks === 1 ? 'εκκρεμότητα' : 'εκκρεμότητες'}`}
-                    title={`${r.tasks} ${r.tasks === 1 ? 'εκκρεμότητα' : 'εκκρεμότητες'} με προθεσμία που πέρασε ή κρίσιμη`}>
-                    <ListTodo size={13} aria-hidden="true" />
-                    {r.tasks}
+                  <span title={`${r.tasks} ${r.tasks === 1 ? 'εκκρεμότητα' : 'εκκρεμότητες'} με προθεσμία που πέρασε ή κρίσιμη`}>
+                    {`${r.owed > 0 ? ' · ' : ''}${r.tasks} ${r.tasks === 1 ? 'εκκρεμότητα' : 'εκκρεμότητες'}`}
                   </span>
                 )}
-                {r.owed <= 0 && r.tasks === 0 && <span>Τίποτα ανοιχτό</span>}
-                {r.occupancy != null && <span>{`Πληρότητα ${fp(r.occupancy)}`}</span>}
+                {r.owed <= 0 && r.tasks === 0 && 'Τίποτα ανοιχτό'}
+                {r.occupancy != null && ` · Πληρότητα ${fp(r.occupancy)}`}
               </span>
               <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6" /></svg>
             </div>

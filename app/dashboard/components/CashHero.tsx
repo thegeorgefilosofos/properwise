@@ -77,7 +77,7 @@ function Side({ label, side, kind, onOpen, actionLabel, action, compact, solo }:
       title={actionLabel}
       className={solo ? 'cash-btn cash-btn--solo' : 'cash-btn'}
       style={solo ? {
-        display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', columnGap: 16, rowGap: 6, alignItems: 'center',
+        display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', columnGap: 16, rowGap: 4, alignItems: 'center',
         width: '100%', minWidth: 0, padding: '16px 20px',
         background: 'transparent', border: 'none', borderRadius: T.radius.inner,
         textAlign: 'left', cursor: 'pointer',

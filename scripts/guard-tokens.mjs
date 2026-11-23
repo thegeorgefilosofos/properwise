@@ -58,6 +58,7 @@ const RUNTIME = [
   { name: '--plan-limits', why: 'πόσες γραμμές ορίων έχει κάθε κάρτα πακέτου, το γράφει το components/PlanMatrix.tsx για το subgrid της ταμπλέτας' },
   { name: '--tbl-min', why: 'ελάχιστο πλάτος πίνακα πριν κυλήσει, το δηλώνει ο κάθε πίνακας για την .po-table' },
   { name: '--tbl-fs', why: 'μέγεθος κειμένου πίνακα, το δηλώνει η σελίδα για την .po-table' },
+  { name: '--pf-chars', why: 'χαρακτήρες του μακρύτερου ποσού της σύνοψης, το γράφει το PortfolioTab ώστε τα ποσά να χωρούν ολόκληρα' },
   // Το κοινό Modal: πλάτος και ακτίνα από τα tokens (MODAL_WIDTH, T.radius.modal)
   // inline, ώστε η media query του φύλλου να τα φτάνει· πληκτρολόγιο και ορατό
   // ύψος από το visualViewport. Κάθε χρήση στο globals.css έχει εφεδρική τιμή.
