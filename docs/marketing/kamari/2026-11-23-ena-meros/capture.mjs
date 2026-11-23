@@ -27,7 +27,7 @@ mkdirSync(out, { recursive: true });
 const BASE = 9, MACRO = 14;
 // Οι περιοχές της οθόνης που δείχνει κάθε πλάνο (px εφαρμογής, ολόκληρο το πλάτος).
 const REG = { overview: { x: 0, y: 250, w: 390, h: 594 }, tiles: { x: 0, y: 80, w: 390, h: 764 }, form: { x: 0, y: 220, w: 390, h: 440 },
-  save: { x: 0, y: 520, w: 390, h: 324 }, docs: { x: 0, y: 350, w: 390, h: 494 } };
+  save: { x: 0, y: 420, w: 390, h: 424 }, docs: { x: 0, y: 350, w: 390, h: 494 } };
 const NOW = new Date('2026-11-23T09:41:00+02:00');
 const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH, args: ['--disable-dev-shm-usage'] });
 const boxes = {};
