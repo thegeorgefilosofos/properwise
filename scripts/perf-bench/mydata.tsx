@@ -1,11 +1,13 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // ΟΙ ΣΚΗΝΕΣ ΤΟΥ myDATA ΓΙΑ ΤΟΝ ΠΑΓΚΟ: ΚΑΘΕ ΟΨΗ, ΟΧΙ ΜΟΝΟ Η ΚΑΛΗ
 // ─────────────────────────────────────────────────────────────────────────
-// Η κάρτα του λογιστή (app/accountant/workspace/MydataCard.tsx) σε πέντε όψεις,
-// η γραμμή του πελάτη στον Λογαριασμό (MydataConsent.tsx) σε τρεις και τα
-// Εισερχόμενα «Από το myDATA» (MydataInbox.tsx) με τα επίπεδα του Α2: για
-// έλεγχο (νέος πάροχος, άγνωστος, πιστωτικό, πάνω από το όριο), μπήκαν μόνα
-// τους, δύο ακίνητα. Οι σαρωτές διάταξης, κάθετου
+// Η κάρτα του λογιστή (app/accountant/workspace/MydataCard.tsx) σε έξι όψεις
+// (και «θέλει δεύτερο βήμα»), η γραμμή του πελάτη στον Λογαριασμό
+// (MydataConsent.tsx) σε πέντε (και με το πλήρες κείμενο της συναίνεσης και με
+// δύο λογιστές) και τα Εισερχόμενα «Από το myDATA» (MydataInbox.tsx): για
+// έλεγχο (νέος ή ανεπιβεβαίωτος πάροχος, άγνωστος, πιστωτικό, «Πώς
+// πληρώθηκε;», «Είναι η ίδια με …;»), καταχωρήθηκαν αυτόματα, δύο ακίνητα,
+// ακύρωση με «Θέλει έλεγχο». Οι σαρωτές διάταξης, κάθετου
 // ρυθμού και Νόας τις περνούν όπως κάθε άλλη σκηνή (scripts/lib/scenes.mjs).
 //
 // Τα ονόματα είναι πλασματικά, όπως σε κάθε σκηνή του πάγκου. Οι ώρες της
@@ -65,6 +67,7 @@ const CONSENT: Record<string, Row | null> = {
   mydataConsent: { accountantId: 'a1', windowFrom: '2025-01-01', grantedAt: '2026-11-20T09:00:00Z', status: 'ok', lastSyncAt: SYNCED, lastNew: 12, error: null, nextRetryAt: null },
   mydataConsentDenied: { accountantId: 'a1', windowFrom: '2026-01-01', grantedAt: '2026-11-20T09:00:00Z', status: 'forbidden', lastSyncAt: '2026-11-22T01:10:00Z', lastNew: 0, error: 'forbidden', nextRetryAt: null },
   mydataConsentPaused: { accountantId: 'a1', windowFrom: '2025-01-01', grantedAt: '2026-05-20T09:00:00Z', status: 'paused', lastSyncAt: '2026-11-16T01:10:00Z', lastNew: 2, error: null, nextRetryAt: null },
+  mydataConsentTwo: { accountantId: 'a1', windowFrom: '2025-01-01', grantedAt: '2026-11-20T09:00:00Z', status: 'ok', lastSyncAt: SYNCED, lastNew: 12, error: null, nextRetryAt: null },
 };
 
 const LOG = [
@@ -80,7 +83,7 @@ const WATER = PROVIDERS.find(p => p.kind === 'water')!;
 const PHONE = PROVIDERS.find(p => p.kind === 'telecom')!;
 const DOCS = [
   { id: 'd1', mark: 400001000000101, counterpart_afm: POWER.afm, counterpart_name: null, doc_type: '2.1', issue_date: '2026-11-02', title: 'Τιμολόγιο Παροχής Υπηρεσιών Α 101', net_cents: 10000, vat_cents: 2400, gross_cents: 12400, is_credit: false,
-    tier: 'review', category: 'electricity', review_reasons: ['new_provider'] },
+    tier: 'review', category: 'electricity', review_reasons: ['new_provider', 'provider_unchecked'] },
   { id: 'd2', mark: 400001000000102, counterpart_afm: '099000049', counterpart_name: 'Υδραυλικές Εργασίες Παραδείγματος', doc_type: '1.1', issue_date: '2026-11-15', title: 'Τιμολόγιο Πώλησης ΤΠΥ 7', net_cents: 7137, vat_cents: 1713, gross_cents: 8850, is_credit: false,
     tier: 'review', category: 'plumber', review_reasons: ['unknown_provider'] },
   { id: 'd3', mark: 400001000000110, counterpart_afm: POWER.afm, counterpart_name: null, doc_type: '5.1', issue_date: '2026-11-20', title: 'Πιστωτικό Τιμολόγιο ΠΙΣ 3', net_cents: 1000, vat_cents: 240, gross_cents: 1240, is_credit: true,
@@ -98,8 +101,15 @@ const AUTO = [
 ];
 
 const ATTENTION = [
-  { id: 'a1', mark: 400001000000090, counterpart_afm: '099000049', counterpart_name: 'Υδραυλικές Εργασίες Παραδείγματος', doc_type: '2.1', issue_date: '2026-10-30', title: 'Τιμολόγιο Παροχής Υπηρεσιών Γ 12', net_cents: 7137, vat_cents: 1713, gross_cents: 8850, is_credit: false },
+  { id: 'a1', mark: 400001000000090, counterpart_afm: '099000049', counterpart_name: 'Υδραυλικές Εργασίες Παραδείγματος', doc_type: '2.1', issue_date: '2026-10-30', title: 'Τιμολόγιο Παροχής Υπηρεσιών Γ 12', net_cents: 7137, vat_cents: 1713, gross_cents: 8850, is_credit: false, needs_attention: 'cancelled_after_filing' },
+  // Θωράκιση: δεμένο με δαπάνη που πέρασε ο ίδιος, ο εκδότης το ακύρωσε.
+  { id: 'a2', mark: 400001000000093, counterpart_afm: WATER.afm, counterpart_name: null, doc_type: '11.2', issue_date: '2026-10-12', title: 'Απόδειξη Παροχής Υπηρεσιών Β 38', net_cents: 3120, vat_cents: 0, gross_cents: 3120, is_credit: false, needs_attention: 'cancelled_linked' },
 ];
+
+// Θωράκιση: η κάρτα με το «Πώς πληρώθηκε;» (καθαρή αξία πάνω από το όριο) και
+// με δαπάνη που ο χρήστης έχει ήδη περάσει («Είναι η ίδια με …;»).
+const PAY_DOCS = [DOCS[3], DOCS[0], DOCS[1]];
+const TWIN = { expenseId: 'e9', description: 'Λογαριασμός νερού', amount: 1234.5, date: '2026-11-06', vendor: 'ΕΥΔΑΠ' };
 
 /** Οι γραμμές των πινάκων myDATA ανά σκηνή. */
 export function mydataRespond(which: string, table: string, filters: Array<[string, string, unknown]> = []): { data: unknown; error: null } | undefined {
@@ -111,7 +121,7 @@ export function mydataRespond(which: string, table: string, filters: Array<[stri
   // Α2: ό,τι μπήκε μόνο του και το πλήθος όσων δεν αφορούσαν ακίνητα.
   if (table === 'mydata_docs' && filters.some(f => f[1] === 'filed_by')) return { data: which === 'mydataInbox' || which === 'mydataInboxAuto' ? AUTO : [], error: null };
   if (table === 'mydata_consents') return { data: which.startsWith('mydataInbox') ? { not_property: 4 } : null, error: null };
-  if (table === 'mydata_docs') return { data: which === 'mydataInbox' || which === 'mydataInboxTwo' ? DOCS : [], error: null };
+  if (table === 'mydata_docs') return { data: which === 'mydataInbox' || which === 'mydataInboxTwo' ? DOCS : which === 'mydataInboxPay' ? PAY_DOCS : [], error: null };
   return undefined;
 }
 
@@ -121,13 +131,18 @@ export function mydataRespond(which: string, table: string, filters: Array<[stri
  * σημαία ανοιχτή· χωρίς αυτό οι σκηνές τους μένουν ίδιες ως το byte.
  */
 const WHOLE = typeof location !== 'undefined' && new URLSearchParams(location.search).get('mydata') === '1';
-export function mydataRpc(which: string, fn: string): { data: unknown; error: null } | undefined {
+export function mydataRpc(which: string, fn: string): { data: unknown; error: { code: string; message: string } | null } | undefined {
   if (WHOLE && !which.startsWith('mydata') && (fn === 'my_accountants' || fn === 'mydata_my_consent')) return mydataRpc('mydataConsent', fn);
   if (!which.startsWith('mydata')) return undefined;
+  // Θωράκιση: ο λογιστής χωρίς δεύτερο βήμα. Η βάση απαντά `mfa_required`.
+  if (which === 'mydataSecondStep' && fn === 'mydata_clients_status') return { data: null, error: { code: '42501', message: 'mfa_required' } };
   const answers: Record<string, unknown> = {
     mydata_clients_status: CLIENTS[which] ?? [],
     mydata_my_consent: CONSENT[which] ?? null,
-    my_accountants: [{ accountantId: 'a1', name: 'Λογιστικό Γραφείο Υπόδειγμα', linkedAt: '2026-10-01T09:00:00Z' }],
+    my_accountants: which === 'mydataConsentTwo'
+      ? [{ accountantId: 'a1', name: 'Λογιστικό Γραφείο Υπόδειγμα', linkedAt: '2026-10-01T09:00:00Z' }, { accountantId: 'a2', name: 'Φοροτεχνικό Γραφείο Παράδειγμα', linkedAt: '2026-11-01T09:00:00Z' }]
+      : [{ accountantId: 'a1', name: 'Λογιστικό Γραφείο Υπόδειγμα', linkedAt: '2026-10-01T09:00:00Z' }],
+    mydata_doc_match: which === 'mydataInboxPay' ? TWIN : null,
   };
   return fn in answers ? { data: answers[fn], error: null } : undefined;
 }
@@ -143,14 +158,20 @@ export const MYDATA_VIEWS: Record<string, () => React.ReactElement> = {
   mydataSyncing: card,
   mydataReady: card,
   mydataDown: card,
+  // Στην εφαρμογή το κουμπί ανοίγει το «Δεύτερο βήμα» του χώρου (SecondStep.tsx).
+  mydataSecondStep: () => portal(<MydataCard db={supabase} userId="u1" onSecondStep={() => undefined} />),
   mydataConsentNone: consent,
   mydataConsent: consent,
   mydataConsentDenied: consent,
   mydataConsentPaused: consent,
+  // Θωράκιση: με δύο λογιστές φαίνεται η «Αλλαγή λογιστή».
+  mydataConsentTwo: consent,
   mydataInboxCancelled: () => <MydataInbox propertyId="p0" userId="u1" />,
   mydataInbox: () => <MydataInbox propertyId="p0" userId="u1" />,
   // Α2: δύο ακίνητα, άρα και επιλογή ακινήτου στην κάρτα.
   mydataInboxTwo: () => <MydataInbox propertyId="p0" userId="u1" properties={[{ id: 'p0', name: 'Διαμέρισμα Παραδείγματος' }, { id: 'p1', name: 'Στούντιο στο κέντρο' }]} />,
   // Α2: όλα μπήκαν μόνα τους· τίποτα για έλεγχο.
   mydataInboxAuto: () => <MydataInbox propertyId="p0" userId="u1" />,
+  // Θωράκιση: «Πώς πληρώθηκε;» και «Είναι η ίδια με …;» στην ανοιχτή κάρτα.
+  mydataInboxPay: () => <MydataInbox propertyId="p0" userId="u1" />,
 };

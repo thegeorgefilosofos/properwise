@@ -15,6 +15,11 @@
 // τη σύνδεση η οθόνη δείχνει μόνο τελείες, γιατί δεν το ξέρει. Η μορφή του
 // ελέγχεται αμέσως, όσο γράφεται, πριν φύγει οτιδήποτε.
 //
+// ΔΕΥΤΕΡΟ ΒΗΜΑ ΓΙΑ ΚΑΘΕ ΕΝΕΡΓΕΙΑ (θωράκιση 24/11/2026, Σ1 νομικού ελέγχου). Η
+// βάση αρνείται αποθήκευση κλειδιού, προβολή πελατών και συγχρονισμό χωρίς
+// `aal2`, και στον λογιστή που δουλεύει μόνος του. Η κάρτα το λέει με μία
+// πρόταση και ανοίγει το ίδιο «Δεύτερο βήμα» με τον χώρο του γραφείου.
+//
 // ΖΩΝΤΑΝΑ. Συνδρομή Realtime στη σύνδεση και στις άδειες (ίδια RLS): η γραμμή
 // και ο πίνακας αλλάζουν όσο τρέχει ο συγχρονισμός, χωρίς ανανέωση. Ανοίγοντας
 // τον χώρο, αν ο τελευταίος συγχρονισμός είναι 12 ώρες πίσω, ξεκινά μόνος του.
@@ -56,8 +61,9 @@ function Busy() {
   );
 }
 
-export default function MydataCard({ db, userId }: { db: SupabaseClient; userId: string }) {
+export default function MydataCard({ db, userId, onSecondStep }: { db: SupabaseClient; userId: string; onSecondStep?: () => void }) {
   const [conn, setConn] = useState<Connection | null>(null);
+  const [needStep, setNeedStep] = useState(false);
   const [rows, setRows] = useState<ClientRow[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [aadeUser, setAadeUser] = useState('');
@@ -77,6 +83,7 @@ export default function MydataCard({ db, userId }: { db: SupabaseClient; userId:
 
   const load = useCallback(async () => {
     const [c, r] = await Promise.all([mydata.connection(db, userId), mydata.clientsStatus(db)]);
+    setNeedStep(r.secondStep);
     if (!c.error) setConn(c.data);
     if (!r.error) setRows(r.rows);
     setLoaded(true);
@@ -110,10 +117,10 @@ export default function MydataCard({ db, userId }: { db: SupabaseClient; userId:
   // Ο ΚΑΝΟΝΑΣ ΤΩΝ 12 ΩΡΩΝ, ΜΙΑ ΦΟΡΑ ΑΝΑ ΑΝΟΙΓΜΑ. Η βάση τον ξαναελέγχει: δύο
   // καρτέλες ανοιχτές δεν φέρνουν δύο συγχρονισμούς.
   useEffect(() => {
-    if (autoTried.current || phase !== 'ready' || !conn) return;
+    if (autoTried.current || needStep || phase !== 'ready' || !conn) return;
     autoTried.current = true;
     if (shouldAutoSync(conn.last_sync_at)) Promise.resolve().then(() => runSync('auto'));
-  }, [phase, conn, runSync]);
+  }, [phase, conn, runSync, needStep]);
 
   const shape = keyShape(key);
   const connect = async () => {
@@ -173,7 +180,7 @@ export default function MydataCard({ db, userId }: { db: SupabaseClient; userId:
     : phase === 'ready' && conn
       ? `${syncedLine(conn.last_sync_at, conn.last_sync_new)}${issues ? ` · ${issues === 1 ? '1 πελάτης θέλει' : `${issues}\u00a0πελάτες θέλουν`} προσοχή` : ''}`
       : phase === 'rejected' ? 'Η ΑΑΔΕ δεν δέχεται το κλειδί. Βάλε νέο για να συνεχίσουν οι συγχρονισμοί.'
-      : 'Φέρνει τα παραστατικά όσων πελατών πατήσουν «Επιτρέπω», χωρίς λήψεις και ανεβάσματα.';
+      : 'Φέρνει από το myDATA όσα παραστατικά έχουν διαβιβαστεί για τους πελάτες που πατούν «Επιτρέπω», χωρίς λήψεις και ανεβάσματα.';
 
   // Το «Επιβεβαίωση ΑΦΜ» της γραμμής: ίδιο στον πίνακα και στις ομάδες του τηλεφώνου.
   const afmControl = (r: ClientRow) => (
@@ -202,6 +209,23 @@ export default function MydataCard({ db, userId }: { db: SupabaseClient; userId:
   );
 
   if (!loaded) return null;
+
+  if (needStep) return (
+    <Card style={{ marginBottom: T.sp.lg }}>
+      <SecHdr label="Σύνδεση myDATA" />
+      <p role="status" style={{ ...TT.body, margin: `0 0 ${T.sp.sm}px`, color: 'var(--text-primary)' }}>
+        Η σύνδεση myDATA θέλει δεύτερο βήμα ταυτοποίησης.
+      </p>
+      <p style={{ ...TT.bodySm, margin: `0 0 ${T.sp.md}px`, color: 'var(--text-secondary)' }}>
+        Το κλειδί σου ανοίγει στην ΑΑΔΕ όλους τους πελάτες σου. Γι' αυτό η αποθήκευση κλειδιού, η λίστα πελατών και ο συγχρονισμός γίνονται μόνο μετά το δεύτερο βήμα, ακόμη κι αν δουλεύεις χωρίς γραφείο.
+      </p>
+      {onSecondStep && (
+        <div className="act-row" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Btn variant="primary" onClick={onSecondStep}>Δεύτερο βήμα</Btn>
+        </div>
+      )}
+    </Card>
+  );
 
   const form = phase === 'none' || phase === 'rejected';
 

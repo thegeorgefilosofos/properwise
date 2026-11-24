@@ -12,6 +12,7 @@ import type { DbError } from '@/lib/supabase/writeResult';
 import type { MydataDocsRow } from '@/lib/supabase/tables';
 import { row as expenseRow, addRow, idByDedup } from './expenses';
 import type { ClientRow, Connection } from '@/lib/mydata/status';
+import { MYDATA_CONSENT_VERSION, MYDATA_CONSENT_HASH } from '@/lib/mydata/consentText';
 
 export type Db = SupabaseClient;
 
@@ -25,10 +26,14 @@ export async function connection(db: Db, accountantId: string): Promise<{ data: 
   return { data: (data as Connection | null) ?? null, error: error as DbError | null };
 }
 
-/** Ο πίνακας του λογιστή: όλοι οι συνδεδεμένοι πελάτες, με την κατάσταση της άδειας. */
-export async function clientsStatus(db: Db): Promise<{ rows: ClientRow[]; error: DbError | null }> {
+/**
+ * Ο πίνακας του λογιστή: όλοι οι συνδεδεμένοι πελάτες, με την κατάσταση της
+ * άδειας. `secondStep`: η βάση ζητά δεύτερο βήμα ταυτοποίησης (κάθε ενέργεια
+ * myDATA του λογιστή το θέλει, θωράκιση 24/11/2026).
+ */
+export async function clientsStatus(db: Db): Promise<{ rows: ClientRow[]; error: DbError | null; secondStep: boolean }> {
   const { data, error } = await db.rpc('mydata_clients_status');
-  return { rows: Array.isArray(data) ? data as ClientRow[] : [], error: error as DbError | null };
+  return { rows: Array.isArray(data) ? data as ClientRow[] : [], error: error as DbError | null, secondStep: (error as DbError | null)?.code === '42501' };
 }
 
 interface FnAnswer { ok?: boolean; reason?: string; verified?: boolean; retryAt?: string | null; added?: number; failed?: number; partial?: boolean }
@@ -88,10 +93,22 @@ export async function myConsent(db: Db): Promise<{ data: MyConsent | null; error
   return { data: (data as MyConsent | null) ?? null, error: error as DbError | null };
 }
 
-export async function grant(db: Db, accountantId: string, fromYear: number): Promise<{ ok: boolean; reason?: string; error: DbError | null }> {
-  const { data, error } = await db.rpc('mydata_consent_grant', { p_accountant: accountantId, p_from_year: fromYear });
-  const r = data as { ok?: boolean; reason?: string } | null;
-  return { ok: !error && r?.ok === true, reason: r?.reason, error: error as DbError | null };
+/**
+ * «Επιτρέπω», με την έκδοση και το αποτύπωμα του κειμένου που έδειξε η οθόνη
+ * (lib/mydata/consentText.ts) και το ρητό τικ για πιθανά δεδομένα υγείας. Με
+ * ενεργή άδεια σε άλλον λογιστή η βάση απαντά `switch_confirm` και το πλήθος
+ * όσων θα σβήσουν· η αλλαγή γίνεται μόνο με `switchConfirmed`.
+ */
+export async function grant(
+  db: Db, accountantId: string, fromYear: number, opts: { health: boolean; switchConfirmed?: boolean },
+): Promise<{ ok: boolean; reason?: string; pending: number; deleted: number; error: DbError | null }> {
+  const { data, error } = await db.rpc('mydata_consent_grant', {
+    p_accountant: accountantId, p_from_year: fromYear,
+    p_text_version: MYDATA_CONSENT_VERSION, p_text_hash: MYDATA_CONSENT_HASH,
+    p_health: opts.health, p_switch: opts.switchConfirmed === true,
+  });
+  const r = data as { ok?: boolean; reason?: string; pending?: number; deleted?: number } | null;
+  return { ok: !error && r?.ok === true, reason: r?.reason, pending: Number(r?.pending ?? 0), deleted: Number(r?.deleted ?? 0), error: error as DbError | null };
 }
 
 export async function revoke(db: Db, accountantId: string): Promise<{ ok: boolean; deleted: number; error: DbError | null }> {
@@ -111,14 +128,18 @@ export async function accessLog(db: Db, clientId: string, limit = 8): Promise<{ 
 
 // ── Τα Εισερχόμενα: «Για έλεγχο» ──────────────────────────────────────────
 
-export const DOC_COLUMNS = 'id,mark,counterpart_afm,counterpart_name,doc_type,issue_date,title,net_cents,vat_cents,gross_cents,is_credit,tier,category,review_reasons';
+export const DOC_COLUMNS = 'id,mark,counterpart_afm,counterpart_name,doc_type,issue_date,title,net_cents,vat_cents,gross_cents,is_credit,tier,category,review_reasons,needs_attention';
 // Το `id` έχει προεπιλογή στη βάση, άρα ο παραγόμενος τύπος το δηλώνει κενό·
 // σε γραμμή που διαβάστηκε υπάρχει πάντα.
 // Α2: `tier`, `category` (προσυμπληρωμένη) και `review_reasons` (κωδικοί) τα
 // γράφει ο συγχρονισμός· σε παλιές γραμμές είναι κενά.
-export type PendingDoc = { id: string } & Pick<MydataDocsRow,
-  'mark' | 'counterpart_afm' | 'counterpart_name' | 'doc_type' | 'issue_date' | 'title' | 'net_cents' | 'vat_cents' | 'gross_cents' | 'is_credit'>
-  & Partial<Pick<MydataDocsRow, 'tier' | 'category' | 'review_reasons'>>;
+// Θωράκιση: τα πεδία του εκδότη και τα ποσά είναι κενά ΜΟΝΟ σε απορριφθέν
+// (ελαχιστοποίηση· κανόνας `mydata_docs_fields_or_minimized`). Οσα διαβάζει η
+// οθόνη (εκκρεμή, αυτόματα, ακυρωμένα) τα έχουν πάντα.
+type Filled = 'counterpart_afm' | 'doc_type' | 'issue_date' | 'title' | 'net_cents' | 'vat_cents' | 'gross_cents';
+export type PendingDoc = { id: string } & { [K in Filled]: NonNullable<MydataDocsRow[K]> }
+  & Pick<MydataDocsRow, 'mark' | 'counterpart_name' | 'is_credit'>
+  & Partial<Pick<MydataDocsRow, 'tier' | 'category' | 'review_reasons' | 'needs_attention'>>;
 
 export async function pendingDocs(db: Db, clientId: string, limit = 50): Promise<{ rows: PendingDoc[]; error: DbError | null }> {
   const { data, error } = await db.from('mydata_docs').select(DOC_COLUMNS)
@@ -130,15 +151,18 @@ export async function pendingDocs(db: Db, clientId: string, limit = 50): Promise
 export const dedupOf = (mark: number | string): string => `mydata:${mark}`;
 
 /**
+ * Η πληρωμή, όπως την είπε ο χρήστης στο «Πώς πληρώθηκε;» (lib/mydata/review.ts,
+ * `paymentFields`). Η ημερομηνία πληρωμής είναι μόνο ό,τι έγραψε ο ίδιος.
+ */
+export interface Payment { paid: boolean; payment_method: string | null; paid_on: string | null }
+
+/**
  * Η δαπάνη από το παραστατικό, με τα ποσά ΟΠΩΣ ΤΑ ΕΔΩΣΕ Η ΑΑΔΕ: μικτό και
  * ΦΠΑ από τα λεπτά της βάσης, με πρόσημο για το πιστωτικό. Η οθόνη δεν δίνει
- * ποσό: δίνει μόνο ακίνητο και κατηγορία.
+ * ποσό: δίνει μόνο ακίνητο, κατηγορία και, όπου ρωτά, πώς πληρώθηκε. Η
+ * ημερομηνία της δαπάνης είναι της έκδοσης· της πληρωμής μένει κενή αν δεν
+ * τη γράψει ο χρήστης (θωράκιση 24/11/2026, Μ7 λογιστικού ελέγχου).
  */
-export interface Payment {
-  /** Η απάντηση στο «Πληρώθηκε με τράπεζα ή κάρτα;» (μόνο πάνω από το όριο). */
-  method: 'Ηλεκτρονική πληρωμή' | 'Μετρητά';
-}
-
 export function expenseFromDoc(d: PendingDoc, scope: { propertyId: string; userId: string }, category: string, vendorLabel: string, payment?: Payment) {
   const sign = d.is_credit ? -1 : 1;
   return {
@@ -147,13 +171,14 @@ export function expenseFromDoc(d: PendingDoc, scope: { propertyId: string; userI
       amount: (sign * Number(d.gross_cents)) / 100,
       category,
       date: d.issue_date,
-      paid: !!payment,
-      payment_method: payment?.method ?? null,
+      paid: payment?.paid === true,
+      payment_method: payment?.paid ? payment.payment_method : null,
       store_vendor: vendorLabel,
       supplier_afm: /^\d{9}$/.test(d.counterpart_afm) ? d.counterpart_afm : null,
       notes: `myDATA · ΜΑΡΚ ${d.mark}`,
     }),
     vat_amount: (sign * Number(d.vat_cents)) / 100,
+    paid_on: payment?.paid ? payment.paid_on : null,
     dedup_hash: dedupOf(d.mark),
   };
 }
@@ -185,18 +210,35 @@ export async function fileDoc(
   return { expenseId, error: (linkError as DbError) ?? null, linked };
 }
 
+/** Η δαπάνη που ο χρήστης έχει ήδη περάσει μόνος του και μοιάζει με αυτό το παραστατικό. */
+export interface MatchCandidate { expenseId: string; description: string; amount: number; date: string; vendor: string | null }
+
+/** «Είναι η ίδια με …;»: η βάση ψάχνει με τον ανεκτικό κανόνα (20261124100000, §4). */
+export async function matchDoc(db: Db, docId: string, propertyId: string | null, label: string): Promise<{ data: MatchCandidate | null; error: DbError | null }> {
+  const { data, error } = await db.rpc('mydata_doc_match', { p_doc: docId, p_property: propertyId, p_label: label });
+  return { data: (data as MatchCandidate | null) ?? null, error: error as DbError | null };
+}
+
+/** «Είναι η ίδια»: δένει το παραστατικό με τη δαπάνη, αφού η βάση την ξαναελέγξει. */
+export async function linkDoc(db: Db, docId: string, expenseId: string, propertyId: string | null, label: string): Promise<{ ok: boolean; error: DbError | null }> {
+  const { data, error } = await db.rpc('mydata_doc_link', { p_doc: docId, p_expense: expenseId, p_property: propertyId, p_label: label });
+  return { ok: !error && (data as { ok?: boolean } | null)?.ok === true, error: error as DbError | null };
+}
+
+/** «Δεν αφορά ακίνητο». Η βάση σβήνει αμέσως εκδότη, ποσά και ημερομηνία· μένει ο ΜΑΡΚ. */
 export async function dismissDoc(db: Db, id: string): Promise<{ error: DbError | null }> {
   const { error } = await db.rpc('mydata_doc_dismiss', { p_doc: id });
   return { error: error as DbError | null };
 }
 
 /**
- * Ακυρώσεις από τον εκδότη για παραστατικά που ο χρήστης είχε ήδη καταχωρήσει.
- * Η δαπάνη δεν σβήστηκε: περιμένει την απόφασή του.
+ * Ακυρώσεις από τον εκδότη για παραστατικά που ο χρήστης είχε ήδη καταχωρήσει
+ * (`cancelled_after_filing`) ή δέσει με δαπάνη που πέρασε ο ίδιος
+ * (`cancelled_linked`). Καμία δαπάνη δεν σβήστηκε: περιμένει την απόφασή του.
  */
 export async function attentionDocs(db: Db, clientId: string): Promise<{ rows: PendingDoc[]; error: DbError | null }> {
   const { data, error } = await db.from('mydata_docs').select(DOC_COLUMNS)
-    .eq('client_id', clientId).eq('needs_attention', 'cancelled_after_filing').order('issue_date', { ascending: false }).limit(20);
+    .eq('client_id', clientId).in('needs_attention', ['cancelled_after_filing', 'cancelled_linked']).order('issue_date', { ascending: false }).limit(20);
   return { rows: (data as PendingDoc[] | null) ?? [], error: error as DbError | null };
 }
 
@@ -222,7 +264,7 @@ export async function autoDocs(db: Db, clientId: string, days = 30, now: Date = 
   return { rows: (data as PendingDoc[] | null) ?? [], error: error as DbError | null };
 }
 
-/** «Δεν είναι σωστό»: σβήνει μόνο τη δαπάνη του ίδιου ΜΑΡΚ, το παραστατικό ξαναγίνεται «Για έλεγχο». */
+/** «Αναίρεση»: σβήνει μόνο τη δαπάνη του ίδιου ΜΑΡΚ, το παραστατικό ξαναγίνεται «Για έλεγχο». */
 export async function undoAuto(db: Db, docId: string): Promise<{ ok: boolean; error: DbError | null }> {
   const { data, error } = await db.rpc('mydata_auto_undo', { p_doc: docId });
   return { ok: !error && (data as { ok?: boolean } | null)?.ok === true, error: error as DbError | null };
