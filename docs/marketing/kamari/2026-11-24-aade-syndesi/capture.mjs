@@ -7,7 +7,12 @@
 //   · mydataConsent: η γραμμή «myDATA από τον λογιστή» στον Λογαριασμό του ιδιοκτήτη (MydataConsent.tsx)
 //   · mydataInbox:   τα Εισερχόμενα «Από το myDATA» του ακινήτου (MydataInbox.tsx)
 //   · bulkE9:        η «Εισαγωγή από το myAADE» με ένα Ε9 τριών ακινήτων (MyaadeImport.tsx)
-// Καμία οθόνη δεν αλλάζει: μόνο κρύβονται γραμμές (visibility) για τη λήψη «πριν εμφανιστούν»· στη συναίνεση (v3) δύο γραμμές με display: none.
+// Τι αλλάζει σε αυτή τη λήψη σε σχέση με την οθόνη της εφαρμογής (γράφεται και στο plan.md):
+//   · γραμμές κρύβονται (visibility) για τα καρέ «πριν εμφανιστούν»·
+//   · στην κάρτα «myDATA από τον λογιστή» κρύβονται δύο γραμμές (display: none): η περιγραφή με το «αυτόματα»
+//     και η γραμμή του τελευταίου συγχρονισμού (ημερομηνία, «12 νέα»)·
+//   · (v4) στο Ε9 η τελεία « · » κολλά στη λέξη πριν από αυτήν (μη διακοπτόμενο κενό), ώστε η αλλαγή γραμμής να μην την αφήνει στην αρχή·
+//   · (v4) ο αριθμός ΜΑΡΚ κόβεται σε δύο κομμάτια («ΜΑΡΚ» και ο αριθμός, που η εφαρμογή σπάει σε δύο γραμμές) για να μπουν σε μία.
 import { chromium } from 'playwright-core';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -87,6 +92,19 @@ const goneConsent = async (p) => {
   // v2: το προτεινόμενο ακίνητο (το πεδίο «Ακίνητο») και τα μεγέθη γραμμάτων.
   const propSel = await box(await find(p, 'Διαμέρισμα Παραδείγματος', 'r.width >= 280'));
   const fonts = { issuer: await fontOf(await find(p, 'Ηλεκτρική Ενέργεια', 'true')), mark: await fontOf(await find(p, 'ΜΑΡΚ', 'true')) };
+  // v4: ο ΜΑΡΚ ως ήρωας. Τα κουτιά της λέξης «ΜΑΡΚ» και του αριθμού (σε δύο γραμμές στην εφαρμογή), με το ίδιο ύψος γραμμής.
+  const markRects = await p.evaluate(() => {
+    const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let n; while ((n = w.nextNode())) if (n.textContent.includes('ΜΑΡΚ')) break;
+    // Ο αριθμός είναι στο <span translate="no"> αμέσως μετά (MydataInbox.tsx).
+    const t = n.textContent, i = t.indexOf('ΜΑΡΚ'), numNode = n.nextSibling.firstChild;
+    const rect = (node, a, b) => { const r = document.createRange(); r.setStart(node, a); r.setEnd(node, b); const q = r.getBoundingClientRect(); return { x: q.x, y: q.y, w: q.width, h: q.height }; };
+    return { word: rect(n, i, i + 4), num: rect(numNode, 0, numNode.textContent.length), space: rect(n, i + 4, i + 5).w };
+  });
+  const lineBox = (r) => ({ x: Math.floor(r.x) - 1, y: Math.floor(r.y) - 1, w: Math.ceil(r.w) + 2, h: Math.ceil(r.h) + 2 });
+  const markWord = lineBox(markRects.word), markNum = lineBox(markRects.num);
+  await clipShot(p, 'mark-word', markWord);
+  await clipShot(p, 'mark-num', markNum);
   // Ως το τέλος του πεδίου «Ακίνητο» (το τρίτο παιδί του παραστατικού, ή το πρώτο κάτω από τα 330 px).
   const end = partBoxes.find((r) => r.y + r.h > card.y + 260) ?? partBoxes[partBoxes.length - 1];
   const reg = { x: 0, y: card.y, w: 390, h: end.y + end.h + 12 - card.y };
@@ -96,7 +114,7 @@ const goneConsent = async (p) => {
   await setVis(p, parts, false); await p.waitForTimeout(150);
   await clipShot(p, 'inbox-empty', reg);
   await setVis(p, parts, true);
-  boxes.inbox = { card, issuer, propSel, parts: shown, reg, fonts };
+  boxes.inbox = { card, issuer, propSel, parts: shown, reg, fonts, markWord, markNum, markSpace: markRects.space };
 }
 
 // ── 3. «Εισαγωγή από το myAADE» με Ε9 τριών ακινήτων ─────────────────────
@@ -104,6 +122,12 @@ const goneConsent = async (p) => {
 // κοντινό (936 px) μεγεθύνεται × 3,49 και τα στοιχεία του ακινήτου (11 px) βγαίνουν ≥ 38 px.
 {
   const p = await open('bulkE9', { width: 320 });
+  // v4: « · » με μη διακοπτόμενο κενό πριν από την τελεία: σε αλλαγή γραμμής η τελεία μένει στο τέλος της πρώτης.
+  await p.evaluate(() => {
+    const w = document.createTreeWalker(document.querySelector('ul'), NodeFilter.SHOW_TEXT);
+    let n; while ((n = w.nextNode())) if (n.textContent.includes(' · ')) n.textContent = n.textContent.replaceAll(' · ', '\u00a0· ');
+  });
+  await p.waitForTimeout(200);
   const lis = await p.evaluateHandle(() => [...document.querySelectorAll('ul > li')]);
   const nl = await lis.evaluate((a) => a.length);
   const items = [];

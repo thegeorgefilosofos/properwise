@@ -152,11 +152,14 @@ const L = fmt === '916'
   ? { capTop: 300, capSize: 60, badgeY: 470, badgeSize: 30, big: 150, title: 104, midY: 960, Z0: 560, Z1: 1600 }
   : { capTop: 110, capSize: 52, badgeY: 248, badgeSize: 26, big: 128, title: 92, midY: 675, Z0: 330, Z1: 1278 };
 L.cY = (L.Z0 + L.Z1) / 2;
+// v4: στο story 2 η λεζάντα, η ετικέτα και το κοντινό κατεβαίνουν 80 px (ορατή ζώνη ως το 1500): μικραίνει το κενό κάτω από την κάρτα.
+const SD = SN === 2 ? 80 : 0;
+L.capTop += SD; L.badgeY += SD; L.pY = L.cY + SD;
 // Οι συσκευές (και το ζουμ τους) σβήνουν πάνω από τη ζώνη περιεχομένου: ποτέ πίσω από τη λεζάντα ή την ετικέτα.
 // Η μάσκα μπαίνει σε περιτύλιγμα χωρίς μετασχηματισμό (στο ίδιο το #world θα μεγεθυνόταν μαζί με το ζουμ).
 { const wc = document.createElement('div'); wc.id = 'wclip'; wc.style.position = 'absolute'; wc.style.inset = '0';
   $('world').before(wc); wc.appendChild($('world'));
-  wc.style.webkitMaskImage = wc.style.maskImage = `linear-gradient(180deg, transparent ${L.Z0 - 20}px, #000 ${L.Z0 + 30}px)`; }
+  wc.style.webkitMaskImage = wc.style.maskImage = `linear-gradient(180deg, transparent ${L.Z0 + SD - 20}px, #000 ${L.Z0 + SD + 30}px)`; }
 const MARGIN = 64;
 const stage = $('stage');
 stage.style.width = W + 'px'; stage.style.height = H + 'px';
@@ -200,6 +203,13 @@ pImg('inboxEmpty', 'work/shots9/inbox-empty.png', { x: 0, y: 119, w: 390, h: 371
 pImg('p0', 'work/shots9/inbox-part-0.png', { x: 48, y: 210, w: 294, h: 20 });
 // v3: στο κοντινό του ΜΑΡΚ η γραμμή «Καθαρό · ΦΠΑ · ΜΑΡΚ» ανεβαίνει στη θέση της κρυμμένης γραμμής «Τιμολόγιο» (κανένα κενό).
 pImg('p2up', 'work/shots9/inbox-part-2.png', { x: 48, y: 240, w: 294, h: 36 });
+// v4: ο ΜΑΡΚ ήρωας. Από πάνω η γραμμή εκδότη και ποσού (× 3,0, 39 px)· από κάτω «ΜΑΡΚ 400001000000101» σε 56 px
+// (12 px × 4,67, k = 4,67 / 3,0). Η εφαρμογή σπάει τη λέξη και τον αριθμό σε δύο γραμμές· εδώ μπαίνουν σε μία
+// (capture.mjs: mark-word, mark-num, με το κενό ενός διαστήματος 12 px, 3,4 px).
+const MK = 56 / 12 / 3.0;
+pImg('p0m', 'work/shots9/inbox-part-0.png', { x: 48, y: 219, w: 294, h: 20 });
+pImg('mword', 'work/shots9/mark-word.png', { x: 46.44, y: 256.1, w: 39, h: 19, k: MK });
+pImg('mnum', 'work/shots9/mark-num.png', { x: 46.44 + (38 + 3.4) * MK, y: 256.1, w: 121, h: 19, k: MK });
 pImg('q1', 'work/shots9/inbox-part-1.png', { x: 48, y: 240, w: 294, h: 36 });
 pImg('q2', 'work/shots9/inbox-part-2.png', { x: 48, y: 286, w: 294, h: 36 });
 pImg('q3', 'work/shots9/inbox-part-3.png', { x: 48, y: 332, w: 294, h: 146 });
@@ -214,9 +224,10 @@ const panelSpot = document.createElement('div'); panelSpot.className = 'spot'; p
 const pnl = (o) => ({ ...o, s: GW / o.w });
 const E9S = GW / 276;
 const PANELS = {
-  consent: pnl({ imgs: ['consent'], x0: 25, w: 312, y0: 125, y1: 300 }),
+  // v4: η κάρτα κόβεται 15 px κάτω από το «Ιστορικό πρόσβασης» (ίσο με το πάνω περιθώριο), όχι στο κάτω άκρο της.
+  consent: pnl({ imgs: ['consent'], x0: 25, w: 312, y0: 125, y1: 291 }),
   inbox: pnl({ imgs: ['inboxEmpty', 'q1', 'q2', 'q3', 'p0'], x0: 39, w: 312, y0: 197, y1: 482 }),
-  issuer: pnl({ imgs: ['inboxEmpty', 'p0', 'p2up'], x0: 39, w: 312, y0: 197, y1: 290 }),
+  issuer: pnl({ imgs: ['inboxEmpty', 'p0m', 'mword', 'mnum'], x0: 39, w: 312, y0: 197, y1: 309 }),
   e9: pnl({ imgs: ['e9nEmpty', 'e9n0', 'e9n1'], x0: 22, w: 276, y0: 365, y1: 365 + Math.floor((L.Z1 - L.Z0 - 20) / E9S) }),
   e9b: pnl({ imgs: ['e9nb'], x0: 22, w: 276, y0: 600, y1: 844 }),
 };
@@ -239,7 +250,7 @@ const SCENES = [
   { from: CUT[8], lap: { ...OFF }, phone: { ...OFF } },
 ];
 // Η κάμερα του ζουμ: το σημείο (x0, y0) της κάρτας στο κινητό πάει στη θέση του κοντινού, με κλίμακα s / PHK.
-const panelRect = (pn) => { const ph = (pn.y1 - pn.y0) * pn.s; return { left: GX, top: px(L.cY - ph / 2), w: GW, h: ph }; };
+const panelRect = (pn) => { const ph = (pn.y1 - pn.y0) * pn.s; return { left: GX, top: px(L.pY - ph / 2), w: GW, h: ph }; };
 const ZP = PANELS.consent, ZR = panelRect(ZP);
 const ZOOM = { P: { x: DUO.phone.x + (PB + ZP.x0 - (PSW + 2 * PB) / 2) * PHK, y: DUO.phone.y + (PB + PSB + ZP.y0 - (PSH + 2 * PB) / 2) * PHK },
   Z: ZP.s / PHK, to: { x: ZR.left, y: ZR.top }, a: CUT[3] - 0.45 };
@@ -297,8 +308,8 @@ const SPOTS = COVER ? [[-1, 99, 'ph', { x: 44, y: 282, w: 302, h: 44 }]] : [
   [TL.consSpots[0], TL.consSpots[1], 'panel', { x: 27, y: 130, w: 175, h: 32 }],
   [TL.consSpots[1], CUT[4], 'panel', { x: 27, y: 161, w: 286, h: 32 }],
   [TL.phSpot, CUT[5], 'panel', { x: 44, y: 354, w: 302, h: 48 }],
-  [TL.issuerSpots[0], TL.issuerSpots[1], 'panel', { x: 44, y: 205, w: 302, h: 30 }],
-  [TL.issuerSpots[1], CUT[6], 'panel', { x: 44, y: 236, w: 302, h: 44 }],
+  [TL.issuerSpots[0], TL.issuerSpots[1], 'panel', { x: 44, y: 214, w: 302, h: 30 }],
+  [TL.issuerSpots[1], CUT[6], 'panel', { x: 43, y: 254, w: 259, h: 36 }],
   [TL.phE9Spot, CUT[7], 'panel', { x: 64, y: 383, w: 212, h: 54 }],
 ];
 const TAPS = [[TL.taps[0], 'panel', [104, 812]]];
@@ -371,7 +382,7 @@ function renderFilm(t) {
       const on = pn.imgs.includes(key);
       const rev = { q1: TL.inboxParts[1], q2: TL.inboxParts[2], q3: TL.inboxParts[3], e9n1: TL.phE9 }[key];
       im.style.opacity = rev === undefined ? '1' : lin(t, rev, 0.18).toFixed(3);
-      Object.assign(im.style, { display: on ? 'block' : 'none', left: (r.x - pn.x0) * pn.s + 'px', top: (r.y - pn.y0) * pn.s + 'px', width: r.w * pn.s + 'px', height: r.h * pn.s + 'px' });
+      Object.assign(im.style, { display: on ? 'block' : 'none', left: (r.x - pn.x0) * pn.s + 'px', top: (r.y - pn.y0) * pn.s + 'px', width: r.w * pn.s * (r.k ?? 1) + 'px', height: r.h * pn.s * (r.k ?? 1) + 'px' });
     }
     sig.push(sc.panel, u.toFixed(4));
   }
