@@ -25,6 +25,8 @@ import { portalWrap } from '@/app/accountant/Chrome';
 import { createClient } from '@/lib/supabase/client';
 import { PROVIDERS } from '@/lib/mydata/providers';
 import { MYDATA_JOINT_VERSION } from '@/lib/legal/mydataJoint';
+import { PLANS } from '@/lib/billing/plans';
+import { FEATURE_MIN_PLAN } from '@/lib/billing/entitlements';
 
 const SYNCED = '2026-11-23T01:10:00Z';
 const LEASE = new Date(Date.now() - 60_000).toISOString();
@@ -154,8 +156,20 @@ const supabase = createClient();
 const portal = (node: React.ReactNode) => <div style={{ ...portalWrap, paddingTop: 24, paddingBottom: 48 }}>{node}</div>;
 const card = () => portal(<MydataCard db={supabase} userId="u1" />);
 const consent = () => <Card><SetList><MydataConsent userId="u1" allowed /></SetList></Card>;
-// Πακέτο χωρίς τη Σύνδεση myDATA (από το «Ιδιοκτήτης+», 24/11/2026).
-const consentLocked = () => <Card><SetList><MydataConsent userId="u1" /></SetList></Card>;
+// Πακέτο χωρίς τη Σύνδεση myDATA (από το «Ιδιοκτήτης+», 24/11/2026). Ο πάγκος
+// δεν έχει διακομιστή, οπότε το app/api/billing/words απαντά εδώ. Το
+// `lib/legal/billingWords.ts` δεν χτίζεται για τον περιηγητή (τραβά node:crypto
+// μέσω του merchant): η πρόταση στήνεται από τα ίδια PLANS και
+// FEATURE_MIN_PLAN με το `MYDATA_ACCESS`, αλλιώς η σκηνή μένει χωρίς αυτήν.
+function wordsStub() {
+  if (typeof window === 'undefined' || (window as { __mydataWords?: boolean }).__mydataWords) return;
+  (window as { __mydataWords?: boolean }).__mydataWords = true;
+  const orig = window.fetch.bind(window);
+  window.fetch = async (url, init) => (String(url).includes('/api/billing/words')
+    ? new Response(JSON.stringify({ live: false, afterTrialShort: '', partnerTarget: null, mydataAccess: `Η Σύνδεση myDATA περιλαμβάνεται από το πακέτο «${PLANS[FEATURE_MIN_PLAN.mydata_sync].name}» και πάνω.` }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    : orig(url, init));
+}
+const consentLocked = () => { wordsStub(); return <Card><SetList><MydataConsent userId="u1" /></SetList></Card>; };
 
 export const MYDATA_VIEWS: Record<string, () => React.ReactElement> = {
   mydataNone: card,
