@@ -347,7 +347,10 @@ void (async () => {
         const stats: Record<string, { n: number; avgCents: number; category?: string | null }> = { [POWER.afm]: { n: 2, avgCents: 11000 } }
         const asked: string[] = []
         m.store.providerStats = async (_l, id) => { asked.push(id); return stats }
-        const r = await runAccountant(deps(tiers.url, m.store, { classifyRules: { notProperty: new Set([DENY]) } }), 'acc1', 'manual')
+        // Ο πάροχος με `checkedAt`, όπως θα είναι όταν τον ελέγξει άνθρωπος
+        // (θωράκιση 24/11/2026). Το πραγματικό μητρώο: πιο κάτω, όλα για έλεγχο.
+        const registry = (afm: string) => afm === POWER.afm ? { ...POWER, checkedAt: '2026-11-24' } : null
+        const r = await runAccountant(deps(tiers.url, m.store, { classifyRules: { notProperty: new Set([DENY]), registry } }), 'acc1', 'manual')
         const docs = m.ingests.flatMap(i => i.docs)
         const auto = docs.find(d => d.mark === '400001000000101')
         ok('20: το τρέξιμο τελειώνει', r.ok)
@@ -370,6 +373,17 @@ void (async () => {
         ok('20: χωρίς ιστορικό: για έλεγχο ως νέος πάροχος', d?.tier === 'review' && d.reasons.includes('new_provider'))
         ok('20: η κατηγορία προσυμπληρωμένη και στον έλεγχο', d?.category === 'electricity')
       } finally { await again.close() }
+      // Το πραγματικό μητρώο, με ιστορικό: ο πάροχος δεν έχει ελεγχθεί από άνθρωπο.
+      const real = await startFakeAade({ plan: { [A]: [page.replace('<currency>EUR</currency>', '<currency>EUR</currency><correlatedInvoices>400001000000090</correlatedInvoices>')] } })
+      try {
+        const cA = consent('a', A)
+        const m = memoryStore([cA])
+        m.store.providerStats = async () => ({ [POWER.afm]: { n: 2, avgCents: 11000 } })
+        await runAccountant(deps(real.url, m.store), 'acc1', 'manual')
+        const d = m.ingests.flatMap(i => i.docs).find(x => x.mark === '400001000000101')
+        ok('20: πάροχος χωρίς checkedAt: για έλεγχο ακόμη και με ιστορικό', d?.tier === 'review' && d.reasons.includes('provider_unchecked'))
+        ok('20: ο ΜΑΡΚ του συσχετιζόμενου φτάνει στη βάση', d?.correlated_mark === '400001000000090')
+      } finally { await real.close() }
     }
 
     // ── 14. Το δίκτυο κόβεται ───────────────────────────────────────────────

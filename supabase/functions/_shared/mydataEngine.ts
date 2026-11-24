@@ -76,6 +76,8 @@ export interface IngestDoc {
   is_credit: boolean
   cancelled: boolean
   cancellation_mark: string | null
+  /** Θωράκιση: ο ΜΑΡΚ του αρχικού παραστατικού για συσχετιζόμενο πιστωτικό. */
+  correlated_mark: string | null
   /**
    * Α2. `auto`: η βάση το καταχωρεί χωρίς πάτημα, αν ο πελάτης έχει ΕΝΑ ακίνητο
    * (αλλιώς το κρατά για έλεγχο με `pick_property`). `review`: περιμένει τον
@@ -284,6 +286,7 @@ export async function runAccountant(d: EngineDeps, accountantId: string, kind: S
               doc_type: m.docType, series: m.series, aa: m.aa, issue_date: m.issueDate, title: m.title,
               net_cents: m.netCents, vat_cents: m.vatCents, gross_cents: m.grossCents,
               is_credit: m.credit, cancelled: m.cancelled, cancellation_mark: m.cancellationMark,
+              correlated_mark: m.correlatedMark,
               tier: cat ? 'auto' : 'review', category: v.category,
               category_label: cat?.label ?? null, expense_group: cat?.group ?? null,
               vendor: providerByAfm(m.counterpartAfm)?.name ?? null, reasons: v.reasons,

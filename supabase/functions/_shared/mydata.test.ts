@@ -302,5 +302,24 @@ ok('κεφαλίδες §4.1', h['aade-user-id'] === 'logistis1' && h['Ocp-Apim-
   ok('Α2: το μικτό μένει όπως το έδωσε η ΑΑΔΕ', first(off)?.grossCents === 12500)
 }
 
+// ── ΘΩΡΑΚΙΣΗ 24/11/2026: ΤΟ ΠΙΣΤΩΤΙΚΟ ΔΕΝΕΤΑΙ ΜΕ ΤΟ ΑΡΧΙΚΟ ──────────────────────
+// InvoiceHeaderType, `correlatedInvoices` (xs:long, 0..ν): οι ΜΑΡΚ των
+// συσχετιζόμενων παραστατικών (Παράρτημα 8.1, 5.1 «Πιστωτικό Τιμολόγιο /
+// Συσχετιζόμενο»). Κρατιέται ο πρώτος έγκυρος· άκυρη τιμή αγνοείται, δεν
+// στέλνει το παραστατικό σε καραντίνα (είναι προαιρετικό στοιχείο).
+{
+  const withCorr = (vals: string[]) => fx('page1.xml').replace('<currency>EUR</currency>',
+    '<currency>EUR</currency>' + vals.map(v => `<correlatedInvoices>${v}</correlatedInvoices>`).join(''))
+  const one = parseRequestedDoc(withCorr(['400001000000090', '400001000000091']))
+  ok('συσχετιζόμενο: διαβάζεται ο πρώτος ΜΑΡΚ', one.ok && one.invoices[0].correlatedMark === '400001000000090')
+  ok('συσχετιζόμενο: χωρίς στοιχείο, null', one.ok && one.invoices[1].correlatedMark === null)
+  const bad = parseRequestedDoc(withCorr(['abc']))
+  ok('συσχετιζόμενο: άκυρη τιμή αγνοείται, όχι καραντίνα', bad.ok && bad.invalid === 0 && bad.invoices[0].correlatedMark === null)
+  if (one.ok) {
+    const m = toInboxDoc({ ...one.invoices[0], invoiceType: '5.1' }, CLIENT)
+    ok('συσχετιζόμενο: φτάνει στη γραμμή των Εισερχομένων', m.kind === 'doc' && m.correlatedMark === '400001000000090')
+  }
+}
+
 console.log(`mydata: ${pass} ✓ · ${fail} ✗`)
 if (fail) process.exit(1)
