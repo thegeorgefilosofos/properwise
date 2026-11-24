@@ -358,6 +358,13 @@ export const INVITE_PLAN_REFUSAL = `Η πρόσκληση με email ανοίγ�
 export const PROSTASIA_ACCESS = `Η Προστασία ιδιοκτήτη περιλαμβάνεται από το πακέτο «${PLANS[FEATURE_MIN_PLAN.foreclosure_protection].name}» και πάνω.`;
 
 /**
+ * Από ποιο πακέτο ανοίγει η Σύνδεση myDATA (απόφαση ιδιοκτήτη 24/11/2026). Ιδιος
+ * κανόνας με το PROSTASIA_ACCESS· η οθόνη (MydataConsent) το διαβάζει από το
+ * /api/billing/words.
+ */
+export const MYDATA_ACCESS = `Η Σύνδεση myDATA περιλαμβάνεται από το πακέτο «${PLANS[FEATURE_MIN_PLAN.mydata_sync].name}» και πάνω.`;
+
+/**
  * Το δικαίωμα του νόμου για τον καταναλωτή, σε μία πρόταση για τα ψιλά του
  * τιμοκαταλόγου και του ταμείου. ΔΙΚΑΙΩΜΑ ΤΟΥ ΝΟΜΟΥ, ΟΧΙ ΠΑΡΟΧΗ ΜΑΣ (Ο-1).
  */

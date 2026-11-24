@@ -15,7 +15,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireSecondStep } from '@/lib/auth/secondStep';
-import { billingWords, INVITE_ACCESS, INVITE_PLAN_REFUSAL, PROSTASIA_ACCESS, SUBSCRIPTION_NOTICES, TRIAL_LINE, TRIAL_LINE_EN } from '@/lib/legal/billingWords';
+import { billingWords, INVITE_ACCESS, INVITE_PLAN_REFUSAL, PROSTASIA_ACCESS, MYDATA_ACCESS, SUBSCRIPTION_NOTICES, TRIAL_LINE, TRIAL_LINE_EN } from '@/lib/legal/billingWords';
 
 export async function GET(request: Request) {
   const supabase = await createClient();
@@ -36,6 +36,7 @@ export async function GET(request: Request) {
       subscriptionNotices: SUBSCRIPTION_NOTICES,
       // Από ποιο πακέτο ανοίγει η Προστασία ιδιοκτήτη (ProstasiaEntry).
       prostasiaAccess: PROSTASIA_ACCESS,
+      mydataAccess: MYDATA_ACCESS,
       // Η γραμμή της δοκιμής στη λίστα «Από πού ξεκινάς» (StartPanel).
       // Στα αγγλικά (`?lang=en`, η εφαρμογή στα αγγλικά) το δίδυμό της από το ίδιο αρχείο.
       trialLine: new URL(request.url).searchParams.get('lang') === 'en' ? TRIAL_LINE_EN : TRIAL_LINE,

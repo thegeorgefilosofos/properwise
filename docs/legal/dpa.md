@@ -10,6 +10,10 @@
 > `/privacy`, `/terms` and `/trust` and the registries in `lib/legal/*.ts` prevail
 > wherever they differ. Only concretely inaccurate statements were corrected.
 
+> **Πεδίο (σημείωση 24/11/2026).** Το σχέδιο αυτό δεν καλύπτει τη «Σύνδεση myDATA»: εκεί
+> PROPERWISE και λογιστής είναι από κοινού υπεύθυνοι (άρθρο 26 ΓΚΠΔ, Όροι `#mydata-grafeia`),
+> όχι εκτελών και υπεύθυνος. Ούτε καλύπτει ειδικές κατηγορίες (άρθρο 9).
+
 > **ΣΧΕΔΙΟ / DRAFT — v0.1 (2026-07-22). Δεν έχει τεθεί σε ισχύ. Απαιτεί υπογραφή
 > δικηγόρου.** **DRAFT — not in force; requires counsel sign-off.**
 

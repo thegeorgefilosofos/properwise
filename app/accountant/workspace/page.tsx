@@ -707,7 +707,7 @@ export default function AccountantWorkspace() {
           γραφείου δεν έχει πακέτο ούτε βλέπει οθόνη αγοράς. Μένει για όσους
           λογιστές την είχαν πριν από τα γραφεία. */}
       {!firm?.firmOnly && <BulkInvite db={supabase} label={label} />}
-      {MydataCard && me && <MydataCard db={supabase} userId={me.id} />}
+      {MydataCard && me && <MydataCard db={supabase} userId={me.id} onSecondStep={() => setSecondStep(true)} />}
       </>}
 
       {/* ΤΑ ΦΙΛΤΡΑ ΤΟΥ ΓΡΑΦΕΙΟΥ. Τρία dropdown σε μία γραμμή, ίδια με της

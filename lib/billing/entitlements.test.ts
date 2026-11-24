@@ -9,6 +9,7 @@ import {
   checkoutLanding, type EntitlementInput,
 } from './entitlements';
 import { PAST_DUE_GRACE_DAYS } from './subscription';
+import { readFileSync } from 'node:fs';
 
 let p = 0, f = 0;
 const ok = (c: boolean, m: string) => { if (c) p++; else { f++; console.error('✗', m); } };
@@ -360,6 +361,20 @@ for (const id of ['free', 'solo', 'owner', 'agency', 'office'] as const) {
      'past_due μετά τη χάρη: δωρεάν, όπως στη βάση');
   ok(livePlan({ plan: 'agency', subscription_status: 'past_due', mor_past_due_at: null }, T) === 'agency',
      'past_due χωρίς ώρα: η στήλη αποφασίζει');
+}
+
+// ── Σύνδεση myDATA: από το «Ιδιοκτήτης+» (απόφαση ιδιοκτήτη 24/11/2026) ──
+{
+  const F = 'mydata_sync' as Parameters<typeof hasFeature>[1];
+  const paid = { trialUsedAt: '2026-01-01T00:00:00Z' };
+  ok(FEATURE_MIN_PLAN[F] === 'owner', 'myDATA: ελάχιστο πακέτο owner');
+  ok(hasFeature({ plan: 'owner', ...paid }, F), 'myDATA: owner ναι');
+  ok(hasFeature({ plan: 'agency', ...paid }, F), 'myDATA: agency ναι (ό,τι ανοίγει μένει ανοιχτό)');
+  ok(!hasFeature({ plan: 'solo', ...paid }, F), 'myDATA: solo (βασικό) όχι');
+  ok(!hasFeature({ plan: 'free', ...paid }, F), 'myDATA: free όχι');
+  // Ιδια τιμή με τη βάση (`private.mydata_min_plan()`, 20261124100000).
+  const sql = readFileSync('supabase/migrations/20261124100000_to_mydata_thorakizetai.sql', 'utf8');
+  ok(new RegExp(`function private\\.mydata_min_plan\\(\\)[\\s\\S]*?select '${FEATURE_MIN_PLAN[F]}'::text`).test(sql), 'myDATA: η βάση ζητά το ίδιο πακέτο');
 }
 
 console.log(`\nbilling/entitlements.ts — ${p} passed, ${f} failed`);

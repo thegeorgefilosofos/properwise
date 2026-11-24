@@ -31,6 +31,7 @@ export interface ClientBillingWords {
   subscriptionNotices?: { pastDue: string; pastDueOver: string; refund: string; dispute: string };
   /** Από ποιο πακέτο ανοίγει η Προστασία ιδιοκτήτη. */
   prostasiaAccess?: string;
+  mydataAccess?: string;
   /** «Δοκιμή · {n} ημέρες»: η γραμμή της λίστας «Από πού ξεκινάς». */
   trialLine?: { one: string; many: string };
 }

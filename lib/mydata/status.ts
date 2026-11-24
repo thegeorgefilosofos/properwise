@@ -9,6 +9,9 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { GREECE_TZ } from '@/lib/core/time';
 import { fe } from '@/lib/core/format';
+import { MYDATA_JOINT_VERSION } from '@/lib/legal/mydataJoint';
+import { csvCell } from '@/lib/core/csv';
+import { MYDATA_PENDING_DAYS, MYDATA_EXPIRY_NOTICE_DAYS } from './retention';
 
 const dt = new Intl.DateTimeFormat('en-GB', {
   timeZone: GREECE_TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
@@ -19,11 +22,6 @@ export function athensStamp(iso: string): string {
   const parts: Record<string, string> = {};
   for (const p of dt.formatToParts(new Date(iso))) parts[p.type] = p.value;
   return `${parts.day}/${parts.month}/${parts.year} ${String(Number(parts.hour) % 24).padStart(2, '0')}:${parts.minute}`;
-}
-
-/** «03:10», ώρα Αθήνας. */
-export function athensClock(iso: string): string {
-  return athensStamp(iso).slice(11);
 }
 
 /** «κανένα νέο», «1 νέο», «12 νέα». */
@@ -38,10 +36,14 @@ export function syncedLine(lastSyncAt: string | null, added: number): string {
   return `Συγχρονίστηκε ${athensStamp(lastSyncAt)} · ${newCount(added)}`;
 }
 
-/** Η ίδια γραμμή από την πλευρά του πελάτη. */
-export function clientSyncedLine(lastSyncAt: string | null, added: number): string {
-  if (!lastSyncAt) return 'Ο πρώτος συγχρονισμός γίνεται απόψε ή όταν ο λογιστής ανοίξει τον χώρο του.';
-  return `Ο λογιστής σου συγχρόνισε ${athensStamp(lastSyncAt)} · ${newCount(added)}`;
+/**
+ * Η ίδια γραμμή από την πλευρά του πελάτη: «Τελευταία άντληση από τον
+ * λογιστή: 23/11/2026». Ε2: η άντληση γίνεται μόνο όταν την ξεκινά ο λογιστής,
+ * οπότε η γραμμή λέει ποιος και πότε, όχι «συγχρόνισε».
+ */
+export function clientSyncedLine(lastSyncAt: string | null): string {
+  if (!lastSyncAt) return 'Τα παραστατικά έρχονται όταν ο λογιστής σου ξεκινήσει την άντληση από τον χώρο του.';
+  return `Τελευταία άντληση από τον λογιστή: ${athensStamp(lastSyncAt).slice(0, 10)}`;
 }
 
 /** Ποσό σε λεπτά, με πρόσημο για το πιστωτικό: «124,00€», «-12,40€». */
@@ -95,21 +97,22 @@ export function rowState(r: ClientRow): RowState {
     return { label: 'Σε παύση', fix: 'Ο σύνδεσμος με τον πελάτη χρειάζεται ανανέωση ή αποδοχή των όρων του γραφείου.', tone: 'warn', rank: 0 };
   }
   if (r.error === 'quarantine' || (r.quarantined ?? 0) > 0) {
-    return { label: 'Θέλει έλεγχο', fix: 'Κάποια παραστατικά δεν διαβάστηκαν. Τα ελέγχουμε και ξαναζητούνται απόψε.', tone: 'warn', rank: 0 };
+    return { label: 'Θέλει έλεγχο', fix: 'Κάποια παραστατικά δεν διαβάστηκαν. Τα ελέγχουμε και ξαναζητούνται με το επόμενο «Φέρε τώρα».', tone: 'warn', rank: 0 };
   }
-  if (r.status === 'forbidden') return { label: 'Άρνηση ΑΑΔΕ', fix: 'Ο πελάτης σε ορίζει ξανά λογιστή στο myAADE.', tone: 'warn', rank: 0 };
+  // Για ΑΦΜ χωρίς επιχείρηση η ΑΑΔΕ μπορεί να αρνείται· δεν ξαναδοκιμάζεται μόνο του.
+  if (r.status === 'forbidden') return { label: 'Άρνηση ΑΑΔΕ', fix: 'Η ΑΑΔΕ δεν δίνει παραστατικά για αυτό το ΑΦΜ μέσω λογιστή. Έλεγξε την εξουσιοδότηση στο myAADE.', tone: 'warn', rank: 0 };
   if (r.status === 'error') {
     if (r.error && DOWN.has(r.error)) {
-      return { label: 'Η ΑΑΔΕ δεν απαντά', fix: r.nextRetryAt ? `Νέα προσπάθεια στις ${athensClock(r.nextRetryAt)}.` : 'Νέα προσπάθεια απόψε.', tone: 'wait', rank: 1 };
+      return { label: 'Η ΑΑΔΕ δεν απαντά', fix: 'Πάτα «Φέρε τώρα» σε λίγο.', tone: 'wait', rank: 1 };
     }
     if (r.error === 'no_afm') return { label: 'Λείπει ΑΦΜ', fix: 'Ο πελάτης συμπληρώνει το ΑΦΜ του στον Λογαριασμό.', tone: 'warn', rank: 0 };
     if (r.error === 'parse' || r.error === 'aade_error') {
-      return { label: 'Μη αναγνώσιμη απάντηση', fix: 'Το ελέγχουμε· ξαναδοκιμάζει απόψε.', tone: 'wait', rank: 1 };
+      return { label: 'Μη αναγνώσιμη απάντηση', fix: 'Το ελέγχουμε. Ξαναδοκίμασε με «Φέρε τώρα».', tone: 'wait', rank: 1 };
     }
-    return { label: 'Δεν ολοκληρώθηκε', fix: 'Πάτα «Συγχρονισμός τώρα».', tone: 'warn', rank: 0 };
+    return { label: 'Δεν ολοκληρώθηκε', fix: 'Πάτα «Φέρε τώρα».', tone: 'warn', rank: 0 };
   }
   if (r.status === 'ok') return { label: 'Εντάξει', fix: '', tone: 'ok', rank: 2 };
-  return { label: 'Σε αναμονή', fix: 'Ο πρώτος συγχρονισμός ξεκινά με το «Συγχρονισμός τώρα».', tone: 'wait', rank: 1 };
+  return { label: 'Σε αναμονή', fix: 'Τα πρώτα παραστατικά έρχονται με το «Φέρε τώρα».', tone: 'wait', rank: 1 };
 }
 
 export type SortKey = 'status' | 'name' | 'last';
@@ -155,25 +158,33 @@ export function filterRows(rows: ClientRow[], q: string): ClientRow[] {
 
 // ── Η κατάσταση της κάρτας ─────────────────────────────────────────────────
 
+/** Η σύνδεση του λογιστή. Κανένα διαπιστευτήριο: το κλειδί δεν φυλάσσεται (Ε2). */
 export interface Connection {
-  aade_user_id: string;
-  has_key: boolean;
-  status: 'active' | 'invalid' | 'removed';
+  status: string;
   last_sync_at: string | null;
   last_sync_new: number;
   last_error_code: string | null;
   lease_id: string | null;
   lease_at: string | null;
   last_manual_at: string | null;
+  /** Ε-1: η έκδοση της ρύθμισης άρθρου 26 που δέχτηκε το γραφείο και πότε. */
+  joint_version: string | null;
+  joint_at: string | null;
+  /** Το τελευταίο τρέξιμο σταμάτησε στο όριο χρόνου. */
+  last_partial: boolean;
 }
 
-export type CardPhase = 'none' | 'rejected' | 'syncing' | 'ready';
+export type CardPhase = 'terms' | 'rejected' | 'syncing' | 'ready';
 
-/** Σε ποια από τις τέσσερις όψεις είναι η κάρτα. */
+/**
+ * Σε ποια όψη είναι η κάρτα. `terms`: πρώτα η ρύθμιση άρθρου 26 (καμία ή
+ * παλιά έκδοση, Ε-1/Ε-2). `rejected`: η ΑΑΔΕ δεν δέχτηκε το κλειδί που
+ * δόθηκε στο τελευταίο τρέξιμο. Αν υπάρχει κλειδί στη μνήμη το ξέρει μόνο η κάρτα.
+ */
 export function cardPhase(c: Connection | null, now: Date = new Date()): CardPhase {
-  if (!c || !c.has_key || c.status === 'removed') return 'none';
-  if (c.status === 'invalid') return 'rejected';
+  if (!c || c.joint_version !== MYDATA_JOINT_VERSION) return 'terms';
   if (c.lease_id && c.lease_at && now.getTime() - Date.parse(c.lease_at) < 10 * 60_000) return 'syncing';
+  if (c.last_error_code === 'auth') return 'rejected';
   return 'ready';
 }
 
@@ -192,16 +203,15 @@ export function attention(rows: ClientRow[]): number {
 }
 
 /**
- * Η ΑΑΔΕ δεν απαντά για ΚΑΝΕΝΑΝ πελάτη: η γραμμή κατάστασης το λέει με την
- * ώρα της πρώτης νέας προσπάθειας. Αν απαντά για κάποιους, δεν είναι «εκτός».
+ * Η ΑΑΔΕ δεν απαντά για ΚΑΝΕΝΑΝ πελάτη: η γραμμή κατάστασης το λέει μία φορά.
+ * Αν απαντά για κάποιους, δεν είναι «εκτός». Καμία αυτόματη νέα προσπάθεια (Ε2).
  */
 export function aadeDownLine(rows: ClientRow[]): string | null {
   const on = rows.filter(r => r.consent && r.status !== 'pending');
   if (!on.length) return null;
   const down = on.filter(r => rowState(r).label === 'Η ΑΑΔΕ δεν απαντά');
   if (down.length !== on.length) return null;
-  const next = down.map(r => r.nextRetryAt).filter((x): x is string => !!x).sort()[0];
-  return next ? `Η ΑΑΔΕ δεν απαντά. Νέα προσπάθεια στις ${athensClock(next)}.` : 'Η ΑΑΔΕ δεν απαντά. Νέα προσπάθεια απόψε.';
+  return 'Η ΑΑΔΕ δεν απαντά. Πάτα «Φέρε τώρα» σε λίγο.';
 }
 
 /** Λεπτά ως το επόμενο «Συγχρονισμός τώρα» (όριο 5 λεπτών), ή 0. */
@@ -214,29 +224,19 @@ export function manualWaitMinutes(lastManualAt: string | null, now: Date = new D
 /** Η απάντηση της συνάρτησης σε λέξεις, για το aria-live. */
 export function runReason(reason: string | undefined): string {
   switch (reason) {
-    case 'busy': return 'Ο συγχρονισμός τρέχει ήδη.';
-    case 'too_soon': return 'Ξανά σε λίγα λεπτά: ένας συγχρονισμός ανά 5 λεπτά.';
-    case 'fresh': return '';
-    case 'key_invalid':
-    case 'auth': return 'Η ΑΑΔΕ δεν δέχεται το κλειδί. Βάλε νέο.';
-    case 'no_key': return 'Βάλε πρώτα το κλειδί σου.';
-    case 'mfa_required': return 'Ολοκλήρωσε πρώτα το δεύτερο βήμα σύνδεσης.';
-    case 'disabled': return 'Η σύνδεση myDATA δεν είναι ακόμη ανοιχτή.';
-    default: return 'Ο συγχρονισμός δεν ξεκίνησε. Δοκίμασε ξανά σε λίγο.';
-  }
-}
-
-/** Η απάντηση της «Σύνδεσης». */
-export function connectReason(reason: string | undefined): string {
-  switch (reason) {
+    case 'busy': return 'Η άντληση τρέχει ήδη.';
+    case 'too_soon': return 'Ξανά σε λίγα λεπτά: μία άντληση ανά 5 λεπτά.';
+    case 'auth':
     case 'key_rejected': return 'Η ΑΑΔΕ δεν δέχεται αυτό το user id με αυτό το κλειδί. Έλεγξέ τα στο myDATA REST API.';
+    case 'no_key':
     case 'bad_key_shape': return 'Το κλειδί έχει 16 έως 200 λατινικά γράμματα και ψηφία.';
     case 'bad_user': return 'Γράψε το user id χωρίς κενά.';
     case 'no_clients': return 'Πρόσθεσε πρώτα έναν πελάτη.';
-    case 'too_many': return 'Πολλές δοκιμές. Ξανά σε μία ώρα.';
+    case 'joint_terms': return 'Αποδέξου πρώτα τη ρύθμιση για τη Σύνδεση myDATA.';
+    case 'no_actor': return 'Η άντληση ξεκινά μόνο από τον δικό σου λογαριασμό.';
     case 'mfa_required': return 'Ολοκλήρωσε πρώτα το δεύτερο βήμα σύνδεσης.';
     case 'disabled': return 'Η σύνδεση myDATA δεν είναι ακόμη ανοιχτή.';
-    default: return 'Η σύνδεση δεν έγινε. Δοκίμασε ξανά σε λίγο.';
+    default: return 'Η άντληση δεν ξεκίνησε. Δοκίμασε ξανά σε λίγο.';
   }
 }
 
@@ -264,7 +264,34 @@ export const LOG_ACTION: Record<string, string> = {
   cancel_flagged: 'Ακυρώθηκε στην ΑΑΔΕ παραστατικό που είχες καταχωρήσει',
   cancel_removed_expense: 'Ακυρώθηκε στην ΑΑΔΕ· η δαπάνη αφαιρέθηκε',
   key_read: 'Ο λογιστής χρησιμοποίησε το κλειδί του myDATA',
-  auto_filed: 'Λογαριασμοί γνωστών παρόχων καταχωρήθηκαν μόνοι τους',
+  key_used: 'Ο λογιστής χρησιμοποίησε το κλειδί του myDATA',
+  joint_accepted: 'Ο λογιστής αποδέχτηκε τη ρύθμιση για τη Σύνδεση myDATA',
+  auto_filed: 'Λογαριασμοί γνωστών παρόχων καταχωρήθηκαν αυτόματα',
   auto_undone: 'Αναίρεσες αυτόματη καταχώρηση',
   not_property: 'Παραστατικά που δεν αφορούν ακίνητα δεν κρατήθηκαν',
+  reissue_linked: 'Επανέκδοση παραστατικού δέθηκε με την ίδια δαπάνη',
 };
+
+/**
+ * Κ-9: πόσα εκκρεμή σβήνουν μέσα στις επόμενες `MYDATA_EXPIRY_NOTICE_DAYS`
+ * ημέρες, με την ημερομηνία λήψης (`fetched_at`) και το όριο της βάσης.
+ */
+export function expiringSoon(fetchedAt: string[], now: Date = new Date()): number {
+  const life = MYDATA_PENDING_DAYS * 86_400_000;
+  const notice = MYDATA_EXPIRY_NOTICE_DAYS * 86_400_000;
+  return fetchedAt.filter(f => {
+    const left = Date.parse(f) + life - now.getTime();
+    return Number.isFinite(left) && left <= notice;
+  }).length;
+}
+
+/**
+ * Ε-9: το αρχείο πρόσβασης ως CSV για το γραφείο, κοινό εργαλείο λογοδοσίας
+ * των από κοινού υπευθύνων (Όροι, «Σύνδεση myDATA»). Ώρα Αθήνας, ενέργεια σε
+ * λέξεις, κελιά ουδέτερα για το λογιστικό φύλλο. Κανένα κλειδί: δεν υπάρχει.
+ */
+export function accessLogCsv(rows: { at: string; action: string; afm: string | null; n: number | null }[]): string {
+  const head = ['Ημερομηνία', 'Ενέργεια', 'ΑΦΜ πελάτη', 'Πλήθος'];
+  const body = rows.map(r => [athensStamp(r.at), LOG_ACTION[r.action] ?? r.action, r.afm ?? '', r.n ?? ''].map(v => csvCell(v)).join(';'));
+  return [head.join(';'), ...body].join('\r\n');
+}

@@ -42,7 +42,7 @@ import { PLANS, normalizePlan, type PlanId } from '@/lib/billing/plans';
 import { hasVerifiedFactor } from '@/lib/auth/mfa';
 
 import { PLAN_COLUMNS, planFieldsFromRow, type PlanProfileRow } from '@/lib/billing/planRefresh';
-import { effectivePlan, activeComp, planAtLeast, propertyLimit, trialState, isOpenEnded } from '@/lib/billing/entitlements';
+import { effectivePlan, activeComp, planAtLeast, propertyLimit, trialState, isOpenEnded, hasFeature } from '@/lib/billing/entitlements';
 import { athensToday } from '@/lib/core/time';
 import { notifyError } from '@/components/Toast';
 import { SAY, failed } from '@/lib/core/dbError';
@@ -1041,7 +1041,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
             {sheetNote && <div style={{ ...TT.bodySm }}>{sheetNote}</div>}
           </SetRow>
           <AccountantAccess userId={userId} />
-          {MydataConsent && <MydataConsent userId={userId} />}
+          {MydataConsent && <MydataConsent userId={userId} allowed={hasFeature({ plan: effPlan }, 'mydata_sync')} />}
           <FirmAccess />
           <MarketDataSharing userId={userId} />
           {/* Η εμπιστοσύνη δεν είναι μόνο για τη σελίδα πωλήσεων: ο υπάρχων χρήστης

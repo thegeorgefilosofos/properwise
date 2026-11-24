@@ -38,6 +38,11 @@ export const SCENES = [
   'mydataInboxCancelled',
   // Α2: τα επίπεδα (για έλεγχο με δύο ακίνητα, όλα αυτόματα).
   'mydataInboxTwo', 'mydataInboxAuto',
+  // Θωράκιση 24/11/2026: λογιστής χωρίς δεύτερο βήμα, δύο λογιστές στην άδεια,
+  // «Πώς πληρώθηκε;» με «Είναι η ίδια με …;».
+  'mydataSecondStep', 'mydataConsentTwo', 'mydataInboxPay',
+  // Πακέτο χωρίς τη Σύνδεση myDATA (από το «Ιδιοκτήτης+», 24/11/2026).
+  'mydataConsentPlan',
 ];
 
 // ═══ ΟΙ ΣΚΗΝΕΣ ΤΗΣ ΠΥΛΗΣ ΤΟΥ ΛΟΓΙΣΤΗ ════════════════════════════════════════
@@ -51,7 +56,7 @@ export const PORTAL_SCENES = new Set([
   'firmSecondStep', 'firmClientGone', 'firmClientSecondStep',
   'firmWorkspaceEmpty', 'firmQuiet', 'firmAsk', 'firmAskChannels', 'firmAskSent', 'firmBulkPick', 'firmAccount',
   // Η κάρτα «Σύνδεση myDATA» ζει στον χώρο του λογιστή.
-  'mydataNone', 'mydataRejected', 'mydataSyncing', 'mydataReady', 'mydataDown',
+  'mydataNone', 'mydataRejected', 'mydataSyncing', 'mydataReady', 'mydataDown', 'mydataSecondStep',
 ]);
 
 /** Οι σκηνές που ζητά η `E2E_ONLY`, αλλιώς όλες. */

@@ -2,11 +2,13 @@
 //
 // Ο,τι λέει η οθόνη για τον συγχρονισμό myDATA: γραμμή κατάστασης σε ώρα
 // Αθήνας, πρόοδος, κατάσταση ανά πελάτη με λύση σε μία φράση, ταξινόμηση και
-// αναζήτηση για 200 πελάτες, όριο «Συγχρονισμός τώρα», έλεγχος μορφής κλειδιού.
+// αναζήτηση για 200 πελάτες, όριο «Φέρε τώρα», έλεγχος μορφής κλειδιού.
 import {
   athensStamp, syncedLine, clientSyncedLine, newCount, centsLabel, rowState, sortRows, filterRows,
-  cardPhase, progressLine, attention, aadeDownLine, manualWaitMinutes, keyShape, runReason, connectReason, LOG_ACTION, groupRows, type ClientRow, type Connection,
+  cardPhase, progressLine, attention, aadeDownLine, manualWaitMinutes, keyShape, runReason, LOG_ACTION, groupRows, expiringSoon, accessLogCsv, type ClientRow, type Connection,
 } from './status';
+import { readFileSync } from 'node:fs';
+import { MYDATA_JOINT_VERSION } from '@/lib/legal/mydataJoint';
 
 let pass = 0, fail = 0;
 const ok = (name: string, cond: boolean) => { if (cond) pass++; else { fail++; console.error('✗ ' + name); } };
@@ -20,7 +22,7 @@ ok('ένα νέο, ενικός', newCount(1) === '1 νέο');
 ok('μηδέν: «κανένα νέο»', syncedLine('2026-11-23T01:10:00Z', 0).endsWith('· κανένα νέο'));
 ok('χιλιάδες με τελεία', newCount(1234) === '1.234 νέα');
 ok('ποτέ συγχρονισμένο', syncedLine(null, 0) === 'Δεν έχει συγχρονιστεί ακόμη.');
-ok('η γραμμή του πελάτη', clientSyncedLine('2026-11-23T01:10:00Z', 3) === 'Ο λογιστής σου συγχρόνισε 23/11/2026 03:10 · 3 νέα');
+ok('η γραμμή του πελάτη', clientSyncedLine('2026-11-23T01:10:00Z') === 'Τελευταία άντληση από τον λογιστή: 23/11/2026');
 
 // ── Ποσά από λεπτά, χωρίς επανυπολογισμό ──────────────────────────────────
 ok('8850 λεπτά → 88,50€', centsLabel(8850) === '88,50€');
@@ -34,12 +36,15 @@ const row = (p: Partial<ClientRow>): ClientRow => ({
 const s403 = rowState(row({ status: 'forbidden', error: 'forbidden' }));
 ok('403: «Άρνηση ΑΑΔΕ» με λύση', s403.label === 'Άρνηση ΑΑΔΕ' && /myAADE/.test(s403.fix) && s403.tone === 'warn');
 const sDown = rowState(row({ status: 'error', error: 'server', nextRetryAt: '2026-11-23T12:05:00Z' }));
-ok('5xx: «Η ΑΑΔΕ δεν απαντά» με ώρα νέας προσπάθειας', sDown.label === 'Η ΑΑΔΕ δεν απαντά' && sDown.fix === 'Νέα προσπάθεια στις 14:05.');
+// Ε2: καμία αυτόματη νέα προσπάθεια· ο λογιστής ξαναπατά.
+ok('5xx: «Η ΑΑΔΕ δεν απαντά» χωρίς υπόσχεση αυτόματης προσπάθειας', sDown.label === 'Η ΑΑΔΕ δεν απαντά' && sDown.fix === 'Πάτα «Φέρε τώρα» σε λίγο.');
 ok('429: ίδια όψη', rowState(row({ status: 'error', error: 'rate' })).label === 'Η ΑΑΔΕ δεν απαντά');
 ok('χωρίς άδεια: λύση από τον πελάτη', rowState(row({ consent: false, status: null })).fix.includes('«Επιτρέπω»'));
 ok('χωρίς ΑΦΜ: λύση', /ΑΦΜ/.test(rowState(row({ status: 'error', error: 'no_afm' })).fix));
 ok('σχήμα: δεν φορτώνει τον λογιστή', rowState(row({ status: 'error', error: 'parse' })).tone === 'wait');
-ok('άγνωστο: λέει τι να πατήσει', rowState(row({ status: 'error', error: 'unknown' })).fix === 'Πάτα «Συγχρονισμός τώρα».');
+ok('άγνωστο: λέει τι να πατήσει', rowState(row({ status: 'error', error: 'unknown' })).fix === 'Πάτα «Φέρε τώρα».');
+// Ε2: η ΑΑΔΕ μπορεί να αρνείται ΑΦΜ χωρίς επιχείρηση· η οθόνη το λέει τίμια.
+ok('403: λέει ότι η ΑΑΔΕ δεν δίνει παραστατικά για αυτό το ΑΦΜ', /δεν δίνει παραστατικά για αυτό το ΑΦΜ/.test(s403.fix));
 ok('εντάξει: χωρίς λύση', rowState(row({})).fix === '');
 // Αξιολόγηση 23/11/2026: οι νέες καταστάσεις έχουν όνομα και λύση.
 const sQ = rowState(row({ status: 'error', error: 'quarantine', quarantined: 2 }));
@@ -75,13 +80,16 @@ ok('προσοχή: μόνο όσοι θέλουν κάτι', attention(many) ==
 
 // ── Όψεις της κάρτας ──────────────────────────────────────────────────────
 const conn = (p: Partial<Connection>): Connection => ({
-  aade_user_id: 'u', has_key: true, status: 'active', last_sync_at: null, last_sync_new: 0, last_error_code: null,
-  lease_id: null, lease_at: null, last_manual_at: null, ...p,
+  status: 'active', last_sync_at: null, last_sync_new: 0, last_error_code: null,
+  lease_id: null, lease_at: null, last_manual_at: null, joint_version: MYDATA_JOINT_VERSION, joint_at: '2026-11-24T08:00:00Z',
+  last_partial: false, ...p,
 });
 const now = new Date('2026-11-23T10:00:00Z');
-ok('χωρίς σύνδεση', cardPhase(null, now) === 'none');
-ok('κλειδί αφαιρεμένο', cardPhase(conn({ has_key: false, status: 'removed' }), now) === 'none');
-ok('κλειδί που απορρίφθηκε', cardPhase(conn({ status: 'invalid' }), now) === 'rejected');
+// Ε-1/Ε-2: χωρίς αποδοχή της τρέχουσας ρύθμισης, πρώτα η ρύθμιση.
+ok('Ε-1: χωρίς σύνδεση: η ρύθμιση', cardPhase(null, now) === 'terms');
+ok('Ε-2: παλιά έκδοση της ρύθμισης: ξανά η ρύθμιση', cardPhase(conn({ joint_version: '2026-01-01' }), now) === 'terms');
+ok('Ε-1: με αποδοχή: έτοιμη', cardPhase(conn({}), now) === 'ready');
+ok('Ε2: κλειδί που απορρίφθηκε στο τελευταίο τρέξιμο', cardPhase(conn({ last_error_code: 'auth' }), now) === 'rejected');
 ok('συγχρονισμός σε εξέλιξη', cardPhase(conn({ lease_id: 'l', lease_at: '2026-11-23T09:58:00Z' }), now) === 'syncing');
 ok('ξεχασμένη μίσθωση δεν δείχνει «σε εξέλιξη»', cardPhase(conn({ lease_id: 'l', lease_at: '2026-11-23T09:40:00Z' }), now) === 'ready');
 
@@ -96,7 +104,7 @@ const downRows = [
   row({ status: 'error', error: 'server', nextRetryAt: '2026-11-23T12:20:00Z' }),
   row({ status: 'error', error: 'rate', nextRetryAt: '2026-11-23T12:05:00Z' }), row({ consent: false, status: null }),
 ];
-ok('όλοι χωρίς απάντηση: η πρώτη ώρα νέας προσπάθειας', aadeDownLine(downRows) === 'Η ΑΑΔΕ δεν απαντά. Νέα προσπάθεια στις 14:05.');
+ok('όλοι χωρίς απάντηση: χωρίς υπόσχεση αυτόματης προσπάθειας', aadeDownLine(downRows) === 'Η ΑΑΔΕ δεν απαντά. Πάτα «Φέρε τώρα» σε λίγο.');
 ok('κάποιοι εντάξει: όχι «εκτός»', aadeDownLine([...downRows, row({})]) === null);
 ok('κανένας με άδεια: τίποτα', aadeDownLine([row({ consent: false, status: null })]) === null);
 
@@ -107,10 +115,17 @@ ok('κλειδί: κενό', keyShape('  ') === 'empty');
 ok('κλειδί: σύντομο', keyShape('abc123') === 'short');
 ok('κλειδί: σύμβολα', keyShape('abcd-efgh-ijkl-mnop') === 'chars');
 ok('κλειδί: σωστό', keyShape('abcdEFGH12345678') === 'ok');
-for (const r of ['busy', 'too_soon', 'key_invalid', 'no_key', 'mfa_required', 'disabled', 'x']) ok(`μήνυμα συγχρονισμού (${r})`, runReason(r).length > 0);
-for (const r of ['key_rejected', 'bad_key_shape', 'bad_user', 'no_clients', 'too_many', 'x']) {
-  ok(`μήνυμα σύνδεσης με λύση (${r})`, connectReason(r).endsWith('.') && !/—/.test(connectReason(r)));
+for (const r of ['busy', 'too_soon', 'auth', 'no_key', 'mfa_required', 'disabled', 'joint_terms', 'bad_key_shape', 'bad_user', 'no_clients', 'no_actor', 'x']) {
+  ok(`μήνυμα με λύση (${r})`, runReason(r).endsWith('.') && !/—/.test(runReason(r)));
 }
+ok('Ε-2: η ρύθμιση που άλλαξε λέγεται', /ρύθμιση/.test(runReason('joint_terms')));
+// Ε2: καμία λέξη για νυχτερινή ή αυτόματη άντληση σε ό,τι λέει η οθόνη.
+{
+  const src = readFileSync('lib/mydata/status.ts', 'utf8');
+  ok('Ε2: κανένα «απόψε», «κάθε νύχτα» ή «Νέα προσπάθεια στις»', !/απόψε|κάθε νύχτα|νυχτερ|Νέα προσπάθεια στις|συνεχίζει μόνος/.test(src));
+}
+ok('Ε2: η γραμμή του πελάτη χωρίς «απόψε»', /λογιστής σου/.test(clientSyncedLine(null)) && !/απόψε/.test(clientSyncedLine(null)));
+ok('Ε2: η χρήση του κλειδιού και η αποδοχή έχουν λέξεις', !!LOG_ACTION.key_used && !!LOG_ACTION.joint_accepted);
 
 // ── Α2: στο τηλέφωνο ομάδες ανά κατάσταση, η εξήγηση μία φορά ─────────────
 {
@@ -136,6 +151,23 @@ for (const r of ['key_rejected', 'bad_key_shape', 'bad_user', 'no_clients', 'too
   ok('Α2 ομάδες: κενό, κενό', groupRows([]).length === 0);
 }
 ok('Α2 αρχείο: αυτόματη καταχώρηση με λέξεις', !!LOG_ACTION.auto_filed && !!LOG_ACTION.auto_undone && !!LOG_ACTION.not_property);
+
+// ── Κ-9: ειδοποίηση πριν σβήσουν τα εκκρεμή ─────────────────────────────────
+{
+  const expiring = expiringSoon;
+  const t0 = new Date('2026-11-24T10:00:00Z');
+  const ago = (d: number) => new Date(t0.getTime() - d * 86_400_000).toISOString();
+  // 90 ημέρες ζωή, ειδοποίηση τις τελευταίες 14: λήψη πριν 80 ημέρες μετρά, πριν 70 όχι.
+  ok('Κ-9: μετρά όσα σβήνουν μέσα στις επόμενες ημέρες ειδοποίησης', expiring?.([ago(80), ago(70), ago(89.9), ago(10)], t0) === 2);
+  ok('Κ-9: τίποτα κοντά: μηδέν', expiring?.([ago(1)], t0) === 0);
+  // ── Ε-9: εξαγωγή του αρχείου πρόσβασης για το γραφείο ───────────────────────
+  const csv = accessLogCsv;
+  const out = csv?.([{ at: '2026-11-23T01:10:00Z', action: 'sync_fetch', afm: '099000013', n: 7 }, { at: '2026-11-23T01:11:00Z', action: '=cmd', afm: null, n: null }]) ?? '';
+  const lines = out.split('\r\n');
+  ok('Ε-9: επικεφαλίδα στα ελληνικά', lines[0] === 'Ημερομηνία;Ενέργεια;ΑΦΜ πελάτη;Πλήθος');
+  ok('Ε-9: ώρα Αθήνας, λέξεις της ενέργειας', lines[1] === '23/11/2026 03:10;Ο λογιστής έφερε παραστατικά;099000013;7');
+  ok('Ε-9: ασφαλές απέναντι σε τύπους λογιστικού φύλλου', !lines[2]?.includes(';=cmd'));
+}
 
 console.log(`mydata status: ${pass} ✓ · ${fail} ✗`);
 if (fail) process.exit(1);

@@ -28,7 +28,23 @@ const wfRun = (body) => `name: m\non: workflow_dispatch\njobs:\n  m:\n    runs-o
 export const MUTATIONS = {
   // Το `.limit(2000)` του προγραμματιστή της ουράς, ξαναφερμένο: ο διακομιστής το κόβει στις 1.000.
   // Το κλειδί του λογιστή σε log: ακριβώς το σφάλμα του guard-mydata-key.
-  'mydata-key': { file: 'supabase/functions/mydata-sync/index.ts', from: "    const row = Array.isArray(data) ? data[0] : null\n", to: "    const row = Array.isArray(data) ? data[0] : null\n    console.log('mydata creds', row?.api_key)\n" },
+  // Ε2 (24/11/2026): κάθε κανόνας χωριστά. Το κλειδί σε log, σε αποθήκευση του
+  // φυλλομετρητή, σε κλήση της βάσης· συνάρτηση που το φυλάει ή cron που αντλεί
+  // χωρίς τον λογιστή, ζωντανά στο τέλος των μεταναστεύσεων.
+  'mydata-key': { every: [
+    { file: 'supabase/functions/mydata-sync/index.ts', from: "      const subscriptionKey = String(body.key ?? '').trim()\n", to: "      const subscriptionKey = String(body.key ?? '').trim()\n      console.log('mydata creds', subscriptionKey)\n" },
+    { add: 'lib/mydata/__mut_storage__.ts', content: "export const keep = (k: string) => window.sessionStorage.setItem('mydata', k)\n" },
+    { add: 'lib/mydata/__mut_rpc__.ts', content: "export const save = (db: any, key: string) => db.rpc('mydata_save', { p_key: key })\n" },
+    { add: 'supabase/migrations/29991231235959_mut_mydata_key.sql', content: "create or replace function public.mydata_key_store(p_accountant uuid, p_user_id text, p_key text)\nreturns void language sql as $$ select 1 $$;\n" },
+    { add: 'supabase/migrations/29991231235958_mut_mydata_cron.sql', content: "select cron.schedule('mydata-sync-nightly', '17 1 * * *', format($cron$ select net.http_post(url := %L) $cron$, 'https://x/functions/v1/mydata-sync'));\n" },
+  ] },
+  // Πάροχοι 24/11/2026: λάθος ψηφίο ελέγχου, ΑΦΜ δύο φορές (ως παλιό άλλου
+  // παρόχου), και το ΑΦΜ καυσίμων που δεν μπαίνει ποτέ.
+  'provider-afm': { every: [
+    { file: 'lib/mydata/providers.ts', from: "afm: '090000045', name: 'ΔΕΗ'", to: "afm: '090000046', name: 'ΔΕΗ'" },
+    { file: 'lib/mydata/providers.ts', from: "afm: '998808439', name: 'VOLTERRA Α.Ε.'", to: "afm: '998283692', name: 'VOLTERRA Α.Ε.'" },
+    { file: 'lib/mydata/providers.ts', from: "afm: '800750372', name: 'Volton'", to: "afm: '094014201', name: 'Volton'" },
+  ] },
   'server-row-cap': { add: 'lib/__mut__.ts', content: "export const q = (db: any) => db.from('email_outbox').select('id').limit(2000)\n" },
   // Προστασία ιδιοκτήτη (12/11/2026): κάθε κανόνας του φύλακα, χωριστά.
   'enforcement-rules': { every: [

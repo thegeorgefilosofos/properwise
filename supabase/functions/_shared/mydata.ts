@@ -30,7 +30,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { MYDATA_API_DEV, MYDATA_API_PROD, MYDATA_INVOICE_NS } from '../../../lib/tax/aade.ts'
-import { shouldAutoSync, AUTO_SYNC_HOURS } from '../../../lib/mydata/autoSync.ts'
 
 /** Ο χώρος ονομάτων του σχήματος παραστατικών της ΑΑΔΕ (lib/tax/aade.ts). */
 export const INV_NS = MYDATA_INVOICE_NS
@@ -265,6 +264,11 @@ export interface ParsedInvoice {
   aa: string
   issueDate: string
   invoiceType: string
+  /**
+   * Ο πρώτος έγκυρος ΜΑΡΚ του `correlatedInvoices` (InvoiceHeaderType, xs:long,
+   * 0..ν): το αρχικό παραστατικό ενός συσχετιζόμενου πιστωτικού (5.1).
+   */
+  correlatedMark: string | null
   currency: string | null
   selfPricing: boolean
   netCents: number
@@ -377,6 +381,10 @@ function parseInvoice(inv: XNode): ParsedInvoice {
   if (!INVOICE_TYPES.has(invoiceType)) throw new InvalidInvoice('invoiceType')
   const currency = text(one(header, 'currency')) || null
   if (currency !== null && !/^[A-Z]{3}$/.test(currency)) throw new InvalidInvoice('currency')
+  // Προαιρετικό και επαναλαμβανόμενο: άκυρη τιμή αγνοείται, δεν ακυρώνει το παραστατικό.
+  const correlatedMark = header.children
+    .filter(c => c.ns === INV_NS && c.local === 'correlatedInvoices')
+    .map(c => c.text.trim()).find(isMark) ?? null
   const sp = text(one(header, 'selfPricing'))
   if (sp !== undefined && !['true', 'false', '1', '0'].includes(sp)) throw new InvalidInvoice('selfPricing')
 
@@ -396,7 +404,7 @@ function parseInvoice(inv: XNode): ParsedInvoice {
     mark, cancelledByMark: cbm ?? null,
     issuerAfm, issuerName: cleanName(text(one(issuer, 'name'))),
     counterpartAfm,
-    series, aa, issueDate, invoiceType, currency,
+    series, aa, issueDate, invoiceType, correlatedMark, currency,
     selfPricing: sp === 'true' || sp === '1',
     netCents: cents(summary, 'totalNetValue'),
     vatCents: cents(summary, 'totalVatAmount'),
@@ -518,6 +526,8 @@ export type InboxDoc =
       credit: boolean
       cancelled: boolean
       cancellationMark: string | null
+      /** Θωράκιση: ο ΜΑΡΚ του αρχικού για συσχετιζόμενο πιστωτικό, αλλιώς null. */
+      correlatedMark: string | null
       /** Α2: τα σύνολα κλείνουν (`amountsClose`). */
       amountsClose: boolean
     }
@@ -552,6 +562,7 @@ export function toInboxDoc(inv: ParsedInvoice, entityAfm: string): InboxDoc {
     credit: CREDIT_TYPES.has(inv.invoiceType),
     cancelled: inv.cancelledByMark !== null,
     cancellationMark: inv.cancelledByMark,
+    correlatedMark: inv.correlatedMark,
     amountsClose: amountsClose(inv),
   }
 }
@@ -598,10 +609,6 @@ export function retryDelayMs(attempt: number, retryAfter: string | null, rand = 
   if (retryAfter !== null && /^\d{1,6}$/.test(retryAfter.trim())) return Math.min(Number(retryAfter.trim()), 60) * 1000 + jitter
   return Math.min(1000 * 2 ** Math.max(0, attempt), 30_000) + jitter
 }
-
-// ═══ 5. Ο ΚΑΝΟΝΑΣ ΤΩΝ 12 ΩΡΩΝ ═══════════════════════════════════════════════
-// Ζει στο lib/mydata/autoSync.ts, γιατί τον ρωτά και η οθόνη του λογιστή.
-export { shouldAutoSync, AUTO_SYNC_HOURS }
 
 // ═══ 6. ΠΕΡΙΒΑΛΛΟΝ, ΗΜΕΡΟΜΗΝΙΕΣ, ΑΙΤΗΜΑ ═════════════════════════════════════
 
