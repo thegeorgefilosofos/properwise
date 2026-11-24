@@ -16,7 +16,7 @@ const html = readFileSync(join(here, 'film.html'), 'utf8');
 const json = /<script id="timeline" type="application\/json">([\s\S]*?)<\/script>/.exec(html);
 if (!json) throw new Error('Λείπει το χρονολόγιο από το film.html');
 const TL = JSON.parse(json[1]) as {
-  dur: number; bpm: number; cuts: number[]; rowsOver: number[]; taps: number[]; fields: number[]; ticks: number[];
+  dur: number; bpm: number; cuts: number[]; full: number; rowsOver: number[]; taps: number[]; fields: number[]; ticks: number[];
   dings: number[]; filed: number; packUp: number; rowsPack: number[]; close: number; chords: [number, string[]][];
 };
 const out = process.argv[2];
@@ -34,7 +34,7 @@ const kicks: number[] = [];
 for (let t = START; t < END - 1e-6; t += BEAT) {
   const k = Math.round((t - START) / BEAT);
   // Πρώτο μέρος (προθεσμίες, σάρωση ως την κάμερα): μόνο κρουστό και μεταλλικό, πιο ήπια. Από τη φόρμα και μετά: πλήρης ρυθμός.
-  const full = t >= TL.cuts[3] - 1e-6;
+  const full = t >= TL.full - 1e-6;
   m.kick(t, full ? .9 : .5); kicks.push(t);
   m.hat(t + BEAT / 2, full ? .03 : .016, k % 2 ? .35 : -.35);
   if (full) { m.hat(t + BEAT / 4, .012, .5); m.hat(t + 3 * BEAT / 4, .012, -.5); }
@@ -58,7 +58,7 @@ m.bell(END + .05, n('E5'), .045);
 
 m.duck(kicks, .28);
 // Καμπύλη έντασης ανά μέρος: αγκίστρι −2,5 dB, πρώτο μέρος −4,4 dB, φόρμα ως zip πλήρες (ράμπες 0,15″).
-const LEVELS: [number, number][] = [[0, .75], [START, .6], [TL.cuts[3], 1], [END, 1]];
+const LEVELS: [number, number][] = [[0, .75], [START, .6], [TL.full, 1], [END, 1]];
 const levelAt = (t: number) => {
   let g = LEVELS[0][1];
   for (let k = 1; k < LEVELS.length; k++) g += (LEVELS[k][1] - LEVELS[k - 1][1]) * Math.min(1, Math.max(0, (t - LEVELS[k][0]) / .15));

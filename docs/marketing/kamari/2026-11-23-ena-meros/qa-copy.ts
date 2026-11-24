@@ -29,7 +29,22 @@ const sections = copy.split(/^## /m).slice(1).map((s) => ({ where: s.split('\n')
 const fails: string[] = [];
 for (const v of visible) fails.push(...copyFails(v, 'ταινία'));
 for (const s of sections) fails.push(...copyFails(s.text, s.where));
-for (const s of [...visible.map((text) => ({ where: 'ταινία', text })), ...sections]) {
+// v12: οι δύο αναρτήσεις του LinkedIn (linkedin.md) και το πρώτο σχόλιο.
+const li = readFileSync(join(here, 'linkedin.md'), 'utf8').split(/^## /m).slice(1)
+  .map((x) => ({ where: 'LinkedIn: ' + x.split('\n')[0], text: x.slice(x.indexOf('\n') + 1).trim() }));
+for (const x of li) fails.push(...copyFails(x.text, x.where));
+for (const x of li.filter((y) => y.where.includes('Ανάρτηση'))) {
+  const lines = x.text.split('\n').filter((l) => l.trim() && !l.trim().startsWith('#'));
+  if (lines.length < 4 || lines.length > 7) fails.push(`${x.where}: ${lines.length} γραμμές (4 έως 7)`);
+  if (/\d/.test(x.text)) fails.push(`${x.where}: ψηφίο στη λεζάντα`);
+  if (!lines[lines.length - 1].trim().endsWith(';')) fails.push(`${x.where}: δεν τελειώνει με ερώτηση`);
+  const tags = x.text.match(/#\S+/g) ?? [];
+  if (tags.length < 3 || tags.length > 4) fails.push(`${x.where}: ${tags.length} hashtags`);
+  if (/ενθουσιασμ/i.test(x.text)) fails.push(`${x.where}: «με ενθουσιασμό»`);
+}
+const firstComment = li.find((y) => y.where.includes('Πρώτο σχόλιο'));
+if (!firstComment || !firstComment.text.includes('https://properwise.gr/?utm_source=linkedin&utm_medium=social&utm_campaign=kamari')) fails.push('LinkedIn: πρώτο σχόλιο χωρίς τον σύνδεσμο');
+for (const s of [...visible.map((text) => ({ where: 'ταινία', text })), ...sections, ...li]) {
   if (/—/.test(s.text)) fails.push(`${s.where}: μεγάλη παύλα`);
   if (/δωρεάν/i.test(s.text)) fails.push(`${s.where}: «δωρεάν»`);
   if (/βοηθ/i.test(s.text)) fails.push(`${s.where}: «βοηθός»`);
@@ -55,7 +70,7 @@ if ([...yt.replace(/\s*#Shorts$/, '')].length > LIMITS.ytTitleVisible) fails.pus
 const pinned = sections.find((s) => s.where === 'Καρφιτσωμένο σχόλιο')!.text;
 if ([...pinned].length > LIMITS.pinned) fails.push(`καρφιτσωμένο: ${[...pinned].length}`);
 
-console.log(`ορατές συμβολοσειρές ταινίας: ${visible.length} · ενότητες: ${sections.length}`);
+console.log(`ορατές συμβολοσειρές ταινίας: ${visible.length} · ενότητες: ${sections.length} · LinkedIn: ${li.length}`);
 for (const v of visible) console.log('  ·', v);
 if (fails.length) { console.log('ΑΠΟΤΥΧΙΕΣ:\n' + fails.join('\n')); process.exit(1); }
 console.log('✓ καμία αποτυχία');

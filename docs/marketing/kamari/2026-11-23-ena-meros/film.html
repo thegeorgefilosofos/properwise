@@ -80,6 +80,7 @@
     <div class="btn" id="b1"></div><div class="btn" id="b2"></div><div class="btn" id="b3"></div><div class="btn" id="b4"></div>
     <div id="screen">
       <div id="app">
+        <div class="shot" id="S_pf"></div>
         <div class="shot" id="S_dead"></div>
         <div class="shot" id="S_tiles"></div>
         <div class="shot" id="cam">
@@ -91,6 +92,7 @@
         <div class="shot" id="S_form"></div>
         <div class="shot" id="S_save"></div>
         <div class="shot" id="S_docs"></div>
+        <div class="shot" id="S_tax"></div>
         <div class="shot" id="S_acc"></div>
         <div class="shot" id="S_zip">
           <div id="pack"><div class="grab"></div><div class="title"></div></div>
@@ -120,21 +122,25 @@
 </div>
 
 <!-- ΤΟ ΧΡΟΝΟΛΟΓΙΟ, ΜΙΑ ΠΗΓΗ: η ταινία και ο ήχος (sound.ts). Χρόνοι σε δευτερόλεπτα.
-     v9: χωρίς μετρητή πατημάτων. Κάθε αλλαγή πλάνου είναι καθαρή κοπή της κάμερας. -->
+     v9: χωρίς μετρητή πατημάτων. Κάθε αλλαγή πλάνου είναι καθαρή κοπή της κάμερας.
+     v12: δύο νέες στιγμές, Χαρτοφυλάκιο (2,2 έως 6,3″) και φόρος της Λογιστικής (16,0 έως 19,8″). -->
 <script id="timeline" type="application/json">
 {
-  "fps": 30, "dur": 17.3, "bpm": 120,
-  "cuts": [2.2, 4.4, 5.3, 6.4, 8.6, 9.8, 11.9, 13.0, 15.3],
-  "rowsOver": [2.05, 2.55, 2.75, 2.95],
-  "taps": [4.95, 6.0, 9.3, 12.5],
-  "fields": [6.6, 6.75, 6.9, 7.05, 7.2],
-  "ticks": [6.6, 6.75, 7.05],
-  "dings": [7.4, 10.4, 13.9],
-  "filed": 10.4,
-  "packUp": 13.0,
-  "rowsPack": [13.4, 13.55, 13.7, 13.85],
-  "close": 15.3,
-  "chords": [[0, ["A2", "E3", "A3", "C4", "E4"]], [2.2, ["F2", "C3", "F3", "A3", "C4"]], [6.4, ["C3", "G3", "C4", "E4", "G4"]], [9.8, ["G2", "D3", "G3", "B3", "D4"]], [11.9, ["A2", "E3", "A3", "C4", "E4"]], [15.3, ["F2", "C3", "F3", "A3", "E4"]]]
+  "fps": 30, "dur": 25.2, "bpm": 120,
+  "cuts": [2.2, 6.3, 8.5, 9.4, 10.5, 12.7, 13.9, 16.0, 19.8, 20.9, 23.2],
+  "full": 10.5,
+  "pf": { "count": [2.4, 3.6], "spot": 3.7, "tiles": 4.6 },
+  "tax": { "count": [16.2, 17.2], "spot": 17.3, "para": 18.1 },
+  "rowsOver": [6.15, 6.65, 6.85, 7.05],
+  "taps": [9.05, 10.1, 13.4, 20.4],
+  "fields": [10.7, 10.85, 11.0, 11.15, 11.3],
+  "ticks": [10.7, 10.85, 11.15],
+  "dings": [3.65, 11.5, 14.5, 17.3, 21.8],
+  "filed": 14.5,
+  "packUp": 20.9,
+  "rowsPack": [21.3, 21.45, 21.6, 21.75],
+  "close": 23.2,
+  "chords": [[0, ["A2", "E3", "A3", "C4", "E4"]], [2.2, ["F2", "C3", "F3", "A3", "C4"]], [6.3, ["D2", "A2", "D3", "F3", "A3"]], [10.5, ["C3", "G3", "C4", "E4", "G4"]], [13.9, ["G2", "D3", "G3", "B3", "D4"]], [16.0, ["D2", "A2", "D3", "F3", "A3"]], [19.8, ["A2", "E3", "A3", "C4", "E4"]], [23.2, ["F2", "C3", "F3", "A3", "E4"]]]
 }
 </script>
 <script>
@@ -154,7 +160,9 @@ const B = {
   dates: [{ x: 216, y: 383, w: 83, h: 21 }, { x: 40, y: 580, w: 83, h: 21 }, { x: 40, y: 658, w: 83, h: 21 }, { x: 216, y: 658, w: 83, h: 21 }],
   save: { x: 25, y: 794, w: 340, h: 36 }, power: { x: 29, y: 577, w: 332, h: 53 },
   download: { x: 38, y: 523, w: 119, h: 36 }, acc: { x: 20, y: 453, w: 280, h: 120 }, afmBlock: { x: 30, y: 458, w: 254, h: 110 },
-  REG: { overview: [250, 594], tiles: [80, 764], form: [220, 440], save: [420, 424], docs: [350, 494] },
+  pfNet: { x: 31, y: 278, w: 166, h: 39 }, pfTiles: { x: 33, y: 320, w: 324, h: 173 }, pfCrop: { x: 33, y: 278, w: 300, h: 39 },
+  taxAmt: { x: 30, y: 488, w: 134, h: 36 }, taxPara: { x: 30, y: 522, w: 330, h: 89 }, taxCrop: { x: 32, y: 490, w: 220, h: 32 },
+  REG: { portfolio: [100, 420], tax: [419, 236], overview: [250, 594], tiles: [80, 764], form: [220, 440], save: [420, 424], docs: [350, 494] },
 };
 // Τα περιεχόμενα του zip: PACK_FILES του lib/accounting/meetingPack.ts, με τη σειρά του packEntries.
 // Δείχνονται τα 00 έως 03, συνεχόμενα (το 04 ΑΑΔΕ μπαίνει μόνο όταν έχει ανέβει το προσυμπληρωμένο Ε2).
@@ -208,6 +216,12 @@ const addImg = (parent, src, r, hidden = true) => { const im = document.createEl
 const region = (parent, name, [y, h]) => addImg(parent, `work/shots9/${name}.png`, { x: 0, y, w: 390, h }, false);
 const pad2 = (r) => ({ x: r.x - 2, y: r.y - 2, w: r.w + 4, h: r.h + 4 });
 // Οι λήψεις της εφαρμογής, μόνο η περιοχή που δείχνει κάθε πλάνο.
+// v12: το Χαρτοφυλάκιο με τον μετρητή του «Καθαρό 2026» (17 καταστάσεις του ίδιου στοιχείου, στη μορφή της εφαρμογής).
+region($('S_pf'), 'portfolio', B.REG.portfolio);
+const pfIms = Array.from({ length: 17 }, (_, i) => addImg($('S_pf'), `work/shots9/pf-${String(i).padStart(2, '0')}.png`, B.pfCrop));
+// v12: ο φόρος της Λογιστικής, με τον ίδιο μετρητή (13 καταστάσεις).
+region($('S_tax'), 'tax', B.REG.tax);
+const txIms = Array.from({ length: 13 }, (_, i) => addImg($('S_tax'), `work/shots9/tx-${String(i).padStart(2, '0')}.png`, B.taxCrop));
 region($('S_dead'), 'overview-empty', B.REG.overview);
 const prows = B.rows.map(([y, h], i) => addImg($('S_dead'), `work/shots9/prow-${i}.png`, { x: 17, y, w: 356, h }));
 region($('S_tiles'), 'scan-tiles', B.REG.tiles);
@@ -275,14 +289,16 @@ const packRows = PACK.map(([kind, name, sub], i) => {
 // top, bottom: τα όρια κάρτας όπου αρχίζει και τελειώνει η οθόνη στο πλάνο· έξω από αυτά η οθόνη είναι κενή.
 // Κάθε πλάνο μπαίνει με μικρό πλησίασμα της κάμερας (1,025 → 1 σε 0,3″).
 const SHOTS = [
-  { id: 'S_dead', from: CUT[0], to: CUT[1], s: 2.36, ay: 264, sy: C0, top: 264, bottom: 658 },
-  { id: 'S_tiles', from: CUT[1], to: CUT[2], s: 2.35, ay: 86, sy: C0, top: 86, bottom: 492 },
-  { id: 'cam', from: CUT[2], to: CUT[3], s: 2.6, s45: 2.27, ay: 14, sy: C0 - 10, top: 0 },
-  { id: 'S_form', from: CUT[3], to: CUT[4], s: 2.6, s45: 2.38, ay: 236, sy: C0, top: 236, bottom: 614 },
-  { id: 'S_save', from: CUT[4], to: CUT[5], s: 2.28, ay: 844, sy: C1 - 21, top: 462 },
-  { id: 'S_docs', from: CUT[5], to: CUT[6], s: 2.6, s45: 2.35, ay: 365, sy: C0, top: 365, bottom: 750 },
-  { id: 'S_acc', from: CUT[6], to: CUT[7], s: 3.5, ay: 513, sy: (SAFE[0] + SAFE[1]) / 2, cx: 157, top: 453 },
-  { id: 'S_zip', from: CUT[7], to: CUT[8], s: 2.6, ay: 844, sy: C1 - 22, top: 0 },
+  { id: 'S_pf', from: CUT[0], to: CUT[1], s: 2.36, ay: 112, sy: C0, top: 112, bottom: 512 },
+  { id: 'S_dead', from: CUT[1], to: CUT[2], s: 2.36, ay: 264, sy: C0, top: 264, bottom: 658 },
+  { id: 'S_tiles', from: CUT[2], to: CUT[3], s: 2.35, ay: 86, sy: C0, top: 86, bottom: 492 },
+  { id: 'cam', from: CUT[3], to: CUT[4], s: 2.6, s45: 2.27, ay: 14, sy: C0 - 10, top: 0 },
+  { id: 'S_form', from: CUT[4], to: CUT[5], s: 2.6, s45: 2.38, ay: 236, sy: C0, top: 236, bottom: 614 },
+  { id: 'S_save', from: CUT[5], to: CUT[6], s: 2.28, ay: 844, sy: C1 - 21, top: 462 },
+  { id: 'S_docs', from: CUT[6], to: CUT[7], s: 2.6, s45: 2.35, ay: 365, sy: C0, top: 365, bottom: 750 },
+  { id: 'S_tax', from: CUT[7], to: CUT[8], s: 2.55, ay: 537, sy: (SAFE[0] + SAFE[1]) / 2, top: 449, bottom: 626 },
+  { id: 'S_acc', from: CUT[8], to: CUT[9], s: 3.5, ay: 513, sy: (SAFE[0] + SAFE[1]) / 2, cx: 157, top: 453 },
+  { id: 'S_zip', from: CUT[9], to: CUT[10], s: 2.6, ay: 844, sy: C1 - 22, top: 0 },
 ];
 const shotAt = (t) => SHOTS.find((x) => t >= x.from && t < x.to) || null;
 
@@ -298,10 +314,12 @@ const HOOK = ['Μία φωτογραφία.', 'Όλα στη θέση τους.'
 const hookEls = HOOK.map((w, i) => text('msg', w, { ...centered(L.hookY[i] - L.hookSize / 2, 1060, L.hookSize), color: i === 1 ? 'var(--mkt-accent)' : '' }, 0, CUT[0]));
 // Λεζάντες: αλλάζουν στην κοπή, στο ίδιο καρέ (κανένα κενό, καμία επικάλυψη).
 const CAPS = [
-  [CUT[0], CUT[1], 'Οι προθεσμίες έρχονται μόνες τους.'],
-  [CUT[1], CUT[5], 'Μία φωτογραφία συμπληρώνει τα στοιχεία.'],
-  [CUT[5], CUT[6], 'Το παραστατικό μπαίνει στον φάκελό του.'],
-  [CUT[6], CUT[8], 'Ο φάκελος του λογιστή, σε ένα zip.'],
+  [CUT[0], CUT[1], 'Όλα τα ακίνητα, με μια ματιά.'],
+  [CUT[1], CUT[2], 'Οι προθεσμίες έρχονται μόνες τους.'],
+  [CUT[2], CUT[6], 'Μία φωτογραφία συμπληρώνει τα στοιχεία.'],
+  [CUT[6], CUT[7], 'Το παραστατικό μπαίνει στον φάκελό του.'],
+  [CUT[7], CUT[8], 'Ο φόρος, υπολογισμένος.'],
+  [CUT[8], CUT[10], 'Ο φάκελος του λογιστή, σε ένα zip.'],
 ];
 const capEls = CAPS.map(([a, b, s]) => text('cap', s, centered(0, L.capW, L.capSize), a, b));
 // Κλείσιμο: σήμα, μήνυμα και διεύθυνση μαζί, σε ένα χτύπημα.
@@ -318,8 +336,10 @@ Object.assign(band.style, { top: C1 + 'px', height: H - C1 + 'px',
 
 // Προβολέας ανά πλάνο: [από, ως, κουτί, σκιά]. Ο ΕΝΦΙΑ δεν φωτίζεται ποτέ: η σάρωση είναι λογαριασμός ρεύματος.
 const SPOTS = [
-  [CUT[5] + 0.1, CUT[6], B.power, 0.65],
-  [CUT[6], CUT[7], B.afmBlock, 1.0],
+  [TL.pf.spot, TL.pf.tiles, B.pfNet, 0.65], [TL.pf.tiles, CUT[1], B.pfTiles, 0.65],
+  [CUT[6] + 0.1, CUT[7], B.power, 0.65],
+  [TL.tax.spot, TL.tax.para, B.taxAmt, 0.65], [TL.tax.para, CUT[8], B.taxPara, 0.65],
+  [CUT[8], CUT[9], B.afmBlock, 1.0],
 ];
 // Πατήματα: [χρόνος, σημείο εφαρμογής].
 const TAPS = [
@@ -345,6 +365,12 @@ window.render = function render(t) {
     S($('rig')).transform = tr; sig.push(sh.id, tr);
     $(sh.id).style.clipPath = `inset(${sh.top * K}px 0 ${sh.bottom ? (APPH - sh.bottom) * K : 0}px 0)`;
   }
+  // 0. Οι μετρητές του Χαρτοφυλακίου και του φόρου: η κατάσταση i του ίδιου στοιχείου (καμπύλη ease-out στη λήψη).
+  const pfI = Math.min(16, Math.floor(lin(t, TL.pf.count[0], TL.pf.count[1] - TL.pf.count[0]) * 16 + 1e-6));
+  pfIms.forEach((im, i) => { im.style.opacity = i === pfI ? '1' : '0'; });
+  const txI = Math.min(12, Math.floor(lin(t, TL.tax.count[0], TL.tax.count[1] - TL.tax.count[0]) * 12 + 1e-6));
+  txIms.forEach((im, i) => { im.style.opacity = i === txI ? '1' : '0'; });
+  sig.push(pfI, txI);
   // 1. Οι προθεσμίες εμφανίζονται μόνες τους, γραμμή γραμμή.
   prows.forEach((im, i) => { im.style.opacity = lin(t, TL.rowsOver[i], 0.15).toFixed(3); });
   // 3. Τα πεδία εμφανίζονται ολόκληρα, με fade 0,15″ και κλιμάκωση 0,15″.
@@ -371,7 +397,13 @@ window.render = function render(t) {
   sig.push(fl.toFixed(3), busy, pk.toFixed(4));
   // Προβολέας.
   let sp = null, so = 0, dim = 0;
-  for (const [a, b, r, d] of SPOTS) if (t >= a && t < b) { sp = r; dim = d; so = CUT.includes(a) ? 1 : lin(t, a, 0.2); }
+  for (const [k, [a, b, r, d]] of SPOTS.entries()) if (t >= a && t < b) {
+    // Όταν ο προβολέας συνεχίζει από το προηγούμενο κουτί, μετακινείται 0,25″ χωρίς να σβήσει.
+    const prev = k > 0 && SPOTS[k - 1][1] === a ? SPOTS[k - 1][2] : null;
+    const u = prev ? ease(lin(t, a, 0.25)) : 1;
+    sp = prev ? { x: prev.x + (r.x - prev.x) * u, y: prev.y + (r.y - prev.y) * u, w: prev.w + (r.w - prev.w) * u, h: prev.h + (r.h - prev.h) * u } : r;
+    dim = d; so = CUT.includes(a) || prev ? 1 : lin(t, a, 0.2);
+  }
   const spot = $('spot');
   Object.assign(S(spot), { display: sp && so > 0 ? 'block' : 'none', opacity: so.toFixed(3) });
   if (sp) {

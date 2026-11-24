@@ -8,7 +8,7 @@
 //
 // ΤΑ ΔΕΔΟΜΕΝΑ ΕΠΙΔΕΙΞΗΣ ΤΗΣ ΤΑΙΝΙΑΣ. Ο πάγκος απαντά στις ερωτήσεις της εφαρμογής με το
 // `window.__respond`. Η λήψη το τυλίγει (πριν φορτώσει η σελίδα) και αλλάζει τρία πράγματα
-// στα ίδια ψεύτικα δεδομένα, ώστε η εφαρμογή να αποδίδει μόνη της συνεπείς καταστάσεις:
+// στα ίδια ψεύτικα δεδομένα, ώστε η εφαρμογή να αποδίδει μόνη της συνεπείς καταστάσεις (v12: και ο περσινός ΕΝΦΙΑ 214):
 //   · κανένα δάνειο: χωρίς την προειδοποίηση «Η δόση ξεπερνά…» και το τσιπ «Δάνειο»
 //   · το εκκαθαριστικό ΕΝΦΙΑ χωρίς ποσό: κανένα ποσό ΕΝΦΙΑ γραμμένο με το χέρι στην εικόνα
 //   · «μετά τη σάρωση»: η γραμμή που γράφει η Καταχώρηση στο property_documents, με τα στοιχεία
@@ -26,7 +26,7 @@ mkdirSync(out, { recursive: true });
 // το κοντινό του «Κατέβασε» σε 4,6 (λήψη ×14 μόνο της περιοχής του).
 const BASE = 9, MACRO = 14;
 // Οι περιοχές της οθόνης που δείχνει κάθε πλάνο (px εφαρμογής, ολόκληρο το πλάτος).
-const REG = { overview: { x: 0, y: 250, w: 390, h: 594 }, tiles: { x: 0, y: 80, w: 390, h: 764 }, form: { x: 0, y: 220, w: 390, h: 440 },
+const REG = { portfolio: { x: 0, y: 100, w: 390, h: 420 }, overview: { x: 0, y: 250, w: 390, h: 594 }, tiles: { x: 0, y: 80, w: 390, h: 764 }, form: { x: 0, y: 220, w: 390, h: 440 },
   save: { x: 0, y: 420, w: 390, h: 424 }, docs: { x: 0, y: 350, w: 390, h: 494 } };
 const NOW = new Date('2026-11-23T09:41:00+02:00');
 const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH, args: ['--disable-dev-shm-usage'] });
@@ -60,7 +60,11 @@ async function open(q, dsf, { after = false } = {}) {
       : orig(url, init));
     Object.defineProperty(window, 'fetch', { configurable: true, get: () => mine, set: () => {} });
     let real;
+    // v12: ο περσινός ΕΝΦΙΑ των ρυθμίσεων του πάγκου (428, γραμμένος με το χέρι) γίνεται 214, ο ίδιος με τον
+    // δηλωμένο ΕΝΦΙΑ του ακινήτου επίδειξης: η Επισκόπηση (δόση 17,83€ = 214/12) και η Λογιστική λένε το ίδιο.
+    const enfia = (row) => (row && row.section === 'services' && row.data && row.data.enfiaLastAnnual ? { ...row, data: { ...row.data, enfiaLastAnnual: '214' } } : row);
     const mod = (call, r) => {
+      if (r && call.table === 'bills_settings') return { ...r, data: Array.isArray(r.data) ? r.data.map(enfia) : enfia(r.data) };
       if (!r || !Array.isArray(r.data)) return r;
       if (call.table === 'loans') return { ...r, data: [] };
       if (call.table === 'property_documents') {
@@ -93,9 +97,33 @@ const setVis = async (hs, n) => {
 };
 const boxOf = (h) => h.evaluate((el) => { const r = el.getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }; });
 
+
+// ── 0. Χαρτοφυλάκιο (v12): η κάρτα «Καθαρό 2026 ως σήμερα» και ο μετρητής του ποσού ──
+let p = await open('?c=portfolio&n=6', BASE);
+{
+  const amt = p.getByText(/^\d{1,3}(\.\d{3})*,\d{2}€$/).first();
+  const finalTxt = await amt.innerText();
+  const card = await amt.evaluateHandle((el) => { while (el.getBoundingClientRect().width < 340) el = el.parentElement; return el; });
+  const a = await rect(amt);
+  // Ο μετρητής: το ίδιο στοιχείο της εφαρμογής με ενδιάμεσες τιμές, στη μορφή el-GR της εφαρμογής.
+  const value = Number(finalTxt.replace(/[.€]/g, '').replace(',', '.'));
+  const crop = { x: a.x - 4, y: a.y - 4, w: 300, h: a.h + 8 };
+  const tiles = await p.getByText('Έσοδα', { exact: true }).first().evaluateHandle((el) => { while (el.getBoundingClientRect().width < 300) el = el.parentElement; return el; });
+  const textW = await amt.evaluate((el) => { const r = document.createRange(); r.selectNodeContents(el); return Math.round(r.getBoundingClientRect().width); });
+  boxes.portfolio = { amount: a, textW, crop, final: finalTxt, value, card: await boxOf(card), tiles: await boxOf(tiles), text: await card.evaluate((el) => el.innerText) };
+  await clipShot(p, 'portfolio', REG.portfolio);
+  const N = 16;
+  for (let i = 0; i <= N; i++) {
+    const v = value * (1 - Math.pow(1 - i / N, 3));
+    await amt.evaluate((el, t) => { el.textContent = t; }, v.toLocaleString('el-GR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '€');
+    await clipShot(p, `pf-${String(i).padStart(2, '0')}`, crop);
+  }
+  if ((await amt.innerText()) !== finalTxt) throw new Error('ο μετρητής δεν τελείωσε στην τιμή της εφαρμογής: ' + (await amt.innerText()));
+}
+
 // ── 1. Επισκόπηση: οι προθεσμίες εμφανίζονται μόνες τους ──────────────
 const ROWS_OV = ['ΕΝΦΙΑ, 9η δόση', 'Φόρος εισοδήματος, 5η δόση', 'Τέλος ανθεκτικότητας κλιματικής κρίσης, απόδοση', 'Δήλωση βραχυχρόνιας διαμονής (Μητρώο ΑΑΔΕ)'];
-let p = await open('?c=overview&n=6', BASE);
+p = await open('?c=overview&n=6', BASE);
 // Η κάρτα «Τι άλλαξε στους όρους» εμφανίζεται μία φορά· κλείνει με το δικό της κουμπί, όπως από τον χρήστη.
 await p.locator('section[aria-label="Τι άλλαξε στους όρους χρήσης"] button').last().click();
 await p.waitForTimeout(500);
@@ -172,6 +200,36 @@ p = await open('?c=accounting&n=6', MACRO);
   await p.getByRole('button', { name: 'Κατέβασε' }).click();
   await p.waitForTimeout(500);
   await clipShot(p, 'acc-busy', crop);
+}
+
+
+// ── 6. Λογιστική (v12): «Φόροι και τέλη 2026», όπως τα βγάζει η εφαρμογή ──
+p = await open('?c=accounting&n=6', BASE);
+{
+  const h = p.getByText('Φόροι και τέλη 2026', { exact: true }).first();
+  await h.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  await p.waitForTimeout(400);
+  const card = await h.evaluateHandle((el) => { while (el.getBoundingClientRect().width < 340) el = el.parentElement; return el; });
+  const c = await boxOf(card);
+  const y = Math.max(0, c.y - 30), hh = Math.min(844 - y, c.h + 60);
+  // Το ποσό της κάρτας: το πρώτο στοιχείο-φύλλο της κάρτας με μορφή ποσού.
+  const amtH = await card.evaluateHandle((el) => [...el.querySelectorAll('*')].find((e) => !e.children.length && /^\d{1,3}(\.\d{3})*,\d{2}€$/.test(e.textContent.trim())));
+  const para = await card.evaluateHandle((el) => [...el.querySelectorAll('*')].find((e) => /^Από όσα/.test(e.textContent.trim())));
+  const finalTxt = await amtH.evaluate((e) => e.textContent.trim());
+  const a = await boxOf(amtH), pr = await boxOf(para);
+  boxes.tax = { card: c, amount: a, para: pr, final: finalTxt, text: await card.evaluate((el) => el.innerText), region: { y, h: hh } };
+  await clipShot(p, 'tax', { x: 0, y, w: 390, h: hh });
+  // Ο μετρητής του ποσού, όπως στο Χαρτοφυλάκιο.
+  const value = Number(finalTxt.replace(/[.€]/g, '').replace(',', '.'));
+  const crop = { x: a.x - 4, y: a.y - 4, w: 220, h: a.h + 8 };
+  boxes.tax.crop = crop; boxes.tax.value = value;
+  const N = 12;
+  for (let i = 0; i <= N; i++) {
+    const v = value * (1 - Math.pow(1 - i / N, 3));
+    await amtH.evaluate((el, t) => { el.textContent = t; }, v.toLocaleString('el-GR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '€');
+    await clipShot(p, `tx-${String(i).padStart(2, '0')}`, crop);
+  }
+  if ((await amtH.evaluate((e) => e.textContent.trim())) !== finalTxt) throw new Error('ο μετρητής του φόρου δεν τελείωσε στην τιμή της εφαρμογής');
 }
 
 writeFileSync(join(out, 'boxes.json'), JSON.stringify(boxes, null, 1));
