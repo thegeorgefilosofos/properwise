@@ -93,9 +93,21 @@ ok(hasFeature(owner, 'clients') === false, 'owner ΔΕΝ έχει clients');
 ok(hasFeature(owner, 'portfolio') === false, 'owner ΔΕΝ έχει portfolio');
 ok(hasFeature(owner, 'report_branding') === false, 'owner ΔΕΝ έχει report_branding');
 
+// ── ΚΙΝΗΣΕΙΣ ΤΡΑΠΕΖΑΣ ΑΠΟ «ΙΔΙΟΚΤΗΤΗΣ+» (απόφαση ιδιοκτήτη 24/11/2026) ──
+// Η εισαγωγή CSV με αντιστοίχιση ενοικίων κατέβηκε ένα σκαλί. Το ημερολόγιο
+// άρθρων μένει στο «Επαγγελματίας»: οι δύο δεν κρέμονται πια από το ίδιο σκαλί.
+ok(FEATURE_MIN_PLAN.bank_import === 'owner', 'bank_import ≥ owner');
+ok(FEATURE_MIN_PLAN.accounting_journal === 'agency', 'accounting_journal μένει ≥ agency');
+ok(hasFeature(owner, 'bank_import') === true, 'owner έχει bank_import');
+ok(hasFeature({ plan: 'owner', profileType: 'individual' }, 'bank_import') === true, 'owner ιδιώτης έχει bank_import');
+ok(hasFeature(owner, 'accounting_journal') === false, 'owner ΔΕΝ έχει accounting_journal');
+ok(hasFeature(free, 'bank_import') === false, 'free ΔΕΝ έχει bank_import');
+ok(hasFeature({ plan: 'solo' }, 'bank_import') === false, 'solo ΔΕΝ έχει bank_import');
+ok(requiredPlanForFeature('bank_import') === 'owner', 'required feature bank_import = owner');
+
 // agency έχει τα πάντα
 const agency: EntitlementInput = { plan: 'agency' };
-(['multi_property','comparison','e2_export','rent_collection','clients','portfolio','report_branding'] as const)
+(['multi_property','comparison','e2_export','rent_collection','clients','portfolio','report_branding','bank_import'] as const)
   .forEach(feat => ok(hasFeature(agency, feat) === true, `agency έχει ${feat}`));
 
 // partner (free βάση) έχει τα πάντα μέσω ανύψωσης

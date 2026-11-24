@@ -3980,6 +3980,167 @@ begin
 end $probe$;
 
 -- ═══════════════════════════════════════════════════════════════════════════
+-- ΟΙ ΚΙΝΗΣΕΙΣ ΤΡΑΠΕΖΑΣ ΑΝΟΙΓΟΥΝ ΑΠΟ ΤΟ «ΙΔΙΟΚΤΗΤΗΣ+» (20261124100000)
+-- ─────────────────────────────────────────────────────────────────────────
+-- Απόφαση ιδιοκτήτη 24/11/2026. Η οθόνη δείχνει την εισαγωγή CSV από τον
+-- βαθμό 2 και η βάση πρέπει να δέχεται την εγγραφή από τον ίδιο βαθμό· αλλιώς
+-- τα ενοίκια σημειώνονται πληρωμένα και η κίνηση γυρίζει 42501. Πέντε
+-- λογαριασμοί, ρωτημένη η ίδια η βάση:
+--
+--   · δωρεάν (0) και «με Νόα» (1): δεν γράφουν κίνηση· ο δωρεάν διαβάζει και
+--     σβήνει ό,τι είχε·
+--   · «Ιδιοκτήτης+» (2): γράφει και σβήνει (η αναίρεση της εισαγωγής)·
+--   · δοκιμή (νέος λογαριασμός, βαθμός 2): γράφει, όπως βλέπει και το κουμπί·
+--   · «Επαγγελματίας» (3): γράφει, όπως πριν. Η αλλαγή μόνο ανοίγει.
+--
+-- Και οι επώνυμες αναφορές ΔΕΝ κατεβαίνουν μαζί: ο «Ιδιοκτήτης+» δεν γράφει
+-- report_branding.
+-- ═══════════════════════════════════════════════════════════════════════════
+reset role;
+set session "probe.uid" = '';
+set session "request.jwt.claims" = '{"aal":"aal2"}';
+
+do $probe$
+declare
+  f uuid := 'f4f4f4f4-0000-4000-8000-0000000000f1';
+  s uuid := 'f4f4f4f4-0000-4000-8000-0000000000b1';
+  o uuid := 'f4f4f4f4-0000-4000-8000-0000000000c1';
+  t uuid := 'f4f4f4f4-0000-4000-8000-0000000000d1';
+  a uuid := 'f4f4f4f4-0000-4000-8000-0000000000a1';
+begin
+  insert into auth.users(id, email, created_at) values
+    (f, 'bank-free@probe.test',   now() - interval '400 days'),
+    (s, 'bank-solo@probe.test',   now() - interval '400 days'),
+    (o, 'bank-owner@probe.test',  now() - interval '400 days'),
+    (t, 'bank-trial@probe.test',  now()),
+    (a, 'bank-agency@probe.test', now() - interval '400 days')
+    on conflict (id) do nothing;
+  insert into public.billing_profiles(user_id, plan, trial_used_at) values
+    (f, 'free', now()), (s, 'solo', now()), (o, 'owner', now()), (a, 'agency', now())
+    on conflict (user_id) do update set plan = excluded.plan, trial_used_at = excluded.trial_used_at;
+  -- Ο δωρεάν είχε πακέτο κάποτε: μία κίνηση που εισήχθη τότε μένει δική του.
+  insert into public.bank_transactions(user_id, txn_date, description, amount, dedup_hash)
+    values (f, date '2026-06-05', 'ΚΑΤΑΘΕΣΗ ΕΝΟΙΚΙΟΥ', 450, 'probe-bank-free-old');
+  raise notice 'probe: πέντε λογαριασμοί για τις κινήσεις τράπεζας, ένας με παλιά κίνηση χωρίς πακέτο';
+end $probe$;
+
+set role authenticated;
+
+-- ── ΒΑΘΜΟΣ 0 ΚΑΙ 1: ΔΙΑΒΑΖΟΥΝ ΚΑΙ ΣΒΗΝΟΥΝ, ΔΕΝ ΓΡΑΦΟΥΝ ─────────────────────
+set session "probe.uid" = 'f4f4f4f4-0000-4000-8000-0000000000f1';
+do $probe$
+declare f uuid := 'f4f4f4f4-0000-4000-8000-0000000000f1'; k int;
+begin
+  if public.my_plan_rank() <> 0 then
+    raise exception 'Ο έλεγχος θα ήταν κενός: ο δωρεάν έχει βαθμό % αντί για 0', public.my_plan_rank();
+  end if;
+  select count(*) into k from public.bank_transactions;
+  if k <> 1 then raise exception 'Ο δωρεάν δεν βλέπει την παλιά του κίνηση (% γραμμές)', k; end if;
+  begin
+    insert into public.bank_transactions(user_id, txn_date, description, amount, dedup_hash)
+      values (f, date '2026-11-05', 'ΚΑΤΑΘΕΣΗ ΕΝΟΙΚΙΟΥ', 450, 'probe-bank-free-new');
+    raise exception 'ΔΙΑΡΡΟΗ ΠΑΚΕΤΟΥ: ο δωρεάν έγραψε κίνηση τράπεζας';
+  exception when insufficient_privilege then null;
+  end;
+  update public.bank_transactions set description = 'ΑΛΛΑΓΗ' where user_id = f;
+  get diagnostics k = row_count;
+  if k <> 0 then raise exception 'ΔΙΑΡΡΟΗ ΠΑΚΕΤΟΥ: ο δωρεάν ενημέρωσε % κινήσεις', k; end if;
+  delete from public.bank_transactions where user_id = f;
+  get diagnostics k = row_count;
+  if k <> 1 then raise exception 'Ο δωρεάν δεν μπόρεσε να σβήσει την κίνησή του (% γραμμές)', k; end if;
+  raise notice 'probe: ο δωρεάν διαβάζει και σβήνει τις κινήσεις του, δεν γράφει νέες';
+end $probe$;
+
+set session "probe.uid" = 'f4f4f4f4-0000-4000-8000-0000000000b1';
+do $probe$
+declare s uuid := 'f4f4f4f4-0000-4000-8000-0000000000b1';
+begin
+  if public.my_plan_rank() <> 1 then
+    raise exception 'Ο έλεγχος θα ήταν κενός: το «με Νόα» έχει βαθμό % αντί για 1', public.my_plan_rank();
+  end if;
+  begin
+    insert into public.bank_transactions(user_id, txn_date, description, amount, dedup_hash)
+      values (s, date '2026-11-05', 'ΚΑΤΑΘΕΣΗ ΕΝΟΙΚΙΟΥ', 450, 'probe-bank-solo');
+    raise exception 'ΔΙΑΡΡΟΗ ΠΑΚΕΤΟΥ: το «με Νόα» έγραψε κίνηση τράπεζας';
+  exception when insufficient_privilege then null;
+  end;
+  raise notice 'probe: το «με Νόα» δεν γράφει κινήσεις τράπεζας';
+end $probe$;
+
+-- ── ΒΑΘΜΟΣ 2: Ο «ΙΔΙΟΚΤΗΤΗΣ+» ΚΑΙ Η ΔΟΚΙΜΗ ΓΡΑΦΟΥΝ ──────────────────────────
+set session "probe.uid" = 'f4f4f4f4-0000-4000-8000-0000000000c1';
+do $probe$
+declare o uuid := 'f4f4f4f4-0000-4000-8000-0000000000c1'; k int;
+begin
+  if public.my_plan_rank() <> 2 then
+    raise exception 'Ο έλεγχος θα ήταν κενός: ο «Ιδιοκτήτης+» έχει βαθμό % αντί για 2', public.my_plan_rank();
+  end if;
+  insert into public.bank_transactions(user_id, txn_date, description, amount, dedup_hash)
+    values (o, date '2026-11-04', 'ΚΑΤΑΘΕΣΗ ΕΝΟΙΚΙΟΥ ΝΟΕ', 450, 'probe-bank-owner');
+  -- Η αναίρεση της εισαγωγής σβήνει ό,τι μόλις γράφτηκε.
+  delete from public.bank_transactions where user_id = o and dedup_hash = 'probe-bank-owner';
+  get diagnostics k = row_count;
+  if k <> 1 then raise exception 'Ο «Ιδιοκτήτης+» δεν αναίρεσε την εισαγωγή του (% γραμμές)', k; end if;
+  -- Το σκαλί του επαγγελματία μένει κλειστό: επώνυμες αναφορές όχι.
+  begin
+    insert into public.report_branding(user_id, company_name) values (o, 'Επωνυμία');
+    raise exception 'ΔΙΑΡΡΟΗ ΠΑΚΕΤΟΥ: ο «Ιδιοκτήτης+» έγραψε επωνυμία αναφορών';
+  exception when insufficient_privilege then null;
+  end;
+  raise notice 'probe: ο «Ιδιοκτήτης+» γράφει κινήσεις τράπεζας, όχι επωνυμία αναφορών';
+end $probe$;
+
+set session "probe.uid" = 'f4f4f4f4-0000-4000-8000-0000000000d1';
+do $probe$
+declare t uuid := 'f4f4f4f4-0000-4000-8000-0000000000d1';
+begin
+  if public.my_plan_rank() <> 2 then
+    raise exception 'Ο έλεγχος θα ήταν κενός: η δοκιμή έχει βαθμό % αντί για 2', public.my_plan_rank();
+  end if;
+  insert into public.bank_transactions(user_id, txn_date, description, amount, dedup_hash)
+    values (t, date '2026-11-04', 'ΚΑΤΑΘΕΣΗ ΕΝΟΙΚΙΟΥ', 450, 'probe-bank-trial');
+  raise notice 'probe: η δοκιμή γράφει κινήσεις τράπεζας, όπως βλέπει και το κουμπί';
+end $probe$;
+
+-- ── ΒΑΘΜΟΣ 3: ΟΠΩΣ ΠΡΙΝ ────────────────────────────────────────────────────
+set session "probe.uid" = 'f4f4f4f4-0000-4000-8000-0000000000a1';
+do $probe$
+declare a uuid := 'f4f4f4f4-0000-4000-8000-0000000000a1';
+begin
+  if public.my_plan_rank() <> 3 then
+    raise exception 'Ο έλεγχος θα ήταν κενός: ο «Επαγγελματίας» έχει βαθμό % αντί για 3', public.my_plan_rank();
+  end if;
+  insert into public.bank_transactions(user_id, txn_date, description, amount, dedup_hash)
+    values (a, date '2026-11-04', 'ΚΑΤΑΘΕΣΗ ΕΝΟΙΚΙΟΥ', 450, 'probe-bank-agency');
+  raise notice 'probe: ο «Επαγγελματίας» γράφει κινήσεις τράπεζας όπως πριν';
+end $probe$;
+
+reset role;
+set session "probe.uid" = '';
+
+do $audit$
+declare bad text;
+begin
+  -- Η πολιτική εισαγωγής ρωτά τον βαθμό του «Ιδιοκτήτης+», με το όνομά του.
+  select string_agg(p.policyname || ':' || p.cmd, ', ') into bad
+    from pg_policies p
+   where p.schemaname = 'public' and p.tablename = 'bank_transactions'
+     and p.policyname in ('plan_ins_bank_transactions', 'plan_upd_bank_transactions')
+     and (p.permissive <> 'RESTRICTIVE'
+          or coalesce(p.with_check, '') not like '%plan_rank(''owner''%'
+          or (p.cmd = 'UPDATE' and coalesce(p.qual, '') not like '%plan_rank(''owner''%'));
+  if bad is not null then
+    raise exception 'Οι πολιτικές πακέτου του bank_transactions δεν ζητούν «Ιδιοκτήτης+»: %', bad;
+  end if;
+  perform public.erase_account('f4f4f4f4-0000-4000-8000-0000000000f1');
+  perform public.erase_account('f4f4f4f4-0000-4000-8000-0000000000b1');
+  perform public.erase_account('f4f4f4f4-0000-4000-8000-0000000000c1');
+  perform public.erase_account('f4f4f4f4-0000-4000-8000-0000000000d1');
+  perform public.erase_account('f4f4f4f4-0000-4000-8000-0000000000a1');
+  raise notice 'probe: οι κινήσεις τράπεζας ανοίγουν από «Ιδιοκτήτης+» και οι πέντε λογαριασμοί έφυγαν';
+end $audit$;
+
+-- ═══════════════════════════════════════════════════════════════════════════
 --  ΤΟ ΜΗΤΡΩΟ ΤΩΝ ΕΓΓΡΑΦΩΝ: ΓΡΑΦΕΙ ΜΟΝΟ Η `issue_document`, ΤΙΠΟΤΑ ΔΕΝ ΑΛΛΑΖΕΙ
 -- ─────────────────────────────────────────────────────────────────────────
 --  Μέχρι την 20261007100000 ο χρήστης έγραφε στο `issued_documents` από τον

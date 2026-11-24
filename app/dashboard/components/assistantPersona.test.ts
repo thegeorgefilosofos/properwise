@@ -765,7 +765,9 @@ ok('κενό → undefined', normalizeBookTime('') === undefined);
      && TRIAL_LIMITS.perMonth < aiLimitsFor('owner').perMonth);
   ok('gating: οι μήνες χωρίς χρέωση έχουν το πακέτο ερωτήσεων του πακέτου τους (20261112170000)',
      /οι μήνες χωρίς χρέωση \(πρόγραμμα πρόσκλησης, κλήρωση\) δίνουν το πακέτο ερωτήσεων του πακέτου τους/.test(p));
-  ok('gating: τράπεζα → Επαγγελματίας', new RegExp(`Ο «${PLANS.agency.name}».*κινήσεων τράπεζας`).test(p));
+  // Απόφαση ιδιοκτήτη 24/11/2026: οι κινήσεις τράπεζας από «Ιδιοκτήτης+».
+  ok('gating: τράπεζα → Ιδιοκτήτης+', new RegExp(`Ο «${PLANS.owner.name.replace('+', '\\+')}»[^\n]*κινήσεων τράπεζας`).test(p));
+  ok('gating: ο Επαγγελματίας δεν ξαναλέει την τράπεζα', !new RegExp(`Ο «${PLANS.agency.name}»[^\n]*κινήσεων τράπεζας`).test(p));
   ok('gating: χαρτοφυλάκιο → Επαγγελματίας', new RegExp(`Ο «${PLANS.agency.name}».*«Χαρτοφυλάκιο»`).test(p));
   ok('gating: CRM → Επαγγελματίας', new RegExp(`Ο «${PLANS.agency.name}».*«Πελατολόγιο»/CRM`).test(p));
   ok('gating: επενδυτική ανάλυση → Επαγγελματίας', new RegExp(`Ο «${PLANS.agency.name}».*IRR, NPV, DSCR`).test(p));

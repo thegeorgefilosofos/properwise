@@ -130,6 +130,21 @@ eq('revoke_org_member: κρατά το δεύτερο βήμα', /mfa_satisfied/
     body.indexOf('mfa_satisfied') > 0 && body.indexOf('mfa_satisfied') < body.indexOf('plan_required'), true)
 }
 
+// ── ΟΙ ΚΙΝΗΣΕΙΣ ΤΡΑΠΕΖΑΣ (απόφαση ιδιοκτήτη 24/11/2026) ─────────────────────
+// Η οθόνη ανοίγει την εισαγωγή με το `bank_import`· η βάση πρέπει να δέχεται
+// την εγγραφή από το ίδιο πακέτο. Αλλιώς ο «Ιδιοκτήτης+» βλέπει το κουμπί και
+// η καταχώρηση των κινήσεων γυρίζει 42501 στη μέση: ενοίκια σημειωμένα
+// πληρωμένα και καμία κίνηση για τον έλεγχο διπλών της επόμενης εισαγωγής.
+eq('bank_transactions: εισαγωγή με το πακέτο της εισαγωγής κινήσεων',
+  insertPlan('bank_transactions'), requiredPlanForFeature('bank_import'))
+eq('bank_transactions: ενημέρωση με το πακέτο της εισαγωγής κινήσεων',
+  updatePlan('bank_transactions'), requiredPlanForFeature('bank_import'))
+// Το ημερολόγιο άρθρων και οι επώνυμες αναφορές ΔΕΝ κατεβαίνουν μαζί της.
+eq('ημερολόγιο άρθρων: μένει στο πακέτο του επαγγελματία', requiredPlanForFeature('accounting_journal'), PROFESSIONAL_MIN_PLAN)
+eq('report_branding: η πολιτική της μένει στον βαθμό 3',
+  /create policy "plan_ins_report_branding" on public\.report_branding\s+as restrictive for insert with check \(\(select public\.my_plan_rank\(\)\) >= 3\);/
+    .test(latestWith('create policy "plan_ins_report_branding"')), true)
+
 // ── ΟΙ ΣΥΝΑΡΤΗΣΕΙΣ ΤΟΥ ΜΕΛΟΥΣ ΜΕΝΟΥΝ ΑΝΟΙΧΤΕΣ ─────────────────────────────
 // Το πακέτο του μέλους δεν κρίνει την ομάδα κάποιου άλλου: η αποδοχή της
 // πρόσκλησης τρέχει σε κάθε φόρτωση του πίνακα και το αίτημα για πακέτο δεν

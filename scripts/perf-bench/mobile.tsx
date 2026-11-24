@@ -100,6 +100,7 @@ import PropertySwitcher from '@/app/dashboard/components/PropertySwitcher';
 import { BOTTOM_NAV } from '@/app/dashboard/components/shell/nav';
 import { T, TT, Modal, Btn, PageTitle, InfoBanner, fieldRow } from '@/components/Theme';
 import { ConfirmHost } from '@/components/ConfirmDialog';
+import { ToastHost } from '@/components/Toast';
 import { createClient } from '@/lib/supabase/client';
 import MyaadeImport, { wrongDoc } from '@/app/dashboard/components/MyaadeImport';
 import { CenterState, DoneView, MYAADE_CSS } from '@/app/dashboard/components/MyaadeSteps';
@@ -523,6 +524,11 @@ const VIEWS: Record<string, () => React.ReactElement> = {
   // υπάρχουν σε πραγματικούς χρήστες, οπότε και οι δύο μετριούνται.
   'roi-pro': () => <TabRentROI propertyId="p0" userId="u1" propertyValue={185000} profileType="professional" legalForm="company" plan="agency" />,
   'accounting-pro': () => <TabAccounting propertyId="p0" userId="u1" profileType="professional" legalForm="company" plan="agency" />,
+  // Η ΛΟΓΙΣΤΙΚΗ ΤΟΥ «ΙΔΙΟΚΤΗΤΗ+» (24/11/2026). Από εδώ ο ιδιώτης βρίσκει την
+  // εισαγωγή κινήσεων τράπεζας, χωρίς τον επαγγελματικό τρόπο. Στο p1, που
+  // έχει μισθωτή και ανεξόφλητα ενοίκια για να ταιριάξουν. Με τον δικό της
+  // ToastHost: το «Καταχώρηση όλων» λέει τι έγραψε και δίνει αναίρεση εκεί.
+  'accounting-owner': () => <><TabAccounting propertyId="p1" userId="u1" plan="owner" /><ToastHost /></>,
   // ΣΤΟ p1, ΟΧΙ ΣΤΟ p0. Το p0 είναι βραχυχρόνιο (`short = i % 4 === 0`) και δεν
   // έχει μισθωτή: η σκηνή απέδιδε την ΚΕΝΗ κατάσταση και η κάρτα ενοικιαστή —
   // με τη λωρίδα μεγεθών και τις κομμένες ετικέτες της — δεν είχε δει σαρωτή ποτέ.
