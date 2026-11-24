@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<title>Σύνδεση με την ΑΑΔΕ</title>
+<!-- v2 studio, καθαρό (εντολή ιδιοκτήτη): ένα μήνυμα και ένα σημείο εστίασης ανά πλάνο· laptop και κινητό μαζί σε ΜΙΑ σκηνή, χωρίς κλίση·
+     κοινός άξονας x 96 και ίσα περιθώρια 96 px για λεζάντες, συσκευές και κοντινά· κινητό αγκίστρι, τυπογραφία σε αυστηρό πλέγμα (αριστερή στοίχιση στο x 96),
+     ένα χρώμα έμφασης (--mkt-accent). Χρώματα και Inter από το app/globals.css (render.mjs: /globals.css, /fonts, /brand).
+     Πλαίσια συσκευών σε CSS, χωρίς μάρκα. Η κάμερα κινείται μόνο μέσα σε βύθιση (kinisi): το περιεχόμενο των οθονών σβήνει
+     στο 25% όσο κινούνται οι συσκευές και επιστρέφει όταν σταθούν. -->
+<link rel="stylesheet" href="/globals.css">
+<style>
+  *, *::before, *::after { transition: none !important; animation: none !important; box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; overflow: hidden; background: var(--mkt-bg-base); }
+  #stage { position: absolute; left: 0; top: 0; overflow: hidden; font-family: 'Inter', sans-serif; color: var(--mkt-text-primary);
+    font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; background: var(--mkt-bg-base); }
+  .glow { position: absolute; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--mkt-accent) 13%, transparent), transparent 66%); }
+  #world { position: absolute; inset: 0; transform-origin: 0 0; }
+  .dev { position: absolute; left: 0; top: 0; transform-style: preserve-3d; transform-origin: 50% 50%; }
+  /* Laptop: καπάκι με λεπτό πλαίσιο, κάμερα, βάση με εγκοπή. */
+  #lap .lid { position: absolute; left: 0; top: 0; border-radius: 26px; background: var(--mkt-bg-elevated);
+    border: 2px solid var(--mkt-border-strong); box-shadow: 0 70px 140px color-mix(in srgb, var(--mkt-bg-base) 92%, transparent); }
+  #lap .cam { position: absolute; width: 8px; height: 8px; border-radius: 50%; background: var(--mkt-border-strong); }
+  #lap .screen { position: absolute; overflow: hidden; border-radius: 8px; background: var(--mkt-bg-base); }
+  #lap .base { position: absolute; border-radius: 4px 4px 22px 22px; background: var(--mkt-bg-elevated); border: 2px solid var(--mkt-border-strong); border-top: 0; }
+  #lap .notch { position: absolute; border-radius: 0 0 10px 10px; background: var(--mkt-border-strong); }
+  /* Κινητό: σώμα, οθόνη, νησίδα. */
+  #phone .body { position: absolute; inset: 0; background: var(--mkt-bg-elevated); border: 2px solid var(--mkt-border-strong);
+    box-shadow: 0 70px 140px color-mix(in srgb, var(--mkt-bg-base) 92%, transparent); }
+  #phone .screen { position: absolute; overflow: hidden; background: var(--mkt-bg-base); }
+  #phone .island { position: absolute; background: var(--mkt-bg-base); border-radius: 999px; }
+  .screen img, #panel img { position: absolute; left: 0; top: 0; max-width: none; }
+  .glass { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(118deg, color-mix(in srgb, var(--mkt-text-primary) 5%, transparent) 0%, transparent 32%); }
+  /* Κοντινό: η περιοχή της οθόνης του κινητού, μεγεθυμένη, ως κάρτα με σκιά. */
+  #panel { position: absolute; left: 0; top: 0; overflow: hidden; border-radius: 30px; background: var(--mkt-bg-base);
+    border: 2px solid var(--mkt-border-default); box-shadow: 0 60px 120px color-mix(in srgb, var(--mkt-bg-base) 90%, transparent); }
+  .spot { position: absolute; border: 3px solid var(--mkt-accent); border-radius: 12px; display: none; }
+  #touch { position: absolute; border-radius: 50%; background: color-mix(in srgb, var(--mkt-text-primary) 38%, transparent);
+    border: 2px solid color-mix(in srgb, var(--mkt-text-primary) 75%, transparent); display: none; }
+  #touchRing { position: absolute; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--mkt-text-primary) 60%, transparent); display: none; }
+  #band { position: absolute; left: 0; right: 0; }
+  .txt { position: absolute; text-align: left; white-space: normal; }
+  .big { font-weight: 800; letter-spacing: -0.035em; line-height: 0.98; }
+  .sub { font-weight: 600; letter-spacing: -0.005em; color: var(--mkt-text-secondary); line-height: 1.2; }
+  .cap { font-weight: 760; line-height: 1.06; letter-spacing: -0.025em; }
+  .mark { font-weight: 650; letter-spacing: 0.12em; color: var(--mkt-text-secondary); text-align: center; }
+  .kicker { font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--mkt-accent); }
+  #badge { position: absolute; border-radius: 999px; white-space: nowrap; display: flex; align-items: center;
+    color: var(--mkt-text-secondary); background: var(--mkt-bg-surface); border: 1.5px solid var(--mkt-border-default); font-weight: 600; }
+  .logo { position: absolute; transform-origin: 0 50%; }
+  #url { position: absolute; border: 2px solid var(--mkt-accent); border-radius: 999px; color: var(--mkt-accent); font-weight: 650; text-align: center; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="glow" id="g1"></div><div class="glow" id="g2"></div>
+  <div id="world">
+    <div class="dev" id="lap">
+      <div class="lid"><div class="cam"></div><div class="screen" id="lapScreen"><div class="glass"></div></div></div>
+      <div class="base"><div class="notch"></div></div>
+    </div>
+    <div class="dev" id="phone">
+      <div class="body"></div>
+      <div class="screen" id="phScreen"><div class="glass"></div></div>
+      <div class="island"></div>
+    </div>
+  </div>
+  <div id="panel"></div>
+  <div id="touchRing"></div><div id="touch"></div>
+  <div id="band"></div>
+  <div id="texts"></div>
+  <div id="badge">Δεδομένα επίδειξης</div>
+  <img class="logo" id="logoT" src="/brand/properwise-logotypo-lefko.svg" alt="PROPERWISE">
+  <img class="logo" id="logoC" src="/brand/properwise-logotypo-lefko.svg" alt="PROPERWISE">
+  <img class="logo" id="logoS" src="/brand/properwise-logotypo-lefko.svg" alt="PROPERWISE">
+  <div id="url">properwise.gr</div>
+</div>
+<!-- ΤΟ ΧΡΟΝΟΛΟΓΙΟ, ΜΙΑ ΠΗΓΗ: η ταινία και ο ήχος (sound.ts). Χρόνοι σε δευτερόλεπτα, πλέγμα 120 BPM.
+     v3 cuts: τέλος αγκιστριού, τέλος «Κάτι έρχεται.», αρχές DUO (πλάνο εγκατάστασης 1,2″), CONSENT (ζουμ στην κάρτα),
+     INBOX, ISSUER (ΜΑΡΚ), E9, E9B, END. -->
+<script id="timeline" type="application/json">
+{
+  "fps": 30, "dur": 23.0, "bpm": 120,
+  "cuts": [2.6, 3.5, 5.3, 6.5, 9.6, 12.8, 15.6, 18.2, 20.0],
+  "full": 5.3,
+  "hook": [-0.2, 0.35, 0.7, 1.05, 1.4],
+  "lapInbox": [5.55, 5.9],
+  "consSpots": [7.0, 7.9],
+  "inboxParts": [9.6, 10.0, 10.4, 10.8],
+  "phSpot": 11.6,
+  "issuerSpots": [13.3, 14.3],
+  "phE9": 16.2,
+  "phE9Spot": 16.9,
+  "taps": [18.8],
+  "dings": [5.55, 10.8, 14.3, 19.0],
+  "close": 20.0,
+  "chords": [[0, ["A2", "E3", "A3", "C4", "E4"]], [2.6, ["F2", "C3", "F3", "A3", "C4"]], [3.5, ["C3", "G3", "C4", "E4", "G4"]], [5.3, ["D2", "A2", "D3", "F3", "A3"]], [9.6, ["F2", "C3", "F3", "A3", "C4"]], [12.8, ["C3", "G3", "C4", "E4", "G4"]], [15.6, ["D2", "A2", "D3", "F3", "A3"]], [18.2, ["G2", "D3", "G3", "B3", "D4"]], [20.0, ["A2", "E3", "A3", "C4", "E4"]]]
+}
+</script>
+<script>
+(() => {
+const TL = JSON.parse(document.getElementById('timeline').textContent);
+const Q = new URLSearchParams(location.search);
+const fmt = Q.get('f') === '45' ? '45' : '916';
+const W = 1080, H = fmt === '45' ? 1350 : 1920;
+const px = Math.round, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const $ = (id) => document.getElementById(id);
+const lin = (t, a, d) => clamp((t - a) / d, 0, 1);
+const ease = (u) => (u <= 0 ? 0 : u >= 1 ? 1 : u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
+// Ελατήριο κλειστής μορφής (kinisi): ζ = 1 για κάμερα και κείμενο, ζ < 1 για σχήματα (μία μικρή υπερακόντιση).
+const spring = (t, a, w = 18, z = 1) => {
+  const x = t - a; if (x <= 0) return 0;
+  if (z >= 1) return 1 - Math.exp(-w * x) * (1 + w * x);
+  const wd = w * Math.sqrt(1 - z * z);
+  return 1 - Math.exp(-z * w * x) * (Math.cos(wd * x) + (z * w / wd) * Math.sin(wd * x));
+};
+const CUT = TL.cuts;
+
+// ── STORIES (teaser): ?f=916&s=1 έως 3 ───────────────────────────────────
+const SN = fmt === '916' ? Number(Q.get('s')) || 0 : 0;
+const E = 0.001;
+const STORIES = {
+  1: { logo: true, keys: [[0, 0], [CUT[1] - E, CUT[1] - E], [3.9, CUT[1] - E]] },
+  // v3: laptop και κινητό 1,2″ (εγκατάσταση), μετά ζουμ στην κάρτα «myDATA από τον λογιστή».
+  2: { cap: 'Έρχεται: τα παραστατικά από το\nmyDATA, μέσω του λογιστή σου.', capTo: CUT[4], keys: [[0, CUT[2]], [4.1, CUT[2] + 4.1]] },
+  3: { cap: 'Έρχεται: το Ε9 από το myAADE.', capTo: CUT[8],
+    keys: [[0, CUT[6]], [2.4, CUT[6] + 2.4], [2.4 + E, TL.taps[0] - 0.5], [3.2, TL.taps[0] + 0.3], [3.2 + E, TL.close], [5.6, TL.close + 2.4]] },
+};
+const ST = STORIES[SN] || null;
+const NOMARK = !!ST && Q.has('nomark');
+// ?cover=1 (9:16): το εξώφυλλο-αφίσα, ο τίτλος πάνω και από κάτω το κινητό με την κάρτα του ΜΑΡΚ.
+const COVER = !ST && fmt === '916' && Q.has('cover');
+let COVER_PH = null;
+// ?qa=1: χωρίς τα φωτεινά φόντα, για τη μέτρηση περιθωρίων (qa-frames.mjs).
+const QA = Q.has('qa');
+const filmT = (ts) => {
+  const k = ST.keys;
+  for (let i = 1; i < k.length; i++) if (ts <= k[i][0]) { const [a0, b0] = k[i - 1], [a1, b1] = k[i]; return b0 + (b1 - b0) * (ts - a0) / (a1 - a0); }
+  return k[k.length - 1][1];
+};
+
+// ── ΠΛΕΓΜΑ ΚΑΙ ΔΙΑΤΑΞΗ ───────────────────────────────────────────────────
+// Αριστερή στοίχιση στο x 96. Λεζάντα στη ζώνη 250 έως 420 (9:16) ή 70 έως 230 (4:5), ετικέτα από κάτω.
+// Συσκευές στη ζώνη 560 έως 1500 (9:16) ή 330 έως 1250 (4:5).
+// v2 καθαρό: κοινός άξονας και ίσα περιθώρια 72 px (κοντινό 312 px εφαρμογής × 3,0 = 936 px = W − 2 × 72).
+const GX = 72, GW = W - 2 * GX;
+// 9:16: λεζάντα από το y 300 (μέσα στο κεντρικό 4:5 του πλέγματος του προφίλ, y 285 έως 1635), ετικέτα στο 470,
+// περιεχόμενο με κέντρο το y 1010. 4:5: λεζάντα από το 70, ετικέτα στο 224, κέντρο το 760.
+// v3: 9:16 ζώνη ασφαλείας y 250 έως 1600, περιεχόμενο στο 560 έως 1600 (κέντρο 1080).
+// 4:5: λεζάντα από το y 110 (ζώνη ≥ 100), ετικέτα στο 248, περιεχόμενο στο 330 έως 1278 (κέντρο 804).
+const L = fmt === '916'
+  ? { capTop: 300, capSize: 60, badgeY: 470, badgeSize: 30, big: 150, title: 104, midY: 960, Z0: 560, Z1: 1600 }
+  : { capTop: 110, capSize: 52, badgeY: 248, badgeSize: 26, big: 128, title: 92, midY: 675, Z0: 330, Z1: 1278 };
+L.cY = (L.Z0 + L.Z1) / 2;
+// v4: στο story 2 η λεζάντα, η ετικέτα και το κοντινό κατεβαίνουν 80 px (ορατή ζώνη ως το 1500): μικραίνει το κενό κάτω από την κάρτα.
+const SD = SN === 2 ? 80 : 0;
+L.capTop += SD; L.badgeY += SD; L.pY = L.cY + SD;
+// Οι συσκευές (και το ζουμ τους) σβήνουν πάνω από τη ζώνη περιεχομένου: ποτέ πίσω από τη λεζάντα ή την ετικέτα.
+// Η μάσκα μπαίνει σε περιτύλιγμα χωρίς μετασχηματισμό (στο ίδιο το #world θα μεγεθυνόταν μαζί με το ζουμ).
+{ const wc = document.createElement('div'); wc.id = 'wclip'; wc.style.position = 'absolute'; wc.style.inset = '0';
+  $('world').before(wc); wc.appendChild($('world'));
+  wc.style.webkitMaskImage = wc.style.maskImage = `linear-gradient(180deg, transparent ${L.Z0 + SD - 20}px, #000 ${L.Z0 + SD + 30}px)`; }
+const MARGIN = 64;
+const stage = $('stage');
+stage.style.width = W + 'px'; stage.style.height = H + 'px';
+
+// ── ΣΥΣΚΕΥΕΣ ─────────────────────────────────────────────────────────────
+// Laptop: οθόνη 1280 × 800 (λήψη του πάγκου), σε πλάτος LSW px. Κινητό: οθόνη 390 × 844 σε ύψος PSH px.
+const LSW0 = 1280, LSH0 = 800, LB = 16;
+const LSW = 860, LSH = LSW * LSH0 / LSW0;
+const lap = $('lap'), lid = lap.querySelector('.lid'), lapScreen = $('lapScreen');
+const LIDW = LSW + 2 * LB, LIDH = LSH + 2 * LB + 6;
+Object.assign(lap.style, { width: LIDW + 'px', height: LIDH + 26 + 'px' });
+Object.assign(lid.style, { width: LIDW + 'px', height: LIDH + 'px' });
+Object.assign(lap.querySelector('.cam').style, { left: LIDW / 2 - 4 + 'px', top: '6px' });
+Object.assign(lapScreen.style, { left: LB + 'px', top: LB + 6 + 'px', width: LSW + 'px', height: LSH + 'px' });
+Object.assign(lap.querySelector('.base').style, { left: 0, top: LIDH + 'px', width: LIDW + 'px', height: '26px' });
+Object.assign(lap.querySelector('.notch').style, { left: LIDW / 2 - 70 + 'px', top: 0, width: '140px', height: '9px' });
+const LK = LSW / LSW0; // px οθόνης ανά px λήψης laptop
+// Το κινητό έχει γραμμή κατάστασης 44 px πάνω από την εφαρμογή, ώστε η νησίδα να μην κρύβει την κεφαλίδα.
+const PSW = 390, PSH = 844 + 44, PB = 14, PSB = 44;
+const PK = 1.0; // px οθόνης ανά px εφαρμογής κινητού (το κινητό μεγεθύνεται με transform)
+const phone = $('phone'), phScreen = $('phScreen');
+Object.assign(phone.style, { width: PSW + 2 * PB + 'px', height: PSH + 2 * PB + 'px' });
+Object.assign(phone.querySelector('.body').style, { borderRadius: 64 + 'px' });
+Object.assign(phScreen.style, { left: PB + 'px', top: PB + 'px', width: PSW + 'px', height: PSH + 'px', borderRadius: 52 + 'px' });
+Object.assign(phone.querySelector('.island').style, { left: PB + PSW / 2 - 52 + 'px', top: PB + 9 + 'px', width: '104px', height: '28px' });
+const addImg = (parent, src, x, y, w, h, op = 1) => { const im = document.createElement('img'); im.src = src;
+  Object.assign(im.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px', opacity: String(op) }); parent.insertBefore(im, parent.querySelector('.glass')); return im; };
+const lapIm = (n) => addImg(lapScreen, `work/shots9/${n}.png`, 0, 0, LSW, LSH, 0);
+const LAP = { 'lap-inbox-0': lapIm('lap-inbox-0'), 'lap-inbox-1': lapIm('lap-inbox-1'), 'lap-inbox-3': lapIm('lap-inbox-3') };
+const phIm = (n) => addImg(phScreen, `work/shots9/${n}.png`, 0, PSB, PSW, PSH - PSB, 0);
+const PH = { 'ph-consent': phIm('ph-consent'), 'ph-inbox-3': phIm('ph-inbox-3') };
+const mkSpot = (parent) => { const d = document.createElement('div'); d.className = 'spot'; parent.insertBefore(d, parent.querySelector('.glass')); return d; };
+const lapSpot = mkSpot(lapScreen), phSpot = mkSpot(phScreen);
+
+// ── ΚΟΝΤΙΝΑ (panel): η περιοχή του κινητού σε κλίμακα 3,0 (γράμματα 12 και 13 px → 36 και 39 px) ──
+const panel = $('panel');
+const panelImgs = {};
+const pImg = (key, src, r) => { const im = document.createElement('img'); im.src = src; panel.appendChild(im); panelImgs[key] = { im, r }; return im; };
+pImg('consent', 'work/shots9/consent.png', { x: 0, y: 119, w: 390, h: 188 });
+pImg('inboxEmpty', 'work/shots9/inbox-empty.png', { x: 0, y: 119, w: 390, h: 371 });
+pImg('p0', 'work/shots9/inbox-part-0.png', { x: 48, y: 210, w: 294, h: 20 });
+// v3: στο κοντινό του ΜΑΡΚ η γραμμή «Καθαρό · ΦΠΑ · ΜΑΡΚ» ανεβαίνει στη θέση της κρυμμένης γραμμής «Τιμολόγιο» (κανένα κενό).
+pImg('p2up', 'work/shots9/inbox-part-2.png', { x: 48, y: 240, w: 294, h: 36 });
+// v4: ο ΜΑΡΚ ήρωας. Από πάνω η γραμμή εκδότη και ποσού (× 3,0, 39 px)· από κάτω «ΜΑΡΚ 400001000000101» σε 56 px
+// (12 px × 4,67, k = 4,67 / 3,0). Η εφαρμογή σπάει τη λέξη και τον αριθμό σε δύο γραμμές· εδώ μπαίνουν σε μία
+// (capture.mjs: mark-word, mark-num, με το κενό ενός διαστήματος 12 px, 3,4 px).
+const MK = 56 / 12 / 3.0;
+pImg('p0m', 'work/shots9/inbox-part-0.png', { x: 48, y: 219, w: 294, h: 20 });
+pImg('mword', 'work/shots9/mark-word.png', { x: 46.44, y: 256.1, w: 39, h: 19, k: MK });
+pImg('mnum', 'work/shots9/mark-num.png', { x: 46.44 + (38 + 3.4) * MK, y: 256.1, w: 121, h: 19, k: MK });
+pImg('q1', 'work/shots9/inbox-part-1.png', { x: 48, y: 240, w: 294, h: 36 });
+pImg('q2', 'work/shots9/inbox-part-2.png', { x: 48, y: 286, w: 294, h: 36 });
+pImg('q3', 'work/shots9/inbox-part-3.png', { x: 48, y: 332, w: 294, h: 146 });
+// Ε9 σε κινητό πλάτους 320 (capture.mjs): η κάρτα του ακινήτου από το x 25 ως το 295.
+pImg('e9nEmpty', 'work/shots9/e9n-list-empty.png', { x: 0, y: 363, w: 320, h: 416 });
+pImg('e9n0', 'work/shots9/e9n-item-0.png', { x: 25, y: 373, w: 270, h: 194 });
+pImg('e9n1', 'work/shots9/e9n-item-1.png', { x: 25, y: 575, w: 270, h: 174 });
+pImg('e9nb', 'work/shots9/e9n-bottom.png', { x: 0, y: 595, w: 320, h: 249 });
+const panelSpot = document.createElement('div'); panelSpot.className = 'spot'; panel.appendChild(panelSpot);
+// Κάθε κοντινό γεμίζει το πλάτος GW = W − 2 × 72 (ίσα περιθώρια): κλίμακα s = GW / w, κέντρο στο L.cY.
+// Μικρότερο γράμμα ανά κοντινό: συναίνεση, Εισερχόμενα και ΜΑΡΚ 12 × 3,0 = 36 px· Ε9 11 × 3,39 = 37,3 px.
+const pnl = (o) => ({ ...o, s: GW / o.w });
+const E9S = GW / 276;
+const PANELS = {
+  // v4: η κάρτα κόβεται 15 px κάτω από το «Ιστορικό πρόσβασης» (ίσο με το πάνω περιθώριο), όχι στο κάτω άκρο της.
+  consent: pnl({ imgs: ['consent'], x0: 25, w: 312, y0: 125, y1: 291 }),
+  inbox: pnl({ imgs: ['inboxEmpty', 'q1', 'q2', 'q3', 'p0'], x0: 39, w: 312, y0: 197, y1: 482 }),
+  issuer: pnl({ imgs: ['inboxEmpty', 'p0m', 'mword', 'mnum'], x0: 39, w: 312, y0: 197, y1: 309 }),
+  e9: pnl({ imgs: ['e9nEmpty', 'e9n0', 'e9n1'], x0: 22, w: 276, y0: 365, y1: 365 + Math.floor((L.Z1 - L.Z0 - 20) / E9S) }),
+  e9b: pnl({ imgs: ['e9nb'], x0: 22, w: 276, y0: 600, y1: 844 }),
+};
+// ── ΣΚΗΝΕΣ: θέσεις συσκευών (κέντρο x, y, κλίμακα, κλίση Y) και περιεχόμενο ──
+const OFF = { x: 540, y: 2600, k: 1, ry: 0, o: 0 };
+// ΜΙΑ σκηνή με τις δύο συσκευές, χωρίς κλίση: laptop αριστερά από το x 72, κινητό μπροστά δεξιά ως το x W − 72,
+// με κοινή βάση, κεντραρισμένα κάθετα στη ζώνη περιεχομένου. v3: μόνο πλάνο εγκατάστασης (1,2″) και μετά ζουμ
+// της κάμερας στην κάρτα «myDATA από τον λογιστή» του κινητού, ώσπου να γίνει το κοντινό.
+const LAPK = fmt === '45' ? 0.86 : 0.88, PHK = fmt === '45' ? 0.8 : 0.86;
+const lapW = (LSW + 2 * LB) * LAPK, lapH = (LSH + 2 * LB + 6 + 26) * LAPK, phW = (PSW + 2 * PB) * PHK, phH = (PSH + 2 * PB) * PHK;
+const floorY = L.cY + phH / 2;
+const DUO = { lap: { x: GX + lapW / 2, y: floorY - lapH / 2, k: LAPK, ry: 0 }, phone: { x: W - GX - phW / 2, y: floorY - phH / 2, k: PHK, ry: 0 } };
+const SCENES = [
+  { from: CUT[2], ...DUO },
+  { from: CUT[3], ...DUO, panel: 'consent', zoom: true },
+  { from: CUT[4], lap: { ...OFF }, phone: { ...OFF }, panel: 'inbox' },
+  { from: CUT[5], lap: { ...OFF }, phone: { ...OFF }, panel: 'issuer' },
+  { from: CUT[6], lap: { ...OFF }, phone: { ...OFF }, panel: 'e9' },
+  { from: CUT[7], lap: { ...OFF }, phone: { ...OFF }, panel: 'e9b' },
+  { from: CUT[8], lap: { ...OFF }, phone: { ...OFF } },
+];
+// Η κάμερα του ζουμ: το σημείο (x0, y0) της κάρτας στο κινητό πάει στη θέση του κοντινού, με κλίμακα s / PHK.
+const panelRect = (pn) => { const ph = (pn.y1 - pn.y0) * pn.s; return { left: GX, top: px(L.pY - ph / 2), w: GW, h: ph }; };
+const ZP = PANELS.consent, ZR = panelRect(ZP);
+const ZOOM = { P: { x: DUO.phone.x + (PB + ZP.x0 - (PSW + 2 * PB) / 2) * PHK, y: DUO.phone.y + (PB + PSB + ZP.y0 - (PSH + 2 * PB) / 2) * PHK },
+  Z: ZP.s / PHK, to: { x: ZR.left, y: ZR.top }, a: CUT[3] - 0.45 };
+const sceneAt = (t) => [...SCENES].reverse().find((s) => t >= s.from) || null;
+// Βύθιση: 0,4″ γύρω από κάθε αλλαγή σκηνής· εκεί κινούνται οι συσκευές και το περιεχόμενο είναι στο 25%.
+const DIP = 0.4;
+
+// ── ΚΕΙΜΕΝΑ ──────────────────────────────────────────────────────────────
+const texts = $('texts'), T = [];
+function text(cls, s, style, tin, tout) {
+  const el = document.createElement('div'); el.className = 'txt ' + cls; el.textContent = s;
+  Object.assign(el.style, style); texts.appendChild(el); T.push({ el, tin, tout }); return el;
+}
+const grid = (top, size, w = GW) => ({ left: GX + 'px', top: top + 'px', width: w + 'px', fontSize: size + 'px' });
+// Αγκίστρι: μία λέξη ανά χτύπημα, σε στοίβα με αριστερή στοίχιση.
+const HOOK = ['Ε9.', 'ΕΝΦΙΑ.', 'Κωδικοί.', 'PDF.', 'Email.'];
+const hookEls = HOOK.map((w, i) => text('big', w, { ...grid(0, L.big), color: i === HOOK.length - 1 ? 'var(--mkt-accent)' : '' }, TL.hook[i], CUT[0]));
+const TEASE = 'Κάτι έρχεται.';
+const teaseEl = text('big', TEASE, { ...grid(0, L.big * 0.92), color: 'var(--mkt-accent)' }, CUT[0], CUT[1]);
+const TITLE = ['Το PROPERWISE συνδέεται με την ΑΑΔΕ.'];
+const SUB = 'Μέσω του λογιστή σου και του myAADE';
+const titleEl = text('big', TITLE[0], grid(0, L.title), CUT[1], CUT[2]);
+const subEl = text('sub', SUB, grid(0, L.title * 0.42), CUT[1], CUT[2]);
+const CAPS = ST ? (ST.cap ? [[0, ST.capTo, ST.cap]] : []) : [
+  [CUT[2], CUT[4], 'Από το myDATA,\nμέσω του λογιστή σου.'],
+  [CUT[4], CUT[5], 'Δεν τα ψάχνεις. Τα ελέγχεις.'],
+  [CUT[5], CUT[6], 'Με τον ΜΑΡΚ της ΑΑΔΕ.\nΧωρίς αντιγραφή με το χέρι.'],
+  [CUT[6], CUT[8], 'Το Ε9 από το myAADE,\nσε λίγα πατήματα.'],
+];
+// v3: οι αλλαγές γραμμής των λεζάντων είναι γραμμένες: καμία λέξη μόνη της στη γραμμή, ίδιες και στις δύο αναλογίες.
+const capEls = CAPS.map(([a, b, s]) => text('cap', s, { ...grid(L.capTop, L.capSize), whiteSpace: 'pre-line' }, a, b));
+// Τελικό καρέ (v3: χωρίς το αυτόνομο πλάνο «Λιγότερα clicks. Λιγότερα λάθη.»· η φράση μένει μόνο εδώ).
+const MSG = ['Λιγότερα clicks. Λιγότερα λάθη.'];
+const PLAN = 'Ιδιοκτήτης+';
+const CTA = `Έρχεται στο ${PLAN}.`;
+const FOLLOW = 'Ακολούθησε για να το δεις πρώτος.';
+const msgEl = text('sub', MSG[0], grid(0, L.title * 0.46), TL.close, TL.dur + 1);
+const ctaEl = text('big', CTA, { ...grid(0, L.title * 0.9), color: 'var(--mkt-accent)' }, TL.close, TL.dur + 1);
+const followEl = text('cap', FOLLOW, grid(0, L.capSize), TL.close, TL.dur + 1);
+if (ST && !NOMARK) text('mark', `${SN}/3`, { left: px((W - 400) / 2) + 'px', top: '1556px', width: '400px', fontSize: '30px' }, -1, TL.dur + 1);
+const badge = $('badge'), logoT = $('logoT'), logoC = $('logoC'), logoS = $('logoS'), url = $('url'), band = $('band');
+Object.assign(badge.style, { fontSize: L.badgeSize + 'px', height: px(L.badgeSize * 1.7) + 'px', padding: '0 24px', top: L.badgeY + 'px', left: GX + 'px' });
+Object.assign(logoT.style, { width: '360px', left: GX + 'px' });
+Object.assign(logoC.style, { width: '420px', left: GX + 'px' });
+Object.assign(logoS.style, { width: '380px', left: GX + 'px', top: '1380px', display: ST && ST.logo ? 'block' : 'none' });
+Object.assign(url.style, { fontSize: L.capSize * 0.72 + 'px', width: '400px', left: GX + 'px', padding: '18px 0' });
+// Stories: η εικόνα σβήνει από το 1500 ως το 1550· από κάτω μόνο το σημάδι.
+if (ST) Object.assign(band.style, { top: '1500px', height: H - 1500 + 'px', background: 'linear-gradient(180deg, transparent 0px, var(--mkt-bg-base) 50px)' });
+
+// ── ΠΡΟΒΟΛΕΙΣ: [από, ως, πού, κουτί σε px της λήψης] ─────────────────────
+// v3: στη συναίνεση πρώτα ο τίτλος και μετά η γραμμή του λογιστή (η φράση με το «αυτόματα» δεν μπαίνει καν στη λήψη)·
+// στο Ε9 το πλαίσιο κλείνει ολόκληρο το όνομα του ακινήτου (δύο γραμμές, boxes.json: e9.title0).
+// Στο εξώφυλλο: ο ΜΑΡΚ στην οθόνη του κινητού.
+const SPOTS = COVER ? [[-1, 99, 'ph', { x: 44, y: 282, w: 302, h: 44 }]] : [
+  [TL.consSpots[0], TL.consSpots[1], 'panel', { x: 27, y: 130, w: 175, h: 32 }],
+  [TL.consSpots[1], CUT[4], 'panel', { x: 27, y: 161, w: 286, h: 32 }],
+  [TL.phSpot, CUT[5], 'panel', { x: 44, y: 354, w: 302, h: 48 }],
+  [TL.issuerSpots[0], TL.issuerSpots[1], 'panel', { x: 44, y: 214, w: 302, h: 30 }],
+  [TL.issuerSpots[1], CUT[6], 'panel', { x: 43, y: 254, w: 259, h: 36 }],
+  [TL.phE9Spot, CUT[7], 'panel', { x: 64, y: 383, w: 212, h: 54 }],
+];
+const TAPS = [[TL.taps[0], 'panel', [104, 812]]];
+
+// ── render(t) ────────────────────────────────────────────────────────────
+const S = (el) => el.style;
+function devTransform(d, el, base) {
+  const x = d.x, y = d.y, k = d.k;
+  const w = parseFloat(el.style.width), h = parseFloat(el.style.height);
+  return `translate3d(${(x - w / 2).toFixed(1)}px, ${(y - h / 2).toFixed(1)}px, 0) scale(${k.toFixed(4)}) rotateY(${d.ry.toFixed(2)}deg)`;
+}
+const mix = (a, b, u) => ({ x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u, k: a.k + (b.k - a.k) * u, ry: a.ry + (b.ry - a.ry) * u });
+function renderFilm(t) {
+  const sig = [];
+  Object.assign(S($('g1')), { width: '1300px', height: '1300px', left: px(-300 + 160 * Math.sin(t / 4.2)) + 'px', top: px(H * 0.25 + 110 * Math.cos(t / 5.3)) + 'px' });
+  Object.assign(S($('g2')), { width: '1100px', height: '1100px', left: px(460 + 140 * Math.cos(t / 3.7)) + 'px', top: px(H * 0.55 + 100 * Math.sin(t / 4.9)) + 'px' });
+  // Σκηνή και βύθιση.
+  const sc = sceneAt(t), idx = sc ? SCENES.indexOf(sc) : -1;
+  const devOn = COVER || (t >= CUT[2] - DIP / 2 && t < CUT[3]);
+  let lapD = OFF, phD = OFF, dim = 1;
+  if (sc) {
+    const prev = idx > 0 ? SCENES[idx - 1] : { lap: { ...OFF, y: 2200, x: sc.lap.x, k: sc.lap.k, ry: sc.lap.ry }, phone: { ...OFF, y: 2400, x: sc.phone.x, k: sc.phone.k, ry: sc.phone.ry } };
+    // Η κίνηση ξεκινά στη μέση της βύθισης πριν από την κοπή και φτάνει (ελατήριο ζ = 1) μέσα στη βύθιση μετά.
+    const u = spring(t, sc.from - DIP / 2, 22, 1);
+    lapD = mix(prev.lap, sc.lap, u); phD = mix(prev.phone, sc.phone, u);
+  }
+  if (COVER) { lapD = OFF; phD = COVER_PH; }
+  // Το περιεχόμενο των οθονών και τα κοντινά στο 25% μέσα σε κάθε βύθιση.
+  for (const c of CUT.slice(2, 9)) {
+    if (c === CUT[3]) continue;
+    const d = Math.abs(t - c); if (d < DIP / 2) dim = Math.min(dim, 0.25 + 0.75 * (d / (DIP / 2)));
+  }
+  // Η βύθιση του ζουμ: σβήνει 0,5″ πριν από την κοπή (σε 0,08″), μένει στο 25% όσο κινείται η κάμερα, επιστρέφει σε 0,2″.
+  { const c = CUT[3];
+    if (t >= c - 0.5 && t < c) dim = Math.min(dim, 1 - 0.75 * lin(t, c - 0.5, 0.08));
+    else if (t >= c && t < c + 0.2) dim = Math.min(dim, 0.25 + 0.75 * lin(t, c, 0.2)); }
+  if (COVER) dim = 1;
+  // Κάμερα: το ζουμ από το πλάνο εγκατάστασης στην κάρτα (ελατήριο ζ = 1, τελειώνει πριν από την κοπή).
+  { const u = !COVER && t < CUT[3] ? spring(t, ZOOM.a, 24, 1) : 0;
+    if (u > 0) {
+      const Zu = Math.exp(Math.log(ZOOM.Z) * u), Px = ZOOM.P.x + (ZOOM.to.x - ZOOM.P.x) * u, Py = ZOOM.P.y + (ZOOM.to.y - ZOOM.P.y) * u;
+      $('world').style.transform = `translate(${(Px - Zu * ZOOM.P.x).toFixed(2)}px, ${(Py - Zu * ZOOM.P.y).toFixed(2)}px) scale(${Zu.toFixed(5)})`;
+    } else $('world').style.transform = 'none';
+    sig.push(u.toFixed(4)); }
+  S(lap).display = devOn ? 'block' : 'none'; S(phone).display = devOn ? 'block' : 'none';
+  S(lap).transform = devTransform(lapD, lap); S(phone).transform = devTransform(phD, phone);
+  lapScreen.style.opacity = dim.toFixed(3); phScreen.style.opacity = dim.toFixed(3);
+  sig.push(S(lap).transform, S(phone).transform, dim.toFixed(3));
+  // Οθόνη laptop.
+  const lapShow = (n) => { for (const [k, im] of Object.entries(LAP)) im.style.opacity = k === n ? '1' : '0'; };
+  {
+    lapShow('lap-inbox-0');
+    const a = lin(t, TL.lapInbox[0], 0.2), b = lin(t, TL.lapInbox[1], 0.2);
+    LAP['lap-inbox-1'].style.opacity = (a * (1 - b)).toFixed(3); LAP['lap-inbox-3'].style.opacity = b.toFixed(3);
+    LAP['lap-inbox-1'].style.transform = `translateY(${((1 - spring(t, TL.lapInbox[0], 20, 0.8)) * 24).toFixed(1)}px)`;
+  }
+  // Οθόνη κινητού.
+  const phOn = (n, o = 1) => { PH[n].style.opacity = String(o); };
+  for (const im of Object.values(PH)) im.style.opacity = '0';
+  phOn(COVER ? 'ph-inbox-3' : 'ph-consent');
+  // Κοντινό (στο ζουμ εμφανίζεται στην κοπή, όταν η κάμερα έχει ήδη φτάσει).
+  const pn = !COVER && sc && sc.panel ? PANELS[sc.panel] : null;
+  S(panel).display = pn ? 'block' : 'none';
+  if (pn) {
+    const R = panelRect(pn);
+    // Το κοντινό ανεβαίνει 40 px με ελατήριο ζ = 1 μέσα στη βύθιση και στέκεται στο κέντρο L.cY· μετά το ζουμ στέκεται ήδη εκεί.
+    const u = sc.zoom ? 1 : spring(t, sc.from - DIP / 2, 22, 1);
+    Object.assign(S(panel), { width: R.w + 'px', height: R.h + 'px', left: R.left + 'px', top: px(R.top + (1 - u) * 40) + 'px', opacity: dim.toFixed(3) });
+    for (const [key, { im, r }] of Object.entries(panelImgs)) {
+      const on = pn.imgs.includes(key);
+      const rev = { q1: TL.inboxParts[1], q2: TL.inboxParts[2], q3: TL.inboxParts[3], e9n1: TL.phE9 }[key];
+      im.style.opacity = rev === undefined ? '1' : lin(t, rev, 0.18).toFixed(3);
+      Object.assign(im.style, { display: on ? 'block' : 'none', left: (r.x - pn.x0) * pn.s + 'px', top: (r.y - pn.y0) * pn.s + 'px', width: r.w * pn.s * (r.k ?? 1) + 'px', height: r.h * pn.s * (r.k ?? 1) + 'px' });
+    }
+    sig.push(sc.panel, u.toFixed(4));
+  }
+  // Προβολείς.
+  for (const el of [lapSpot, phSpot, panelSpot]) el.style.display = 'none';
+  for (const [a, b, where, r] of SPOTS) if (t >= a && t < b) {
+    const el = where === 'lap' ? lapSpot : where === 'ph' ? phSpot : panelSpot;
+    const kk = where === 'lap' ? LK : where === 'ph' ? PK : (pn ? pn.s : 1);
+    const ox = where === 'panel' && pn ? pn.x0 : 0, oy = where === 'panel' && pn ? pn.y0 : where === 'ph' ? -PSB : 0;
+    const u = lin(t, a, 0.18);
+    Object.assign(el.style, { display: 'block', left: (r.x - ox) * kk + 'px', top: (r.y - oy) * kk + 'px', width: r.w * kk + 'px', height: r.h * kk + 'px',
+      borderColor: `color-mix(in srgb, var(--mkt-accent) ${Math.round(u * 100)}%, transparent)`,
+      boxShadow: `0 0 0 4000px color-mix(in srgb, var(--mkt-bg-base) ${Math.round(u * 55)}%, transparent)` });
+    sig.push(where, u.toFixed(3));
+  }
+  // Πάτημα.
+  const tr = $('touch'), rg = $('touchRing'); tr.style.display = 'none'; rg.style.display = 'none';
+  for (const [b, where, p] of TAPS) {
+    if (!pn) continue;
+    const d = t - b; let press = 0, ring = -1;
+    if (d > -0.18 && d < 0.12) press = d < 0 ? clamp((d + 0.18) / 0.12, 0, 1) : clamp(1 - d / 0.12, 0, 1);
+    if (d >= 0 && d < 0.45) ring = d / 0.45;
+    const pr = panel.getBoundingClientRect ? null : null;
+    const cx = parseFloat(panel.style.left) + (p[0] - pn.x0) * pn.s, cy = parseFloat(panel.style.top) + (p[1] - pn.y0) * pn.s;
+    if (press > 0.01) { const r = 44 * (1.12 - 0.12 * press); Object.assign(tr.style, { display: 'block', left: cx - r + 'px', top: cy - r + 'px', width: 2 * r + 'px', height: 2 * r + 'px', opacity: (0.95 * press).toFixed(3) }); }
+    if (ring >= 0) { const r = 44 * (1 + 1.1 * ease(ring)); Object.assign(rg.style, { display: 'block', left: cx - r + 'px', top: cy - r + 'px', width: 2 * r + 'px', height: 2 * r + 'px', opacity: (0.8 * (1 - ring)).toFixed(3) }); }
+    sig.push(press.toFixed(3), ring.toFixed(3));
+  }
+
+  for (const e of T) { const o = t >= e.tin && t < e.tout ? 1 : 0; e.el.style.display = o ? 'block' : 'none'; sig.push(o); }
+  // Κείμενα: κάθε γραμμή μπαίνει με ελατήριο ζ = 1 (ανεβαίνει 28 px), σε ακέραια px.
+  const rise = (el, a) => { const u = spring(t, a, 20, 1); el.style.transform = `translateY(${px((1 - u) * 28)}px)`; el.style.opacity = Math.min(1, u * 1.6).toFixed(3); };
+  hookEls.forEach((el, i) => rise(el, TL.hook[i]));
+  rise(teaseEl, CUT[0]); rise(titleEl, CUT[1]); rise(subEl, CUT[1] + 0.1);
+  for (const el of [msgEl, ctaEl, followEl]) rise(el, TL.close);
+  capEls.forEach((el, i) => { if (el.style.display === 'block') rise(el, CAPS[i][0]); });
+  const cOn = t >= TL.close;
+  for (const el of [logoC, url]) { S(el).display = cOn ? 'block' : 'none'; }
+  const tOn = t >= CUT[1] && t < CUT[2];
+  S(logoT).display = tOn ? 'block' : 'none';
+  // v3: η ετικέτα μπαίνει μαζί με την πρώτη οθόνη (στην κοπή, με τη λεζάντα), όχι πάνω από τον τίτλο.
+  const bOn = !COVER && t >= CUT[2] && t < CUT[8];
+  S(badge).display = bOn ? 'flex' : 'none';
+  if (bOn) { const ub = spring(t, CUT[2], 20, 1); badge.style.transform = `translateY(${px((1 - ub) * 28)}px)`; badge.style.opacity = Math.min(1, ub * 1.6).toFixed(3); }
+  S(band).display = ST ? 'block' : 'none';
+  return sig.join('|');
+}
+if (QA) { $('g1').style.visibility = 'hidden'; $('g2').style.visibility = 'hidden'; }
+window.render = ST ? (ts) => renderFilm(filmT(ts)) : renderFilm;
+window.ready = async () => {
+  await Promise.all([...document.images].map((im) => im.decode()));
+  await document.fonts.load('800 50px Inter', 'ΑΒΓαβγ€0123'); await document.fonts.ready;
+  // Λεζάντα το πολύ σε δύο γραμμές.
+  for (const el of capEls) {
+    el.style.display = 'block';
+    let fs = parseFloat(el.style.fontSize);
+    while (el.offsetHeight > fs * 1.06 * 2 + 4 && fs > L.capSize * 0.7) { fs *= 0.96; el.style.fontSize = fs.toFixed(2) + 'px'; }
+    el.style.display = 'none';
+  }
+  // Οπτική στοίχιση: το μελάνι του πρώτου γράμματος κάθε κειμένου πέφτει ακριβώς στο x GX (όχι η αρχή του κουτιού).
+  const cv = document.createElement('canvas').getContext('2d');
+  for (const { el } of T) {
+    if (el.classList.contains('mark')) continue;
+    const cs = getComputedStyle(el); cv.font = `${cs.fontWeight} ${cs.fontSize} Inter`;
+    const m = cv.measureText(el.textContent.trim()[0]);
+    el.style.left = (GX + m.actualBoundingBoxLeft).toFixed(2) + 'px';
+  }
+  // Στοίβες στη μέση του κάδρου, αριστερή στοίχιση.
+  const stack = (els, cy, gaps) => {
+    const hs = els.map((el) => { const d = el.style.display; el.style.display = 'block'; const h = el.offsetHeight; el.style.display = d; return h; });
+    let y = cy - (hs.reduce((a, b) => a + b, 0) + gaps.reduce((a, b) => a + b, 0)) / 2;
+    els.forEach((el, i) => { el.style.top = px(y) + 'px'; y += hs[i] + (i < els.length - 1 ? gaps[i] ?? 0 : 0); });
+    return y;
+  };
+  stack(hookEls, L.midY, [0, 0, 0, 0]);
+  stack([teaseEl], L.midY, []);
+  stack([logoT, titleEl, subEl], L.midY, [64, 40]);
+  // Εξώφυλλο-αφίσα: ο τίτλος από το y 330 (στο κεντρικό 4:5 του πλέγματος, 285 έως 1635) και από κάτω το κινητό (× 1,7, ως το δεξί περιθώριο, κόβεται στο κάτω άκρο).
+  if (COVER) {
+    const els = [logoT, titleEl, subEl], hs = els.map((el) => { el.style.display = 'block'; return el.offsetHeight; });
+    const bottom = stack(els, 330 + (hs.reduce((a, b) => a + b, 0) + 104) / 2, [64, 40]);
+    const k = 1.7, w = (PSW + 2 * PB) * k, h = (PSH + 2 * PB) * k;
+    COVER_PH = { x: W - GX - w / 2, y: bottom + 40 + h / 2, k, ry: 0 };
+  }
+  stack([logoC, msgEl, ctaEl, followEl, url], L.midY, [64, 28, 36, 64]);
+  window.render(0); await document.fonts.ready;
+  return true;
+};
+window.TL = ST ? { ...TL, dur: ST.keys[ST.keys.length - 1][0] } : TL;
+})();
+</script>
+</body>
+</html>

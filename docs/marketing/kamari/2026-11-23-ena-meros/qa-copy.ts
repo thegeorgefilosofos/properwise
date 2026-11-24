@@ -1,0 +1,78 @@
+// Κάθε ορατή συμβολοσειρά της ταινίας και κάθε ενότητα του share-copy.md από το
+// copyFails του scripts/marketing/shorts/qa.ts, συν οι κανόνες του kamari που δεν
+// καλύπτει (μεγάλη παύλα, «δωρεάν», ψηφία χωρίς γραμμή στον πίνακα του plan.md).
+//
+//   npx tsx docs/marketing/kamari/2026-11-23-ena-meros/qa-copy.ts; echo "κωδικός: $?"
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { copyFails, LIMITS } from '../../../../scripts/marketing/shorts/qa';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const film = readFileSync(join(here, 'film.html'), 'utf8');
+const copy = readFileSync(join(here, 'share-copy.md'), 'utf8');
+const plan = readFileSync(join(here, 'plan.md'), 'utf8');
+
+// Οι ορατές συμβολοσειρές: ό,τι περνά στο text(…), οι λεζάντες, η ετικέτα και ο δρομέας.
+const visible: string[] = [];
+for (const m of film.matchAll(/text\('[^']*',\s*'([^']+)'/g)) visible.push(m[1]);
+for (const m of film.matchAll(/\[CUT\[\d\], CUT\[\d\], '([^']+)'\]/g)) visible.push(m[1]);
+for (const m of film.matchAll(/<div (?:class="[^"]*" )?id="(?:badge|who)">([^<]+)<\/div>/g)) visible.push(m[1]);
+// Το πακέτο του λογιστή: το όνομα του zip και οι γραμμές του (όνομα, δευτερεύουσα γραμμή).
+for (const m of film.matchAll(/const ZIP = '([^']+)'/g)) visible.push(m[1]);
+for (const m of film.matchAll(/\['(?:doc|sheet|folder)', '([^']+)', '([^']*)'\]/g)) { visible.push(m[1]); if (m[2]) visible.push(m[2]); }
+// Το χαρτί της κάμερας (v9): κάθε συμβολοσειρά του BILL.
+{ const bill = /const BILL = \{([\s\S]*?)\n\};/.exec(film); if (bill) for (const x of bill[1].matchAll(/'([^']+)'/g)) visible.push(x[1]); }
+// v17: οι λεζάντες και η πρόσκληση των stories.
+for (const m of film.matchAll(/(?:cap|cta): '([^']+)'/g)) visible.push(m[1]);
+for (const m of film.matchAll(/const (?:MSG|HOOK) = \[([^\]]+)\]/g)) for (const x of m[1].matchAll(/'([^']+)'/g)) visible.push(x[1]);
+
+const sections = copy.split(/^## /m).slice(1).map((s) => ({ where: s.split('\n')[0], text: s.slice(s.indexOf('\n') + 1).trim() }));
+const fails: string[] = [];
+for (const v of visible) fails.push(...copyFails(v, 'ταινία'));
+for (const s of sections) fails.push(...copyFails(s.text, s.where));
+// v12: οι δύο αναρτήσεις του LinkedIn (linkedin.md) και το πρώτο σχόλιο.
+const li = readFileSync(join(here, 'linkedin.md'), 'utf8').split(/^## /m).slice(1)
+  .map((x) => ({ where: 'LinkedIn: ' + x.split('\n')[0], text: x.slice(x.indexOf('\n') + 1).trim() }));
+for (const x of li) fails.push(...copyFails(x.text, x.where));
+for (const x of li.filter((y) => y.where.includes('Ανάρτηση'))) {
+  const lines = x.text.split('\n').filter((l) => l.trim() && !l.trim().startsWith('#'));
+  if (lines.length < 4 || lines.length > 7) fails.push(`${x.where}: ${lines.length} γραμμές (4 έως 7)`);
+  if (/\d/.test(x.text)) fails.push(`${x.where}: ψηφίο στη λεζάντα`);
+  if (!lines[lines.length - 1].trim().endsWith(';')) fails.push(`${x.where}: δεν τελειώνει με ερώτηση`);
+  const tags = x.text.match(/#\S+/g) ?? [];
+  if (tags.length < 3 || tags.length > 4) fails.push(`${x.where}: ${tags.length} hashtags`);
+  if (/ενθουσιασμ/i.test(x.text)) fails.push(`${x.where}: «με ενθουσιασμό»`);
+}
+const firstComment = li.find((y) => y.where.includes('Πρώτο σχόλιο'));
+if (!firstComment || !firstComment.text.includes('https://properwise.gr/?utm_source=linkedin&utm_medium=social&utm_campaign=kamari')) fails.push('LinkedIn: πρώτο σχόλιο χωρίς τον σύνδεσμο');
+for (const s of [...visible.map((text) => ({ where: 'ταινία', text })), ...sections, ...li]) {
+  if (/—/.test(s.text)) fails.push(`${s.where}: μεγάλη παύλα`);
+  if (/δωρεάν/i.test(s.text)) fails.push(`${s.where}: «δωρεάν»`);
+  if (/βοηθ/i.test(s.text)) fails.push(`${s.where}: «βοηθός»`);
+}
+// Κάθε ψηφίο αυτούσιο στον πίνακα αριθμών (εκτός από τους συνδέσμους και τα ονόματα αρχείων).
+const table = plan.slice(plan.indexOf('## Αριθμοί'), plan.indexOf('## Αποφάσεις'));
+const all = [...visible, ...sections.map((s) => s.text.replace(/https?:\S+/g, '').replace(/`[^`]*`/g, ''))].join('\n');
+for (const tok of new Set(all.match(/[\dΑ-Ωα-ω]*\d[\d.,/€]*/g) ?? [])) {
+  const t = tok.replace(/[.,]$/, '');
+  if (!table.includes(t)) fails.push(`ψηφίο χωρίς γραμμή στον πίνακα: «${t}»`);
+}
+// Μήκη.
+const ig = sections.find((s) => s.where === 'Instagram')!.text;
+const firstLine = /Πρώτη γραμμή[^:]*:\s*(.+)/.exec(ig)![1];
+if ([...firstLine].length > LIMITS.firstLine) fails.push(`Instagram πρώτη γραμμή: ${[...firstLine].length}`);
+const tags = ig.match(/#\S+/g) ?? [];
+if (tags.length > LIMITS.igHashtags) fails.push(`Instagram: ${tags.length} hashtags`);
+const x = sections.find((s) => s.where === 'X')!.text;
+if ([...x].length > 280) fails.push(`X: ${[...x].length} χαρακτήρες`);
+const yt = /Τίτλος:\s*(.+)/.exec(sections.find((s) => s.where === 'YouTube Shorts')!.text)![1];
+if ([...yt].length > LIMITS.ytTitle) fails.push(`YouTube τίτλος: ${[...yt].length}`);
+if ([...yt.replace(/\s*#Shorts$/, '')].length > LIMITS.ytTitleVisible) fails.push('YouTube τίτλος, ορατό μέρος');
+const pinned = sections.find((s) => s.where === 'Καρφιτσωμένο σχόλιο')!.text;
+if ([...pinned].length > LIMITS.pinned) fails.push(`καρφιτσωμένο: ${[...pinned].length}`);
+
+console.log(`ορατές συμβολοσειρές ταινίας: ${visible.length} · ενότητες: ${sections.length} · LinkedIn: ${li.length}`);
+for (const v of visible) console.log('  ·', v);
+if (fails.length) { console.log('ΑΠΟΤΥΧΙΕΣ:\n' + fails.join('\n')); process.exit(1); }
+console.log('✓ καμία αποτυχία');
