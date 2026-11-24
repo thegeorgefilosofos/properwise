@@ -85,7 +85,7 @@ export default function MydataInbox({ propertyId, userId, properties = [], onFil
     mydata.attentionDocs(supabase, userId).then(({ rows: found }) => { if (live) setAlerts(found); });
     mydata.autoDocs(supabase, userId).then(({ rows: found }) => { if (live) setAuto(found); });
     mydata.notPropertyCount(supabase, userId).then(({ n }) => { if (live) setNotProperty(n); });
-    // Ο νυχτερινός συγχρονισμός ή το «Συγχρονισμός τώρα» του λογιστή φέρνει νέα: τα δείχνει χωρίς ανανέωση.
+    // Το «Φέρε τώρα» του λογιστή φέρνει νέα: τα δείχνει χωρίς ανανέωση.
     const ch = supabase.channel(`mydata_inbox_${userId}_${Math.random().toString(36).slice(2, 8)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mydata_docs', filter: `client_id=eq.${userId}` }, () => { if (live) setNonce(n => n + 1); })
       .subscribe();

@@ -36,11 +36,14 @@ export function syncedLine(lastSyncAt: string | null, added: number): string {
   return `Συγχρονίστηκε ${athensStamp(lastSyncAt)} · ${newCount(added)}`;
 }
 
-/** Η ίδια γραμμή από την πλευρά του πελάτη. */
-export function clientSyncedLine(lastSyncAt: string | null, added: number): string {
-  // Ε2: η άντληση γίνεται μόνο όταν την ξεκινά ο λογιστής.
+/**
+ * Η ίδια γραμμή από την πλευρά του πελάτη: «Τελευταία άντληση από τον
+ * λογιστή: 23/11/2026». Ε2: η άντληση γίνεται μόνο όταν την ξεκινά ο λογιστής,
+ * οπότε η γραμμή λέει ποιος και πότε, όχι «συγχρόνισε».
+ */
+export function clientSyncedLine(lastSyncAt: string | null): string {
   if (!lastSyncAt) return 'Τα παραστατικά έρχονται όταν ο λογιστής σου ξεκινήσει την άντληση από τον χώρο του.';
-  return `Ο λογιστής σου συγχρόνισε ${athensStamp(lastSyncAt)} · ${newCount(added)}`;
+  return `Τελευταία άντληση από τον λογιστή: ${athensStamp(lastSyncAt).slice(0, 10)}`;
 }
 
 /** Ποσό σε λεπτά, με πρόσημο για το πιστωτικό: «124,00€», «-12,40€». */

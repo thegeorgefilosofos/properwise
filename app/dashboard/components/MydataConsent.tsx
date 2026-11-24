@@ -146,7 +146,7 @@ export default function MydataConsent({ userId, allowed = false }: { userId: str
     // Ε2: καμία αυτόματη νέα προσπάθεια· ξαναδοκιμάζει ο λογιστής.
     : consent.status === 'error' && consent.error !== 'no_afm' ? 'Η ΑΑΔΕ δεν απάντησε στην τελευταία άντληση. Ο λογιστής σου ξαναδοκιμάζει από τον χώρο του.'
     : consent.status === 'error' && consent.error === 'no_afm' ? GRANT_FAIL.no_afm
-    : clientSyncedLine(consent.lastSyncAt, consent.lastNew);
+    : clientSyncedLine(consent.lastSyncAt);
 
   // ΤΟ ΚΕΙΜΕΝΟ ΤΗΣ ΣΥΝΑΙΝΕΣΗΣ, ΠΡΙΝ ΑΠΟ ΤΟ «ΕΠΙΤΡΕΠΩ». Ιδιο με την έκδοση που
   // στέλνει το `grant` (lib/mydata/consentText.ts).
