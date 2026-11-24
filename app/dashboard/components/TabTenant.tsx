@@ -740,7 +740,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
 
       {/* Ο ΤΙΤΛΟΣ ΕΙΝΑΙ ΤΟ ΟΝΟΜΑ ΤΟΥ ΜΕΝΟΥ. Ηταν «Ενοικιαστής» με το χέρι, πάνω
           από λίστα με φίλτρα «Όλοι», «Τρέχοντες», «Προηγούμενοι». */}
-      <PageTitle title={S?S.nav.tenant:navLabel('tenant')} sub={E?E.sub:'Τρέχουσες και παλαιότερες μισθώσεις, με τον φάκελο κάθε ενοικιαστή'}
+      <PageTitle title={S?S.nav.tenant:navLabel('tenant')}
         right={tenants.length>0?<div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
           {/* ΜΙΑ ΚΥΡΙΑ ΕΝΕΡΓΕΙΑ ΚΑΙ ΕΝΑ ΜΕΝΟΥ, ΟΠΩΣ ΣΤΙΣ ΕΠΑΦΕΣ. Τέσσερα ισοβαρή
               κουμπιά έβγαιναν πλέγμα 2×2 στο κινητό, με το «Σύνταξη μισθωτηρίου»

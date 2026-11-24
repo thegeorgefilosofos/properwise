@@ -28,6 +28,10 @@ import { feSigned, grDate } from '@/lib/core/format';
 import { monthNom, monthShort, monthAcc } from '@/lib/core/months';
 import type { Forecast, ForecastGap, ForecastLine, ForecastMonth } from '@/lib/home/forecast12';
 import { track, PRODUCT_EVENTS, forecastProps } from '@/lib/analytics/events';
+import { InfoHint } from './InfoHint';
+
+/** Πώς μετρά η κάρτα. Ζει πίσω από το ⓘ του τίτλου. */
+const FORECAST_NOTE = 'Από μισθώσεις, δόσεις και λογαριασμούς που ήδη υπάρχουν. Δεν ξέρουμε το υπόλοιπο της τράπεζας, οπότε κάθε μήνας μετρά από το μηδέν. Ό,τι έχει ήδη λήξει φαίνεται πιο πάνω.';
 import type { createClient } from '@/lib/supabase/client';
 import { niceTicks } from './LoanShared';
 import { CalendarRange } from 'lucide-react';
@@ -159,8 +163,11 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
           ούτε περιθώριο ούτε γραμματοσειρά και κολλούσε στην αριστερή άκρη. Ο
           πάγκος δεν το έβλεπε: εκεί το <style jsx> αποδίδεται καθολικό. */}
       <div className="fc-head">
-        <h2 className="fc-title"><CalendarRange size={15} aria-hidden="true" className="section-ico" />Οι επόμενοι 12 μήνες</h2>
-        <span className="fc-sub">Από μισθώσεις, δόσεις και λογαριασμούς που ήδη υπάρχουν</span>
+        {/* ΧΩΡΙΣ ΥΠΟΤΙΤΛΟ ΚΑΙ ΧΩΡΙΣ ΥΠΟΣΗΜΕΙΩΣΗ (αξιολόγηση σχεδίασης 3). Το «από
+            μισθώσεις, δόσεις και λογαριασμούς» και η πρόταση για το υπόλοιπο
+            της τράπεζας κάτω από τις μπάρες ήταν η ίδια εξήγηση: πώς μετρά η
+            κάρτα. Διαβάζεται μία φορά, πίσω από το ⓘ του τίτλου. */}
+        <h2 className="fc-title"><CalendarRange size={15} aria-hidden="true" className="section-ico" />Οι επόμενοι 12 μήνες{!isEmpty && <InfoHint label="Πώς μετρά">{FORECAST_NOTE}{notes.map(n => <span key={n}> {n}</span>)}</InfoHint>}</h2>
       </div>
       {isEmpty ? (
       <div className="fc-body">
@@ -315,13 +322,6 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
 
         {/* ═══ ΤΙ ΣΗΜΑΙΝΕΙ ΚΑΙ Ο ΠΙΝΑΚΑΣ ═════════════════════════════════ */}
         <div className="fc-foot">
-          <p className="fc-note">
-            {/* ΧΩΡΙΣ ΟΝΟΜΑ ΚΑΡΤΑΣ (αξιολόγηση 2, Μ14). «Στο Ταμείο» έστελνε σε κάρτα που
-                λέγεται πια «Οφείλεις» ή «Σου οφείλουν», ανάλογα με το ακίνητο. Η κάρτα
-                είναι πιο πάνω στην ίδια οθόνη· το «πιο πάνω» δεν ξεμένει όταν αλλάξει όνομα. */}
-            Δεν ξέρουμε το υπόλοιπο της τράπεζας, οπότε κάθε μήνας μετρά από το μηδέν. Ό,τι έχει ήδη λήξει φαίνεται πιο πάνω.
-            {notes.map(n => <span key={n}> {n}</span>)}
-          </p>
           <LinkBtn onClick={() => setTable(t => !t)}>{table ? 'Κρύψε τον πίνακα' : 'Δες τον πίνακα'}</LinkBtn>
         </div>
         {table && (
@@ -368,7 +368,6 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
   .fc-title {
     margin: 0; display: inline-flex; align-items: center; gap: 8px; font-family: ${T.font.sans}; font-size: var(--fs-base); font-weight: 600; line-height: 1.3; color: var(--text-secondary);
   }
-  .fc-sub { font-family: ${T.font.sans}; font-size: 12px; color: var(--text-tertiary); min-width: 0; }
   .fc-body { padding: 16px 18px 12px; }
   /* Η συμπαγής EmptyState βάζει τη δράση σε σκέτο div: τρία κουμπιά κολλούσαν. */
   .fc-empty-acts { display: flex; flex-wrap: wrap; gap: 8px; }

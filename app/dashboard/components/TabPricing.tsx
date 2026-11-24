@@ -35,6 +35,7 @@ import * as billStore from '@/lib/data/bills';
 import * as expenses from '@/lib/data/expenses'
 import * as calendar from '@/lib/data/calendar'
 import { AadePill } from '@/components/AadeLink';
+import { InfoHint } from './InfoHint';
 import { T, PageTitle, KPIGrid, InfoBanner, Btn, Segmented, SecHdr, EmptyState, Skeleton, SkeletonKPIs, fe, feWhole, fd, fp, fn, pressable, formGrid, fieldRow, Bar, ABSENT_SHORT } from '@/components/Theme';
 import { navLabel } from '@/lib/nav/labels';
 import { isTabPurchasable } from '@/lib/billing/entitlements';
@@ -109,6 +110,9 @@ const todayIso = () => athensToday();
 // Η βάση του φόρου και η τεκμαρτή έκπτωση, από τη σταθερά που τις υπολογίζει.
 const DEDUCTION_PCT = fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100);
 const TAX_BASE_PCT = fpRate((1 - PRESUMPTIVE_DEDUCTION_RATE) * 100);
+/** Το ⓘ του ημερολογίου τιμών: ήταν πλαίσιο πάνω από τους δείκτες και υπότιτλος
+ *  κάτω από τον τίτλο, δύο προτάσεις για το ίδιο (αξιολόγηση σχεδίασης 3). */
+const PRICE_CAL_NOTE = 'Προτάσεις που δεν αλλάζουν τα κανάλια. Όσο πιο έντονο το χρώμα, τόσο υψηλότερη η τιμή. Πάτησε μια ημέρα για να δεις από πού βγαίνει.';
 const addDaysIso = (d: string, n: number) => { const t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); };
 
 // ΓΙΑΤΙ ΕΞΩ ΑΠΟ ΤΟ COMPONENT. Γραμμένο μέσα στο σώμα του TabPricing, το
@@ -666,14 +670,17 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
   // ημέρας, άλλη μία. Δεν είναι πληροφορία που αλλάζει ανά γραμμή: το ότι το
   // τέλος ανήκει στο κράτος και ότι η προμήθεια είναι δαπάνη ισχύει για όλη την
   // καρτέλα. Λέγεται μία φορά, εκεί που πρωτοεμφανίζεται η ανάλυση.
-  const priceAnatomy = (
-    <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.65, fontFamily: T.font.sans }}>
-      Το τέλος ανθεκτικότητας εισπράττεται για το κράτος και δεν είναι έσοδό σου.{' '}
-      {feeRate != null && feeRate > 0
-        ? `Η προμήθεια (${fp(feeRate * 100)}, από τις δικές σου καταγεγραμμένες διαμονές) είναι δαπάνη και δεν μειώνει το δηλωτέο έσοδο.`
-        : 'Η προμήθεια της πλατφόρμας δεν φαίνεται σε καμία καταγεγραμμένη διαμονή, οπότε δεν μπαίνει στον υπολογισμό.'}
-    </div>
-  );
+  // ΠΙΣΩ ΑΠΟ ⓘ (αξιολόγηση σχεδίασης 3): ήταν υποσημείωση κάτω από τα κενά.
+  const priceAnatomy = 'Το τέλος ανθεκτικότητας εισπράττεται για το κράτος και δεν είναι έσοδό σου. '
+    + (feeRate != null && feeRate > 0
+      ? `Η προμήθεια (${fp(feeRate * 100)}, από τις δικές σου καταγεγραμμένες διαμονές) είναι δαπάνη και δεν μειώνει το δηλωτέο έσοδο.`
+      : 'Η προμήθεια της πλατφόρμας δεν φαίνεται σε καμία καταγεγραμμένη διαμονή, οπότε δεν μπαίνει στον υπολογισμό.');
+  // Η βάση του φόρου της χρονιάς, πίσω από το ⓘ του «Τι μένει σε εσένα». Ηταν
+  // υποσημείωση κάτω από τη στήλη, με τα ποσοστά από τον κώδικα όπως και τώρα.
+  const taxBasisNote = (tax.onGross
+    ? `Ο φόρος υπολογίζεται στο ${TAX_BASE_PCT} των ακαθάριστων (τεκμαρτή έκπτωση ${DEDUCTION_PCT}) με την κλίμακα ενοικίων, όχι στο υπόλοιπο μετά τα έξοδα.`
+    : 'Ο φόρος υπολογίζεται στα καθαρά κέρδη, μετά τα έξοδα.')
+    + ` Δεν περιλαμβάνονται ο ΕΝΦΙΑ και οι δόσεις δανείου: τα αφαιρεί η Κατάσταση αποτελεσμάτων στη ${navLabel('accounting')}.`;
 
   return (
     <div style={{ fontFamily: T.font.sans, color: 'var(--text-primary)' }}>
@@ -691,7 +698,6 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
           Ο τίτλος «Βραχυχρόνια μίσθωση» ήταν ίδιος με το chip κατάστασης της
           μπάρας. Η καρτέλα λέγεται «Τιμές», από την ίδια πηγή με το μενού. */}
       <PageTitle title={navLabel('pricing')} titleHint="Προτεινόμενη τιμή ανά νύχτα από τα δικά σου δεδομένα και την ελληνική εποχικότητα. Οι τιμές είναι προτάσεις, τις εφαρμόζεις εσύ στα κανάλια."
-        sub="Τι να ζητήσεις ανά νύχτα, ποιες μέρες μένουν κενές και τι σου μένει στο χέρι μετά από έξοδα, τέλη και φόρο."
         right={rows.length > 0 ? (
           // ΤΟ ΔΕΥΤΕΡΕΥΟΝ ΔΕΝ ΕΙΝΑΙ ΤΟ ΠΡΩΤΟ ΧΕΙΡΙΣΤΗΡΙΟ ΤΗΣ ΣΕΛΙΔΑΣ (αξιολόγηση
           // σχεδίασης 3). Η «Εξαγωγή Excel» καθόταν κάτω από τον τίτλο πριν από
@@ -798,13 +804,6 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
         />
       ) : (
         <>
-          {/* Η ΟΔΗΓΙΑ ΜΠΑΙΝΕΙ ΟΠΟΥ ΥΠΑΡΧΕΙ ΤΟ ΗΜΕΡΟΛΟΓΙΟ. Ήταν πάνω από όλα, οπότε
-              ο χρήστης χωρίς βασική τιμή διάβαζε «Πάτησε μια ημέρα» ενώ καμία
-              ημέρα δεν φαινόταν στην οθόνη του. */}
-          <InfoBanner tone="info">
-            Οι τιμές είναι <strong>προτάσεις</strong>, όχι αυτόματη αλλαγή στα κανάλια. Πάτησε μια ημέρα για να δεις από πού προκύπτει η δική της.
-          </InfoBanner>
-
           <KPIGrid items={kpis} />
 
           {/* ═══════════════════════════════════════════════════════════════════
@@ -823,6 +822,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
           {taxSummary.stayCount > 0 && (
             <div className="card" style={{ marginTop: 20 }}>
               <SecHdr label={`Τι μένει σε εσένα, ${nowYear}`}
+                info={<InfoHint label="Πώς βγαίνει ο φόρος">{taxBasisNote}</InfoHint>}
                 sub={`Από ${fn(taxSummary.totalNights)} διανυκτερεύσεις σε ${taxSummary.stayCount === 1 ? 'μία διαμονή' : `${fn(taxSummary.stayCount)} διαμονές`}`}
                 // Το ποσοστό είχε μόνο tooltip· στο κινητό ήταν ένας γυμνός αριθμός.
                 right={cashflow.keptPct != null
@@ -867,15 +867,14 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                 <Bar pct={cashflow.keptPct} track="var(--bg-overlay)" label="Μερίδιο που σου μένει" style={{ marginTop: 14 }} />
               )}
 
-              {/* ΟΠΟΥ ΤΟ ΝΟΥΜΕΡΟ ΕΙΝΑΙ ΕΚΤΙΜΗΣΗ, ΤΟ ΛΕΜΕ ΔΙΠΛΑ ΤΟΥ. Διαμονές με
-                  απροσδιόριστη βάση ποσού κάνουν τα ακαθάριστα εκτίμηση· διαμονές
-                  χωρίς Δήλωση Βραχυχρόνιας είναι εκκρεμότητα, όχι λογιστικό λάθος. */}
-              <div style={{ marginTop: 14, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.65 }}>
-                {tax.onGross
-                  ? `Ο φόρος υπολογίζεται στο ${TAX_BASE_PCT} των ακαθάριστων (τεκμαρτή έκπτωση ${DEDUCTION_PCT}) με την κλίμακα ενοικίων, όχι στο υπόλοιπο μετά τα έξοδα.`
-                  : 'Ο φόρος υπολογίζεται στα καθαρά κέρδη, μετά τα έξοδα.'} Δεν περιλαμβάνονται ο ΕΝΦΙΑ και οι δόσεις δανείου: τα αφαιρεί η Κατάσταση αποτελεσμάτων στη {navLabel('accounting')}.
-                {taxSummary.unresolvedCount > 0 && ` ${taxSummary.unresolvedCount === 1 ? 'Μία διαμονή' : `${fn(taxSummary.unresolvedCount)} διαμονές`} χωρίς ανάλυση ποσού σε ακαθάριστο, προμήθεια και τέλος: τα ακαθάριστα είναι εκτίμηση ώσπου να συμπληρώσεις την ανάλυση.`}
-              </div>
+              {/* Η ΕΚΤΙΜΗΣΗ ΜΕΝΕΙ ΟΡΑΤΗ. Η βάση του φόρου και τι δεν περιλαμβάνεται
+                  ζουν στο ⓘ της κεφαλίδας (αξιολόγηση σχεδίασης 3)· ότι τα
+                  ακαθάριστα είναι εκτίμηση αλλάζει τι κάνεις, οπότε λέγεται εδώ. */}
+              {taxSummary.unresolvedCount > 0 && (
+                <div style={{ marginTop: 14, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.65 }}>
+                  {taxSummary.unresolvedCount === 1 ? 'Μία διαμονή' : `${fn(taxSummary.unresolvedCount)} διαμονές`} χωρίς ανάλυση ποσού σε ακαθάριστο, προμήθεια και τέλος: τα ακαθάριστα είναι εκτίμηση ώσπου να συμπληρώσεις την ανάλυση.
+                </div>
+              )}
             </div>
           )}
 
@@ -892,7 +891,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
               διαβαζόταν ως «πληρωμή». */}
           {gaps.length > 0 && (
             <div style={{ marginTop: 24 }}>
-              <SecHdr label="Κενές νύχτες για κράτηση" sub="Διαστήματα χωρίς κράτηση, με προτεινόμενη τιμή και άμεσες ενέργειες" />
+              <SecHdr label="Κενές νύχτες για κράτηση" info={<InfoHint label="Τι μένει από την τιμή">{priceAnatomy}</InfoHint>} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {gaps.slice(0, 8).map((g, i) => (
                   <div key={i} className="po-fig-card" tabIndex={0} style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-raised)', borderRadius: T.radius.card, padding: 16, boxShadow: 'var(--highlight-inset), var(--elev-1)' }}>
@@ -923,7 +922,6 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                   </div>
                 ))}
               </div>
-              {priceAnatomy}
             </div>
           )}
 
@@ -931,7 +929,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
           <div style={{ marginTop: 24 }}>
             {/* «Σκούρη» ίσχυε μόνο στο φωτεινό θέμα· στο σκοτεινό η ακριβότερη
                 ημέρα είναι η πιο φωτεινή. Η ένταση ισχύει και στα δύο. */}
-            <SecHdr label="Ημερολόγιο τιμών" sub="Όσο πιο έντονο το χρώμα, τόσο υψηλότερη η προτεινόμενη τιμή. Πάτησε μια ημέρα για ανάλυση."
+            <SecHdr label="Ημερολόγιο τιμών" info={<InfoHint label="Πώς διαβάζεται">{PRICE_CAL_NOTE}</InfoHint>}
               right={pastCount > 0 ? <Btn variant="secondary" onClick={() => setShowPast(v => !v)}>{showPast ? 'Κρύψε προηγούμενους μήνες' : `Δείξε προηγούμενους μήνες (${pastCount})`}</Btn> : undefined} />
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}>
               {visibleMonths.map(([key, days]) => {
@@ -1120,7 +1118,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                 </div>
               </div>
               {priceLine(sel.date, sel.price)}
-              {gaps.length === 0 && priceAnatomy}
+              {gaps.length === 0 && <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.65, fontFamily: T.font.sans }}>{priceAnatomy}</div>}
             </div>
           )}
         </>

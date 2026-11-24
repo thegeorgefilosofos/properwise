@@ -114,32 +114,6 @@ export function SecHead({ children }: { children: React.ReactNode }) {
 // ετικέτα «Προβληματικός» πάνω σε άνθρωπο, χωρίς καμία ενέργεια πίσω τους. Ό,τι
 // χρειάζεται ο χρήστης το λένε τα γεγονότα — πληρωμές, παραστατικά, ραντεβού.
 
-// ─── Quick action button (calm, uniform, hover-revealed) ──────────────────────
-export function QuickAct({ as, href, target, rel, onClick, title, label, children }: {
-  as: 'a' | 'button'; href?: string; target?: string; rel?: string; onClick?: () => void
-  title: string; label?: string; children?: React.ReactNode
-}) {
-  const base: React.CSSProperties = {
-    width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    textDecoration: 'none', border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)',
-    color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 'var(--fs-xs)', fontWeight: 700, flexShrink: 0,
-    transition: 'border-color 0.15s, color 0.15s, background 0.15s', boxShadow: 'var(--elev-1)',
-  }
-  const enter = (e: React.MouseEvent<HTMLElement>) => { const s = e.currentTarget.style; s.borderColor = 'var(--accent-border)'; s.color = 'var(--accent)'; s.background = 'var(--accent-soft)' }
-  const leave = (e: React.MouseEvent<HTMLElement>) => { const s = e.currentTarget.style; s.borderColor = 'var(--border-subtle)'; s.color = 'var(--text-secondary)'; s.background = 'var(--bg-elevated)' }
-  const content = children ?? label
-  // ΤΟ ΣΤΡΟΓΓΥΛΟ ΤΩΝ 30 ΜΕΝΕΙ 30, Ο ΣΤΟΧΟΣ ΓΙΝΕΤΑΙ 56. Το δάπεδο των 44 του
-  // globals.css πιάνει `button`, `select` και `input`: ο σύνδεσμος έμενε στα 30
-  // και το κουμπί γινόταν 30 επί 44, δηλαδή δύο ΔΙΑΦΟΡΕΤΙΚΟΙ στόχοι για δύο
-  // κουμπιά που φαίνονται ίδια. Το `po-box` τα εξισώνει και στα δύο, χωρίς να
-  // πειραχτεί ο κύκλος: αόρατη ζώνη −13 γύρω γύρω.
-  // ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ, ΓΙΑ ΔΥΟ ΛΟΓΟΥΣ. Το ίδιο σχήμα βγαίνει άλλοτε <a> άλλοτε
-  // <button> με ΤΑΥΤΟΣΗΜΗ όψη — το IconBtn ξέρει μόνο <button>, οπότε η μία από
-  // τις δύο μορφές θα άλλαζε. Και ο κύκλος εδώ είναι τονικός (bg-elevated +
-  // περίγραμμα + elev-1) ενώ η `.po-ico` είναι διάφανη χωρίς περίγραμμα.
-  if (as === 'a') return <a className="po-box" href={href} target={target} rel={rel} title={title} aria-label={title} style={base} onMouseEnter={enter} onMouseLeave={leave}>{content}</a>
-  return <button type="button" className="po-box" onClick={onClick} title={title} aria-label={title} style={base} onMouseEnter={enter} onMouseLeave={leave}>{content}</button>
-}
 
 // ─── Tag Editor ───────────────────────────────────────────────────────────────
 export function TagEditor({ tags, onChange }: { tags: string[]; onChange: (t: string[]) => void }) {

@@ -32,7 +32,7 @@ const src = (p: string) => readFileSync(join(process.cwd(), p), 'utf8')
   ok('η φόρμα κρατά τη ζώνη «Φωτογράφισε ή ανέβασε αρχείο»', ledger.includes('Φωτογράφισε ή ανέβασε αρχείο'))
 }
 
-// ── 3. «Στείλε στον λογιστή σου» ορατό και με δρόμο από παντού ─────────────
+// ── 3. «Σύνδεσμος για τον λογιστή» ορατός και με δρόμο από παντού ─────────────
 {
   const dossier = src('app/dashboard/components/AccountantDossier.tsx')
   const acc = src('app/dashboard/components/TabAccounting.tsx')
@@ -45,7 +45,10 @@ const src = (p: string) => readFileSync(join(process.cwd(), p), 'utf8')
   ok('η κάρτα της Επισκόπησης έχει την ενέργεια', notice.includes('sendToAccountant(); }}>{O ? O.accountantSend : ACCOUNTANT_SEND_LABEL}</Btn>'))
   ok('οι Ρυθμίσεις έχουν την ενέργεια', settings.includes('onClick={sendToAccountant}>{O ? O.accountantSend : ACCOUNTANT_SEND_LABEL}</Btn>'))
   ok('η σελίδα ανοίγει τη Λογιστική με το γεγονός', page.includes("const go = () => { setNav('accounting'); focusAccountantSend(); };") && page.includes('ACCOUNTANT_SEND_EVENT, go'))
-  ok('το λεκτικό', ACCOUNTANT_SEND_LABEL === 'Στείλε στον λογιστή σου')
+  // ΕΝΑ ΟΝΟΜΑ ΓΙΑ ΤΟΝ ΙΔΙΟ ΣΥΝΔΕΣΜΟ (αξιολόγηση σχεδίασης 3). Η κάρτα και οι
+  // Ρυθμίσεις έλεγαν «Στείλε στον λογιστή σου» και οδηγούσαν σε κουμπί που
+  // λέγεται «Σύνδεσμος για τον λογιστή».
+  ok('το λεκτικό', ACCOUNTANT_SEND_LABEL === 'Σύνδεσμος για τον λογιστή')
   const seen: string[] = []
   const g = globalThis as unknown as { window?: EventTarget }
   const had = g.window
@@ -79,7 +82,7 @@ const src = (p: string) => readFileSync(join(process.cwd(), p), 'utf8')
 {
   const en = src('lib/i18n/en/app/overview.ts')
   ok('η δόση ΕΝΦΙΑ χωρίς ποσό έχει αγγλικό λεκτικό', en.includes("'enfia-import': 'Amount? Upload the assessment'"))
-  ok('το «Στείλε στον λογιστή σου» έχει αγγλικό λεκτικό', en.includes("accountantSend: 'Send to your accountant'"))
+  ok('ο «Σύνδεσμος για τον λογιστή» έχει αγγλικό λεκτικό', en.includes("accountantSend: 'Link for your accountant'"))
 }
 
 // ── 5. Ο χώρος του γραφείου ──────────────────────────────────────────────

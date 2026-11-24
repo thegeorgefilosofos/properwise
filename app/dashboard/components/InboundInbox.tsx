@@ -32,6 +32,7 @@ import { hintAction, hintFor, type Hint } from '@/lib/expenses/hints';
 import * as hintStore from '@/lib/data/categoryHints';
 import { notify, notifyError } from '@/components/Toast';
 import { athensToday } from '@/lib/core/time';
+import { Paperclip } from 'lucide-react';
 
 interface Props {
   propertyId: string;
@@ -187,10 +188,10 @@ export default function InboundInbox({ propertyId, userId, propertyName, propert
       {/* Στο τηλέφωνο το θέμα κρύβεται στην κλειστή γραμμή: αποστολέας,
           ημερομηνία και ποσό ξεχωρίζουν πέντε ίδια θέματα, το θέμα όχι. */}
       <style>{`@media (max-width: 480px) { .inbound-row > .inbound-what { display: none; } .inbound-row > .inbound-prop { flex: 1 1 0; } }`}</style>
-      <SecHdr label="Ήρθαν με email"
-        sub={many
-          ? 'Κάθε γραμμή λέει σε ποιο ακίνητο γράφεται· το αλλάζεις στη φόρμα.'
-          : propertyName ? `Η καταχώρηση γράφεται στο ακίνητο «${propertyName}»` : 'Η καταχώρηση γράφεται στο ακίνητο που βλέπεις'} />
+      {/* ΧΩΡΙΣ ΥΠΟΤΙΤΛΟ (αξιολόγηση σχεδίασης 3). «Η καταχώρηση γράφεται στο
+          ακίνητο …» ήταν πρόταση πριν από το πρώτο πεδίο για κάτι που η σελίδα
+          ήδη λέει. Με πολλά ακίνητα το λέει η γραμμή και το πεδίο «Ακίνητο». */}
+      <SecHdr label="Ήρθαν με email" />
       <div style={{ display: 'grid', gap: 10 }}>
         {rows.map(r => {
           const draft = drafts[r.id] || { amount: '', date: '', slug: '', propertyId };
@@ -269,8 +270,18 @@ export default function InboundInbox({ propertyId, userId, propertyName, propert
               border: '1px solid var(--border-subtle)',
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                <span style={{ ...TT.body, fontWeight: 600, color: 'var(--text-primary)' }}>
+                <span style={{ ...TT.body, fontWeight: 600, color: 'var(--text-primary)', display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                   {r.vendor || r.from_address || 'Άγνωστος αποστολέας'}
+                  {/* ΤΟ ΣΥΝΗΜΜΕΝΟ ΕΙΝΑΙ ΣΥΝΔΕΤΗΡΑΣ, ΟΧΙ ΠΡΟΤΑΣΗ (αξιολόγηση σχεδίασης 3).
+                      Δεν αποθηκεύεται (μόνο το πλήθος του), οπότε δεν ανοίγει: το
+                      πού βρίσκεται το λέει η ετικέτα του. */}
+                  {r.attachments > 0 && (
+                    <span role="img" aria-label={r.attachments === 1 ? 'Ένα συνημμένο στο αρχικό μήνυμα' : `${r.attachments} συνημμένα στο αρχικό μήνυμα`}
+                      title={r.attachments === 1 ? 'Ένα συνημμένο στο αρχικό μήνυμα' : `${r.attachments} συνημμένα στο αρχικό μήνυμα`}
+                      style={{ display: 'inline-flex', color: 'var(--text-tertiary)' }}>
+                      <Paperclip size={14} aria-hidden="true" />
+                    </span>
+                  )}
                 </span>
               </div>
 
@@ -286,15 +297,8 @@ export default function InboundInbox({ propertyId, userId, propertyName, propert
                   Γραμμένη και στις δύο θέσεις, το ίδιο νούμερο λεγόταν δύο
                   φορές· η ετικέτα λέει ΤΙ διάβασε το μήνυμα («λήξης» ή
                   «έκδοσης») και το πεδίο ΤΙ θα γραφτεί. */}
-              {/* Το συνημμένο ΔΕΝ αποθηκεύεται (μόνο το πλήθος του), οπότε δεν
-                  ανοίγει από εδώ· η φράση λέει πού βρίσκεται. */}
-              {(!stamp || r.attachments > 0) && (
-                <div style={{ ...TT.bodySm, color: 'var(--text-tertiary)' }}>
-                  {[
-                    stamp ? '' : 'Χωρίς ημερομηνία στο μήνυμα',
-                    r.attachments > 0 ? (r.attachments === 1 ? 'Ένα συνημμένο, στο αρχικό email' : `${r.attachments} συνημμένα, στο αρχικό email`) : '',
-                  ].filter(Boolean).join(' · ')}
-                </div>
+              {!stamp && (
+                <div style={{ ...TT.bodySm, color: 'var(--text-tertiary)' }}>Χωρίς ημερομηνία στο μήνυμα</div>
               )}
 
               <div {...fieldRow(180)}>
