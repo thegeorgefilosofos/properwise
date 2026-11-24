@@ -6,28 +6,32 @@
 // ζει στο ../_shared/mydata.ts (ανάγνωση, αντιστοίχιση, σφάλματα) και στο
 // ../_shared/mydataEngine.ts (σειρά βημάτων), δοκιμασμένα χωρίς δίκτυο.
 //
-// Ενέργειες (body.action):
-//   connect    λογιστής (JWT)  δοκιμάζει το κλειδί στην ΑΑΔΕ και το φυλάει στο Vault
-//   sync       λογιστής (JWT)  kind 'manual' (ανά 5 λεπτά) ή 'auto' (μετά από 12 ώρες)
-//   sync-all   cron            νυχτερινός, όλοι οι λογιστές με ενεργό κλειδί
-//   retry-due  cron            κάθε 15 λεπτά, μόνο πελάτες που περιμένουν νέα προσπάθεια
+// Μία ενέργεια (body.action):
+//   sync   λογιστής (JWT)  «Φέρε τώρα»: user id και κλειδί στο σώμα της κλήσης
+//
+// Ε2 (απόφαση ιδιοκτήτη 24/11/2026). Η άντληση γίνεται ΜΟΝΟ όταν την ξεκινά ο
+// λογιστής. Κανένα cron, καμία νυχτερινή, καμία αυτόματη επανάληψη. Το κλειδί
+// ΔΕΝ ΦΥΛΑΣΣΕΤΑΙ ΠΟΥΘΕΝΑ: ούτε σε βάση, ούτε σε Vault, ούτε σε logs ή Sentry.
+// Ζει στη μνήμη της καρτέλας του λογιστή και στο σώμα κάθε κλήσης. Πηγή για
+// τον τρόπο: ΑΑΔΕ, FAQ «Εξουσιοδοτήσεις» (22/02/2023) ερ. 9-10, `entityVatNumber`
+// από εξουσιοδοτημένο λογιστή, με το δικό του κλειδί.
 //
 // ΑΣΦΑΛΕΙΑ
 //   · Ο λογιστής βγαίνει από το JWT, ποτέ από το αίτημα. Ο,τι κρίνει ποιοι
 //     πελάτες ζητούνται ζει στη βάση (mydata_sync_targets, mydata_consent_live
 //     πριν από ΚΑΘΕ σελίδα και ξανά μέσα στη mydata_ingest).
-//   · Το κλειδί: διαβάζεται από το Vault με τον ρόλο υπηρεσίας, μπαίνει μόνο
-//     στις δύο κεφαλίδες της §4.1 και δεν επιστρέφει, δεν καταγράφεται, δεν
-//     μπαίνει σε μήνυμα. Ο φύλακας scripts/guard-mydata-key.mjs το κρατά έτσι.
+//   · Το κλειδί: έρχεται στο σώμα, ελέγχεται η μορφή του, μπαίνει μόνο στις
+//     δύο κεφαλίδες της §4.1 και ξεχνιέται με το τέλος της κλήσης. Δεν
+//     επιστρέφει, δεν καταγράφεται, δεν περνά σε καμία κλήση της βάσης. Ο
+//     φύλακας scripts/guard-mydata-key.mjs το κρατά έτσι.
 //   · Περιβάλλον: χωρίς `MYDATA_ENV` πάει στο ΔΟΚΙΜΑΣΤΙΚΟ της ΑΑΔΕ. Η παραγωγή
 //     θέλει ρητό `MYDATA_ENV=prod`. Χωρίς `MYDATA_SYNC_ENABLED=1` δεν τρέχει
 //     τίποτα (σημαία ως την απόφαση του ιδιοκτήτη για το πακέτο).
 // ═══════════════════════════════════════════════════════════════════════════
 import { createClient } from 'npm:@supabase/supabase-js@2.119.0'
-import { authorizeCron, cronDenial } from '../_shared/auth.ts'
 import { reportEdgeError } from '../_shared/report.ts'
 import { mydataBase, probeUrl, aadeHeaders, classifyHttp, athensIso, PARSER_VERSION } from '../_shared/mydata.ts'
-import { runAccountant, type Store, type SyncKind, type EngineDeps } from '../_shared/mydataEngine.ts'
+import { runAccountant, KEY_RE, USER_RE, type Store, type EngineDeps } from '../_shared/mydataEngine.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -42,7 +46,7 @@ const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: 
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-region',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 const json = (body: unknown, status = 200) =>
@@ -50,19 +54,13 @@ const json = (body: unknown, status = 200) =>
 
 /** Η βάση για τον κινητήρα. Καθε κλήση ελέγχει το `error` και πετά κωδικό, ποτέ δεδομένα. */
 const store: Store = {
-  async begin(accountantId, kind, actor) {
-    const { data, error } = await admin.rpc('mydata_sync_begin', { p_accountant: accountantId, p_kind: kind, p_actor: actor })
+  async begin(accountantId, actor) {
+    const { data, error } = await admin.rpc('mydata_sync_begin', { p_accountant: accountantId, p_kind: 'manual', p_actor: actor })
     if (error) throw new Error('db_begin')
     return data as Awaited<ReturnType<Store['begin']>>
   },
-  async credentials(accountantId) {
-    const { data, error } = await admin.rpc('mydata_key_read', { p_accountant: accountantId })
-    if (error) throw new Error('db_key')
-    const row = Array.isArray(data) ? data[0] : null
-    return row ? { aadeUserId: String(row.aade_user_id), key: String(row.api_key) } : null
-  },
-  async targets(accountantId, lease, kind) {
-    const { data, error } = await admin.rpc('mydata_sync_targets', { p_accountant: accountantId, p_lease: lease, p_kind: kind, p_parser: PARSER_VERSION })
+  async targets(accountantId, lease) {
+    const { data, error } = await admin.rpc('mydata_sync_targets', { p_accountant: accountantId, p_lease: lease, p_kind: 'manual', p_parser: PARSER_VERSION })
     if (error) throw new Error('db_targets')
     return ((data ?? []) as { consent_id: string; afm: string; window_from: string; last_mark: number | string; resume: unknown }[])
       .map(r => ({
@@ -89,8 +87,8 @@ const store: Store = {
     const { error } = await admin.rpc('mydata_client_done', { p_lease: lease, p_consent: consentId, p_error: err, p_added: added, p_more: more })
     if (error) throw new Error('db_client_done')
   },
-  async end(accountantId, lease, err, added) {
-    const { error } = await admin.rpc('mydata_sync_end', { p_accountant: accountantId, p_lease: lease, p_error: err, p_added: added })
+  async end(accountantId, lease, err, added, partial) {
+    const { error } = await admin.rpc('mydata_sync_end', { p_accountant: accountantId, p_lease: lease, p_error: err, p_added: added, p_partial: partial })
     if (error) reportEdgeError('mydata-sync', new Error('db_end'))
   },
   // Α2: τα επιβεβαιωμένα ανά πάροχο, για το «νέος πάροχος» και το «2× τον μέσο όρο».
@@ -102,10 +100,6 @@ const store: Store = {
       out[afm] = { n: Number(v?.n ?? 0), avgCents: Math.round(Number(v?.avg ?? 0)), category: typeof v?.cat === 'string' ? v.cat : null }
     }
     return out
-  },
-  async defer(accountantId, consentIds) {
-    const { error } = await admin.rpc('mydata_defer', { p_accountant: accountantId, p_consents: consentIds })
-    if (error) reportEdgeError('mydata-sync', new Error('db_defer'))
   },
 }
 
@@ -130,9 +124,6 @@ const codeOf = (e: unknown): string => {
   return /^db_[a-z_]{1,20}$/.test(m) ? m : 'unknown'
 }
 
-const KEY_RE = /^[A-Za-z0-9]{16,200}$/
-const USER_RE = /^\S{1,100}$/
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   const started = Date.now()
@@ -143,38 +134,6 @@ Deno.serve(async (req) => {
     if (!BASE) {
       reportEdgeError('mydata-sync', new Error('config:MYDATA_ENV'))
       return json({ ok: false, reason: 'config' }, 500)
-    }
-
-    // ── Cron ─────────────────────────────────────────────────────────────
-    if (action === 'sync-all' || action === 'retry-due' || req.headers.get('x-cron-secret')) {
-      const auth = await authorizeCron(req, { serviceKey: SERVICE_KEY, supabase: admin })
-      if (!auth.ok) return json(...cronDenial(auth))
-      const kind: SyncKind = action === 'retry-due' ? 'retry' : 'nightly'
-      const { data, error } = await admin.rpc('mydata_due_accountants', { p_kind: kind === 'retry' ? 'retry' : 'nightly' })
-      if (error) {
-        reportEdgeError('mydata-sync', new Error('db_due'))
-        return json({ ok: false, reason: 'db' }, 503)
-      }
-      const ids = ((data ?? []) as (string | { mydata_due_accountants: string })[])
-        .map(r => typeof r === 'string' ? r : r.mydata_due_accountants)
-      let done = 0, added = 0, failed = 0
-      for (let i = 0; i < ids.length; i++) {
-        const id = ids[i]
-        // Οσοι λογιστές δεν πρόλαβαν: οι πελάτες τους ξαναμπαίνουν σε ένα λεπτό
-        // και τους πιάνει η επανάληψη, όχι η επόμενη νύχτα.
-        if (Date.now() > started + BUDGET_MS - 10_000) {
-          for (const rest of ids.slice(i)) await store.defer(rest, null)
-          break
-        }
-        // Ενας λογιστής που σκάει δεν σταματά τους υπόλοιπους.
-        try {
-          const r = await runAccountant(deps(BASE, started), id, kind)
-          done++; added += r.added; failed += r.failed
-        } catch (e) {
-          reportEdgeError('mydata-sync', new Error(`run:${codeOf(e)}`))
-        }
-      }
-      return json({ ok: true, accountants: done, of: ids.length, added, failed })
     }
 
     // ── Λογιστής, με το δικό του JWT ─────────────────────────────────────────
@@ -195,41 +154,16 @@ Deno.serve(async (req) => {
     }
     const linked = Array.isArray(clientsNow) ? clientsNow.length : 0
 
-    if (action === 'connect') {
+    if (action === 'sync') {
+      // Η μορφή ελέγχεται ΠΡΙΝ από οτιδήποτε άλλο. Τα διαπιστευτήρια μένουν σε
+      // τοπικές μεταβλητές αυτής της κλήσης και δεν επιστρέφουν.
       const aadeUserId = String(body.aadeUserId ?? '').trim()
       const subscriptionKey = String(body.key ?? '').trim()
       if (!USER_RE.test(aadeUserId)) return json({ ok: false, reason: 'bad_user' }, 400)
       const keyShapeOk = KEY_RE.test(subscriptionKey)
       if (!keyShapeOk) return json({ ok: false, reason: 'bad_key_shape' }, 400)
       if (linked === 0) return json({ ok: false, reason: 'no_clients' }, 403)
-      const { data: quota, error: quotaErr } = await userClient.rpc('bump_send_quota', {
-        p_kind: 'mydata_connect', p_units: 1, p_max: 10, p_window: '1 hour',
-      })
-      if (quotaErr) return json({ ok: false, reason: 'db' }, 503)
-      if (!(quota as { allowed?: boolean } | null)?.allowed) return json({ ok: false, reason: 'too_many' }, 429)
-
-      // Ο έλεγχος στην ΑΑΔΕ, πριν φυλαχτεί οτιδήποτε. Το 401 σημαίνει λάθος
-      // κλειδί ή user id. Αν η ΑΑΔΕ δεν απαντά, το κλειδί φυλάγεται και
-      // δοκιμάζεται στον πρώτο συγχρονισμό· η οθόνη το λέει.
-      let verdict = 'network'
-      try {
-        const res = await fetch(probeUrl(BASE, athensIso()), { headers: aadeHeaders(aadeUserId, subscriptionKey), signal: AbortSignal.timeout(15_000) })
-        verdict = classifyHttp(res.status, await res.text()).code
-      } catch { verdict = 'network' }
-      if (verdict === 'auth') return json({ ok: false, reason: 'key_rejected' }, 200)
-      if (verdict === 'forbidden' || verdict === 'bad_request') return json({ ok: false, reason: 'key_rejected' }, 200)
-
-      const { error: storeErr } = await admin.rpc('mydata_key_store', { p_accountant: me, p_user_id: aadeUserId, p_key: subscriptionKey })
-      if (storeErr) {
-        reportEdgeError('mydata-sync', new Error('db_key_store'))
-        return json({ ok: false, reason: 'db' }, 503)
-      }
-      return json({ ok: true, verified: verdict === 'ok' })
-    }
-
-    if (action === 'sync') {
-      const kind: SyncKind = body.kind === 'auto' ? 'auto' : 'manual'
-      const r = await runAccountant(deps(BASE, started), me, kind, me)
+      const r = await runAccountant(deps(BASE, started), me, { aadeUserId, key: subscriptionKey }, me)
       return json(r)
     }
 

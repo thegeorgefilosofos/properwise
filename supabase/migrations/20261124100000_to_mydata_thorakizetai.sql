@@ -10,6 +10,11 @@
 --   7§1 απόδειξη συγκατάθεσης, 9§2(α) ρητή συγκατάθεση για ειδικές κατηγορίες,
 --   32§1(β) δεύτερο βήμα για όποιον βλέπει δεδομένα τρίτων. EDPB Guidelines
 --   05/2020 (συγκατάθεση) §§ 104-108: τεκμηρίωση του κειμένου που είδε ο χρήστης.
+--   ΓΚΠΔ 26 (από κοινού υπεύθυνοι, Ε-1/Ε-2), 82§4-5 (ευθύνη και αναγωγή).
+--   ΑΚ 937 (πενταετής παραγραφή αξίωσης αδικοπραξίας): 5 έτη για την απόδειξη.
+--   ΑΑΔΕ, FAQ «Εγγραφή στο myDATA REST API - Εξουσιοδοτήσεις» (22/02/2023) ερ.
+--   5, 9, 10· Α.1138/2020 (κωδικοποίηση 14.10.2025) άρθρο 4 παρ. 6-7: ο
+--   εξουσιοδοτημένος λογιστής καλεί με `entityVatNumber` και το δικό του κλειδί.
 --   ΑΑΔΕ, myDATA REST API ERP v2.0.2 (09/2026): InvoiceHeaderType,
 --   `correlatedInvoices` (xs:long, 0..ν, ΜΑΡΚ συσχετιζόμενων)· Παράρτημα 8.1
 --   (5.1 «Πιστωτικό Τιμολόγιο / Συσχετιζόμενο»).
@@ -21,14 +26,15 @@
 --   1. ΔΕΥΤΕΡΟ ΒΗΜΑ ΓΙΑ ΚΑΘΕ ΕΝΕΡΓΕΙΑ myDATA ΤΟΥ ΛΟΓΙΣΤΗ, ακόμη και χωρίς
 --      γραφείο και χωρίς δηλωμένη συσκευή (`private.mydata_aal2`): πολιτικές
 --      ανάγνωσης, πίνακας πελατών (που κρατά και την πύλη της συνάρτησης άκρου
---      για αποθήκευση κλειδιού και συγχρονισμό), επιβεβαίωση ΑΦΜ, αφαίρεση κλειδιού.
+--      για την άντληση), επιβεβαίωση ΑΦΜ, αποδοχή της ρύθμισης άρθρου 26.
 --   2. Ο ΛΟΓΙΣΤΗΣ ΒΛΕΠΕΙ ΜΟΝΟ Ο,ΤΙ ΚΑΤΑΧΩΡΗΘΗΚΕ (`filed`, `linked`). Τα
 --      εκκρεμή και τα απορριφθέντα μένουν μόνο στον ιδιοκτήτη· για τα εκκρεμή
 --      ο λογιστής βλέπει μόνο πλήθος (`mydata_clients_status`).
 --   3. ΕΛΑΧΙΣΤΟΠΟΙΗΣΗ: «Δεν αφορά ακίνητο» και «Πάντα αγνόησε» μηδενίζουν
 --      αμέσως εκδότη, ποσά, ημερομηνία και τίτλο. Μένουν ΜΑΡΚ και απόφαση.
---   4. ΔΙΑΤΗΡΗΣΗ: τα εκκρεμή σβήνουν σε 90 ημέρες, οι ανακλημένες άδειες σε
---      1825 (lib/mydata/retention.ts· τις διάρκειες τις αποφασίζει ο ιδιοκτήτης).
+--   4. ΔΙΑΤΗΡΗΣΗ: τα εκκρεμή σβήνουν σε 90 ημέρες, οι ανακλημένες άδειες σε 5
+--      έτη, η καραντίνα σε 90 ημέρες, η επιβεβαίωση ΑΦΜ με τη σύνδεση
+--      (lib/mydata/retention.ts· τις διάρκειες τις αποφάσισε ο ιδιοκτήτης).
 --   5. ΣΥΝΑΙΝΕΣΗ ΜΕ ΕΚΔΟΣΗ ΚΑΙ ΑΠΟΤΥΠΩΜΑ ΚΕΙΜΕΝΟΥ και ρητό τικ για πιθανά
 --      δεδομένα υγείας. Αλλαγή λογιστή μόνο με ρητή επιβεβαίωση (`p_switch`).
 --   6. ΑΥΤΟΜΑΤΟ ΜΟΝΟ ΜΕ ΙΣΤΟΡΙΚΟ ΑΝΑ (ΑΦΜ ΕΚΔΟΤΗ + ΑΚΙΝΗΤΟ): ο λογαριασμός ΔΕΗ
@@ -41,6 +47,16 @@
 --      δεμένου με χειροκίνητη δαπάνη: «Θέλει έλεγχο». Πιστωτικό με
 --      `correlatedInvoices` δένεται με το αρχικό.
 --   8. `expenses.paid_on`: η ημερομηνία πληρωμής, μόνο όταν τη γράψει ο χρήστης.
+--   9. Ε2: ΤΟ ΚΛΕΙΔΙ ΔΕΝ ΦΥΛΑΣΣΕΤΑΙ ΚΑΙ ΚΑΝΕΝΑ CRON ΔΕΝ ΑΝΤΛΕΙ (§8). Σβήνουν
+--      Vault, συναρτήσεις κλειδιού και εργασίες cron των Α1 και Α2. Η άντληση
+--      μόνο `manual`, από τον ίδιο τον λογιστή, με αποδεκτή τη ρύθμιση (Ε-1/Ε-2).
+--  10. Η ΑΠΟΔΕΙΞΗ ΣΥΝΑΙΝΕΣΗΣ ΜΕΝΕΙ όταν ο λογιστής σβήσει τον λογαριασμό του (§9).
+--  11. Η ΑΝΑΙΡΕΣΗ ΑΥΤΟΜΑΤΗΣ ΚΑΤΑΧΩΡΗΣΗΣ μετρά τις 90 ημέρες από την αναίρεση (§10).
+--  12. Νέα έκδοση του κειμένου συναίνεσης (2026-11-24.2, Ε-4/Κ-7) και λόγος
+--      `provider_kind`: πάροχος χωρίς ΕΝΑ δηλωμένο είδος δεν καταχωρείται μόνος του.
+--
+-- ΚΑΘΕ ΑΛΛΑΓΗ ΒΑΣΗΣ ΤΟΥ PR #629 ΖΕΙ ΣΕ ΑΥΤΟ ΤΟ ΑΡΧΕΙΟ, που δεν έχει εφαρμοστεί
+-- πουθενά. Είναι ιδιοδύναμο (db:replay το ξανατρέχει).
 --
 -- RLS. Κανένας νέος πίνακας. Οι νέες στήλες ανήκουν σε πίνακες με RLS και
 -- πολιτική MFA (20261123100000, expenses). Οι συναρτήσεις είναι SECURITY
@@ -96,10 +112,10 @@ do $c$ begin
   end if;
   alter table public.mydata_docs add constraint mydata_docs_reasons_known check (review_reasons <@ array[
     'over_limit', 'credit', 'amounts', 'unusual_amount', 'doc_type', 'new_provider', 'provider_unchecked',
-    'unknown_provider', 'pick_property']::text[]);
+    'provider_kind', 'unknown_provider', 'pick_property']::text[]);
   if not exists (select 1 from pg_constraint where conname = 'mydata_consents_text_shape') then
     alter table public.mydata_consents add constraint mydata_consents_text_shape check (
-      (consent_text_version is null or consent_text_version ~ '^\d{4}-\d{2}-\d{2}$')
+      (consent_text_version is null or consent_text_version ~ '^\d{4}-\d{2}-\d{2}(\.\d{1,3})?$')
       and (consent_text_hash is null or consent_text_hash ~ '^[0-9a-f]{64}$'));
   end if;
   if exists (select 1 from pg_constraint where conname = 'mydata_access_log_action_known') then
@@ -259,29 +275,10 @@ begin
   return json_build_object('ok', true);
 end $$;
 
--- «Αφαίρεση κλειδιού»: ίδιο σώμα, με `aal2`.
-create or replace function public.mydata_key_remove()
-returns json
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare v_me uuid := auth.uid();
-begin
-  if not private.mfa_satisfied() or not private.mydata_aal2() then
-    raise exception 'mfa_required' using errcode = '42501';
-  end if;
-  if v_me is null then return json_build_object('ok', false, 'reason', 'anonymous'); end if;
-  delete from private.mydata_vault where accountant_id = v_me;
-  update public.mydata_connections
-     set has_key = false, status = 'removed', lease_id = null, lease_at = null, updated_at = now()
-   where accountant_id = v_me;
-  if found then perform private.mydata_log(null, v_me, v_me, null, 'key_removed', null, null); end if;
-  return json_build_object('ok', true);
-end $$;
-
 -- ── 2. Η ΣΥΝΑΙΝΕΣΗ: ΚΕΙΜΕΝΟ, ΥΓΕΙΑ, ΑΛΛΑΓΗ ΛΟΓΙΣΤΗ ─────────────────────────────
 -- Οι εκδόσεις που δέχεται η βάση, με το αποτύπωμα (SHA-256) του κειμένου τους.
+-- 2026-11-24.2 (Ε-4, Κ-7): από κοινού υπεύθυνοι, λήψη μόνο όταν την ξεκινά ο
+-- λογιστής, γενική πρόσβαση γραφείου, τικ υγείας. Η 2026-11-24 δεν δόθηκε ποτέ.
 -- Ιδια με το lib/mydata/consentText.ts· το consentText.test.ts το ελέγχει.
 create or replace function private.mydata_consent_text_ok(p_version text, p_hash text)
 returns boolean
@@ -290,7 +287,7 @@ immutable
 set search_path = ''
 as $$
   select (p_version, p_hash) in (
-    ('2026-11-24', '0ae5ce6725e8c46752fd7004ba21dea8dd0340d139fcf1f1e8a71a9be858cba5'));
+    ('2026-11-24.2', 'd07487075d483d2a9852f5da1c3d840babcf131d93078c720047be9774311417'));
 $$;
 revoke all on function private.mydata_consent_text_ok(text, text) from public, anon, authenticated;
 
@@ -322,6 +319,10 @@ begin
     return json_build_object('ok', false, 'reason', 'text_outdated');
   end if;
   if p_health is not true then return json_build_object('ok', false, 'reason', 'health_unchecked'); end if;
+  -- Η Σύνδεση myDATA από το «Ιδιοκτήτης+» (§11, απόφαση ιδιοκτήτη 24/11/2026).
+  if public.user_plan_rank(v_me) < public.plan_rank(private.mydata_min_plan()) then
+    return json_build_object('ok', false, 'reason', 'plan_required');
+  end if;
   if p_accountant is null or p_accountant = v_me then return json_build_object('ok', false, 'reason', 'not_linked'); end if;
   if not exists (select 1 from public.accountant_clients ac
                   where ac.accountant_id = p_accountant and ac.owner_id = v_me and ac.active)
@@ -616,7 +617,7 @@ begin
     v_cat := case when x->>'category' ~ '^[a-z_]{1,32}$' then x->>'category' end;
     v_reasons := array(
       select distinct r from jsonb_array_elements_text(case when jsonb_typeof(x->'reasons') = 'array' then x->'reasons' else '[]'::jsonb end) r
-       where r in ('over_limit', 'credit', 'amounts', 'unusual_amount', 'doc_type', 'new_provider', 'provider_unchecked', 'unknown_provider')
+       where r in ('over_limit', 'credit', 'amounts', 'unusual_amount', 'doc_type', 'new_provider', 'provider_unchecked', 'provider_kind', 'unknown_provider')
        order by r);
     v_by := null;
     v_exp := null;
@@ -787,9 +788,11 @@ begin
 end $$;
 
 -- ── 7. ΟΡΙΟ ΔΙΑΤΗΡΗΣΗΣ ─────────────────────────────────────────────────────
--- Ιδια με την 20261123100000, με δύο προσθήκες (lib/mydata/retention.ts):
--- τα εκκρεμή σβήνουν σε 90 ημέρες από τη λήψη, οι ανακλημένες άδειες σε 1825
--- ημέρες από την ανάκληση. ΤΙΣ ΔΙΑΡΚΕΙΕΣ ΤΙΣ ΑΠΟΦΑΣΙΖΕΙ Ο ΙΔΙΟΚΤΗΤΗΣ.
+-- Ιδια με την 20261123100000, με τέσσερις προσθήκες (lib/mydata/retention.ts):
+-- τα εκκρεμή σβήνουν σε 90 ημέρες από τη λήψη· οι ανακλημένες άδειες σε 5 έτη
+-- από την ανάκληση (`interval '5 years'`, απόφαση ιδιοκτήτη 24/11/2026: ΑΚ 937,
+-- πενταετής παραγραφή αξίωσης αδικοπραξίας)· η καραντίνα σε 90 ημέρες από την
+-- τελευταία φορά που ζητήθηκε (Κ-12)· η επιβεβαίωση ΑΦΜ μαζί με τη σύνδεση (Κ-4).
 create or replace function private.mydata_prune()
 returns void
 language plpgsql
@@ -810,11 +813,385 @@ begin
   delete from public.mydata_docs
    where status = 'pending' and fetched_at < now() - interval '90 days';
   delete from public.mydata_consents
-   where revoked_at is not null and revoked_at < now() - interval '1825 days';
+   where revoked_at is not null and revoked_at < now() - interval '5 years';
+  -- Κ-12: η καραντίνα (ΜΑΡΚ και κωδικός αιτίας) έχει ανώτατο όριο από την
+  -- τελευταία φορά που ζητήθηκε. Το πρωτότυπο μένει στο myDATA.
+  delete from public.mydata_quarantine where seen_at < now() - interval '90 days';
+  -- Κ-4: η επιβεβαίωση ΑΦΜ ζει όσο ζει η σύνδεση λογιστή και πελάτη.
+  delete from public.mydata_afm_confirmations f
+   where private.mydata_link_state(f.accountant_id, f.client_id) = 'dead';
 end $$;
 revoke all on function private.mydata_prune() from public, anon, authenticated;
 
--- ── 8. ΔΙΚΑΙΩΜΑΤΑ ──────────────────────────────────────────────────────────
+-- ── 8. Ε2: ΤΟ ΚΛΕΙΔΙ ΔΕΝ ΦΥΛΑΣΣΕΤΑΙ, ΤΗΝ ΑΝΤΛΗΣΗ ΤΗΝ ΞΕΚΙΝΑ ΜΟΝΟ Ο ΛΟΓΙΣΤΗΣ ──────
+-- Απόφαση ιδιοκτήτη 24/11/2026 (επιλογή Ε2). Πηγή για τον τρόπο που μένει:
+-- ΑΑΔΕ, «Συχνές ερωτήσεις-απαντήσεις για εγγραφή στο myDATA REST API -
+-- Εξουσιοδοτήσεις», 22/02/2023, ερ. 9-10 (`entityVatNumber` από εξουσιοδοτημένο
+-- λογιστή, με το δικό του κλειδί)· Α.1138/2020 (κωδικοποίηση 14.10.2025)
+-- άρθρο 4 παρ. 6-7. Η αλλαγή ΑΦΑΙΡΕΙ φύλαξη και αυτόματη άντληση:
+--   · σβήνουν οι εργασίες cron `mydata-sync-nightly` και `mydata-sync-retry`
+--     (το `mydata-prune` μένει: είναι το όριο διατήρησης)·
+--   · σβήνουν τα μυστικά `mydata_key:*` του Vault, ο πίνακας
+--     `private.mydata_vault`, η σκανδάλη του και οι `mydata_key_store`,
+--     `mydata_key_read`, `mydata_key_remove`, `mydata_due_accountants`,
+--     `mydata_defer`·
+--   · ο πίνακας των συνδέσεων δεν δέχεται πια user id ΑΑΔΕ ούτε «έχει κλειδί»·
+--   · η `mydata_sync_begin` δέχεται μόνο `manual`, με τον ίδιο τον λογιστή ως
+--     πρόσωπο και μόνο αφού έχει δεχτεί την τρέχουσα ρύθμιση άρθρου 26 (Ε-1, Ε-2).
+-- Στην παραγωγή υπάρχουν ήδη τα Α1 και Α2 με κλειστές σημαίες. Το καθάρισμα
+-- είναι ιδιοδύναμο και ζει σε συνάρτηση, ώστε το probe να το ξανατρέχει πάνω σε
+-- στημένα cron και μυστικά.
+create or replace function private.mydata_forget_keys()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if to_regclass('cron.job') is not null then
+    if exists (select 1 from cron.job where jobname = 'mydata-sync-nightly') then perform cron.unschedule('mydata-sync-nightly'); end if;
+    if exists (select 1 from cron.job where jobname = 'mydata-sync-retry') then perform cron.unschedule('mydata-sync-retry'); end if;
+  end if;
+  if to_regclass('private.mydata_vault') is not null then
+    execute 'delete from vault.secrets s using private.mydata_vault v where s.id = v.secret_id';
+    drop table private.mydata_vault;
+  end if;
+  if to_regclass('vault.secrets') is not null then
+    delete from vault.secrets where name like 'mydata_key:%';
+  end if;
+end $$;
+revoke all on function private.mydata_forget_keys() from public, anon, authenticated;
+select private.mydata_forget_keys();
+
+drop function if exists private.mydata_vault_drop();
+drop function if exists public.mydata_key_store(uuid, text, text);
+drop function if exists public.mydata_key_read(uuid);
+drop function if exists public.mydata_key_remove();
+drop function if exists public.mydata_due_accountants(text);
+drop function if exists public.mydata_defer(uuid, uuid[]);
+
+-- Η σύνδεση του λογιστή κρατά μόνο κατάσταση και την αποδοχή της ρύθμισης.
+-- Οι στήλες `has_key` και `aade_user_id` μένουν για να ξανατρέχουν οι παλιές
+-- μεταναστεύσεις, αλλά ο κανόνας του πίνακα τις κρατά κενές.
+alter table public.mydata_connections alter column aade_user_id drop not null;
+alter table public.mydata_connections add column if not exists joint_version text;
+alter table public.mydata_connections add column if not exists joint_at timestamptz;
+alter table public.mydata_connections add column if not exists last_partial boolean not null default false;
+update public.mydata_connections set has_key = false, aade_user_id = null where has_key or aade_user_id is not null;
+do $c$ begin
+  if not exists (select 1 from pg_constraint where conname = 'mydata_connections_no_credentials') then
+    alter table public.mydata_connections add constraint mydata_connections_no_credentials
+      check (not has_key and aade_user_id is null);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'mydata_connections_joint_shape') then
+    alter table public.mydata_connections add constraint mydata_connections_joint_shape
+      check (joint_version is null or (joint_version ~ '^\d{4}-\d{2}-\d{2}$' and joint_at is not null));
+  end if;
+end $c$;
+comment on table public.mydata_connections is
+  'Η σύνδεση myDATA του λογιστή: αποδοχή της ρύθμισης άρθρου 26 (έκδοση, ώρα), κατάσταση και τελευταία άντληση. Κανένα κλειδί, κανένα user id (Ε2).';
+comment on column public.mydata_connections.joint_version is
+  'Η έκδοση της ρύθμισης άρθρου 26 που δέχτηκε το γραφείο (lib/legal/mydataJoint.ts). ΓΚΠΔ 26§1, 5§2.';
+comment on column public.mydata_connections.last_partial is
+  'Το τελευταίο τρέξιμο σταμάτησε στο όριο χρόνου· το επόμενο πάτημα συνεχίζει χωρίς το όριο των 5 λεπτών.';
+
+-- Το αρχείο πρόσβασης: «key_used» αντί για «key_read», «joint_accepted» για το Ε-1.
+-- Οι παλιοί κωδικοί μένουν για όσες γραμμές υπάρχουν ήδη.
+do $c$ begin
+  if exists (select 1 from pg_constraint where conname = 'mydata_access_log_action_known') then
+    alter table public.mydata_access_log drop constraint mydata_access_log_action_known;
+  end if;
+  alter table public.mydata_access_log add constraint mydata_access_log_action_known check (action in (
+    'consent_granted', 'consent_revoked', 'consent_paused', 'afm_confirmed',
+    'key_saved', 'key_removed', 'key_rejected', 'key_read', 'key_used', 'joint_accepted',
+    'sync_fetch', 'sync_done', 'sync_failed', 'page_rejected', 'invalid_quarantined',
+    'provider_ignored', 'cancel_flagged', 'cancel_removed_expense',
+    'auto_filed', 'auto_undone', 'not_property', 'reissue_linked'));
+end $c$;
+
+-- Ε-2: νέος κωδικός. Ιδιος κατάλογος με το ERROR_CODES του
+-- supabase/functions/_shared/mydata.ts.
+create or replace function private.mydata_error_codes()
+returns text[]
+language sql immutable
+set search_path = ''
+as $$
+  select array['auth','forbidden','rate','server','empty','bad_request','http','network','timeout',
+               'parse','aade_error','no_key','no_afm','not_linked','config','unknown','quarantine','joint_terms']
+$$;
+revoke all on function private.mydata_error_codes() from public, anon, authenticated;
+
+-- Ε-1: η τρέχουσα έκδοση της ρύθμισης άρθρου 26. Ιδια με το
+-- MYDATA_JOINT_VERSION του lib/legal/mydataJoint.ts· το mydataJoint.test.ts το ελέγχει.
+create or replace function private.mydata_joint_version()
+returns text
+language sql immutable
+set search_path = ''
+as $$ select '2026-11-24'::text $$;
+revoke all on function private.mydata_joint_version() from public, anon;
+grant execute on function private.mydata_joint_version() to authenticated;
+
+-- «Αποδέχομαι»: το γραφείο δέχεται τη ρύθμιση και τις δηλώσεις του, με έκδοση
+-- και ώρα, ΠΡΙΝ από την πρώτη άντληση. Κανένα διαπιστευτήριο δεν περνά από εδώ.
+create or replace function public.mydata_joint_accept(p_version text)
+returns json
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare v_me uuid := auth.uid();
+begin
+  if not private.mfa_satisfied() or not private.mydata_aal2() then
+    raise exception 'mfa_required' using errcode = '42501';
+  end if;
+  if v_me is null then return json_build_object('ok', false, 'reason', 'anonymous'); end if;
+  if p_version is distinct from private.mydata_joint_version() then
+    return json_build_object('ok', false, 'reason', 'joint_outdated');
+  end if;
+  insert into public.mydata_connections (accountant_id, joint_version, joint_at)
+  values (v_me, p_version, now())
+  on conflict (accountant_id) do update
+    set joint_version = excluded.joint_version, joint_at = excluded.joint_at, updated_at = now();
+  perform private.mydata_log(null, v_me, v_me, null, 'joint_accepted', null, null);
+  return json_build_object('ok', true);
+end $$;
+
+-- Η ΑΡΧΗ ΕΝΟΣ ΤΡΕΞΙΜΑΤΟΣ: μόνο `manual`, μόνο από τον ίδιο τον λογιστή (το
+-- `p_actor` το βάζει η συνάρτηση άκρου από το JWT), μόνο με αποδεκτή την
+-- τρέχουσα ρύθμιση (Ε-1, Ε-2). Ενα τρέξιμο ανά λογιστή· «Φέρε τώρα» ανά 5
+-- λεπτά, εκτός αν το προηγούμενο σταμάτησε στο όριο χρόνου (`last_partial`).
+create or replace function public.mydata_sync_begin(p_accountant uuid, p_kind text, p_actor uuid default null)
+returns json
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  c public.mydata_connections%rowtype;
+  v_lease uuid := gen_random_uuid();
+begin
+  if p_kind is distinct from 'manual' then return json_build_object('ok', false, 'reason', 'bad_kind'); end if;
+  if p_accountant is null or p_actor is null or p_actor <> p_accountant then
+    return json_build_object('ok', false, 'reason', 'no_actor');
+  end if;
+  select * into c from public.mydata_connections where accountant_id = p_accountant for update;
+  if not found or c.joint_version is distinct from private.mydata_joint_version() then
+    return json_build_object('ok', false, 'reason', 'joint_terms');
+  end if;
+  if c.lease_id is not null and c.lease_at > now() - interval '10 minutes' then
+    return json_build_object('ok', false, 'reason', 'busy');
+  end if;
+  if c.last_manual_at > now() - interval '5 minutes' and not c.last_partial then
+    return json_build_object('ok', false, 'reason', 'too_soon', 'retryAt', c.last_manual_at + interval '5 minutes');
+  end if;
+  update public.mydata_connections
+     set lease_id = v_lease, lease_at = now(), lease_kind = 'manual', lease_actor = p_actor,
+         last_manual_at = now(), last_partial = false
+   where accountant_id = p_accountant;
+  -- Κάθε χρήση του κλειδιού γράφεται: ποιος, πότε. Ποτέ το ίδιο το κλειδί.
+  perform private.mydata_log(null, p_accountant, p_actor, null, 'key_used', null, 'manual');
+  return json_build_object('ok', true, 'lease', v_lease);
+end $$;
+
+-- Το τέλος του τρεξίματος. Το 401 γράφει μόνο κωδικό: δεν υπάρχει φυλαγμένο
+-- κλειδί για να «κλειδώσει». `p_partial`: το επόμενο πάτημα συνεχίζει αμέσως.
+drop function if exists public.mydata_sync_end(uuid, uuid, text, integer);
+create or replace function public.mydata_sync_end(
+  p_accountant uuid, p_lease uuid, p_error text, p_added integer, p_partial boolean default false)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare v_err text := case when p_error is null then null
+                           when p_error = any (private.mydata_error_codes()) then p_error else 'unknown' end;
+begin
+  update public.mydata_connections
+     set lease_id = null, lease_at = null, lease_kind = null, lease_actor = null, lease_parser = null,
+         last_sync_at = case when v_err is null then now() else last_sync_at end,
+         last_sync_new = case when v_err is null then greatest(coalesce(p_added, 0), 0) else last_sync_new end,
+         last_error_code = v_err,
+         last_partial = v_err is null and coalesce(p_partial, false),
+         updated_at = now()
+   where accountant_id = p_accountant and lease_id = p_lease;
+  if v_err = 'auth' then
+    perform private.mydata_log(null, p_accountant, null, null, 'key_rejected', null, 'auth');
+  end if;
+end $$;
+
+-- ── 9. Κ-3 / Ε-10: Η ΑΠΟΔΕΙΞΗ ΣΥΝΑΙΝΕΣΗΣ ΜΕΝΕΙ ΟΤΑΝ ΦΕΥΓΕΙ Ο ΛΟΓΙΣΤΗΣ ─────────
+-- Ως τώρα η διαγραφή του λογαριασμού του λογιστή έσβηνε (cascade) τις άδειες
+-- όλων των πελατών του, δηλαδή την απόδειξη της συναίνεσης (ΓΚΠΔ 7§1, 5§2),
+-- που ανήκει και στους δύο από κοινού υπευθύνους. Τώρα: `on delete set null`
+-- και η άδεια ανακαλείται με αιτία `accountant_deleted`, όπως κάθε ανάκληση
+-- (σβήνουν τα παραστατικά της, οι δαπάνες του πελάτη μένουν).
+alter table public.mydata_consents alter column accountant_id drop not null;
+do $c$
+declare v_con text;
+begin
+  for v_con in
+    select c.conname from pg_constraint c
+     where c.conrelid = 'public.mydata_consents'::regclass and c.contype = 'f'
+       and c.conkey = array[(select a.attnum from pg_attribute a
+                              where a.attrelid = 'public.mydata_consents'::regclass and a.attname = 'accountant_id')]::smallint[]
+       and c.conname <> 'mydata_consents_accountant_set_null'
+  loop
+    execute format('alter table public.mydata_consents drop constraint %I', v_con);
+  end loop;
+  if not exists (select 1 from pg_constraint where conname = 'mydata_consents_accountant_set_null') then
+    alter table public.mydata_consents add constraint mydata_consents_accountant_set_null
+      foreign key (accountant_id) references auth.users (id) on delete set null;
+  end if;
+  if exists (select 1 from pg_constraint where conname = 'mydata_consents_reason_known') then
+    alter table public.mydata_consents drop constraint mydata_consents_reason_known;
+  end if;
+  alter table public.mydata_consents add constraint mydata_consents_reason_known check (revoke_reason is null
+    or revoke_reason in ('client', 'unlinked', 'switched', 'afm_changed', 'pause_expired', 'accountant_deleted'));
+end $c$;
+
+-- Ε-8: η ανάκληση κρατά μόνο ό,τι αποδεικνύει τη συναίνεση (έκδοση και
+-- αποτύπωμα κειμένου, ημερομηνίες, ΑΦΜ)· τα λειτουργικά πεδία μηδενίζονται.
+create or replace function private.mydata_revoke(p_consent uuid, p_reason text, p_actor uuid)
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v public.mydata_consents%rowtype;
+  v_n integer;
+begin
+  update public.mydata_consents
+     set revoked_at = now(), revoke_reason = p_reason, resume = null, next_retry_at = null,
+         last_mark = 0, last_error_code = null, failures = 0, quarantine_at = null, parser_version = null
+   where id = p_consent and revoked_at is null
+  returning * into v;
+  if not found then return 0; end if;
+  delete from public.mydata_docs where consent_id = p_consent;
+  get diagnostics v_n = row_count;
+  delete from public.mydata_quarantine where consent_id = p_consent;
+  perform private.mydata_log(v.client_id, v.accountant_id, p_actor, v.afm, 'consent_revoked', v_n, p_reason);
+  return v_n;
+end $$;
+revoke all on function private.mydata_revoke(uuid, text, uuid) from public, anon, authenticated;
+
+create or replace function private.mydata_accountant_gone()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if old.revoked_at is null then
+    perform private.mydata_revoke(new.id, 'accountant_deleted', null);
+  end if;
+  return null;
+end $$;
+revoke all on function private.mydata_accountant_gone() from public, anon, authenticated;
+drop trigger if exists mydata_accountant_gone on public.mydata_consents;
+create trigger mydata_accountant_gone after update of accountant_id on public.mydata_consents
+  for each row when (old.accountant_id is not null and new.accountant_id is null)
+  execute function private.mydata_accountant_gone();
+
+-- ── 10. Κ-5: Η ΑΝΑΙΡΕΣΗ ΑΥΤΟΜΑΤΗΣ ΚΑΤΑΧΩΡΗΣΗΣ ΜΕΤΡΑ ΑΠΟ ΤΩΡΑ ───────────────────
+-- Ιδια με την 20261123160000, με μία αλλαγή: το παραστατικό που ξαναγίνεται
+-- εκκρεμές παίρνει `fetched_at = now()`. Με την παλιά ημερομηνία, μια αναίρεση
+-- μετά τις 90 ημέρες θα έσβηνε στο επόμενο καθάρισμα πριν το δει ο χρήστης.
+create or replace function public.mydata_auto_undo(p_doc uuid)
+returns json
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_me uuid := auth.uid();
+  d    public.mydata_docs%rowtype;
+  v_n  integer := 0;
+begin
+  if not private.mfa_satisfied() then
+    raise exception 'mfa_required' using errcode = '42501';
+  end if;
+  select * into d from public.mydata_docs
+   where id = p_doc and client_id = v_me and filed_by = 'auto' and status = 'filed' for update;
+  if not found then return json_build_object('ok', false, 'reason', 'not_found'); end if;
+  if d.expense_id is not null then
+    delete from public.expenses
+     where id = d.expense_id and user_id = v_me and dedup_hash = 'mydata:' || d.mark;
+    get diagnostics v_n = row_count;
+  end if;
+  update public.mydata_docs
+     set status = 'pending', tier = 'review', filed_by = null, expense_id = null, decided_at = null, fetched_at = now()
+   where id = d.id;
+  perform private.mydata_log(v_me, null, v_me, d.client_afm, 'auto_undone', v_n, null);
+  return json_build_object('ok', true, 'removed', v_n);
+end $$;
+
+-- ── 11. ΠΑΚΕΤΟ: Η ΣΥΝΔΕΣΗ myDATA ΑΠΟ ΤΟ «ΙΔΙΟΚΤΗΤΗΣ+» ───────────────────────────
+-- Απόφαση ιδιοκτήτη 24/11/2026. Ιδια τιμή με το FEATURE_MIN_PLAN.mydata_sync του
+-- lib/billing/entitlements.ts (entitlements.test.ts). Κρίνεται για τον πελάτη
+-- που δίνει την άδεια, με την `public.user_plan_rank` (αυθεντική πηγή πακέτου):
+-- πριν από την άδεια, στους στόχους της άντλησης και πριν από κάθε σελίδα.
+-- ΜΑΖΙ με τη σημαία (`MYDATA_SYNC_ENABLED`), όχι στη θέση της. Χωρίς πακέτο η
+-- άδεια δεν ανακαλείται: απλώς δεν έρχεται τίποτα, όπως σε παύση.
+create or replace function private.mydata_min_plan()
+returns text
+language sql immutable
+set search_path = ''
+as $$ select 'owner'::text $$;
+revoke all on function private.mydata_min_plan() from public, anon, authenticated;
+
+create or replace function private.mydata_plan_ok(p_client uuid)
+returns boolean
+language sql stable
+security definer
+set search_path = ''
+as $$ select public.user_plan_rank(p_client) >= public.plan_rank(private.mydata_min_plan()) $$;
+revoke all on function private.mydata_plan_ok(uuid) from public, anon, authenticated;
+
+create or replace function private.mydata_consent_ok(p_consent uuid, p_lease uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.mydata_consents c
+     where c.id = p_consent and c.revoked_at is null and c.status <> 'paused'
+       and private.mydata_lease_ok(p_lease, c.accountant_id)
+       and public.accountant_link_live(c.accountant_id, c.client_id)
+       and private.mydata_afm_bound(c.id)
+       and private.mydata_plan_ok(c.client_id));
+$$;
+revoke all on function private.mydata_consent_ok(uuid, uuid) from public, anon, authenticated;
+
+-- Ιδια με την 20261123100000, με το πακέτο του πελάτη.
+create or replace function public.mydata_sync_targets(p_accountant uuid, p_lease uuid, p_kind text, p_parser text default null)
+returns table (consent_id uuid, afm text, window_from date, last_mark bigint, resume jsonb)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not private.mydata_lease_ok(p_lease, p_accountant) then return; end if;
+  update public.mydata_connections set lease_parser = p_parser where accountant_id = p_accountant and lease_id = p_lease;
+  perform private.mydata_revoke_dead(null, p_accountant);
+  return query
+    select c.id, c.afm, c.window_from, c.last_mark, c.resume
+      from public.mydata_consents c
+     where c.accountant_id = p_accountant and c.revoked_at is null and c.status <> 'paused'
+       and private.mydata_plan_ok(c.client_id)
+       and (p_kind = 'manual' or c.last_error_code is distinct from 'quarantine'
+            or c.quarantine_at is null or c.quarantine_at <= now() - interval '7 days'
+            or c.parser_version is distinct from p_parser)
+       and (p_kind <> 'retry' or (c.next_retry_at is not null and c.next_retry_at <= now()))
+       and (p_kind in ('manual', 'nightly') or c.status <> 'forbidden')
+     order by c.last_sync_at nulls first, c.granted_at;
+end $$;
+revoke all on function public.mydata_sync_targets(uuid, uuid, text, text) from public, anon, authenticated;
+grant execute on function public.mydata_sync_targets(uuid, uuid, text, text) to service_role;
+
+-- ── 12. ΔΙΚΑΙΩΜΑΤΑ ──────────────────────────────────────────────────────────
 revoke all on function
   public.mydata_consent_grant(uuid, integer, text, text, boolean, boolean),
   public.mydata_doc_match(uuid, uuid, text), public.mydata_doc_link(uuid, uuid, uuid, text)
@@ -825,8 +1202,17 @@ grant execute on function
   to authenticated;
 
 revoke all on function
-  public.mydata_ingest(uuid, uuid, jsonb, jsonb, jsonb, integer, bigint, jsonb, boolean, integer)
+  public.mydata_joint_accept(text), public.mydata_auto_undo(uuid)
+  from public, anon;
+grant execute on function
+  public.mydata_joint_accept(text), public.mydata_auto_undo(uuid)
+  to authenticated;
+
+revoke all on function
+  public.mydata_ingest(uuid, uuid, jsonb, jsonb, jsonb, integer, bigint, jsonb, boolean, integer),
+  public.mydata_sync_begin(uuid, text, uuid), public.mydata_sync_end(uuid, uuid, text, integer, boolean)
   from public, anon, authenticated;
 grant execute on function
-  public.mydata_ingest(uuid, uuid, jsonb, jsonb, jsonb, integer, bigint, jsonb, boolean, integer)
+  public.mydata_ingest(uuid, uuid, jsonb, jsonb, jsonb, integer, bigint, jsonb, boolean, integer),
+  public.mydata_sync_begin(uuid, text, uuid), public.mydata_sync_end(uuid, uuid, text, integer, boolean)
   to service_role;

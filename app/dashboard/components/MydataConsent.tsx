@@ -29,7 +29,8 @@ import { notifyError } from '@/components/Toast';
 import { athensToday } from '@/lib/core/time';
 import { myAccountants } from '@/lib/data/accountant';
 import * as mydata from '@/lib/data/mydata';
-import { clientSyncedLine, athensStamp, athensClock, LOG_ACTION } from '@/lib/mydata/status';
+import { clientSyncedLine, athensStamp, LOG_ACTION } from '@/lib/mydata/status';
+import { useBillingWords } from './useBillingWords';
 import { MYDATA_CONSENT_TITLE, MYDATA_CONSENT_POINTS, MYDATA_HEALTH_CONSENT, MYDATA_PRIVACY_HREF } from '@/lib/mydata/consentText';
 
 const GRANT_FAIL: Record<string, string> = {
@@ -42,12 +43,19 @@ const GRANT_FAIL: Record<string, string> = {
   afm_taken: 'Αυτό το ΑΦΜ έχει ήδη άδεια myDATA από άλλον λογαριασμό.',
   health_unchecked: 'Σημείωσε πρώτα το τελευταίο πλαίσιο.',
   text_outdated: 'Το κείμενο άλλαξε. Ανανέωσε τη σελίδα και διάβασέ το ξανά.',
+  plan_required: 'Η Σύνδεση myDATA θέλει μεγαλύτερο πακέτο.',
 };
 
 const plural = (n: number) => (n === 1 ? '1 παραστατικό' : `${n.toLocaleString('el-GR')} παραστατικά`);
 
-export default function MydataConsent({ userId }: { userId: string }) {
+/**
+ * `allowed`: το πακέτο του χρήστη έχει τη Σύνδεση myDATA (`hasFeature(…,
+ * 'mydata_sync')`, από το «Ιδιοκτήτης+»). Η βάση το ξαναελέγχει στην άδεια και
+ * σε κάθε σελίδα της άντλησης· εδώ λέγεται πριν πατηθεί οτιδήποτε.
+ */
+export default function MydataConsent({ userId, allowed = false }: { userId: string; allowed?: boolean }) {
   const supabase = useMemo(() => createClient(), []);
+  const words = useBillingWords();
   const [accountants, setAccountants] = useState<{ accountantId: string; name: string }[] | null>(null);
   const [consent, setConsent] = useState<mydata.MyConsent | null>(null);
   const [log, setLog] = useState<mydata.LogRow[]>([]);
@@ -74,6 +82,16 @@ export default function MydataConsent({ userId }: { userId: string }) {
   }, [load]);
 
   if (!accountants || accountants.length === 0) return null;
+
+  // ΧΩΡΙΣ ΤΟ ΠΑΚΕΤΟ ΚΑΙ ΧΩΡΙΣ ΑΔΕΙΑ: μόνο από ποιο πακέτο ανοίγει.
+  if (!allowed && !consent) return (
+    <SetRow title="myDATA από τον λογιστή" desc={MYDATA_CONSENT_TITLE}>
+      {words?.mydataAccess && <p style={{ ...TT.bodySm, margin: `0 0 ${T.sp.sm}px`, color: 'var(--text-secondary)' }}>{words.mydataAccess}</p>}
+      <div className="act-row" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <Btn variant="secondary" href="/paketa">Δες τα πακέτα</Btn>
+      </div>
+    </SetRow>
+  );
 
   const holder = consent ? accountants.find(a => a.accountantId === consent.accountantId) : null;
   // Στην αλλαγή, ο τωρινός λογιστής δεν είναι επιλογή.
@@ -109,7 +127,7 @@ export default function MydataConsent({ userId }: { userId: string }) {
     if (!consent) return;
     if (!await confirmDialog({
       title: 'Ανάκληση άδειας myDATA;',
-      message: 'Ο λογιστής σταματά να φέρνει παραστατικά. Όσα ήρθαν και δεν καταχώρησες σβήνουν· οι δαπάνες σου μένουν.',
+      message: 'Ο λογιστής σταματά να φέρνει παραστατικά. Τα παραστατικά που ήρθαν με την άδεια σβήνουν· οι δαπάνες σου μένουν.',
       confirmLabel: 'Ανάκληση', tone: 'negative',
     })) return;
     setBusy(true);
@@ -122,9 +140,11 @@ export default function MydataConsent({ userId }: { userId: string }) {
 
   // Η ΚΑΤΑΣΤΑΣΗ ΣΕ ΜΙΑ ΠΡΟΤΑΣΗ, ΜΕ ΤΗ ΛΥΣΗ ΟΤΑΝ ΚΑΤΙ ΔΕΝ ΠΗΓΕ ΚΑΛΑ.
   const state = !consent ? ''
+    : !allowed ? 'Το πακέτο σου δεν περιλαμβάνει πια τη Σύνδεση myDATA. Δεν έρχονται νέα παραστατικά και τίποτα δεν σβήνει.'
     : consent.status === 'paused' ? 'Ο σύνδεσμος με τον λογιστή χρειάζεται ανανέωση. Ως τότε δεν έρχονται νέα παραστατικά και τίποτα δεν σβήνει.'
-    : consent.status === 'forbidden' ? 'Η ΑΑΔΕ αρνείται την πρόσβαση. Όρισε ξανά τον λογιστή σου στο myAADE.'
-    : consent.status === 'error' && consent.nextRetryAt ? `Η ΑΑΔΕ δεν απαντά. Νέα προσπάθεια στις ${athensClock(consent.nextRetryAt)}.`
+    : consent.status === 'forbidden' ? 'Η ΑΑΔΕ δεν δίνει παραστατικά για το ΑΦΜ σου μέσω λογιστή. Έλεγξε την εξουσιοδότηση του λογιστή σου στο myAADE.'
+    // Ε2: καμία αυτόματη νέα προσπάθεια· ξαναδοκιμάζει ο λογιστής.
+    : consent.status === 'error' && consent.error !== 'no_afm' ? 'Η ΑΑΔΕ δεν απάντησε στην τελευταία άντληση. Ο λογιστής σου ξαναδοκιμάζει από τον χώρο του.'
     : consent.status === 'error' && consent.error === 'no_afm' ? GRANT_FAIL.no_afm
     : clientSyncedLine(consent.lastSyncAt, consent.lastNew);
 
@@ -137,7 +157,7 @@ export default function MydataConsent({ userId }: { userId: string }) {
       </ul>
       {/* Στόχος αφής 44, όπως το «Ιστορικό πρόσβασης» πιο κάτω. */}
       <p style={{ ...TT.bodySm, margin: `0 0 ${T.sp.sm}px` }}>
-        <a href={MYDATA_PRIVACY_HREF} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 2, fontWeight: 600 }}>Τι ακριβώς κρατάμε και για πόσο</a>
+        <a href={MYDATA_PRIVACY_HREF} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 2, fontWeight: 600 }}>Τι κρατάμε, για πόσο και ποιος είναι υπεύθυνος</a>
       </p>
       {choices.length > 1 && (
         <div style={{ maxWidth: 360, marginBottom: T.sp.sm }}>

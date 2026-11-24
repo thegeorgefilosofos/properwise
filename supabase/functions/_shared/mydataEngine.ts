@@ -18,8 +18,13 @@
 //     τελειώσουν ΟΛΕΣ οι σελίδες· ως τότε κρατιέται το σημείο συνέχισης
 //     (nextPartitionKey/nextRowKey), ώστε ένα κόψιμο να συνεχίζει από εκεί.
 //   · ΟΡΙΟ ΧΡΟΝΟΥ: οι συναρτήσεις άκρου κόβονται. Ο κινητήρας σταματά πριν από
-//     το όριο και όσοι πελάτες δεν πρόλαβαν παίρνουν νέα προσπάθεια σε ένα
-//     λεπτό (`defer`), όχι την επόμενη νύχτα.
+//     το όριο και επιστρέφει `partial`. Τίποτα δεν προγραμματίζεται για
+//     αργότερα: η οθόνη του λογιστή ξαναπατά όσο είναι ανοιχτή η καρτέλα και
+//     κάθε πελάτης συνεχίζει από το σημείο συνέχισης (`resume`).
+//   · Ε2 (απόφαση ιδιοκτήτη 24/11/2026): ΤΟ ΚΛΕΙΔΙ ΔΕΝ ΦΥΛΑΣΣΕΤΑΙ ΠΟΥΘΕΝΑ. Τα
+//     διαπιστευτήρια έρχονται ως όρισμα, από το σώμα της κλήσης που ξεκίνησε ο
+//     ίδιος ο λογιστής, μπαίνουν μόνο στις κεφαλίδες της ΑΑΔΕ και δεν περνούν
+//     σε καμία μέθοδο του `Store`. Χωρίς πρόσωπο (`actor`) δεν τρέχει τίποτα.
 //   · ΤΙΠΟΤΑ ΔΕΝ ΧΑΝΕΤΑΙ ΣΙΩΠΗΛΑ: παραστατικό που η ανάγνωση δεν δέχτηκε μπαίνει
 //     σε καραντίνα, ο ΜΑΡΚ σταματά ΠΡΙΝ από αυτό (ή δεν προχωρά καθόλου, όταν
 //     ούτε ο ΜΑΡΚ του διαβάζεται), ο πελάτης φαίνεται «Θέλει έλεγχο» και
@@ -33,9 +38,17 @@ import {
   athensIso, maxMark, safeErrorCode, type ContinuationToken, type ErrorCode, type ParseError, type InvalidDoc,
 } from './mydata.ts'
 import { classifyDoc, type ClassifyRules, type ProviderHistory, type Reason } from './mydataClassify.ts'
-import { KIND_CATEGORY, providerByAfm } from '../../../lib/mydata/providers.ts'
+import { KIND_CATEGORY, providerName } from '../../../lib/mydata/providers.ts'
 
-export type SyncKind = 'manual' | 'auto' | 'nightly' | 'retry'
+/** Τα διαπιστευτήρια του λογιστή, μόνο για τη διάρκεια μιας κλήσης. */
+export interface Credentials {
+  aadeUserId: string
+  key: string
+}
+
+/** Ιδια μορφή με τον έλεγχο της συνάρτησης άκρου. */
+export const KEY_RE = /^[A-Za-z0-9]{16,200}$/
+export const USER_RE = /^\S{1,100}$/
 
 export interface Target {
   consentId: string
@@ -112,16 +125,15 @@ export interface IngestInput {
 
 /** Η βάση, όπως τη χρειάζεται ο κινητήρας. Κάθε μέθοδος ελέγχει μόνη της ό,τι γράφει. */
 export interface Store {
-  begin(accountantId: string, kind: SyncKind, actor: string | null): Promise<{ ok: true; lease: string } | { ok: false; reason: string; retryAt?: string | null }>
-  credentials(accountantId: string): Promise<{ aadeUserId: string; key: string } | null>
-  targets(accountantId: string, lease: string, kind: SyncKind): Promise<Target[]>
+  /** Μόνο χειροκίνητο τρέξιμο, που το ξεκινά ο ίδιος ο λογιστής (Ε2). */
+  begin(accountantId: string, actor: string): Promise<{ ok: true; lease: string } | { ok: false; reason: string; retryAt?: string | null }>
+  targets(accountantId: string, lease: string): Promise<Target[]>
   consentLive(consentId: string, lease: string): Promise<boolean>
   ingest(input: IngestInput): Promise<{ ok: boolean; added: number }>
-  /** Η βάση γράφει κατάσταση και, για παροδικό σφάλμα, πότε ξαναδοκιμάζεται (ίδιος κανόνας με το `nextRetryAt`). */
+  /** Η βάση γράφει την κατάσταση του πελάτη. */
   clientDone(lease: string, consentId: string, error: ErrorCode | null, added: number, more: boolean): Promise<void>
-  end(accountantId: string, lease: string, error: ErrorCode | null, added: number): Promise<void>
-  /** Νέα προσπάθεια σε ένα λεπτό για όσους δεν πρόλαβαν (null: όλοι του λογιστή). */
-  defer(accountantId: string, consentIds: string[] | null): Promise<void>
+  /** `partial`: έμειναν πελάτες ή σελίδες· το επόμενο πάτημα δεν περιμένει το όριο των 5 λεπτών. */
+  end(accountantId: string, lease: string, error: ErrorCode | null, added: number, partial: boolean): Promise<void>
   /**
    * Α2: τα επιβεβαιωμένα παραστατικά του πελάτη ανά ΑΦΜ εκδότη (πλήθος, μέσος
    * όρος, τελευταία κατηγορία). Χωρίς αυτό κανείς δεν είναι «γνωστός» και όλα
@@ -158,17 +170,8 @@ const REQUEST_TIMEOUT_MS = 25_000
 /** Ο κώδικας του σφάλματος ανάγνωσης που αξίζει ειδοποίηση σε εμάς. */
 export const ALERT_ON: ReadonlySet<ParseError> = new Set(['unexpected_root', 'unknown_element', 'invalid_token', 'doctype'])
 
-/** Τα παροδικά σφάλματα: ο πελάτης ξαναδοκιμάζεται μόνος του με αυξανόμενη αναμονή. */
+/** Τα παροδικά σφάλματα: ο λογιστής ξαναπατά σε λίγο (καμία αυτόματη επανάληψη, Ε2). */
 export const TRANSIENT: ReadonlySet<ErrorCode> = new Set(['rate', 'server', 'empty', 'network', 'timeout', 'unknown'])
-
-/**
- * Πότε ξαναδοκιμάζεται ένας πελάτης μετά από αποτυχίες στη σειρά: 15 λεπτά,
- * 30, 60, 120… ως 6 ώρες. Ο νυχτερινός συγχρονισμός τον ξαναπιάνει ούτως ή άλλως.
- */
-export function nextRetryAt(failures: number, now: Date): string {
-  const min = Math.min(15 * 2 ** Math.max(0, failures - 1), 360)
-  return new Date(now.getTime() + min * 60_000).toISOString()
-}
 
 export interface RunResult {
   ok: boolean
@@ -211,26 +214,22 @@ async function fetchPage(d: EngineDeps, url: string, headers: Record<string, str
  * Ενα τρέξιμο για έναν λογιστή. Επιστρέφει πάντα αποτέλεσμα· δεν πετά.
  * Κανένα μήνυμα εδώ δεν περιέχει κλειδί, ΑΦΜ ή σώμα απάντησης.
  */
-export async function runAccountant(d: EngineDeps, accountantId: string, kind: SyncKind, actor: string | null = null): Promise<RunResult> {
+export async function runAccountant(d: EngineDeps, accountantId: string, creds: Credentials | null, actor: string): Promise<RunResult> {
   const out: RunResult = { ok: false, clients: 0, added: 0, failed: 0, partial: false }
-  const begun = await d.store.begin(accountantId, kind, actor)
+  if (!actor) return { ...out, reason: 'no_actor' }
+  if (!creds || !USER_RE.test(creds.aadeUserId) || !KEY_RE.test(creds.key)) return { ...out, reason: 'no_key' }
+  const begun = await d.store.begin(accountantId, actor)
   if (!begun.ok) return { ...out, reason: begun.reason, retryAt: begun.retryAt ?? null }
   const lease = begun.lease
   let connError: ErrorCode | null = null
   try {
-    const creds = await d.store.credentials(accountantId)
-    if (!creds) { connError = 'no_key'; return { ...out, reason: 'no_key' } }
     const headers = aadeHeaders(creds.aadeUserId, creds.key)
-    const targets = await d.store.targets(accountantId, lease, kind)
+    const targets = await d.store.targets(accountantId, lease)
     let lastRequest = 0
 
     for (let ti = 0; ti < targets.length; ti++) {
       const t = targets[ti]
-      if (Date.now() > d.deadline - RESERVE_MS) {
-        out.partial = true
-        await d.store.defer(accountantId, targets.slice(ti).map(x => x.consentId))
-        break
-      }
+      if (Date.now() > d.deadline - RESERVE_MS) { out.partial = true; break }
       out.clients++
       let added = 0
       let error: ErrorCode | null = null
@@ -292,7 +291,7 @@ export async function runAccountant(d: EngineDeps, accountantId: string, kind: S
               correlated_mark: m.correlatedMark,
               tier: cat ? 'auto' : 'review', category: v.category,
               category_label: known?.label ?? null, expense_group: known?.group ?? null,
-              vendor: providerByAfm(m.counterpartAfm)?.name ?? null, reasons: v.reasons,
+              vendor: providerName(m.counterpartAfm, null), reasons: v.reasons,
             })
           }
           // Ο ΜΑΡΚ μετρά ΚΑΙ όσα δεν έγιναν δαπάνη: αλλιώς θα ζητιούνταν ξανά κάθε φορά.
@@ -347,6 +346,6 @@ export async function runAccountant(d: EngineDeps, accountantId: string, kind: S
     if (connError) out.reason = connError
     return out
   } finally {
-    await d.store.end(accountantId, lease, connError, out.added)
+    await d.store.end(accountantId, lease, connError, out.added, out.partial)
   }
 }

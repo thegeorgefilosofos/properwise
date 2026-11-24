@@ -25,13 +25,13 @@
 //
 // Χωρίς δίκτυο, χωρίς βάση, χωρίς ρολόι: τρέχει ίδια σε Deno και σε Node.
 // ═══════════════════════════════════════════════════════════════════════════
-import { providerByAfm, cleanAfm, kadNotProperty, KIND_CATEGORY, NOT_PROPERTY, type ProviderKind, type Provider } from '../../../lib/mydata/providers.ts'
+import { providerByAfm, providerKind, cleanAfm, kadNotProperty, KIND_CATEGORY, NOT_PROPERTY, type ProviderKind, type Provider } from '../../../lib/mydata/providers.ts'
 import { BANK_PAYMENT_LIMIT_CENTS, UNUSUAL_FACTOR } from '../../../lib/mydata/limits.ts'
 
 export type Tier = 'auto' | 'review' | 'reject'
 
 /** Οι λόγοι ελέγχου, με τη σειρά που τους λέει η οθόνη (ο πρώτος μετρά). */
-export const REASONS = ['over_limit', 'credit', 'amounts', 'unusual_amount', 'doc_type', 'new_provider', 'provider_unchecked', 'unknown_provider'] as const
+export const REASONS = ['over_limit', 'credit', 'amounts', 'unusual_amount', 'doc_type', 'new_provider', 'provider_unchecked', 'provider_kind', 'unknown_provider'] as const
 export type Reason = typeof REASONS[number]
 
 /**
@@ -91,7 +91,8 @@ export function classifyDoc(d: ClassifyDoc, history?: ProviderHistory | null, ru
   if (d.issuerKad && kadNotProperty(d.issuerKad)) return { tier: 'reject', kind: null, category: null, reasons: [] }
 
   const provider = (rules.registry ?? providerByAfm)(afm)
-  const kind = provider?.kind ?? null
+  // Πάροχοι 24/11/2026: ΕΝΑ δηλωμένο είδος, αλλιώς κανένα. Δεν μαντεύουμε.
+  const kind = providerKind(provider)
   const learned = history?.category && SLUG.test(history.category) ? history.category : null
   const category = kind ? KIND_CATEGORY[kind].slug : learned
   const seen = !!history && history.n > 0
@@ -107,6 +108,7 @@ export function classifyDoc(d: ClassifyDoc, history?: ProviderHistory | null, ru
   if (!seen) why.add('new_provider')
   if (!provider) why.add('unknown_provider')
   else if (provider.checkedAt === null) why.add('provider_unchecked')
+  if (provider && !kind) why.add('provider_kind')
 
   const reasons = REASONS.filter(r => why.has(r))
   return { tier: reasons.length ? 'review' : 'auto', kind, category, reasons }

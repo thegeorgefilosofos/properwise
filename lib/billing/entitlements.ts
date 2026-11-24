@@ -73,7 +73,8 @@ export type Feature =
   | 'bank_import'      // εισαγωγή κινήσεων τράπεζας από CSV
   | 'investment_analysis' // IRR / NPV / DSCR και ανάλυση ευαισθησίας
   | 'early_access'     // mobile app και νέες δυνατότητες, 15 ημέρες νωρίτερα
-  | 'foreclosure_protection'; // Προστασία ιδιοκτήτη (αναγκαστική εκτέλεση)
+  | 'foreclosure_protection' // Προστασία ιδιοκτήτη (αναγκαστική εκτέλεση)
+  | 'mydata_sync';     // Σύνδεση myDATA μέσω λογιστή
 
 // Ελάχιστο πλάνο ανά δυνατότητα.
 export const FEATURE_MIN_PLAN: Record<Feature, PlanId> = {
@@ -89,6 +90,11 @@ export const FEATURE_MIN_PLAN: Record<Feature, PlanId> = {
   // lib/legal/billingWords.ts (PROSTASIA_ACCESS). Δεν είναι γραμμή του πίνακα
   // των πακέτων (PlanMatrix): εκείνος δείχνει μόνο όσα γράφει ρητά.
   foreclosure_protection: 'owner',
+  // ΣΥΝΔΕΣΗ myDATA: απόφαση ιδιοκτήτη 24/11/2026, από το «Ιδιοκτήτης+». Κρίνεται
+  // για τον ιδιοκτήτη που δίνει την άδεια: η οθόνη με `hasFeature`, η βάση με
+  // `private.mydata_min_plan()` (ίδια τιμή, entitlements.test.ts) πριν από την
+  // άδεια και πριν από κάθε σελίδα της άντλησης. ΜΑΖΙ με τη σημαία, όχι αντί.
+  mydata_sync: 'owner',
   // ΤΟ ΜΗΤΡΩΟ ΛΕΕΙ Ο,ΤΙ ΕΠΙΒΑΛΛΕΙ Η ΟΘΟΝΗ, ΟΧΙ Ο,ΤΙ ΘΑ ΘΕΛΑΜΕ. Η εισαγωγή
   // κινήσεων τράπεζας και το ημερολόγιο άρθρων ζουν ήδη μέσα στη λογιστική του
   // επαγγελματία (TabAccounting: `mode === 'professional'`, διπλογραφικό). Αν
@@ -160,6 +166,7 @@ export const FEATURE_LABEL: Record<Feature, string> = {
   investment_analysis: 'Επενδυτική ανάλυση',
   early_access:        'Νέες δυνατότητες νωρίτερα',
   foreclosure_protection: 'Προστασία ιδιοκτήτη',
+  mydata_sync:         'Σύνδεση myDATA',
 };
 
 const rank = (p: PlanId): number => {

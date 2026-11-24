@@ -4,22 +4,33 @@
 // Η κάρτα του λογιστή, η γραμμή του πελάτη και τα Εισερχόμενα καλούν από εδώ.
 // Ολα τα γραψίματα περνούν από συναρτήσεις της βάσης που κρίνουν μόνες τους
 // ποιος ρωτά (20261123100000)· η εφαρμογή δεν γράφει ποτέ απευθείας στους
-// πίνακες myDATA. Το κλειδί του λογιστή περνά μία φορά προς τη συνάρτηση
-// άκρου και δεν επιστρέφει ποτέ.
+// πίνακες myDATA.
+//
+// Ε2 (απόφαση ιδιοκτήτη 24/11/2026): ΤΟ ΚΛΕΙΔΙ ΤΟΥ ΛΟΓΙΣΤΗ ΔΕΝ ΦΥΛΑΣΣΕΤΑΙ.
+// Το κρατά η κάρτα στη μνήμη της καρτέλας και το στέλνει στο σώμα κάθε
+// «Φέρε τώρα» προς τη συνάρτηση άκρου. Ποτέ σε κλήση της βάσης, ποτέ σε
+// αποθήκευση του φυλλομετρητή (scripts/guard-mydata-key.mjs).
 // ═══════════════════════════════════════════════════════════════════════════
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient, FunctionRegion } from '@supabase/supabase-js';
 import type { DbError } from '@/lib/supabase/writeResult';
 import type { MydataDocsRow } from '@/lib/supabase/tables';
 import { row as expenseRow, addRow, idByDedup } from './expenses';
 import type { ClientRow, Connection } from '@/lib/mydata/status';
 import { MYDATA_CONSENT_VERSION, MYDATA_CONSENT_HASH } from '@/lib/mydata/consentText';
+import { MYDATA_JOINT_VERSION } from '@/lib/legal/mydataJoint';
 
 export type Db = SupabaseClient;
 
 const FN = 'mydata-sync';
 
-/** Η σύνδεση του λογιστή, χωρίς κανένα μυστικό (δεν υπάρχει στον πίνακα). */
-export const CONNECTION_COLUMNS = 'aade_user_id,has_key,status,last_sync_at,last_sync_new,last_error_code,lease_id,lease_at,last_manual_at';
+/**
+ * Κ-6: η άντληση εκτελείται στη Φρανκφούρτη, στην ίδια περιοχή με τη βάση
+ * (Supabase, «Regional Invocations»: επιλογή `region` του `functions.invoke`).
+ */
+export const MYDATA_FN_REGION = 'eu-central-1';
+
+/** Η σύνδεση του λογιστή: κατάσταση και αποδοχή της ρύθμισης. Κανένα διαπιστευτήριο. */
+export const CONNECTION_COLUMNS = 'status,last_sync_at,last_sync_new,last_error_code,lease_id,lease_at,last_manual_at,joint_version,joint_at,last_partial';
 
 export async function connection(db: Db, accountantId: string): Promise<{ data: Connection | null; error: DbError | null }> {
   const { data, error } = await db.from('mydata_connections').select(CONNECTION_COLUMNS).eq('accountant_id', accountantId).maybeSingle();
@@ -39,7 +50,7 @@ export async function clientsStatus(db: Db): Promise<{ rows: ClientRow[]; error:
 interface FnAnswer { ok?: boolean; reason?: string; verified?: boolean; retryAt?: string | null; added?: number; failed?: number; partial?: boolean }
 
 async function invoke(db: Db, body: Record<string, unknown>): Promise<FnAnswer> {
-  const { data, error } = await db.functions.invoke(FN, { body });
+  const { data, error } = await db.functions.invoke(FN, { body, region: MYDATA_FN_REGION as FunctionRegion });
   if (data && typeof data === 'object') return data as FnAnswer;
   // Οι μη-2xx απαντήσεις φτάνουν ως σφάλμα· το σώμα τους κρατά τον κωδικό.
   const ctx = (error as { context?: Response } | null)?.context;
@@ -49,14 +60,23 @@ async function invoke(db: Db, body: Record<string, unknown>): Promise<FnAnswer> 
   return { ok: false, reason: 'network' };
 }
 
-/** «Σύνδεση»: η συνάρτηση δοκιμάζει το κλειδί στην ΑΑΔΕ και το φυλάει στο Vault. */
-export function connect(db: Db, aadeUserId: string, subscriptionKey: string): Promise<FnAnswer> {
-  return invoke(db, { action: 'connect', aadeUserId: aadeUserId.trim(), key: subscriptionKey.trim() });
+/** Τα διαπιστευτήρια, μόνο για τη διάρκεια μιας κλήσης. */
+export interface Creds { aadeUserId: string; key: string }
+
+/**
+ * «Φέρε τώρα». Η άντληση γίνεται μόνο όταν την ξεκινά ο λογιστής· το κλειδί
+ * πηγαίνει στο σώμα της κλήσης και η συνάρτηση το ξεχνά με το τέλος της.
+ * `partial`: έμειναν πελάτες ή σελίδες, η κάρτα ξαναπατά όσο είναι ανοιχτή.
+ */
+export function sync(db: Db, creds: Creds): Promise<FnAnswer> {
+  return invoke(db, { action: 'sync', aadeUserId: creds.aadeUserId.trim(), key: creds.key.trim() });
 }
 
-/** «Συγχρονισμός τώρα» (manual) ή ο αυτόματος των 12 ωρών (auto). */
-export function sync(db: Db, kind: 'manual' | 'auto'): Promise<FnAnswer> {
-  return invoke(db, { action: 'sync', kind });
+/** Ε-1: «Αποδέχομαι» τη ρύθμιση άρθρου 26 και τις δηλώσεις του γραφείου, με έκδοση και ώρα. */
+export async function acceptJoint(db: Db): Promise<{ ok: boolean; reason?: string; error: DbError | null }> {
+  const { data, error } = await db.rpc('mydata_joint_accept', { p_version: MYDATA_JOINT_VERSION });
+  const r = data as { ok?: boolean; reason?: string } | null;
+  return { ok: !error && r?.ok === true, reason: r?.reason ?? ((error as DbError | null)?.code === '42501' ? 'mfa_required' : undefined), error: error as DbError | null };
 }
 
 /**
@@ -67,12 +87,6 @@ export async function confirmAfm(db: Db, ownerId: string, afm: string): Promise<
   const { data, error } = await db.rpc('mydata_confirm_afm', { p_owner: ownerId, p_afm: afm.trim() });
   const r = data as { ok?: boolean; reason?: string } | null;
   return { ok: !error && r?.ok === true, reason: r?.reason, error: error as DbError | null };
-}
-
-/** «Αφαίρεση κλειδιού». Το μυστικό σβήνει και από το Vault. */
-export async function removeKey(db: Db): Promise<{ ok: boolean; error: DbError | null }> {
-  const { data, error } = await db.rpc('mydata_key_remove');
-  return { ok: !error && (data as { ok?: boolean } | null)?.ok === true, error: error as DbError | null };
 }
 
 // ── Η πλευρά του πελάτη ────────────────────────────────────────────────────
@@ -119,6 +133,17 @@ export async function revoke(db: Db, accountantId: string): Promise<{ ok: boolea
 
 export interface LogRow { at: string; action: string; n: number | null }
 
+/**
+ * Ε-9: το αρχείο πρόσβασης του λογιστή για όλους τους πελάτες του, για εξαγωγή
+ * (κοινό εργαλείο λογοδοσίας των από κοινού υπευθύνων). Η RLS δίνει μόνο τις
+ * δικές του γραμμές και μόνο με δεύτερο βήμα. Ο διακομιστής κόβει στις 1.000.
+ */
+export async function accountantAccessLog(db: Db, accountantId: string): Promise<{ rows: (LogRow & { afm: string | null })[]; error: DbError | null }> {
+  const { data, error } = await db.from('mydata_access_log').select('at,action,afm,n')
+    .eq('accountant_id', accountantId).order('at', { ascending: false }).limit(1000);
+  return { rows: (data as (LogRow & { afm: string | null })[] | null) ?? [], error: error as DbError | null };
+}
+
 /** Το ιστορικό πρόσβασης που βλέπει ο πελάτης: τα τελευταία, πιο πρόσφατα πρώτα. */
 export async function accessLog(db: Db, clientId: string, limit = 8): Promise<{ rows: LogRow[]; error: DbError | null }> {
   const { data, error } = await db.from('mydata_access_log').select('at,action,n')
@@ -128,7 +153,7 @@ export async function accessLog(db: Db, clientId: string, limit = 8): Promise<{ 
 
 // ── Τα Εισερχόμενα: «Για έλεγχο» ──────────────────────────────────────────
 
-export const DOC_COLUMNS = 'id,mark,counterpart_afm,counterpart_name,doc_type,issue_date,title,net_cents,vat_cents,gross_cents,is_credit,tier,category,review_reasons,needs_attention';
+export const DOC_COLUMNS = 'id,mark,counterpart_afm,counterpart_name,doc_type,issue_date,title,net_cents,vat_cents,gross_cents,is_credit,tier,category,review_reasons,needs_attention,fetched_at';
 // Το `id` έχει προεπιλογή στη βάση, άρα ο παραγόμενος τύπος το δηλώνει κενό·
 // σε γραμμή που διαβάστηκε υπάρχει πάντα.
 // Α2: `tier`, `category` (προσυμπληρωμένη) και `review_reasons` (κωδικοί) τα
@@ -139,7 +164,7 @@ export const DOC_COLUMNS = 'id,mark,counterpart_afm,counterpart_name,doc_type,is
 type Filled = 'counterpart_afm' | 'doc_type' | 'issue_date' | 'title' | 'net_cents' | 'vat_cents' | 'gross_cents';
 export type PendingDoc = { id: string } & { [K in Filled]: NonNullable<MydataDocsRow[K]> }
   & Pick<MydataDocsRow, 'mark' | 'counterpart_name' | 'is_credit'>
-  & Partial<Pick<MydataDocsRow, 'tier' | 'category' | 'review_reasons' | 'needs_attention'>>;
+  & Partial<Pick<MydataDocsRow, 'tier' | 'category' | 'review_reasons' | 'needs_attention' | 'fetched_at'>>;
 
 export async function pendingDocs(db: Db, clientId: string, limit = 50): Promise<{ rows: PendingDoc[]; error: DbError | null }> {
   const { data, error } = await db.from('mydata_docs').select(DOC_COLUMNS)

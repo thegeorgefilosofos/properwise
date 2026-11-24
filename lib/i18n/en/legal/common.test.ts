@@ -32,11 +32,17 @@ ok(`ίδιο πλήθος ενοτήτων με την ελληνική (${elSec
 
 const termsAll = JSON.stringify(termsSectionsEn()) + termsDisclaimerEn()
 ok('οι Όροι χωρίς ελληνικούς χαρακτήρες', !GREEK.test(termsAll))
-const elTerms = (readFileSync('app/terms/page.tsx', 'utf8').match(/\{ h: '/g) ?? []).length
+// Ιδιος κανόνας για τις ενότητες των Όρων πίσω από σημαία («Σύνδεση myDATA»).
+const elTermsSrc = readFileSync('app/terms/page.tsx', 'utf8')
+const enTermsSrc = readFileSync('lib/i18n/en/legal/terms.ts', 'utf8')
+ok('Όροι: οι ενότητες πίσω από σημαία είναι ίδιες στις δύο γλώσσες', JSON.stringify(gatedIn(elTermsSrc)) === JSON.stringify(gatedIn(enTermsSrc)))
+const elTerms = (elTermsSrc.match(/\{ h: '/g) ?? []).length - gatedIn(elTermsSrc).filter(f => !onFlags.has(f) && !(f === 'MYDATA_ON' && MYDATA_ON)).length
 ok(`Όροι: ίδιο πλήθος ενοτήτων με την ελληνική (${elTerms})`, termsSectionsEn().length === elTerms)
 // Οι άγκυρες που παραπέμπουν άλλες σελίδες (#ypanachorisi, #systaseis…) μένουν ίδιες.
-const ids = (src: string) => [...src.matchAll(/id: '([a-z-]+)'/g)].map(m => m[1]).join(',')
-ok('Όροι: ίδιες άγκυρες με την ελληνική', ids(readFileSync('app/terms/page.tsx', 'utf8')) === termsSectionsEn().filter(s => s.id).map(s => s.id).join(','))
+// Οι άγκυρες των ενοτήτων πίσω από σημαία μετρούν μόνο με τη σημαία ανοιχτή.
+const GATED_IDS = new Set(MYDATA_ON ? [] : ['mydata-grafeia', 'mydata-diloseis'])
+const ids = (src: string) => [...src.matchAll(/id: '([a-z-]+)'/g)].map(m => m[1]).filter(i => !GATED_IDS.has(i)).join(',')
+ok('Όροι: ίδιες άγκυρες με την ελληνική', ids(elTermsSrc) === termsSectionsEn().filter(s => s.id).map(s => s.id).join(','))
 
 console.log(fail === 0 ? `✓ en legal: ${pass} έλεγχοι πέρασαν` : `✗ en legal: ${fail} απέτυχαν από ${pass + fail}`)
 if (fail > 0) process.exit(1)

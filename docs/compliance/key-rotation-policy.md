@@ -15,6 +15,7 @@ tooling beyond the dashboards you already have.
 | `ANTHROPIC_API_KEY` | Edge Function secret | 12 months | Revoke in console, replace |
 | Cron secrets (`email_cron`, …) | `cron_secrets` table (RLS deny-all) | 12 months | `update` the row |
 | `BACKUP_PASSPHRASE` | GitHub Actions secret | 12 months | Rotate; note old backups need the old passphrase |
+| Accountants' myDATA REST API keys (third-party) | **Not stored anywhere** (Ε2, 24/11/2026): only in the accountant's browser tab and in the body of the call that uses it | n/a: issued by AADE to the accountant, who rotates it in his own registration | We set `MYDATA_SYNC_ENABLED=0`; the accountant deletes his myDATA REST API registration (AADE FAQ «Εξουσιοδοτήσεις», q. 5) and registers again. Procedure: `data-retention-and-incidents.md` §2α |
 
 ## Procedure (no downtime)
 1. Mint the **new** secret in the provider dashboard.

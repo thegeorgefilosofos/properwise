@@ -2,7 +2,8 @@
 // ΟΙ ΣΚΗΝΕΣ ΤΟΥ myDATA ΓΙΑ ΤΟΝ ΠΑΓΚΟ: ΚΑΘΕ ΟΨΗ, ΟΧΙ ΜΟΝΟ Η ΚΑΛΗ
 // ─────────────────────────────────────────────────────────────────────────
 // Η κάρτα του λογιστή (app/accountant/workspace/MydataCard.tsx) σε έξι όψεις
-// (και «θέλει δεύτερο βήμα»), η γραμμή του πελάτη στον Λογαριασμό
+// (και «θέλει δεύτερο βήμα»· `mydataNone` είναι η ρύθμιση άρθρου 26 πριν από
+// την πρώτη άντληση, Ε-1), η γραμμή του πελάτη στον Λογαριασμό
 // (MydataConsent.tsx) σε πέντε (και με το πλήρες κείμενο της συναίνεσης και με
 // δύο λογιστές) και τα Εισερχόμενα «Από το myDATA» (MydataInbox.tsx): για
 // έλεγχο (νέος ή ανεπιβεβαίωτος πάροχος, άγνωστος, πιστωτικό, «Πώς
@@ -23,6 +24,7 @@ import { Card } from '@/components/Theme';
 import { portalWrap } from '@/app/accountant/Chrome';
 import { createClient } from '@/lib/supabase/client';
 import { PROVIDERS } from '@/lib/mydata/providers';
+import { MYDATA_JOINT_VERSION } from '@/lib/legal/mydataJoint';
 
 const SYNCED = '2026-11-23T01:10:00Z';
 const LEASE = new Date(Date.now() - 60_000).toISOString();
@@ -56,14 +58,15 @@ const CLIENTS: Record<string, Row[]> = {
 
 const CONNECTION: Record<string, Row | null> = {
   mydataNone: null,
-  mydataRejected: { aade_user_id: 'grafeio.logistiko', has_key: true, status: 'invalid', last_sync_at: SYNCED, last_sync_new: 4, last_error_code: 'auth', lease_id: null, lease_at: null, last_manual_at: null },
-  mydataSyncing: { aade_user_id: 'grafeio.logistiko', has_key: true, status: 'active', last_sync_at: SYNCED, last_sync_new: 12, last_error_code: null, lease_id: 'l1', lease_at: LEASE, last_manual_at: LEASE },
-  mydataReady: { aade_user_id: 'grafeio.logistiko', has_key: true, status: 'active', last_sync_at: new Date(Date.now() - 3600_000).toISOString(), last_sync_new: 148, last_error_code: null, lease_id: null, lease_at: null, last_manual_at: null },
-  mydataDown: { aade_user_id: 'grafeio.logistiko', has_key: true, status: 'active', last_sync_at: new Date(Date.now() - 3600_000).toISOString(), last_sync_new: 0, last_error_code: null, lease_id: null, lease_at: null, last_manual_at: null },
+  mydataRejected: { status: 'active', last_sync_at: SYNCED, last_sync_new: 4, last_error_code: 'auth', lease_id: null, lease_at: null, last_manual_at: null, joint_version: MYDATA_JOINT_VERSION, joint_at: '2026-11-24T08:00:00Z', last_partial: false },
+  mydataSyncing: { status: 'active', last_sync_at: SYNCED, last_sync_new: 12, last_error_code: null, lease_id: 'l1', lease_at: LEASE, last_manual_at: LEASE, joint_version: MYDATA_JOINT_VERSION, joint_at: '2026-11-24T08:00:00Z', last_partial: false },
+  mydataReady: { status: 'active', last_sync_at: new Date(Date.now() - 3600_000).toISOString(), last_sync_new: 148, last_error_code: null, lease_id: null, lease_at: null, last_manual_at: null, joint_version: MYDATA_JOINT_VERSION, joint_at: '2026-11-24T08:00:00Z', last_partial: false },
+  mydataDown: { status: 'active', last_sync_at: new Date(Date.now() - 3600_000).toISOString(), last_sync_new: 0, last_error_code: null, lease_id: null, lease_at: null, last_manual_at: null, joint_version: MYDATA_JOINT_VERSION, joint_at: '2026-11-24T08:00:00Z', last_partial: false },
 };
 
 const CONSENT: Record<string, Row | null> = {
   mydataConsentNone: null,
+  mydataConsentPlan: null,
   mydataConsent: { accountantId: 'a1', windowFrom: '2025-01-01', grantedAt: '2026-11-20T09:00:00Z', status: 'ok', lastSyncAt: SYNCED, lastNew: 12, error: null, nextRetryAt: null },
   mydataConsentDenied: { accountantId: 'a1', windowFrom: '2026-01-01', grantedAt: '2026-11-20T09:00:00Z', status: 'forbidden', lastSyncAt: '2026-11-22T01:10:00Z', lastNew: 0, error: 'forbidden', nextRetryAt: null },
   mydataConsentPaused: { accountantId: 'a1', windowFrom: '2025-01-01', grantedAt: '2026-05-20T09:00:00Z', status: 'paused', lastSyncAt: '2026-11-16T01:10:00Z', lastNew: 2, error: null, nextRetryAt: null },
@@ -78,14 +81,14 @@ const LOG = [
 
 // Α2: τα επίπεδα. Οι πάροχοι του μητρώου (lib/mydata/providers.ts) φαίνονται με
 // το όνομά τους· ο άγνωστος με την επωνυμία του, ή «ΑΦΜ …» όταν δεν τη στέλνει.
-const POWER = PROVIDERS.find(p => p.kind === 'electricity')!;
-const WATER = PROVIDERS.find(p => p.kind === 'water')!;
-const PHONE = PROVIDERS.find(p => p.kind === 'telecom')!;
+const POWER = PROVIDERS.find(p => p.afm === '090000045')!;
+const WATER = PROVIDERS.find(p => p.afm === '094079101')!;
+const PHONE = PROVIDERS.find(p => p.afm === '094019245')!;
 const DOCS = [
   { id: 'd1', mark: 400001000000101, counterpart_afm: POWER.afm, counterpart_name: null, doc_type: '2.1', issue_date: '2026-11-02', title: 'Τιμολόγιο Παροχής Υπηρεσιών Α 101', net_cents: 10000, vat_cents: 2400, gross_cents: 12400, is_credit: false,
     tier: 'review', category: 'electricity', review_reasons: ['new_provider', 'provider_unchecked'] },
   { id: 'd2', mark: 400001000000102, counterpart_afm: '099000049', counterpart_name: 'Υδραυλικές Εργασίες Παραδείγματος', doc_type: '1.1', issue_date: '2026-11-15', title: 'Τιμολόγιο Πώλησης ΤΠΥ 7', net_cents: 7137, vat_cents: 1713, gross_cents: 8850, is_credit: false,
-    tier: 'review', category: 'plumber', review_reasons: ['unknown_provider'] },
+    tier: 'review', category: 'plumber', review_reasons: ['unknown_provider'], fetched_at: new Date(Date.now() - 80 * 86_400_000).toISOString() },
   { id: 'd3', mark: 400001000000110, counterpart_afm: POWER.afm, counterpart_name: null, doc_type: '5.1', issue_date: '2026-11-20', title: 'Πιστωτικό Τιμολόγιο ΠΙΣ 3', net_cents: 1000, vat_cents: 240, gross_cents: 1240, is_credit: true,
     tier: 'review', category: 'electricity', review_reasons: ['credit', 'doc_type'] },
   { id: 'd4', mark: 400001000000120, counterpart_afm: WATER.afm, counterpart_name: null, doc_type: '11.2', issue_date: '2026-10-28', title: 'Απόδειξη Παροχής Υπηρεσιών Β 55', net_cents: 123450, vat_cents: 0, gross_cents: 123450, is_credit: false,
@@ -150,7 +153,9 @@ export function mydataRpc(which: string, fn: string): { data: unknown; error: { 
 const supabase = createClient();
 const portal = (node: React.ReactNode) => <div style={{ ...portalWrap, paddingTop: 24, paddingBottom: 48 }}>{node}</div>;
 const card = () => portal(<MydataCard db={supabase} userId="u1" />);
-const consent = () => <Card><SetList><MydataConsent userId="u1" /></SetList></Card>;
+const consent = () => <Card><SetList><MydataConsent userId="u1" allowed /></SetList></Card>;
+// Πακέτο χωρίς τη Σύνδεση myDATA (από το «Ιδιοκτήτης+», 24/11/2026).
+const consentLocked = () => <Card><SetList><MydataConsent userId="u1" /></SetList></Card>;
 
 export const MYDATA_VIEWS: Record<string, () => React.ReactElement> = {
   mydataNone: card,
@@ -166,6 +171,7 @@ export const MYDATA_VIEWS: Record<string, () => React.ReactElement> = {
   mydataConsentPaused: consent,
   // Θωράκιση: με δύο λογιστές φαίνεται η «Αλλαγή λογιστή».
   mydataConsentTwo: consent,
+  mydataConsentPlan: consentLocked,
   mydataInboxCancelled: () => <MydataInbox propertyId="p0" userId="u1" />,
   mydataInbox: () => <MydataInbox propertyId="p0" userId="u1" />,
   // Α2: δύο ακίνητα, άρα και επιλογή ακινήτου στην κάρτα.

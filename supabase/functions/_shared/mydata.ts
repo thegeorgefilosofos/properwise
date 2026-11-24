@@ -30,7 +30,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { MYDATA_API_DEV, MYDATA_API_PROD, MYDATA_INVOICE_NS } from '../../../lib/tax/aade.ts'
-import { shouldAutoSync, AUTO_SYNC_HOURS } from '../../../lib/mydata/autoSync.ts'
 
 /** Ο χώρος ονομάτων του σχήματος παραστατικών της ΑΑΔΕ (lib/tax/aade.ts). */
 export const INV_NS = MYDATA_INVOICE_NS
@@ -610,10 +609,6 @@ export function retryDelayMs(attempt: number, retryAfter: string | null, rand = 
   if (retryAfter !== null && /^\d{1,6}$/.test(retryAfter.trim())) return Math.min(Number(retryAfter.trim()), 60) * 1000 + jitter
   return Math.min(1000 * 2 ** Math.max(0, attempt), 30_000) + jitter
 }
-
-// ═══ 5. Ο ΚΑΝΟΝΑΣ ΤΩΝ 12 ΩΡΩΝ ═══════════════════════════════════════════════
-// Ζει στο lib/mydata/autoSync.ts, γιατί τον ρωτά και η οθόνη του λογιστή.
-export { shouldAutoSync, AUTO_SYNC_HOURS }
 
 // ═══ 6. ΠΕΡΙΒΑΛΛΟΝ, ΗΜΕΡΟΜΗΝΙΕΣ, ΑΙΤΗΜΑ ═════════════════════════════════════
 

@@ -10,9 +10,9 @@
 // v2.0.2, RequestedDoc / AadeBookInvoiceType / CancelledInvoiceType) και
 // επικυρωμένα με `xmllint --schema requestedInvoicesDoc-v2.0.2.xsd` πριν
 // μπουν εδώ. Τα ΑΦΜ είναι δοκιμαστικά με σωστό ψηφίο ελέγχου, κανένα πραγματικό.
-import { readFileSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import {
-  parseRequestedDoc, toInboxDoc, amountToCents, classifyHttp, retryDelayMs, shouldAutoSync,
+  parseRequestedDoc, toInboxDoc, amountToCents, classifyHttp, retryDelayMs,
   mydataBase, requestDocsUrl, aadeDate, firstWindowStart, maxMark, EXPENSE_TYPES, CREDIT_TYPES,
   MAX_XML_BYTES, safeErrorCode, probeUrl, aadeHeaders,
 } from './mydata.ts'
@@ -240,14 +240,10 @@ ok('τυχαία διασπορά έως 250ms', retryDelayMs(0, null, 0.999) >=
 ok('γνωστός κωδικός περνά', safeErrorCode('rate') === 'rate')
 ok('ελεύθερο κείμενο γίνεται «unknown»', safeErrorCode('Ocp-Apim-Subscription-Key abc123 invalid') === 'unknown')
 
-// ── 7. Ο ΚΑΝΟΝΑΣ ΤΩΝ 12 ΩΡΩΝ ────────────────────────────────────────────────────
-const now = new Date('2026-11-23T10:00:00Z')
-ok('ποτέ συγχρονισμένο: τρέχει', shouldAutoSync(null, now))
-ok('πριν 11 ώρες και 59 λεπτά: όχι', !shouldAutoSync('2026-11-22T22:01:00Z', now))
-ok('πριν ακριβώς 12 ώρες: τρέχει', shouldAutoSync('2026-11-22T22:00:00Z', now))
-ok('πριν 3 ημέρες: τρέχει', shouldAutoSync('2026-11-20T10:00:00Z', now))
-ok('ημερομηνία στο μέλλον (ρολόι): όχι', !shouldAutoSync('2026-11-23T11:00:00Z', now))
-ok('σκουπίδι: τρέχει (καλύτερα ένας συγχρονισμός παραπάνω)', shouldAutoSync('not-a-date', now))
+// ── 7. Ε2: ΚΑΝΕΝΑΣ ΑΥΤΟΜΑΤΟΣ ΚΑΝΟΝΑΣ ────────────────────────────────────────────
+// Η άντληση γίνεται μόνο όταν την ξεκινά ο λογιστής (απόφαση ιδιοκτήτη 24/11/2026).
+// Ο κανόνας των 12 ωρών δεν υπάρχει πια, ούτε εδώ ούτε στην οθόνη.
+ok('Ε2: κανένας κανόνας αυτόματου συγχρονισμού', !existsSync('lib/mydata/autoSync.ts') && !readFileSync('supabase/functions/_shared/mydata.ts', 'utf8').includes('AutoSync'))
 
 // ── 8. ΤΟ ΠΕΡΙΒΑΛΛΟΝ ΚΑΙ ΤΟ ΑΙΤΗΜΑ ──────────────────────────────────────────────
 ok('χωρίς ρύθμιση: δοκιμαστικό, ποτέ παραγωγή', mydataBase(undefined, undefined) === 'https://mydataapidev.aade.gr')

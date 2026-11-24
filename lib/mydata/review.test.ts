@@ -13,7 +13,7 @@ import { fe } from '../core/format';
 let pass = 0, fail = 0;
 const ok = (name: string, cond: boolean) => { if (cond) pass++; else { fail++; console.error('✗ ' + name); } };
 
-const POWER = PROVIDERS.find(p => p.kind === 'electricity')!;
+const POWER = PROVIDERS.find(p => p.afm === '090000045')!;
 
 ok('όριο: η πρόταση γράφει το ποσό από τη σταθερά', (reviewLine(['over_limit']) ?? '').includes(fe(BANK_PAYMENT_LIMIT_CENTS / 100)));
 ok('όριο: προηγείται του νέου παρόχου', (reviewLine(['new_provider', 'over_limit']) ?? '').includes(fe(BANK_PAYMENT_LIMIT_CENTS / 100)));
@@ -32,7 +32,7 @@ ok('δύο ακίνητα: ζητά ακίνητο', /ακίνητο/.test(revie
 ok('ασυνήθιστο ποσό: διπλάσιο', /διπλάσιο/.test(reviewLine(['unusual_amount']) ?? ''));
 ok('κανένας λόγος: καμία πρόταση', reviewLine([]) === null);
 ok('άγνωστος κωδικός: αγνοείται', reviewLine(['drop_table']) === null);
-for (const r of ['over_limit', 'credit', 'amounts', 'unusual_amount', 'doc_type', 'new_provider', 'provider_unchecked', 'unknown_provider', 'pick_property']) {
+for (const r of ['over_limit', 'credit', 'amounts', 'unusual_amount', 'doc_type', 'new_provider', 'provider_unchecked', 'provider_kind', 'unknown_provider', 'pick_property']) {
   const line = reviewLine([r]) ?? '';
   ok(`${r}: μία πρόταση`, line.length > 10 && line.length < 140);
   ok(`${r}: χωρίς κόμμα πριν από «και»`, !/,\sκαι\s/.test(line));
@@ -61,7 +61,8 @@ ok('πληρωμή: καμία επιλογή δεν λέει «εκπίπτει
   ok('πληρωμή: άκυρη ημερομηνία δεν περνά', paymentFields('bank', '30/11/2026').paid_on === null);
 }
 
-ok('κατηγορία: από το μητρώο', suggestedCategory({ counterpart_afm: POWER.afm, counterpart_name: null, category: null }) === KIND_CATEGORY.electricity.slug);
+// Πάροχοι 24/11/2026: το μητρώο δεν δηλώνει ακόμη είδος, οπότε δεν προτείνει κατηγορία.
+ok('κατηγορία: μητρώο χωρίς είδος δεν μαντεύει', suggestedCategory({ counterpart_afm: POWER.afm, counterpart_name: null, category: null }) !== KIND_CATEGORY.electricity.slug || POWER.kinds.length === 1);
 ok('κατηγορία: από τη βάση (τελευταία επιλογή)', suggestedCategory({ counterpart_afm: '099000049', counterpart_name: null, category: 'plumber' }) === 'plumber');
 ok('κατηγορία: η βάση πριν από το μητρώο', suggestedCategory({ counterpart_afm: POWER.afm, counterpart_name: null, category: 'repair' }) === 'repair');
 ok('κατηγορία: από το όνομα του εκδότη', suggestedCategory({ counterpart_afm: '099000049', counterpart_name: 'Υδραυλικός Παπαδόπουλος', category: null }) === 'plumber');

@@ -11,7 +11,7 @@
 //   · ΑΠΟΡΡΙΨΗ ο εκδότης της λίστας «δεν αφορά ακίνητα». Δεν αποθηκεύεται.
 //   · ΟΛΑ ΤΑ ΑΛΛΑ για έλεγχο, με τον λόγο ως κωδικό.
 import { classifyDoc, type ClassifyDoc } from './mydataClassify.ts'
-import { PROVIDERS, NOT_PROPERTY, providerByAfm, KIND_CATEGORY } from '../../../lib/mydata/providers.ts'
+import { PROVIDERS, NOT_PROPERTY, providerByAfm, KIND_CATEGORY, type ProviderKind } from '../../../lib/mydata/providers.ts'
 import { BANK_PAYMENT_LIMIT_CENTS, UNUSUAL_FACTOR } from '../../../lib/mydata/limits.ts'
 
 let pass = 0, fail = 0
@@ -20,8 +20,12 @@ const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 
 // Ο πρώτος πάροχος ρεύματος του μητρώου. Οι δοκιμές δεν γράφουν ΑΦΜ με το χέρι:
 // διαβάζουν το μητρώο, ώστε μια διόρθωσή του να μη χρειάζεται δεύτερη αλλαγή εδώ.
-const POWER = PROVIDERS.find(p => p.kind === 'electricity')!
-const WATER = PROVIDERS.find(p => p.kind === 'water')!
+// Πάροχοι 24/11/2026: τα είδη τα συμπληρώνει ο ιδιοκτήτης (`kinds: []` ως τότε).
+// Οι ενότητες 1 έως 9 κρίνουν τους κανόνες με αντίγραφο όπου η ΔΕΗ είναι ρεύμα
+// και η ΕΥΔΑΠ νερό, όπως θα είναι όταν τα δηλώσει άνθρωπος.
+const TEST_KINDS: Record<string, ProviderKind[]> = { '090000045': ['electricity'], '094079101': ['water'] }
+const POWER = { ...PROVIDERS.find(p => p.afm === '090000045')!, kinds: TEST_KINDS['090000045'] }
+const WATER = { ...PROVIDERS.find(p => p.afm === '094079101')!, kinds: TEST_KINDS['094079101'] }
 const UNKNOWN_AFM = '099000049'
 
 const doc = (p: Partial<ClassifyDoc> = {}): ClassifyDoc => ({
@@ -34,7 +38,7 @@ const seen = { n: 3, avgCents: 9000 }
 // (`checkedAt`). Σήμερα το μητρώο δεν έχει κανέναν, οπότε οι ενότητες 1 έως 9
 // κρίνουν τους κανόνες με ένα αντίγραφο του μητρώου «επιβεβαιωμένο». Η
 // ενότητα 10 κρίνει το πραγματικό μητρώο.
-const CHECKED = { registry: (afm: string) => { const p = providerByAfm(afm); return p ? { ...p, checkedAt: '2026-11-24' } : null } }
+const CHECKED = { registry: (afm: string) => { const p = providerByAfm(afm); return p ? { ...p, kinds: TEST_KINDS[p.afm] ?? p.kinds, checkedAt: '2026-11-24' } : null } }
 const cd = (d: ClassifyDoc, h?: Parameters<typeof classifyDoc>[1], r: Parameters<typeof classifyDoc>[2] = {}) => classifyDoc(d, h, { ...CHECKED, ...r })
 
 // ── 0. ΤΟ ΜΗΤΡΩΟ ΥΠΑΡΧΕΙ ΚΑΙ ΤΟ ΒΡΙΣΚΕΙ Η ΑΝΑΖΗΤΗΣΗ ────────────────────────────
@@ -138,8 +142,20 @@ ok('0: το όριο είναι σε λεπτά, θετικό', Number.isInteger
   const v = classifyDoc(doc(), seen)
   ok('10: πάροχος με checkedAt null: για έλεγχο', v.tier === 'review')
   ok('10: λόγος provider_unchecked', v.reasons.includes('provider_unchecked'))
-  ok('10: η κατηγορία μένει προσυμπληρωμένη', v.category === KIND_CATEGORY.electricity.slug)
-  ok('10: σήμερα κανένας πάροχος του μητρώου δεν είναι αυτόματος', PROVIDERS.every(p => classifyDoc(doc({ counterpartAfm: p.afm }), seen).tier === 'review'))
+  ok('10: χωρίς δηλωμένο είδος, καμία κατηγορία από το μητρώο (δεν μαντεύουμε)', v.category === null)
+  // Πάροχοι 24/11/2026: πάροχος χωρίς ΕΝΑ δηλωμένο είδος δεν καταχωρείται μόνος του,
+// ακόμη κι αν τον έχει ελέγξει άνθρωπος. Η αυτόματη καταχώρηση δεν μαντεύει είδος.
+{
+  const reg = (kinds: ProviderKind[]) => ({ registry: (afm: string) => afm === POWER.afm ? { ...POWER, kinds, checkedAt: '2026-11-24' } : null })
+  const none = classifyDoc(doc(), seen, reg([]))
+  ok('10β: πάροχος χωρίς είδος: για έλεγχο, με λόγο', none.tier === 'review' && none.kind === null && none.reasons.includes('provider_kind'))
+  const two = classifyDoc(doc(), seen, reg(['electricity', 'gas']))
+  ok('10β: ρεύμα και αέριο: για έλεγχο, χωρίς κατηγορία από το μητρώο', two.tier === 'review' && two.kind === null && two.category === null && two.reasons.includes('provider_kind'))
+  ok('10β: άγνωστος πάροχος δεν παίρνει provider_kind', !classifyDoc(doc({ counterpartAfm: UNKNOWN_AFM }), seen).reasons.includes('provider_kind'))
+  const old = classifyDoc(doc({ counterpartAfm: '998283692' }), seen)
+  ok('10β: παλιό ΑΦΜ (Watt+Volt) αναγνωρίζεται ως πάροχος του μητρώου', !old.reasons.includes('unknown_provider'))
+}
+ok('10: σήμερα κανένας πάροχος του μητρώου δεν είναι αυτόματος', PROVIDERS.every(p => classifyDoc(doc({ counterpartAfm: p.afm }), seen).tier === 'review'))
   ok('10: άγνωστος πάροχος δεν παίρνει provider_unchecked', !classifyDoc(doc({ counterpartAfm: UNKNOWN_AFM }), seen).reasons.includes('provider_unchecked'))
 }
 

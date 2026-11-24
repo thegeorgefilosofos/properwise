@@ -1602,7 +1602,7 @@ export interface MydataAfmConfirmationsRow {
 
 export interface MydataConnectionsRow {
   accountant_id: string | null;
-  aade_user_id: string;
+  aade_user_id: string | null;
   has_key: boolean;
   status: string;
   last_sync_at: string | null;
@@ -1612,15 +1612,19 @@ export interface MydataConnectionsRow {
   lease_at: string | null;
   lease_kind: string | null;
   lease_actor: string | null;
+  lease_parser: string | null;
   last_manual_at: string | null;
   created_at: string;
   updated_at: string;
+  joint_version: string | null;
+  joint_at: string | null;
+  last_partial: boolean | null;
 }
 
 export interface MydataConsentsRow {
   id: string | null;
   client_id: string;
-  accountant_id: string;
+  accountant_id: string | null;
   afm: string;
   window_from: string;
   granted_at: string;

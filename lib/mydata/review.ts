@@ -14,10 +14,10 @@
 import { fe } from '@/lib/core/format';
 import { BY_SLUG, resolveCategory } from '@/lib/expenses/taxonomy';
 import { BANK_PAYMENT_LIMIT_CENTS, UNUSUAL_FACTOR } from './limits';
-import { KIND_CATEGORY, providerByAfm, providerName } from './providers';
+import { KIND_CATEGORY, providerByAfm, providerKind, providerName } from './providers';
 
 /** Η σειρά σημασίας: ο πρώτος λόγος που υπάρχει γίνεται η πρόταση της κάρτας. */
-const ORDER = ['credit', 'over_limit', 'amounts', 'pick_property', 'unusual_amount', 'doc_type', 'unknown_provider', 'provider_unchecked', 'new_provider'] as const;
+const ORDER = ['credit', 'over_limit', 'amounts', 'pick_property', 'unusual_amount', 'doc_type', 'unknown_provider', 'provider_unchecked', 'provider_kind', 'new_provider'] as const;
 
 const times = UNUSUAL_FACTOR === 2 ? 'το διπλάσιο' : `${UNUSUAL_FACTOR} φορές`;
 
@@ -30,6 +30,7 @@ const LINE: Record<typeof ORDER[number], string> = {
   doc_type: 'Ασυνήθιστος τύπος παραστατικού για λογαριασμό. Έλεγξέ το μία φορά.',
   unknown_provider: 'Δεν είναι στους γνωστούς παρόχους ακινήτου. Καταχώρησέ το μόνο αν αφορά το ακίνητο.',
   provider_unchecked: 'Γνωστός πάροχος που δεν έχει επιβεβαιωθεί ακόμη. Έλεγξε ποσό και ακίνητο.',
+  provider_kind: 'Ο πάροχος τιμολογεί περισσότερα από ένα είδη. Διάλεξε κατηγορία.',
   new_provider: 'Πρώτη φορά από αυτόν τον πάροχο για αυτό το ακίνητο. Έλεγξε ποσό και ακίνητο.',
 };
 
@@ -88,7 +89,7 @@ export function paymentFields(answer: PaymentAnswer | null, date: string): { pai
  */
 export function suggestedCategory(d: { counterpart_afm: string; counterpart_name: string | null; category: string | null }): string {
   if (d.category && BY_SLUG[d.category]) return d.category;
-  const kind = providerByAfm(d.counterpart_afm)?.kind;
+  const kind = providerKind(providerByAfm(d.counterpart_afm));
   if (kind) return KIND_CATEGORY[kind].slug;
   const guess = d.counterpart_name ? resolveCategory(d.counterpart_name) : null;
   return guess && BY_SLUG[guess] ? guess : '';

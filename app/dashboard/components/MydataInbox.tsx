@@ -39,7 +39,8 @@ import { CustomSelect, DatePicker } from './UIComponents';
 import { CATEGORIES, BY_SLUG } from '@/lib/expenses/taxonomy';
 import { notify, notifyError } from '@/components/Toast';
 import * as mydata from '@/lib/data/mydata';
-import { centsLabel } from '@/lib/mydata/status';
+import { centsLabel, expiringSoon } from '@/lib/mydata/status';
+import { MYDATA_EXPIRY_NOTICE_DAYS } from '@/lib/mydata/retention';
 import { reviewLine, suggestedCategory, asksPayment, paymentFields, PAYMENT_CHOICES, displayName, type PaymentAnswer } from '@/lib/mydata/review';
 import { fe } from '@/lib/core/format';
 import { athensToday } from '@/lib/core/time';
@@ -182,6 +183,8 @@ export default function MydataInbox({ propertyId, userId, properties = [], onFil
   };
 
   const autoOpen = showAuto ?? !rows.length;
+  // Κ-9: όσα περιμένουν απόφαση σβήνουν μετά από MYDATA_PENDING_DAYS· λέγεται πριν.
+  const expiring = expiringSoon(rows.map(d => d.fetched_at ?? '').filter(Boolean));
 
   const summary = [
     rows.length ? plural(rows.length, 'για έλεγχο', 'για έλεγχο') : null,
@@ -218,6 +221,11 @@ export default function MydataInbox({ propertyId, userId, properties = [], onFil
             );
           })}
         </div>
+      )}
+      {expiring > 0 && (
+        <p role="note" style={{ ...TT.bodySm, margin: `0 0 ${T.sp.sm}px`, color: 'var(--warning-on-container)' }}>
+          {expiring === 1 ? '1 παραστατικό σβήνει' : `${expiring} παραστατικά σβήνουν`} μέσα σε {MYDATA_EXPIRY_NOTICE_DAYS}{'\u00a0'}ημέρες, αν δεν αποφασίσεις. Το πρωτότυπο μένει στο myDATA.
+        </p>
       )}
       <div style={{ display: 'grid', gap: 10 }}>
         {rows.map(d => {

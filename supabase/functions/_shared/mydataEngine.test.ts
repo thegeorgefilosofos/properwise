@@ -7,7 +7,7 @@
 // των σελίδων). Τους ίδιους κανόνες τους ελέγχει πάνω σε πραγματικό Postgres το
 // scripts/db/mydata-probe.sql. Ο διακομιστής είναι ο scripts/mydata-fake/server.mjs.
 import { startFakeAade, FAKE_USER, FAKE_KEY } from '../../../scripts/mydata-fake/server.mjs'
-import { runAccountant, nextRetryAt, TRANSIENT, type Store, type Target, type SyncKind, type IngestInput } from './mydataEngine.ts'
+import { runAccountant, TRANSIENT, type Store, type Target, type IngestInput } from './mydataEngine.ts'
 import type { ErrorCode, InvalidDoc } from './mydata.ts'
 import { PROVIDERS } from '../../../lib/mydata/providers.ts'
 import { readFileSync } from 'node:fs'
@@ -19,24 +19,25 @@ const A = '099000013', B = '099000025', C = '099000037'
 
 interface Consent { id: string; afm: string; live: boolean; lastMark: string; resume: Target['resume']; status: string; error: ErrorCode | null; added: number; more: boolean }
 
-function memoryStore(consents: Consent[], opts: { key?: string; killAfterPages?: Record<string, number> } = {}) {
+// Ε2: τα διαπιστευτήρια έρχονται από το σώμα της κλήσης του λογιστή, όχι από τη βάση.
+const CREDS = { aadeUserId: FAKE_USER, key: FAKE_KEY }
+
+function memoryStore(consents: Consent[], opts: { killAfterPages?: Record<string, number> } = {}) {
   const docs = new Map<string, { afm: string; mark: string; status: string; gross: number; credit: boolean }>()
   let lease: string | null = null
   const pagesSeen: Record<string, number> = {}
   const log: string[] = []
   const quarantine: InvalidDoc[] = []
   const ingests: IngestInput[] = []
-  const deferred: (string[] | null)[] = []
   const actors: (string | null)[] = []
   let ended: { error: ErrorCode | null; added: number } | null = null
   const store: Store = {
-    async begin(_a: string, _k: SyncKind, actor: string | null) {
+    async begin(_a: string, actor: string) {
       actors.push(actor)
       if (lease) return { ok: false, reason: 'busy' }
       lease = `L${Math.random()}`
       return { ok: true, lease }
     },
-    async credentials() { return opts.key === undefined ? { aadeUserId: FAKE_USER, key: FAKE_KEY } : opts.key ? { aadeUserId: FAKE_USER, key: opts.key } : null },
     async targets(_a, l) {
       if (l !== lease) return []
       return consents.filter(c => c.live).map(c => ({ consentId: c.id, afm: c.afm, windowFrom: '2025-01-01', lastMark: c.lastMark, resume: c.resume }))
@@ -72,9 +73,8 @@ function memoryStore(consents: Consent[], opts: { key?: string; killAfterPages?:
       log.push(`${id}:${error ?? 'ok'}`)
     },
     async end(_a, l, error, added) { if (l === lease) { lease = null; ended = { error, added } } },
-    async defer(_a, ids) { deferred.push(ids) },
   }
-  return { store, docs, log, quarantine, ingests, deferred, actors, get ended() { return ended }, holdLease: () => { lease = 'other' } }
+  return { store, docs, log, quarantine, ingests, actors, get ended() { return ended }, holdLease: () => { lease = 'other' } }
 }
 
 const consent = (id: string, afm: string): Consent => ({ id, afm, live: true, lastMark: '0', resume: null, status: 'new', error: null, added: 0, more: false })
@@ -96,7 +96,7 @@ void (async () => {
     {
       const c1 = consent('a', A)
       const m = memoryStore([c1])
-      const r = await runAccountant(deps(fake.url, m.store), 'acc1', 'manual')
+      const r = await runAccountant(deps(fake.url, m.store), 'acc1', CREDS, 'acc1')
       ok('1: το τρέξιμο τελειώνει χωρίς σφάλμα', r.ok && r.failed === 0)
       ok('1: τρία νέα (101, 102, 110)· το ακυρωμένο 111 δεν μετρά', r.added === 3)
       ok('1: ο 102 ακυρώθηκε στη σελίδα 2', m.docs.get(`${A}:400001000000102`)?.status === 'cancelled')
@@ -117,10 +117,10 @@ void (async () => {
     {
       const cA = consent('a', A)
       const m = memoryStore([cA])
-      await runAccountant(deps(fake.url, m.store), 'acc1', 'manual')
+      await runAccountant(deps(fake.url, m.store), 'acc1', CREDS, 'acc1')
       ok('2: ο ΜΑΡΚ μετά το πρώτο τρέξιμο είναι ο ΜΑΡΚ ακύρωσης 191', cA.lastMark === '400001000000191')
       const before = fake.requests.length
-      const r2 = await runAccountant(deps(fake.url, m.store), 'acc1', 'nightly')
+      const r2 = await runAccountant(deps(fake.url, m.store), 'acc1', CREDS, 'acc1')
       ok('2: κανένα νέο', r2.added === 0 && r2.ok)
       ok('2: το αίτημα ζητά μετά τον τελευταίο ΜΑΡΚ', fake.requests[before].query.mark === '400001000000191')
       ok('2: τα παραστατικά μένουν τέσσερα (101, 102, 110, 111), χωρίς διπλά', m.docs.size === 4)
@@ -130,7 +130,7 @@ void (async () => {
     {
       const cB = consent('b', B), cA = consent('a', A)
       const m = memoryStore([cB, cA])
-      const r = await runAccountant(deps(fake.url, m.store), 'acc1', 'nightly')
+      const r = await runAccountant(deps(fake.url, m.store), 'acc1', CREDS, 'acc1')
       ok('3: ο Β σε «forbidden» (TAXISnet)', cB.status === 'forbidden' && cB.error === 'forbidden')
       ok('3: ο Α συγχρονίστηκε κανονικά', cA.status === 'ok' && cA.added === 3)
       ok('3: το τρέξιμο δεν θεωρείται αποτυχία του λογιστή', r.ok && r.failed === 1)
@@ -140,8 +140,8 @@ void (async () => {
     // ── 4. 401: το κλειδί δεν ισχύει, σταματούν όλοι ────────────────────────
     {
       const cA = consent('a', A), cC = consent('c', C)
-      const m = memoryStore([cA, cC], { key: 'wrong-key' })
-      const r = await runAccountant(deps(fake.url, m.store), 'acc1', 'nightly')
+      const m = memoryStore([cA, cC])
+      const r = await runAccountant(deps(fake.url, m.store), 'acc1', { aadeUserId: FAKE_USER, key: 'wrongKey1234567890' }, 'acc1')
       ok('4: αποτυχία με «auth»', !r.ok && r.reason === 'auth')
       ok('4: ο δεύτερος πελάτης δεν ζητήθηκε καν', cC.status === 'new')
       ok('4: η κατάσταση γράφεται στον λογιστή', m.ended?.error === 'auth')
@@ -149,9 +149,16 @@ void (async () => {
 
     // ── 5. Χωρίς κλειδί ──────────────────────────────────────────────────────
     {
-      const m = memoryStore([consent('a', A)], { key: '' })
-      const r = await runAccountant(deps(fake.url, m.store), 'acc1', 'manual')
-      ok('5: χωρίς κλειδί δεν φεύγει αίτημα', !r.ok && r.reason === 'no_key')
+      const m = memoryStore([consent('a', A)])
+      const before = fake.requests.length
+      const r = await runAccountant(deps(fake.url, m.store), 'acc1', null, 'acc1')
+      ok('5: χωρίς κλειδί δεν φεύγει αίτημα', !r.ok && r.reason === 'no_key' && fake.requests.length === before)
+      ok('5 Ε2: χωρίς κλειδί δεν ανοίγει καν μίσθωση', m.actors.length === 0)
+      const bad = await runAccountant(deps(fake.url, m.store), 'acc1', { aadeUserId: FAKE_USER, key: 'κλειδί με κενά' }, 'acc1')
+      ok('5 Ε2: κλειδί με λάθος μορφή δεν φεύγει', !bad.ok && bad.reason === 'no_key' && fake.requests.length === before)
+      // Ε2: κανένα τρέξιμο χωρίς τον λογιστή που το ξεκίνησε (καμία νυχτερινή, καμία επανάληψη).
+      const nobody = await runAccountant(deps(fake.url, m.store), 'acc1', CREDS, '')
+      ok('5 Ε2: χωρίς πρόσωπο δεν τρέχει τίποτα', !nobody.ok && nobody.reason === 'no_actor' && fake.requests.length === before)
     }
 
     // ── 6. 429 με Retry-After και μετά επιτυχία ────────────────────────────
@@ -160,7 +167,7 @@ void (async () => {
       sleeps.length = 0
       const cC = consent('c', C)
       const m = memoryStore([cC])
-      const r = await runAccountant(deps(f.url, m.store), 'acc1', 'manual')
+      const r = await runAccountant(deps(f.url, m.store), 'acc1', CREDS, 'acc1')
       ok('6: μετά το 429 πετυχαίνει', r.ok && cC.status === 'ok')
       ok('6: τηρεί το Retry-After (2 δευτ.)', sleeps.includes(2000))
       await f.close()
@@ -171,7 +178,7 @@ void (async () => {
       const f = await startFakeAade({ plan: { [C]: [503, 502, 500] } })
       const cC = consent('c', C), cA = consent('a', A)
       const m = memoryStore([cC, cA])
-      const r = await runAccountant(deps(f.url, m.store), 'acc1', 'nightly')
+      const r = await runAccountant(deps(f.url, m.store), 'acc1', CREDS, 'acc1')
       ok('7: ο C σε «server» μετά από τρεις προσπάθειες', cC.error === 'server' && f.requests.filter(x => x.query.entityVatNumber === C).length === 3)
       ok('7: ο Α δεν επηρεάζεται', cA.status === 'ok' && cA.added === 3)
       ok('7: παροδικό σφάλμα: ξαναδοκιμάζεται μόνο του', TRANSIENT.has('server') && !TRANSIENT.has('forbidden') && !TRANSIENT.has('auth'))
@@ -185,7 +192,7 @@ void (async () => {
       const f = await startFakeAade({ plan: { [C]: [{ status: 200, body: '' }, { status: 200, body: '' }, { status: 200, body: '' }] } })
       const cC = consent('c', C)
       const m = memoryStore([cC])
-      await runAccountant(deps(f.url, m.store), 'acc1', 'manual')
+      await runAccountant(deps(f.url, m.store), 'acc1', CREDS, 'acc1')
       ok('8: κενό σώμα: «empty», ο ΜΑΡΚ μένει', cC.error === 'empty' && cC.lastMark === '0')
       await f.close()
     }
@@ -195,7 +202,7 @@ void (async () => {
       const cA = consent('a', A)
       const m = memoryStore([cA], { killAfterPages: { a: 1 } })
       const before = fake.requests.length
-      await runAccountant(deps(fake.url, m.store), 'acc1', 'manual')
+      await runAccountant(deps(fake.url, m.store), 'acc1', CREDS, 'acc1')
       ok('9: μόνο η πρώτη σελίδα ζητήθηκε', fake.requests.length - before === 1)
       ok('9: ο ΜΑΡΚ δεν προχώρησε (δεν τελείωσαν οι σελίδες)', cA.lastMark === '0')
       ok('9: σημειώνεται ότι η σύνδεση δεν ισχύει', cA.error === 'not_linked')
@@ -213,12 +220,12 @@ void (async () => {
       const realIngest = m.store.ingest.bind(m.store)
       let first = true
       m.store.ingest = async (i) => { const r = await realIngest(i); if (first) { first = false; tight.deadline = Date.now() } return r }
-      const r = await runAccountant(tight, 'acc1', 'nightly')
+      const r = await runAccountant(tight, 'acc1', CREDS, 'acc1')
       ok('10: σταματά πριν το όριο, με «partial»', r.partial && calls === 1)
       ok('10: κρατά το σημείο συνέχισης', cA.resume?.partitionKey === '099000013-2026-11' && cA.resume?.fromMark === '0')
       ok('10: σημειώνει ότι υπάρχει κι άλλο', cA.more === true)
       const before = fake.requests.length
-      const r2 = await runAccountant(deps(fake.url, m.store), 'acc1', 'retry')
+      const r2 = await runAccountant(deps(fake.url, m.store), 'acc1', CREDS, 'acc1')
       ok('10: το επόμενο τρέξιμο ξεκινά από τη σελίδα 2', fake.requests[before].query.nextPartitionKey === '099000013-2026-11' && fake.requests[before].query.mark === '0')
       ok('10: και ολοκληρώνει', r2.ok && cA.resume === null && cA.lastMark === '400001000000191')
     }
@@ -228,7 +235,7 @@ void (async () => {
       const m = memoryStore([consent('a', A)])
       m.holdLease()
       const before = fake.requests.length
-      const r = await runAccountant(deps(fake.url, m.store), 'acc1', 'manual')
+      const r = await runAccountant(deps(fake.url, m.store), 'acc1', CREDS, 'acc1')
       ok('11: «busy», κανένα αίτημα', !r.ok && r.reason === 'busy' && fake.requests.length === before)
     }
 
@@ -239,7 +246,7 @@ void (async () => {
       const alerts: string[] = []
       const cC = consent('c', C)
       const m = memoryStore([cC])
-      await runAccountant(deps(f.url, m.store, { alert: (code: string) => alerts.push(code) }), 'acc1', 'nightly')
+      await runAccountant(deps(f.url, m.store, { alert: (code: string) => alerts.push(code) }), 'acc1', CREDS, 'acc1')
       ok('12: ειδοποίηση «unknown_element»', alerts.length === 1 && alerts[0] === 'unknown_element')
       ok('12: σφάλμα «parse», τίποτα δεν γράφτηκε', cC.error === 'parse' && m.docs.size === 0)
       await f.close()
@@ -251,7 +258,7 @@ void (async () => {
       const alerts: string[] = []
       const cC = consent('c', C)
       const m = memoryStore([cC])
-      await runAccountant(deps(f.url, m.store, { alert: (code: string) => alerts.push(code) }), 'acc1', 'nightly')
+      await runAccountant(deps(f.url, m.store, { alert: (code: string) => alerts.push(code) }), 'acc1', CREDS, 'acc1')
       ok('13: ResponseDoc: «aade_error», όχι ειδοποίηση σχήματος', cC.error === 'aade_error' && alerts.length === 0)
       await f.close()
     }
@@ -270,7 +277,7 @@ void (async () => {
       const alerts: string[] = []
       const cC = consent('c', C)
       const m = memoryStore([cC])
-      const r = await runAccountant(deps(f.url, m.store, { alert: (code: string) => alerts.push(code) }), 'acc1', 'nightly')
+      const r = await runAccountant(deps(f.url, m.store, { alert: (code: string) => alerts.push(code) }), 'acc1', CREDS, 'acc1')
       ok('16 H1: το 102 γράφεται', m.docs.has(`${C}:102`) && m.docs.size === 1)
       ok('16 H1: τα 100 και 101 μπαίνουν σε καραντίνα, δεν χάνονται', m.quarantine.map(q => q.mark).join(',') === '100,101')
       ok('16 H1: η αιτία είναι κωδικός', m.quarantine.every(q => /^[a-z_]{1,40}$/.test(q.reason)) && m.quarantine[0]?.reason === 'invoice_type')
@@ -283,7 +290,7 @@ void (async () => {
       const f2 = await startFakeAade({ plan: { [C]: [page(inv('abc', '2.1', '12.40') + inv('202', '2.1', '12.40'))] } })
       const c2 = consent('c', C)
       const m2 = memoryStore([c2])
-      await runAccountant(deps(f2.url, m2.store), 'acc1', 'nightly')
+      await runAccountant(deps(f2.url, m2.store), 'acc1', CREDS, 'acc1')
       ok('16 H1: άκυρο χωρίς ΜΑΡΚ: καραντίνα με null', m2.quarantine.length === 1 && m2.quarantine[0]?.mark === null)
       ok('16 H1: άκυρο χωρίς ΜΑΡΚ: ο ΜΑΡΚ μένει 0', c2.lastMark === '0' && c2.error === 'quarantine')
       await f2.close()
@@ -295,14 +302,14 @@ void (async () => {
       cA.resume = { partitionKey: '099000013-2026-11', rowKey: '400001000000102', fromMark: '0', maxMark: '400001000000101', dateTo: '2026-11-20' }
       const m = memoryStore([cA])
       const before = fake.requests.length
-      await runAccountant(deps(fake.url, m.store), 'acc1', 'nightly')
+      await runAccountant(deps(fake.url, m.store), 'acc1', CREDS, 'acc1')
       ok('17 H4: η συνέχεια στέλνει το dateTo του ερωτήματος που τη γέννησε', fake.requests[before].query.dateTo === '20/11/2026')
       const cB = consent('a', A)
       const m2 = memoryStore([cB])
       const tight = deps(fake.url, m2.store)
       const realIngest = m2.store.ingest.bind(m2.store)
       m2.store.ingest = async (i) => { const r = await realIngest(i); tight.deadline = Date.now(); return r }
-      await runAccountant(tight, 'acc1', 'nightly')
+      await runAccountant(tight, 'acc1', CREDS, 'acc1')
       ok('17 H4: το σημείο συνέχισης κρατά το dateTo', cB.resume?.dateTo === '2026-11-23')
     }
 
@@ -313,21 +320,30 @@ void (async () => {
       const tight = deps(fake.url, m.store)
       const realDone = m.store.clientDone.bind(m.store)
       m.store.clientDone = async (...a) => { await realDone(...a); tight.deadline = Date.now() }
-      const r = await runAccountant(tight, 'acc1', 'nightly')
+      const r = await runAccountant(tight, 'acc1', CREDS, 'acc1')
       ok('18 M3: σταματά μετά τον πρώτο', r.partial && cA.status === 'ok' && cC.status === 'new')
-      ok('18 M3: οι δύο που δεν πρόλαβαν παίρνουν νέα προσπάθεια', JSON.stringify(m.deferred) === JSON.stringify([['c', 'x']]))
+      // Ε2: καμία αναβολή για αργότερα. Το «partial» γυρίζει στην οθόνη, που
+      // ξαναπατά όσο είναι ανοιχτή η καρτέλα με το κλειδί στη μνήμη.
+      ok('18 Ε2: ο κινητήρας δεν προγραμματίζει τίποτα', !('defer' in m.store))
+      const r2 = await runAccountant(deps(fake.url, m.store), 'acc1', CREDS, 'acc1')
+      ok('18 Ε2: το επόμενο πάτημα συνεχίζει με όσους δεν πρόλαβαν', r2.ok && cC.status !== 'new' && cX.status !== 'new')
     }
 
     // ── 19. Αρχείο πρόσβασης: ποιος ξεκίνησε, πόσα ήρθαν ανά σελίδα ─────────
     {
       const cA = consent('a', A)
       const m = memoryStore([cA])
-      await runAccountant(deps(fake.url, m.store), 'acc1', 'manual', 'acc1')
+      await runAccountant(deps(fake.url, m.store), 'acc1', CREDS, 'acc1')
       ok('19 M4: η μίσθωση ξέρει ποιος πάτησε «τώρα»', m.actors[0] === 'acc1')
       ok('19 M4: κάθε σελίδα λέει πόσα ήρθαν από την ΑΑΔΕ (2 και 5)', m.ingests.map(i => i.fetched).join(',') === '2,5')
+      // Ε2: το κλειδί δεν φτάνει σε καμία κλήση της βάσης, ούτε στο αποτέλεσμα.
+      const seen: string[] = []
       const m2 = memoryStore([consent('a', A)])
-      await runAccountant(deps(fake.url, m2.store), 'acc1', 'nightly')
-      ok('19 M4: το cron δεν έχει πρόσωπο', m2.actors[0] === null)
+      const spy = new Proxy(m2.store, { get: (t, k) => { const v = (t as unknown as Record<string | symbol, unknown>)[k]; return typeof v === 'function' ? (...a: unknown[]) => { seen.push(JSON.stringify(a)); return (v as (...x: unknown[]) => unknown).apply(t, a) } : v } })
+      const r3 = await runAccountant(deps(fake.url, spy), 'acc1', CREDS, 'acc1')
+      ok('19 Ε2: κανένα όρισμα προς τη βάση δεν έχει το κλειδί', seen.length > 3 && !seen.some(x => x.includes(FAKE_KEY)))
+      ok('19 Ε2: ούτε το αποτέλεσμα', !JSON.stringify(r3).includes(FAKE_KEY))
+      ok('19 Ε2: ο κινητήρας δεν ρωτά τη βάση για κλειδί', !('credentials' in m2.store))
     }
 
     // ── 20. Α2: τρία επίπεδα πριν από τη βάση ───────────────────────────────
@@ -335,7 +351,7 @@ void (async () => {
     // το 102 από εκδότη της λίστας «δεν αφορά ακίνητα» (κανόνας της δοκιμής).
     // Το 110 (πιστωτικό) από άγνωστο εκδότη. Η βάση παίρνει ΜΟΝΟ τα δύο.
     {
-      const POWER = PROVIDERS.find(p => p.kind === 'electricity')!
+      const POWER = { ...PROVIDERS.find(p => p.afm === '090000045')!, kinds: ['electricity' as const] }
       const DENY = '099000049'
       const page = readFileSync(new URL('./mydataFixtures/page1.xml', import.meta.url), 'utf8')
         .replace(/<continuationToken>[\s\S]*?<\/continuationToken>/, '')
@@ -350,7 +366,7 @@ void (async () => {
         // Ο πάροχος με `checkedAt`, όπως θα είναι όταν τον ελέγξει άνθρωπος
         // (θωράκιση 24/11/2026). Το πραγματικό μητρώο: πιο κάτω, όλα για έλεγχο.
         const registry = (afm: string) => afm === POWER.afm ? { ...POWER, checkedAt: '2026-11-24' } : null
-        const r = await runAccountant(deps(tiers.url, m.store, { classifyRules: { notProperty: new Set([DENY]), registry } }), 'acc1', 'manual')
+        const r = await runAccountant(deps(tiers.url, m.store, { classifyRules: { notProperty: new Set([DENY]), registry } }), 'acc1', CREDS, 'acc1')
         const docs = m.ingests.flatMap(i => i.docs)
         const auto = docs.find(d => d.mark === '400001000000101')
         ok('20: το τρέξιμο τελειώνει', r.ok)
@@ -368,7 +384,8 @@ void (async () => {
       try {
         const cA = consent('a', A)
         const m = memoryStore([cA])
-        await runAccountant(deps(again.url, m.store), 'acc1', 'manual')
+        const kinded = (afm: string) => afm === POWER.afm ? POWER : null
+        await runAccountant(deps(again.url, m.store, { classifyRules: { registry: kinded } }), 'acc1', CREDS, 'acc1')
         const d = m.ingests.flatMap(i => i.docs).find(x => x.mark === '400001000000101')
         ok('20: χωρίς ιστορικό: για έλεγχο ως νέος πάροχος', d?.tier === 'review' && d.reasons.includes('new_provider'))
         ok('20: η κατηγορία προσυμπληρωμένη και στον έλεγχο', d?.category === 'electricity')
@@ -379,12 +396,13 @@ void (async () => {
         const cA = consent('a', A)
         const m = memoryStore([cA])
         m.store.providerStats = async () => ({ [POWER.afm]: { n: 2, avgCents: 11000 } })
-        await runAccountant(deps(real.url, m.store), 'acc1', 'manual')
+        await runAccountant(deps(real.url, m.store), 'acc1', CREDS, 'acc1')
         const d = m.ingests.flatMap(i => i.docs).find(x => x.mark === '400001000000101')
         ok('20: πάροχος χωρίς checkedAt: για έλεγχο ακόμη και με ιστορικό', d?.tier === 'review' && d.reasons.includes('provider_unchecked'))
         ok('20: ο ΜΑΡΚ του συσχετιζόμενου φτάνει στη βάση', d?.correlated_mark === '400001000000090')
-        // Η βάση ψάχνει χειροκίνητη δαπάνη και με την κατηγορία (θωράκιση, Σ2).
-        ok('20: και το «για έλεγχο» φέρνει την ετικέτα της κατηγορίας', d?.category_label === 'Ρεύμα')
+        // Πάροχοι 24/11/2026: το πραγματικό μητρώο δεν δηλώνει είδος (`kinds: []`),
+        // οπότε καμία κατηγορία και καμία ετικέτα δεν μπαίνει από το μητρώο.
+        ok('20: χωρίς δηλωμένο είδος, καμία ετικέτα κατηγορίας από το μητρώο', d?.category_label === null && d.reasons.includes('provider_kind'))
       } finally { await real.close() }
     }
 
@@ -392,18 +410,13 @@ void (async () => {
     {
       const cC = consent('c', C)
       const m = memoryStore([cC])
-      await runAccountant(deps('http://127.0.0.1:1', m.store), 'acc1', 'nightly')
+      await runAccountant(deps('http://127.0.0.1:1', m.store), 'acc1', CREDS, 'acc1')
       ok('14: «network», ο πελάτης ξαναδοκιμάζεται', cC.error === 'network' && TRANSIENT.has('network'))
     }
   } finally {
     await fake.close()
   }
 
-  // ── 15. Πότε ξαναδοκιμάζεται ─────────────────────────────────────────────
-  const t0 = new Date('2026-11-23T10:00:00Z')
-  ok('15: μετά από 1 αποτυχία: 15 λεπτά', nextRetryAt(1, t0) === '2026-11-23T10:15:00.000Z')
-  ok('15: μετά από 3: 60 λεπτά', nextRetryAt(3, t0) === '2026-11-23T11:00:00.000Z')
-  ok('15: ταβάνι 6 ώρες', nextRetryAt(20, t0) === '2026-11-23T16:00:00.000Z')
 
   console.log(`mydataEngine: ${pass} ✓ · ${fail} ✗`)
   if (fail) process.exit(1)

@@ -22,6 +22,11 @@ on the website and notify customers before adding a new subprocessor.
 | Messaging providers — **Viber / WhatsApp (Meta) / Apple** *(planned, not live)* | Multichannel notification delivery | Phone number, short message content (no amounts/PII on lock screen by policy) | Various (SCCs) | ☐ execute per provider before go-live |
 
 ## Notes
+- **myDATA via accountant (Y17, behind a flag, 24/11/2026).** The fetch runs in the
+  Supabase edge function `mydata-sync`, invoked from the browser with region
+  `eu-central-1` (Frankfurt, same as the database). The accountant's key is not stored:
+  it reaches only that call. Sentry receives only error codes from it (A7 still open).
+  The accountant is a joint controller for the fetch (GDPR 26), not a subprocessor.
 - **State on 20.10.2026 (legal review, finding 6).** Vercel, Sentry, Creem and the push
   services were live in production while `/privacy` §10 (`TRANSFER_SAFEGUARDS` in
   `lib/legal/subprocessors.ts`) states a transfer safeguard only for Supabase, Resend,
