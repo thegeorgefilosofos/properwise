@@ -1,6 +1,6 @@
 # Κείμενα κοινοποίησης
 
-Βίντεο (v13, 25″): `kamari-9x16.mp4` για Instagram Reels, YouTube Shorts και TikTok· `kamari-4x5.mp4` για Instagram ροή, LinkedIn και X. Εξώφυλλα τα `cover-9x16.jpg` και `cover-4x5.jpg`, χωριστό αρχείο (το καρέ 0 του βίντεο είναι το αγκίστρι).
+Βίντεο (v14, 25″): `kamari-9x16.mp4` για Instagram Reels, YouTube Shorts και TikTok· `kamari-4x5.mp4` για Instagram ροή, LinkedIn και X. Εξώφυλλα τα `cover-9x16.jpg` και `cover-4x5.jpg`, χωριστό αρχείο (το καρέ 0 του βίντεο είναι το αγκίστρι).
 **Ημερομηνία λήξης: 31/12/2026** (`RENO_39B_TO`, `lib/accounting/renovation39b.ts`). Μετά από αυτήν το αγκίστρι δεν ισχύει: το βίντεο αποσύρεται ή ξαναβγαίνει.
 Κάθε ψηφίο εδώ υπάρχει στον πίνακα αριθμών του `plan.md`. Κανένα κείμενο δεν μετρά μέρες.
 

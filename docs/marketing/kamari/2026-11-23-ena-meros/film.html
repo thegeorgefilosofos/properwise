@@ -93,7 +93,6 @@
         <div class="shot" id="S_save"></div>
         <div class="shot" id="S_docs"></div>
         <div class="shot" id="S_stmt"></div>
-        <div class="shot" id="S_how"></div>
         <div class="shot" id="S_acc"></div>
         <div class="shot" id="S_zip">
           <div id="pack"><div class="grab"></div><div class="title"></div></div>
@@ -125,19 +124,20 @@
 <!-- ΤΟ ΧΡΟΝΟΛΟΓΙΟ, ΜΙΑ ΠΗΓΗ: η ταινία και ο ήχος (sound.ts). Χρόνοι σε δευτερόλεπτα.
      v9: χωρίς μετρητή πατημάτων. Κάθε αλλαγή πλάνου είναι καθαρή κοπή της κάμερας.
      v12: δύο νέες στιγμές, Χαρτοφυλάκιο (2,2 έως 6,3″) και φόρος της Λογιστικής (16,0 έως 19,8″).
-     v13: ο φόρος είναι του ακινήτου (κεφαλίδα, Κατάσταση αποτελεσμάτων, «Πώς βγαίνει ο φόρος»)· το Χαρτοφυλάκιο κόβεται πριν από την Πληρότητα. -->
+     v13: ο φόρος είναι του ακινήτου· το Χαρτοφυλάκιο κόβεται πριν από την Πληρότητα.
+     v14: η σκηνή του φόρου είναι ΜΙΑ οθόνη, μόνο η κάρτα «Κατάσταση αποτελεσμάτων», από τα μεικτά ως τον φόρο εισοδήματος. -->
 <script id="timeline" type="application/json">
 {
   "fps": 30, "dur": 25.2, "bpm": 120,
   "cuts": [2.2, 6.3, 8.5, 9.4, 10.5, 12.7, 13.9, 16.0, 19.8, 20.9, 23.2],
   "full": 10.5,
   "pf": { "count": [2.4, 3.6], "spot": 3.7, "tiles": 4.6 },
-  "tax": { "rows": [16.15, 16.3, 16.45, 16.6, 16.75], "spot": 16.95, "how": 18.4 },
+  "tax": { "rows": [16.3, 16.75, 17.2, 17.65], "spot": 18.1 },
   "rowsOver": [6.15, 6.65, 6.85, 7.05],
   "taps": [9.05, 10.1, 13.4, 20.4],
   "fields": [10.7, 10.85, 11.0, 11.15, 11.3],
   "ticks": [10.7, 10.85, 11.15],
-  "dings": [3.65, 11.5, 14.5, 16.6, 21.8],
+  "dings": [3.65, 11.5, 14.5, 17.65, 21.8],
   "filed": 14.5,
   "packUp": 20.9,
   "rowsPack": [21.3, 21.45, 21.6, 21.75],
@@ -164,8 +164,8 @@ const B = {
   download: { x: 38, y: 523, w: 119, h: 36 }, acc: { x: 20, y: 453, w: 280, h: 120 }, afmBlock: { x: 30, y: 458, w: 254, h: 110 },
   pfNet: { x: 31, y: 278, w: 166, h: 39 }, pfTiles: { x: 33, y: 320, w: 324, h: 82 }, pfCrop: { x: 33, y: 278, w: 300, h: 39 },
   // v13: οι γραμμές της Κατάστασης αποτελεσμάτων και η φράση «το μερίδιο αυτού του ακινήτου» (work/shots9/boxes.json · tax).
-  srows: [[138, 36], [174, 36], [209, 37], [246, 36], [282, 37]], taxRow: { x: 28, y: 244, w: 334, h: 40 }, howLines: { x: 28, y: 157, w: 334, h: 69 },
-  REG: { portfolio: [100, 420], stmt: [0, 325], how: [0, 462], overview: [250, 594], tiles: [80, 764], form: [220, 440], save: [420, 424], docs: [350, 494] },
+  srows: [[498, 36], [534, 36], [569, 37], [606, 36]], taxRow: { x: 28, y: 604, w: 334, h: 40 },
+  REG: { portfolio: [100, 420], stmt: [449, 201], overview: [250, 594], tiles: [80, 764], form: [220, 440], save: [420, 424], docs: [350, 494] },
 };
 // Τα περιεχόμενα του zip: PACK_FILES του lib/accounting/meetingPack.ts, με τη σειρά του packEntries.
 // Δείχνονται τα 00 έως 03, συνεχόμενα (το 04 ΑΑΔΕ μπαίνει μόνο όταν έχει ανέβει το προσυμπληρωμένο Ε2).
@@ -190,7 +190,7 @@ const BILL = {
 const L = fmt === '916'
   ? { zoneEnd: 512, C0: 572, C1: 1536, bandTo: 1880, capMid: 335, capSize: 66, capW: 980, badgeY: 446, badgeSize: 32,
       hookY: [800, 920], hookSize: 100, logoW: 640, logoY: 720, cMsgY: 880, cMsgSize: 80, cMsgGap: 96, urlY: 1190, urlSize: 46 }
-  : { zoneEnd: 300, C0: 340, C1: 1250, bandTo: 1350, capMid: 168, capSize: 54, capW: 980, badgeY: 238, badgeSize: 28,
+  : { zoneEnd: 300, C0: 340, C1: 1250, bandTo: 1350, capMid: 160, capSize: 54, capW: 980, badgeY: 238, badgeSize: 28,
       hookY: [600, 710], hookSize: 92, logoW: 560, logoY: 430, cMsgY: 560, cMsgSize: 70, cMsgGap: 84, urlY: 840, urlSize: 42 };
 // Η ζώνη ασφαλείας (9:16: 250 έως 1536· 4:5: 100 έως 1250), με περιθώριο ≥ 64 px αριστερά και δεξιά.
 const SAFE = fmt === '916' ? [250, 1536] : [100, 1250];
@@ -222,11 +222,10 @@ const pad2 = (r) => ({ x: r.x - 2, y: r.y - 2, w: r.w + 4, h: r.h + 4 });
 // v12: το Χαρτοφυλάκιο με τον μετρητή του «Καθαρό 2026» (17 καταστάσεις του ίδιου στοιχείου, στη μορφή της εφαρμογής).
 region($('S_pf'), 'portfolio', B.REG.portfolio);
 const pfIms = Array.from({ length: 17 }, (_, i) => addImg($('S_pf'), `work/shots9/pf-${String(i).padStart(2, '0')}.png`, B.pfCrop));
-// v13: ο φόρος του ακινήτου. Η Κατάσταση αποτελεσμάτων με τις γραμμές της μία μία (λήψεις της ίδιας οθόνης)
-// και το «Πώς βγαίνει ο φόρος» της εφαρμογής.
+// v14: ο φόρος του ακινήτου, ΜΙΑ οθόνη: η κάρτα «Κατάσταση αποτελεσμάτων» με τις γραμμές της μία μία
+// (λήψεις της ίδιας οθόνης), από τα μεικτά ως τον φόρο εισοδήματος.
 region($('S_stmt'), 'stmt-empty', B.REG.stmt);
 const srowIms = B.srows.map(([y, h], i) => addImg($('S_stmt'), `work/shots9/srow-${i}.png`, { x: 32, y, w: 326, h }));
-region($('S_how'), 'how', B.REG.how);
 region($('S_dead'), 'overview-empty', B.REG.overview);
 const prows = B.rows.map(([y, h], i) => addImg($('S_dead'), `work/shots9/prow-${i}.png`, { x: 17, y, w: 356, h }));
 region($('S_tiles'), 'scan-tiles', B.REG.tiles);
@@ -301,8 +300,8 @@ const SHOTS = [
   { id: 'S_form', from: CUT[4], to: CUT[5], s: 2.6, s45: 2.38, ay: 236, sy: C0, top: 236, bottom: 614 },
   { id: 'S_save', from: CUT[5], to: CUT[6], s: 2.28, ay: 844, sy: C1 - 21, top: 462 },
   { id: 'S_docs', from: CUT[6], to: CUT[7], s: 2.6, s45: 2.35, ay: 365, sy: C0, top: 365, bottom: 750 },
-  { id: 'S_stmt', from: CUT[7], to: TL.tax.how, s: 2.55, ay: -47, sy: C0, top: -47, bottom: 325 },
-  { id: 'S_how', from: TL.tax.how, to: CUT[8], s: 2.55, ay: 105, sy: C0 + 40, top: 105, bottom: 360 },
+  // Γράμματα των γραμμών 14 px εφαρμογής × 2,58 = 36 px και στις δύο μορφές.
+  { id: 'S_stmt', from: CUT[7], to: CUT[8], s: 2.58, s45: 2.58, ay: 549.5, sy: (SAFE[0] + SAFE[1]) / 2, top: 449, bottom: 650 },
   { id: 'S_acc', from: CUT[8], to: CUT[9], s: 3.5, ay: 513, sy: (SAFE[0] + SAFE[1]) / 2, cx: 157, top: 453 },
   { id: 'S_zip', from: CUT[9], to: CUT[10], s: 2.6, ay: 844, sy: C1 - 22, top: 0 },
 ];
@@ -324,7 +323,7 @@ const CAPS = [
   [CUT[1], CUT[2], 'Οι προθεσμίες έρχονται μόνες τους.'],
   [CUT[2], CUT[6], 'Μία φωτογραφία συμπληρώνει τα στοιχεία.'],
   [CUT[6], CUT[7], 'Το παραστατικό μπαίνει στον φάκελό του.'],
-  [CUT[7], CUT[8], 'Ο φόρος κάθε ακινήτου, υπολογισμένος.'],
+  [CUT[7], CUT[8], 'Ο φόρος, ανά ακίνητο.'],
   [CUT[8], CUT[10], 'Ο φάκελος του λογιστή, σε ένα zip.'],
 ];
 const capEls = CAPS.map(([a, b, s]) => text('cap', s, centered(0, L.capW, L.capSize), a, b));
@@ -344,7 +343,7 @@ Object.assign(band.style, { top: C1 + 'px', height: H - C1 + 'px',
 const SPOTS = [
   [TL.pf.spot, TL.pf.tiles, B.pfNet, 0.65], [TL.pf.tiles, CUT[1], B.pfTiles, 0.65],
   [CUT[6] + 0.1, CUT[7], B.power, 0.65],
-  [TL.tax.spot, TL.tax.how, B.taxRow, 0.65], [TL.tax.how, CUT[8], B.howLines, 0.65],
+  [TL.tax.spot, CUT[8], B.taxRow, 0.65],
   [CUT[8], CUT[9], B.afmBlock, 1.0],
 ];
 // Πατήματα: [χρόνος, σημείο εφαρμογής].
@@ -404,7 +403,7 @@ window.render = function render(t) {
   // δεν γλιστράει πάνω από κείμενο. Η σκιά μένει· ο φωτεινός «λάκκος» της πάει στη νέα θέση στο ίδιο καρέ.
   let sp = null, line = 0, dimOn = 0, dim = 0;
   for (const [k, [a, b, r, d]] of SPOTS.entries()) if (t >= a && t < b) {
-    const atCut = CUT.includes(a) || a === TL.tax.how;
+    const atCut = CUT.includes(a);
     const chainedIn = k > 0 && SPOTS[k - 1][1] === a, chainedOut = k + 1 < SPOTS.length && SPOTS[k + 1][0] === b;
     sp = r; dim = d;
     const fin = atCut ? 1 : lin(t, a, 0.18);

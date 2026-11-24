@@ -203,44 +203,30 @@ p = await open('?c=accounting&n=6', MACRO);
 }
 
 
-// ── 6. Λογιστική (v13): ο φόρος ΤΟΥ ΑΚΙΝΗΤΟΥ, με τη βάση του ──
+// ── 6. Λογιστική (v14): ΜΙΑ οθόνη, η κάρτα «Κατάσταση αποτελεσμάτων» του ακινήτου ──
 // Το taxProvision (lib/accounting/statement.ts) παίρνει το IncomeStatement ενός ακινήτου· ο φόρος εισοδήματος
 // είναι το μερίδιο του ακινήτου στον προοδευτικό φόρο όλων των ενοικίων (useAccounting.ts: consolidation, myTaxShare).
-// Η ταινία δείχνει την κεφαλίδα με το όνομα του ακινήτου, την «Κατάσταση αποτελεσμάτων» του και το «Πώς βγαίνει ο φόρος».
+// Η κάρτα στο κέντρο της οθόνης, ώστε να μην την καλύπτει η κολλημένη κεφαλίδα.
 p = await open('?c=accounting&n=6', BASE);
 {
-  const scrollTo = async (label) => {
-    const h = p.getByText(label, { exact: true }).first();
-    await h.evaluate((el) => el.scrollIntoView({ block: 'start' }));
-    await p.waitForTimeout(400);
-    return h;
-  };
-  const cardOf = (h) => h.evaluateHandle((el) => { while (el.getBoundingClientRect().width < 340) el = el.parentElement; return el; });
-  // α. Η Κατάσταση αποτελεσμάτων: γραμμές που εμφανίζονται μία μία (ίδια λήψη, οι γραμμές κρυμμένες).
-  const sh = await scrollTo('Κατάσταση αποτελεσμάτων');
-  const stmtCard = await boxOf(await cardOf(sh));
-  const LABELS = ['Μεικτά έσοδα', 'Τεκμαρτή έκπτωση 5,00%', 'Φορολογητέο εισόδημα', 'Φόρος εισοδήματος', 'Έσοδα μετά τον φόρο εισοδήματος'];
+  const h = p.getByText('Κατάσταση αποτελεσμάτων', { exact: true }).first();
+  await h.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  await p.waitForTimeout(400);
+  const card = await boxOf(await h.evaluateHandle((el) => { while (el.getBoundingClientRect().width < 340) el = el.parentElement; return el; }));
+  const LABELS = ['Μεικτά έσοδα', 'Τεκμαρτή έκπτωση 5,00%', 'Φορολογητέο εισόδημα', 'Φόρος εισοδήματος'];
   const rows = await Promise.all(LABELS.map((l) => p.getByText(l, { exact: true }).first().evaluateHandle((el) => {
     let best = el; for (let e = el; e && e.getBoundingClientRect().height < 50; e = e.parentElement) if (e.getBoundingClientRect().width >= 300) best = e; return best; })));
   const rowBoxes = await Promise.all(rows.map(boxOf));
-  const rowTexts = await Promise.all(rows.map((h) => h.evaluate((el) => el.innerText.replace(/\s+/g, ' '))));
-  const stmtReg = { x: 0, y: 0, w: 390, h: rowBoxes[4].y + rowBoxes[4].h + 6 };
-  await clipShot(p, 'stmt', stmtReg);
-  for (const [i, r] of rowBoxes.entries()) await clipShot(p, `srow-${i}`, r);
+  const rowTexts = await Promise.all(rows.map((r) => r.evaluate((el) => el.innerText.replace(/\s+/g, ' '))));
+  const fontPx = await rows[3].evaluate((el) => Math.max(...[...el.querySelectorAll('*')].map((e) => parseFloat(getComputedStyle(e).fontSize) || 0), parseFloat(getComputedStyle(el).fontSize)));
+  // Από την κορυφή της κάρτας ως λίγο κάτω από τη γραμμή του φόρου εισοδήματος.
+  const reg = { x: 0, y: card.y, w: 390, h: rowBoxes[3].y + rowBoxes[3].h + 8 - card.y };
+  await clipShot(p, 'stmt', reg);
+  for (const [k, r] of rowBoxes.entries()) await clipShot(p, `srow-${k}`, r);
   await setVis(rows, 0); await p.waitForTimeout(150);
-  await clipShot(p, 'stmt-empty', stmtReg);
-  await setVis(rows, 5);
-  // β. «Πώς βγαίνει ο φόρος»: η φράση της εφαρμογής «το μερίδιο αυτού του ακινήτου» (με έντονα στην εφαρμογή).
-  const hh = await scrollTo('Πώς βγαίνει ο φόρος');
-  const howCard = await boxOf(await cardOf(hh));
-  const bold = p.getByText('το μερίδιο αυτού του ακινήτου', { exact: true }).first();
-  const bb = await rect(bold);
-  const para = await boxOf(await bold.evaluateHandle((el) => el.parentElement));
-  const lh = await bold.evaluate((el) => parseFloat(getComputedStyle(el.parentElement).lineHeight) || 22);
-  const howReg = { x: 0, y: 0, w: 390, h: Math.min(844, howCard.y + howCard.h + 4) };
-  await clipShot(p, 'how', howReg);
-  boxes.tax = { stmtCard, rows: rowBoxes, rowTexts, stmtReg, howCard, bold: bb, para, lineHeight: lh, howReg,
-    header: await p.evaluate(() => document.body.innerText.match(/Διαμέρισμα[^\n]*/)?.[0] ?? '') };
+  await clipShot(p, 'stmt-empty', reg);
+  await setVis(rows, 4);
+  boxes.tax = { card, rows: rowBoxes, rowTexts, reg, fontPx };
 }
 
 writeFileSync(join(out, 'boxes.json'), JSON.stringify(boxes, null, 1));
