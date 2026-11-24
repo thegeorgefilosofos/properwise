@@ -22,7 +22,10 @@
 --      (H1), παύση χωρίς διαγραφή (H2), άμεση ανάκληση με σκανδάλες (H3),
 --      σημείο συνέχισης που δεν κολλά (H4), ακύρωση που δεν σβήνει (M2),
 --      αναβολή όσων δεν πρόλαβαν (M3), πλήρες αρχείο (M4), μόνο λογιστής με
---      δική του γραμμή (M5). Οι σκανδάλες τρέχουν στο τέλος της συναλλαγής·
+--      δική του γραμμή (M5). Θωράκιση 24/11/2026 (§12): δεύτερο βήμα για τον
+--      λογιστή, συναίνεση με κείμενο, αυτόματο ανά πάροχο και ακίνητο, ανεκτικό
+--      ταίριασμα, επανέκδοση, ελαχιστοποίηση, διατήρηση, αλλαγή λογιστή.
+--      Οι σκανδάλες τρέχουν στο τέλος της συναλλαγής·
 --      εδώ τις τρέχει νωρίτερα το `set constraints all immediate`.
 --  Τρέχει μετά το rls-probe (που ορίζει το `auth.uid()` από το `probe.uid`),
 --  σε συναλλαγή που αναιρείται: τα επόμενα βήματα βρίσκουν τη βάση όπως ήταν.
@@ -85,12 +88,12 @@ declare
   y  int  := extract(year from (now() at time zone 'Europe/Athens'))::int;
   r  json;
 begin
-  r := public.mydata_consent_grant(l2, y);
+  r := public.mydata_consent_grant(l2, y, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
   if (r->>'ok')::boolean or r->>'reason' <> 'not_linked' then raise exception 'ΑΝΟΙΧΤΗ ΠΟΡΤΑ: άδεια σε λογιστή που δεν συνδέθηκε: %', r; end if;
-  r := public.mydata_consent_grant(l1, y - 5);
+  r := public.mydata_consent_grant(l1, y - 5, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
   if (r->>'ok')::boolean or r->>'reason' <> 'bad_period' then raise exception 'ΠΕΡΙΟΔΟΣ: δέχτηκε έτος % (%)', y - 5, r; end if;
   -- B1: χωρίς ΑΦΜ επιβεβαιωμένο από τον λογιστή δεν δίνεται άδεια.
-  r := public.mydata_consent_grant(l1, y - 1);
+  r := public.mydata_consent_grant(l1, y - 1, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
   if (r->>'ok')::boolean or r->>'reason' <> 'afm_unconfirmed' then raise exception 'B1: άδεια με ΑΦΜ που ο λογιστής δεν επιβεβαίωσε: %', r; end if;
 end $probe$;
 reset role;
@@ -124,7 +127,7 @@ declare
   y  int  := extract(year from (now() at time zone 'Europe/Athens'))::int;
   r  json;
 begin
-  r := public.mydata_consent_grant(l1, y - 1);
+  r := public.mydata_consent_grant(l1, y - 1, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
   if not (r->>'ok')::boolean then raise exception 'ΡΟΗ: η άδεια του Π1 απέτυχε: %', r; end if;
   if (select afm from public.mydata_consents where client_id = auth.uid()) <> '099000013' then
     raise exception 'ΡΟΗ: το ΑΦΜ δεν καθαρίστηκε από κενά';
@@ -132,7 +135,7 @@ begin
   if (select window_from from public.mydata_consents where client_id = auth.uid()) <> make_date(y - 1, 1, 1) then
     raise exception 'ΠΕΡΙΟΔΟΣ: λάθος αρχή παραθύρου';
   end if;
-  r := public.mydata_consent_grant(l1, y - 1);
+  r := public.mydata_consent_grant(l1, y - 1, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
   if not (r->>'existing')::boolean then raise exception 'ΡΟΗ: δεύτερο «Επιτρέπω» έγραψε δεύτερη γραμμή'; end if;
   raise notice 'probe: άδεια μόνο σε συνδεδεμένο λογιστή, για τρέχον ή προηγούμενο έτος';
 end $probe$;
@@ -141,7 +144,7 @@ reset role;
 select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a3', true);
 set local role authenticated;
 do $probe$ declare r json; begin
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', extract(year from now())::int);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', extract(year from now())::int, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
   if (r->>'ok')::boolean or r->>'reason' <> 'no_afm' then raise exception 'ΑΦΜ: άδεια με ΑΦΜ που δεν περνά τον έλεγχο: %', r; end if;
   raise notice 'probe: χωρίς έγκυρο ΑΦΜ δεν δίνεται άδεια';
 end $probe$;
@@ -150,7 +153,7 @@ reset role;
 select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a2', true);
 set local role authenticated;
 do $probe$ declare r json; begin
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c2', extract(year from (now() at time zone 'Europe/Athens'))::int);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c2', extract(year from (now() at time zone 'Europe/Athens'))::int, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
   if not (r->>'ok')::boolean then raise exception 'ΡΟΗ: η άδεια του Π2 απέτυχε: %', r; end if;
   -- Κανείς δεν γράφει απευθείας.
   begin
@@ -169,7 +172,7 @@ select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a3', true);
 set local role authenticated;
 do $probe$ declare r json; y int := extract(year from (now() at time zone 'Europe/Athens'))::int; begin
   update public.billing_profiles set afm = '099000049' where user_id = auth.uid();
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', y);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', y, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
   if (r->>'ok')::boolean or r->>'reason' <> 'afm_unconfirmed' then raise exception 'B1: ο Π3 πήρε άδεια με ξένο ΑΦΜ χωρίς επιβεβαίωση: %', r; end if;
 end $probe$;
 reset role;
@@ -183,10 +186,10 @@ reset role;
 select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a3', true);
 set local role authenticated;
 do $probe$ declare r json; y int := extract(year from (now() at time zone 'Europe/Athens'))::int; begin
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', y);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', y, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
   if (r->>'ok')::boolean or r->>'reason' <> 'afm_mismatch' then raise exception 'B1: ο Π3 πήρε άδεια με ΑΦΜ άλλο από αυτό που επιβεβαίωσε ο λογιστής: %', r; end if;
   update public.billing_profiles set afm = '099000025' where user_id = auth.uid();
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', y);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', y, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
   if (r->>'ok')::boolean then raise exception 'B1: ο Π3 πήρε άδεια με το ΑΦΜ του Π2: %', r; end if;
 end $probe$;
 reset role;
@@ -201,7 +204,7 @@ reset role;
 select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a3', true);
 set local role authenticated;
 do $probe$ declare r json; y int := extract(year from (now() at time zone 'Europe/Athens'))::int; begin
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', y);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', y, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
   if (r->>'ok')::boolean or r->>'reason' <> 'afm_taken' then raise exception 'B1: δεύτερη ενεργή άδεια στο ίδιο ΑΦΜ: %', r; end if;
   update public.billing_profiles set afm = '123456789' where user_id = auth.uid();
 end $probe$;
@@ -233,7 +236,7 @@ do $probe$ declare r json; y int := extract(year from (now() at time zone 'Europ
     raise exception 'B1: η ανάκληση δεν έγραψε «afm_changed»';
   end if;
   update public.billing_profiles set afm = '099 000 013' where user_id = auth.uid();
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', y - 1);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', y - 1, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
   if not (r->>'ok')::boolean then raise exception 'B1: η άδεια με το σωστό ΑΦΜ δεν ξαναδόθηκε: %', r; end if;
   raise notice 'probe: B1: αλλαγή ΑΦΜ στο προφίλ ανακαλεί την άδεια αμέσως';
 end $probe$;
@@ -351,9 +354,9 @@ begin
   -- Χειροκίνητη δαπάνη στις 13/11, 88,50€, ίδιος πάροχος: το 102 (15/11) δένεται.
   insert into public.expenses (user_id, property_id, amount, description, category, date, supplier_afm)
     values (p1, prop, 88.50, 'Υδραυλικός', 'Επισκευές', '2026-11-13', '099000049') returning id into manual;
-  -- Ιδια δαπάνη 4 ημέρες μακριά από το 120: δεν δένεται.
+  -- Ιδια δαπάνη 16 ημέρες μακριά από το 120: δεν δένεται (θωράκιση: ±10 ημέρες).
   insert into public.expenses (user_id, property_id, amount, description, category, date, supplier_afm)
-    values (p1, prop, 40.00, 'Μακριά', 'Επισκευές', '2026-11-01', '099000049') returning id into far;
+    values (p1, prop, 40.00, 'Μακριά', 'Επισκευές', '2026-10-20', '099000049') returning id into far;
   -- Δαπάνη που γέννησε ήδη το myDATA (π.χ. από προηγούμενη άδεια): το 130 είναι «filed».
   insert into public.expenses (user_id, property_id, amount, description, category, date, dedup_hash)
     values (p1, prop, 10.00, 'Από myDATA', 'Ρεύμα', '2026-11-03', 'mydata:400001000000130') returning id into mine;
@@ -379,10 +382,10 @@ begin
 
   if (select status from public.mydata_docs where mark = 400001000000102) <> 'linked'
      or (select expense_id from public.mydata_docs where mark = 400001000000102) <> manual then
-    raise exception 'ΔΙΠΛΟΤΥΠΟ: η χειροκίνητη δαπάνη ±3 ημερών δεν δέθηκε';
+    raise exception 'ΔΙΠΛΟΤΥΠΟ: η χειροκίνητη δαπάνη 2 ημερών δεν δέθηκε';
   end if;
   if (select status from public.mydata_docs where mark = 400001000000120) <> 'pending' then
-    raise exception 'ΔΙΠΛΟΤΥΠΟ: δέθηκε δαπάνη 4 ημέρες μακριά';
+    raise exception 'ΔΙΠΛΟΤΥΠΟ: δέθηκε δαπάνη 16 ημέρες μακριά';
   end if;
   if (select status from public.mydata_docs where mark = 400001000000130) <> 'filed'
      or (select expense_id from public.mydata_docs where mark = 400001000000130) <> mine then
@@ -415,7 +418,7 @@ begin
     '[{"mark":"400001000000150","reason":"invoice_type"},{"mark":null,"reason":"mark"}]'::jsonb, 2, null, null, true);
   if (select count(*) from public.mydata_quarantine where consent_id = k) <> 2 then raise exception 'H1: διπλή γραμμή καραντίνας'; end if;
   if not exists (select 1 from public.mydata_access_log where client_id = p1 and action = 'invalid_quarantined') then raise exception 'H1: η καραντίνα δεν καταγράφηκε'; end if;
-  raise notice 'probe: ένα ανά ΜΑΡΚ, σύνδεση με χειροκίνητη ±3 ημερών, συνέχεια σελίδων';
+  raise notice 'probe: ένα ανά ΜΑΡΚ, σύνδεση με χειροκίνητη ±10 ημερών, συνέχεια σελίδων';
 end $probe$;
 
 -- ── 5α. Α2 (20261123160000): ΑΥΤΟΜΑΤΑ, ΓΙΑ ΕΛΕΓΧΟ, ΑΠΟΡΡΙΨΗ ──────────────────
@@ -441,6 +444,13 @@ begin
   doc_bad := jsonb_build_object('mark','400001000000142','counterpart_afm','090000045','counterpart_name',null,'doc_type','2.1','series','Α','aa','142','issue_date','2026-11-05','title','Τ','net_cents',100,'vat_cents',24,'gross_cents',124,'is_credit',false,'cancelled',false,'cancellation_mark',null,
     'tier','auto','category','electricity','category_label','','expense_group','fixed','vendor','ΔΕΗ','reasons','[]'::jsonb);
 
+  -- Θωράκιση (Σ1 λογιστικού): το αυτόματο θέλει παραστατικό του ίδιου παρόχου
+  -- που ο χρήστης καταχώρησε για το ΙΔΙΟ ακίνητο. Το 139 είναι αυτό.
+  insert into public.expenses (user_id, property_id, amount, description, category, date, dedup_hash)
+    values (p1, prop, 80.00, 'ΔΕΗ Οκτωβρίου', 'Ρεύμα', '2026-10-04', 'mydata:400001000000139');
+  perform public.mydata_ingest(lease, k, jsonb_build_array(doc_auto || jsonb_build_object('mark', '400001000000139', 'tier', 'review', 'gross_cents', 8000, 'net_cents', 6452, 'vat_cents', 1548, 'issue_date', '2026-10-04')),
+    '[]'::jsonb, '[]'::jsonb, 1, null, null, true);
+  if (select status from public.mydata_docs where mark = 400001000000139) <> 'filed' then raise exception 'ΣΚΗΝΙΚΟ: το ιστορικό του 139 δεν καταχωρήθηκε'; end if;
   r := public.mydata_ingest(lease, k, jsonb_build_array(doc_auto, doc_review, doc_bad), '[]'::jsonb, '[]'::jsonb, 6, null, null, true, 3);
   if not (r->>'ok')::boolean then raise exception 'Α2: η σελίδα απέτυχε: %', r; end if;
   if (r->>'auto')::int <> 1 or (r->>'added')::int <> 3 then raise exception 'Α2: % αυτόματα και % νέα αντί για 1 και 3', r->>'auto', r->>'added'; end if;
@@ -478,9 +488,9 @@ begin
   perform public.mydata_ingest(lease, k, jsonb_build_array(doc_review || '{"tier":"auto","category_label":"Νερό","expense_group":"fixed"}'::jsonb), '[]'::jsonb, '[]'::jsonb, 1, null, null, true);
   if exists (select 1 from public.expenses where dedup_hash = 'mydata:400001000000141') then raise exception 'Α2: απορριμμένο έγινε δαπάνη στην επανάληψη'; end if;
 
-  -- Ιστορικό: το 140 μετρά για τη ΔΕΗ, με κατηγορία· λάθος μίσθωση, τίποτα.
+  -- Ιστορικό: 139 (80,00€) και 140 (88,50€) μετρούν για τη ΔΕΗ, με κατηγορία· λάθος μίσθωση, τίποτα.
   st := public.mydata_provider_stats(lease, k);
-  if (st->'090000045'->>'n')::int <> 1 or (st->'090000045'->>'avg')::int <> 8850 or st->'090000045'->>'cat' <> 'electricity' then
+  if (st->'090000045'->>'n')::int <> 2 or (st->'090000045'->>'avg')::int <> 8425 or st->'090000045'->>'cat' <> 'electricity' then
     raise exception 'Α2: το ιστορικό της ΔΕΗ λάθος: %', st;
   end if;
   if st ? '094079101' then raise exception 'Α2: απορριμμένο μέτρησε ως επιβεβαιωμένο'; end if;
@@ -523,7 +533,7 @@ end $probe$;
 reset role;
 do $probe$ begin
   delete from public.expenses where dedup_hash in ('mydata:400001000000140', 'mydata:400001000000141', 'mydata:400001000000142', 'mydata:400001000000143');
-  delete from public.mydata_docs where mark between 400001000000140 and 400001000000143;
+  delete from public.mydata_docs where mark between 400001000000139 and 400001000000143;
 end $probe$;
 
 -- ── 6. RLS: ΔΥΟ ΛΟΓΙΣΤΕΣ, ΔΥΟ ΠΕΛΑΤΕΣ, ΕΝΑΣ ΞΕΝΟΣ ────────────────────────────
@@ -583,8 +593,9 @@ do $probe$
 declare r record;
 begin
   for r in select * from mydata_seen loop
-    if r.who = 'Λ1' and (r.docs <> 6 or r.consents <> 2 or r.conns <> 1) then raise exception 'ΔΙΑΡΡΟΗ/ΑΠΩΛΕΙΑ: ο Λ1 βλέπει % παραστατικά, % άδειες, % συνδέσεις', r.docs, r.consents, r.conns; end if;
-    if r.who = 'Λ2' and (r.docs <> 1 or r.consents <> 1 or r.conns <> 1) then raise exception 'ΔΙΑΡΡΟΗ/ΑΠΩΛΕΙΑ: ο Λ2 βλέπει % παραστατικά, % άδειες, % συνδέσεις', r.docs, r.consents, r.conns; end if;
+    -- Θωράκιση: ο λογιστής βλέπει ΜΟΝΟ τα καταχωρημένα (102 δεμένο, 130 καταχωρημένο).
+    if r.who = 'Λ1' and (r.docs <> 2 or r.consents <> 2 or r.conns <> 1) then raise exception 'ΔΙΑΡΡΟΗ/ΑΠΩΛΕΙΑ: ο Λ1 βλέπει % παραστατικά, % άδειες, % συνδέσεις', r.docs, r.consents, r.conns; end if;
+    if r.who = 'Λ2' and (r.docs <> 0 or r.consents <> 1 or r.conns <> 1) then raise exception 'ΔΙΑΡΡΟΗ/ΑΠΩΛΕΙΑ: ο Λ2 βλέπει % παραστατικά, % άδειες, % συνδέσεις', r.docs, r.consents, r.conns; end if;
     if r.who = 'Π1' and (r.docs <> 6 or r.consents <> 2 or r.conns <> 0) then raise exception 'ΔΙΑΡΡΟΗ/ΑΠΩΛΕΙΑ: ο Π1 βλέπει % παραστατικά, % άδειες, % συνδέσεις', r.docs, r.consents, r.conns; end if;
     if r.who = 'Π2' and (r.docs <> 1 or r.consents <> 1 or r.conns <> 0) then raise exception 'ΔΙΑΡΡΟΗ/ΑΠΩΛΕΙΑ: ο Π2 βλέπει % παραστατικά, % άδειες, % συνδέσεις', r.docs, r.consents, r.conns; end if;
     if r.who = 'Ξ'  and (r.docs + r.consents + r.logs + r.conns) <> 0 then raise exception 'ΔΙΑΡΡΟΗ: ο ξένος βλέπει % γραμμές', r.docs + r.consents + r.logs + r.conns; end if;
@@ -679,6 +690,14 @@ begin
     raise exception 'M2: η ακυρωμένη καταχωρημένη δαπάνη δεν σημειώθηκε για τον χρήστη';
   end if;
   if not exists (select 1 from public.expenses where id = manual) then raise exception 'ΑΚΥΡΩΣΗ: σβήστηκε δαπάνη που έγραψε ο ίδιος ο χρήστης'; end if;
+  -- Θωράκιση (Σ3): δεμένο με χειροκίνητη δαπάνη και ακυρωμένο: «Θέλει έλεγχο».
+  if (select needs_attention from public.mydata_docs where mark = 400001000000102) is distinct from 'cancelled_linked' then
+    raise exception 'Σ3: η ακύρωση δεμένου με χειροκίνητη δαπάνη δεν ειδοποίησε τον χρήστη';
+  end if;
+  if (select prev_expense_id from public.mydata_docs where mark = 400001000000102) is distinct from manual
+     or (select expense_id from public.mydata_docs where mark = 400001000000101) is not null then
+    raise exception 'Σ3: η δαπάνη του ακυρωμένου δεν πέρασε στο prev_expense_id';
+  end if;
   if (select count(*) from public.mydata_docs where mark in (400001000000101, 400001000000102) and status = 'cancelled') <> 2 then
     raise exception 'ΑΚΥΡΩΣΗ: δεν σημειώθηκαν και τα δύο';
   end if;
@@ -697,7 +716,8 @@ end $probe$;
 reset role;
 select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a1', true);
 set local role authenticated;
-do $probe$ declare r json; e uuid := (select expense_id from public.mydata_docs where mark = 400001000000101); begin
+do $probe$ declare r json; e uuid := (select coalesce(expense_id, prev_expense_id) from public.mydata_docs where mark = 400001000000101); begin
+  if e is null then raise exception 'ΣΚΗΝΙΚΟ: το ακυρωμένο δεν κράτησε τη δαπάνη του'; end if;
   r := public.mydata_cancel_ack((select id from public.mydata_docs where mark = 400001000000101), true);
   if not (r->>'ok')::boolean or (r->>'removed')::int <> 1 then raise exception 'M2: «Σβήσε τη δαπάνη» απέτυχε: %', r; end if;
   if exists (select 1 from public.expenses where id = e) then raise exception 'M2: η δαπάνη έμεινε μετά την απόφαση'; end if;
@@ -867,8 +887,14 @@ reset role;
 select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a1', true);
 set local role authenticated;
 do $probe$ declare r json; y int := extract(year from (now() at time zone 'Europe/Athens'))::int; begin
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', y);
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c2', y);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', y, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
+  -- Σ6: χωρίς ρητή επιβεβαίωση ο προηγούμενος λογιστής δεν ανακαλείται.
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c2', y, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
+  if (r->>'ok')::boolean or r->>'reason' <> 'switch_confirm' then raise exception 'Σ6: αλλαγή λογιστή χωρίς επιβεβαίωση: %', r; end if;
+  if (select accountant_id from public.mydata_consents where client_id = auth.uid() and revoked_at is null) <> 'ad000000-0000-4000-8000-0000000000c1' then
+    raise exception 'Σ6: η άρνηση άλλαξε τον λογιστή';
+  end if;
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c2', y, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true, true);
   if not (r->>'ok')::boolean then raise exception 'ΑΛΛΑΓΗ: η άδεια στον Λ2 απέτυχε: %', r; end if;
   if (select count(*) from public.mydata_consents where client_id = auth.uid() and revoked_at is null) <> 1 then raise exception 'ΑΛΛΑΓΗ: δύο ενεργοί συγχρονιστές'; end if;
   if (select accountant_id from public.mydata_consents where client_id = auth.uid() and revoked_at is null) <> 'ad000000-0000-4000-8000-0000000000c2' then raise exception 'ΑΛΛΑΓΗ: έμεινε ο Λ1'; end if;
@@ -904,7 +930,7 @@ select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a1', true);
 set local role authenticated;
 do $probe$ declare r json; begin
   update public.accountant_clients set active = true where owner_id = auth.uid() and accountant_id = 'ad000000-0000-4000-8000-0000000000c1';
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', extract(year from (now() at time zone 'Europe/Athens'))::int);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', extract(year from (now() at time zone 'Europe/Athens'))::int, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
   if not (r->>'ok')::boolean then raise exception 'ΣΚΗΝΙΚΟ: ξανά άδεια στον Λ1: %', r; end if;
 end $probe$;
 reset role;
@@ -944,7 +970,7 @@ end $probe$;
 select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a5', true);
 set local role authenticated;
 do $probe$ declare r json; begin
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c3', extract(year from (now() at time zone 'Europe/Athens'))::int);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c3', extract(year from (now() at time zone 'Europe/Athens'))::int, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
   if (r->>'ok')::boolean or r->>'reason' <> 'not_linked' then raise exception 'M5: άδεια σε μέλος γραφείου χωρίς δική του γραμμή: %', r; end if;
   raise notice 'probe: M5: άδεια μόνο σε λογιστή με δική του γραμμή σύνδεσης';
 end $probe$;
@@ -964,7 +990,7 @@ reset role;
 select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a5', true);
 set local role authenticated;
 do $probe$ declare r json; begin
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c3', extract(year from (now() at time zone 'Europe/Athens'))::int);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c3', extract(year from (now() at time zone 'Europe/Athens'))::int, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
   if not (r->>'ok')::boolean then raise exception 'ΣΚΗΝΙΚΟ: άδεια του Π5 στον Λ3: %', r; end if;
 end $probe$;
 reset role;
@@ -983,7 +1009,7 @@ end $probe$;
 select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a5', true);
 set local role authenticated;
 do $probe$ declare r json; begin
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c3', extract(year from (now() at time zone 'Europe/Athens'))::int);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c3', extract(year from (now() at time zone 'Europe/Athens'))::int, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
   if not (r->>'ok')::boolean then raise exception 'ΣΚΗΝΙΚΟ: ξανά άδεια του Π5 στον Λ3: %', r; end if;
 end $probe$;
 reset role;
@@ -1099,14 +1125,14 @@ reset role;
 select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a7', true);
 set local role authenticated;
 do $probe$ declare r json; begin
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c4', extract(year from (now() at time zone 'Europe/Athens'))::int);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c4', extract(year from (now() at time zone 'Europe/Athens'))::int, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
   if not (r->>'ok')::boolean then raise exception 'ΣΚΗΝΙΚΟ: άδεια Π7: %', r; end if;
 end $probe$;
 reset role;
 select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a6', true);
 set local role authenticated;
 do $probe$ declare r json; begin
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c4', extract(year from (now() at time zone 'Europe/Athens'))::int);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c4', extract(year from (now() at time zone 'Europe/Athens'))::int, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
   if not (r->>'ok')::boolean then raise exception 'ΣΚΗΝΙΚΟ: άδεια Π6: %', r; end if;
 end $probe$;
 reset role;
@@ -1194,5 +1220,388 @@ begin
   end if;
   raise notice 'probe: N2–N7: αναμονή που μένει, καραντίνα εβδομαδιαία, παύση 90 ημερών, ρόλος, σειρά, ανάγνωση κλειδιού';
 end $probe$;
+
+
+-- ═══ 12. ΘΩΡΑΚΙΣΗ 24/11/2026 (20261124100000) ══════════════════════════════
+-- Νέα πρόσωπα, για να μην εξαρτάται από όσα έγιναν πιο πάνω: ο λογιστής Λ8 με
+-- τον πελάτη Π8 (ένα ακίνητο), ο Λ9 που δεν έχει κανέναν πελάτη ούτε γραφείο.
+do $probe$
+declare
+  l8 uuid := 'ad000000-0000-4000-8000-0000000000c8';
+  l9 uuid := 'ad000000-0000-4000-8000-0000000000c9';
+  p8 uuid := 'ad000000-0000-4000-8000-0000000000a8';
+begin
+  insert into auth.users(id, email) values (l8, 'l8@mydata.test'), (l9, 'l9@mydata.test'), (p8, 'p8@mydata.test');
+  insert into public.billing_profiles(user_id, afm, owner_name) values (p8, '801000036', 'Πελάτης Οκτώ')
+  on conflict (user_id) do update set afm = excluded.afm, owner_name = excluded.owner_name;
+  insert into public.user_properties(id, user_id, name) values ('ad000000-0000-4000-8000-00000000f0a8', p8, 'Του Π8');
+  insert into public.accountant_links(user_id, token, active) values (p8, 'mydata-probe-p8', true);
+  perform public.mydata_key_store(l8, 'logistis8', 'abcdEFGH12345678abcdEFGH12345678');
+  perform public.mydata_key_store(l9, 'logistis9', 'abcdEFGH12345678abcdEFGH12345679');
+end $probe$;
+
+-- Τα παραστατικά των δοκιμών: ό,τι λείπει από το `extra` παίρνει ουδέτερη τιμή.
+create function pg_temp.md(p_mark text, p_afm text, p_gross int, p_issue text, extra jsonb default '{}') returns jsonb
+language sql as $$
+  select jsonb_build_object('mark', p_mark, 'counterpart_afm', p_afm, 'counterpart_name', null, 'doc_type', '2.1',
+    'series', 'Θ', 'aa', right(p_mark, 4), 'issue_date', p_issue, 'title', 'Τιμολόγιο Παροχής Υπηρεσιών Θ ' || right(p_mark, 4),
+    'net_cents', p_gross, 'vat_cents', 0, 'gross_cents', p_gross, 'is_credit', false, 'cancelled', false,
+    'cancellation_mark', null, 'tier', 'review', 'category', null, 'category_label', null, 'expense_group', null,
+    'reasons', '[]'::jsonb, 'correlated_mark', null) || extra;
+$$;
+
+-- ── 12α. ΔΕΥΤΕΡΟ ΒΗΜΑ ΓΙΑ ΚΑΘΕ ΕΝΕΡΓΕΙΑ myDATA ΤΟΥ ΛΟΓΙΣΤΗ (Σ1 νομικού) ──────
+-- Ο Λ9 δεν έχει συσκευή ούτε γραφείο: το `mfa_satisfied` τον περνά με aal1.
+-- Ο,τι αφορά το myDATA πρέπει να τον σταματά.
+select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000c9', true);
+select set_config('request.jwt.claims', '{"aal":"aal1"}', true);
+set local role authenticated;
+do $probe$ declare r json; n int; begin
+  if not private.mfa_satisfied() then raise exception 'ΣΚΗΝΙΚΟ: ο Λ9 έπρεπε να περνά το mfa_satisfied με aal1'; end if;
+  begin
+    r := public.mydata_clients_status();
+    raise exception 'Σ1: ο πίνακας myDATA απάντησε χωρίς δεύτερο βήμα: %', r;
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    r := public.mydata_confirm_afm('ad000000-0000-4000-8000-0000000000a8', '801000036');
+    raise exception 'Σ1: επιβεβαίωση ΑΦΜ χωρίς δεύτερο βήμα: %', r;
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    r := public.mydata_key_remove();
+    raise exception 'Σ1: αφαίρεση κλειδιού χωρίς δεύτερο βήμα: %', r;
+  exception when insufficient_privilege then null;
+  end;
+  select count(*) into n from public.mydata_connections;
+  if n <> 0 then raise exception 'Σ1: ο λογιστής βλέπει τη σύνδεσή του χωρίς δεύτερο βήμα'; end if;
+end $probe$;
+reset role;
+select set_config('request.jwt.claims', '{"aal":"aal2"}', true);
+select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000c9', true);
+set local role authenticated;
+do $probe$ declare n int; begin
+  select count(*) into n from public.mydata_connections;
+  if n <> 1 then raise exception 'Σ1: με δεύτερο βήμα ο Λ9 δεν βλέπει τη σύνδεσή του (%)', n; end if;
+  raise notice 'probe: Σ1: κάθε ενέργεια myDATA του λογιστή θέλει δεύτερο βήμα, και χωρίς γραφείο';
+end $probe$;
+reset role;
+
+-- Ο Λ8 διεκδικεί τον Π8 και επιβεβαιώνει το ΑΦΜ του.
+select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000c8', true);
+set local role authenticated;
+do $probe$ declare r json; begin
+  r := public.accountant_claim('mydata-probe-p8'); if not (r->>'ok')::boolean then raise exception 'ΣΚΗΝΙΚΟ: Λ8→Π8 %', r; end if;
+  r := public.mydata_confirm_afm('ad000000-0000-4000-8000-0000000000a8', '801000036');
+  if not (r->>'ok')::boolean then raise exception 'ΣΚΗΝΙΚΟ: ο Λ8 επιβεβαιώνει τον Π8: %', r; end if;
+end $probe$;
+reset role;
+
+-- ── 12β. ΣΥΝΑΙΝΕΣΗ ΜΕ ΚΕΙΜΕΝΟ ΚΑΙ ΡΗΤΟ ΤΙΚ ΓΙΑ ΥΓΕΙΑ (Κ4 νομικού) ───────────
+select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a8', true);
+set local role authenticated;
+do $probe$
+declare
+  l8 uuid := 'ad000000-0000-4000-8000-0000000000c8';
+  y  int  := extract(year from (now() at time zone 'Europe/Athens'))::int;
+  h  text := 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab';
+  r  json;
+begin
+  r := public.mydata_consent_grant(l8, y, '2026-11-24', repeat('0', 64), true);
+  if (r->>'ok')::boolean or r->>'reason' <> 'text_outdated' then raise exception 'Κ4: άδεια με κείμενο που η βάση δεν ξέρει: %', r; end if;
+  r := public.mydata_consent_grant(l8, y, '2026-11-23', h, true);
+  if (r->>'ok')::boolean or r->>'reason' <> 'text_outdated' then raise exception 'Κ4: άδεια με άλλη έκδοση: %', r; end if;
+  r := public.mydata_consent_grant(l8, y, '2026-11-24', h, false);
+  if (r->>'ok')::boolean or r->>'reason' <> 'health_unchecked' then raise exception 'Κ4: άδεια χωρίς το τικ για την υγεία: %', r; end if;
+  r := public.mydata_consent_grant(l8, y, '2026-11-24', h, null);
+  if (r->>'ok')::boolean then raise exception 'Κ4: άδεια με κενό τικ για την υγεία'; end if;
+  r := public.mydata_consent_grant(l8, y, '2026-11-24', h, true);
+  if not (r->>'ok')::boolean then raise exception 'Κ4: η σωστή άδεια απέτυχε: %', r; end if;
+  if not exists (select 1 from public.mydata_consents where client_id = auth.uid() and revoked_at is null
+                  and consent_text_version = '2026-11-24' and consent_text_hash = h and health_consent) then
+    raise exception 'Κ4: η άδεια δεν κράτησε έκδοση, αποτύπωμα και τικ';
+  end if;
+  raise notice 'probe: Κ4: η άδεια κρατά ποιο κείμενο διάβασε ο χρήστης και το ρητό τικ';
+end $probe$;
+reset role;
+
+-- ── 12γ. ΑΥΤΟΜΑΤΟ ΜΟΝΟ ΜΕ ΙΣΤΟΡΙΚΟ ΑΝΑ ΠΑΡΟΧΟ ΚΑΙ ΑΚΙΝΗΤΟ (Σ1 λογιστικού) ────
+do $probe$
+declare
+  l8 uuid := 'ad000000-0000-4000-8000-0000000000c8';
+  p8 uuid := 'ad000000-0000-4000-8000-0000000000a8';
+  prop uuid := 'ad000000-0000-4000-8000-00000000f0a8';
+  k uuid := (select id from public.mydata_consents where client_id = 'ad000000-0000-4000-8000-0000000000a8' and revoked_at is null);
+  lease uuid;
+  auto jsonb := '{"tier":"auto","category":"electricity","category_label":"Ρεύμα","expense_group":"fixed"}';
+  r json; e uuid;
+begin
+  r := public.mydata_sync_begin(l8, 'nightly');
+  lease := (r->>'lease')::uuid;
+  perform set_config('mydata.lease8', lease::text, true);
+  -- Ιστορικό του ίδιου παρόχου με δαπάνη ΧΩΡΙΣ ακίνητο: δεν μετρά για το ακίνητο.
+  insert into public.expenses (user_id, property_id, amount, description, category, date, dedup_hash)
+    values (p8, null, 80.00, 'Ρεύμα σπιτιού', 'Ρεύμα', '2026-09-01', 'mydata:700000000000001') returning id into e;
+  r := public.mydata_ingest(lease, k, jsonb_build_array(
+         pg_temp.md('700000000000001', '801000048', 8000, '2026-09-01', '{"category":"electricity"}')),
+       '[]', '[]', 1, null, null, false);
+  if (select status from public.mydata_docs where mark = 700000000000001) <> 'filed' then raise exception 'ΣΚΗΝΙΚΟ: το ιστορικό δεν καταχωρήθηκε'; end if;
+  r := public.mydata_ingest(lease, k, jsonb_build_array(pg_temp.md('700000000000002', '801000048', 8100, '2026-10-01', auto)),
+       '[]', '[]', 1, null, null, false);
+  if (select status || '/' || tier from public.mydata_docs where mark = 700000000000002) <> 'pending/review'
+     or not ((select review_reasons from public.mydata_docs where mark = 700000000000002) @> array['new_provider']) then
+    raise exception 'Σ1: αυτόματο με ιστορικό που δεν αφορά αυτό το ακίνητο';
+  end if;
+  -- Ιστορικό του ίδιου παρόχου ΣΤΟ ακίνητο: το επόμενο μπαίνει αυτόματα.
+  update public.expenses set property_id = prop where id = e;
+  r := public.mydata_ingest(lease, k, jsonb_build_array(pg_temp.md('700000000000003', '801000048', 8200, '2026-11-01', auto)),
+       '[]', '[]', 1, null, null, false);
+  if (select status || '/' || filed_by from public.mydata_docs where mark = 700000000000003) <> 'filed/auto' then
+    raise exception 'Σ1: με ιστορικό στο ίδιο ακίνητο το αυτόματο δεν έγινε';
+  end if;
+  raise notice 'probe: Σ1: το αυτόματο θέλει επιβεβαίωση του ίδιου παρόχου για το ίδιο ακίνητο';
+end $probe$;
+
+-- ── 12δ. ΑΝΕΚΤΙΚΟ ΤΑΙΡΙΑΣΜΑ ΜΕ ΧΕΙΡΟΚΙΝΗΤΗ ΔΑΠΑΝΗ (Σ2 λογιστικού) ──────────
+do $probe$
+declare
+  p8 uuid := 'ad000000-0000-4000-8000-0000000000a8';
+  prop uuid := 'ad000000-0000-4000-8000-00000000f0a8';
+  k uuid := (select id from public.mydata_consents where client_id = 'ad000000-0000-4000-8000-0000000000a8' and revoked_at is null);
+  lease uuid := current_setting('mydata.lease8')::uuid;
+  bycat uuid; byaa uuid; tooFar uuid; r json;
+begin
+  -- Ο χρήστης πέρασε τον λογαριασμό 9 ημέρες μετά, στρογγυλεμένο, με άλλη επωνυμία: ίδια κατηγορία.
+  insert into public.expenses (user_id, property_id, amount, description, category, date, store_vendor)
+    values (p8, prop, 50.00, 'Λογαριασμός νερού', 'Νερό', '2026-11-19', 'Ύδρευση δήμου') returning id into bycat;
+  -- Ποσό εντελώς άλλο, αλλά ο αριθμός του παραστατικού στην περιγραφή.
+  insert into public.expenses (user_id, property_id, amount, description, category, date, supplier_afm)
+    values (p8, prop, 30.00, 'Προκαταβολή ΤΔΑ 0012', 'Επισκευές', '2026-11-05', '801000050') returning id into byaa;
+  -- 11 ημέρες και 1,50€ διαφορά: όχι.
+  insert into public.expenses (user_id, property_id, amount, description, category, date, supplier_afm)
+    values (p8, prop, 21.50, 'Αλλο', 'Επισκευές', '2026-11-21', '801000050') returning id into tooFar;
+  r := public.mydata_ingest(lease, k, jsonb_build_array(
+         pg_temp.md('700000000000010', '801000062', 5040, '2026-11-10', '{"category":"water","category_label":"Νερό"}'),
+         pg_temp.md('700000000000012', '801000050', 7700, '2026-11-02', '{"aa":"0012"}'),
+         pg_temp.md('700000000000013', '801000050', 2000, '2026-11-10', '{"aa":"77"}')),
+       '[]', '[]', 3, null, null, false);
+  if (select status from public.mydata_docs where mark = 700000000000010) <> 'linked'
+     or (select expense_id from public.mydata_docs where mark = 700000000000010) <> bycat then
+    raise exception 'Σ2: δεν δέθηκε δαπάνη ίδιας κατηγορίας, ±1€, 9 ημέρες μετά';
+  end if;
+  if (select expense_id from public.mydata_docs where mark = 700000000000012) is distinct from byaa then
+    raise exception 'Σ2: δεν δέθηκε δαπάνη με τον ίδιο αριθμό παραστατικού';
+  end if;
+  if (select status from public.mydata_docs where mark = 700000000000013) <> 'pending' then
+    raise exception 'Σ2: δέθηκε δαπάνη 11 ημέρες μακριά με 1,50€ διαφορά';
+  end if;
+  raise notice 'probe: Σ2: ±1€ ή ίδιος αριθμός, ±10 ημέρες, ΑΦΜ ή κατηγορία';
+end $probe$;
+
+-- Η κάρτα «Είναι η ίδια με …;»: ο ιδιοκτήτης βλέπει την υποψήφια και τη δένει.
+select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a8', true);
+set local role authenticated;
+do $probe$
+declare
+  prop uuid := 'ad000000-0000-4000-8000-00000000f0a8';
+  d13 uuid := (select id from public.mydata_docs where mark = 700000000000013);
+  e uuid; r json;
+begin
+  insert into public.expenses (user_id, property_id, amount, description, category, date, supplier_afm)
+    values (auth.uid(), prop, 20.30, 'Ηλεκτρολόγος', 'Επισκευές', '2026-11-14', '801000050') returning id into e;
+  r := public.mydata_doc_match(d13, prop, 'Επισκευές');
+  if r is null or (r->>'expenseId')::uuid <> e then raise exception 'Σ2: η κάρτα δεν βρήκε την υποψήφια: %', r; end if;
+  r := public.mydata_doc_link(d13, gen_random_uuid(), prop, 'Επισκευές');
+  if (r->>'ok')::boolean then raise exception 'Σ2: δέθηκε δαπάνη που δεν ταιριάζει'; end if;
+  r := public.mydata_doc_link(d13, e, prop, 'Επισκευές');
+  if not (r->>'ok')::boolean or (select status from public.mydata_docs where id = d13) <> 'linked' then
+    raise exception 'Σ2: «Είναι η ίδια» δεν έδεσε: %', r;
+  end if;
+end $probe$;
+reset role;
+select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a2', true);
+set local role authenticated;
+do $probe$ declare r json; begin
+  r := public.mydata_doc_match((select id from public.mydata_docs where mark = 700000000000002), null, 'Ρεύμα');
+  if r is not null then raise exception 'ΔΙΑΡΡΟΗ: ο Π2 ψάχνει δαπάνες για παραστατικό του Π8'; end if;
+end $probe$;
+reset role;
+
+-- ── 12ε. ΑΚΥΡΩΣΗ ΚΑΙ ΕΠΑΝΕΚΔΟΣΗ ΣΤΗΝ ΙΔΙΑ ΔΑΠΑΝΗ (Σ3 λογιστικού) ────────────
+do $probe$
+declare
+  p8 uuid := 'ad000000-0000-4000-8000-0000000000a8';
+  k uuid := (select id from public.mydata_consents where client_id = 'ad000000-0000-4000-8000-0000000000a8' and revoked_at is null);
+  lease uuid := current_setting('mydata.lease8')::uuid;
+  e uuid := (select expense_id from public.mydata_docs where mark = 700000000000003);
+  n int := (select count(*) from public.expenses where user_id = 'ad000000-0000-4000-8000-0000000000a8');
+  r json;
+begin
+  -- Η ακύρωση του 003 και η επανέκδοσή του (νέος ΜΑΡΚ, ίδιο ποσό) στην ίδια σελίδα.
+  r := public.mydata_ingest(lease, k,
+         jsonb_build_array(pg_temp.md('700000000000020', '801000048', 8200, '2026-11-03',
+           '{"tier":"auto","category":"electricity","category_label":"Ρεύμα","expense_group":"fixed"}')),
+         jsonb_build_array(jsonb_build_object('invoice_mark', '700000000000003', 'cancellation_mark', '700000000000090')),
+         '[]', 2, null, null, false);
+  if (select status || '/' || coalesce(prev_expense_id::text, '-') from public.mydata_docs where mark = 700000000000003) <> 'cancelled/' || e then
+    raise exception 'Σ3: το ακυρωμένο δεν κράτησε τη δαπάνη του στο prev_expense_id';
+  end if;
+  if (select status from public.mydata_docs where mark = 700000000000020) <> 'linked'
+     or (select expense_id from public.mydata_docs where mark = 700000000000020) <> e then
+    raise exception 'Σ3: η επανέκδοση δεν δέθηκε στην ίδια δαπάνη';
+  end if;
+  if (select count(*) from public.expenses where user_id = p8) <> n then raise exception 'Σ3: η επανέκδοση γέννησε δεύτερη δαπάνη'; end if;
+  if (select needs_attention from public.mydata_docs where mark = 700000000000003) is not null then
+    raise exception 'Σ3: έμεινε ειδοποίηση ενώ η επανέκδοση κάλυψε τη δαπάνη';
+  end if;
+  -- Ακύρωση δεμένου με χειροκίνητη δαπάνη, χωρίς επανέκδοση: «Θέλει έλεγχο».
+  r := public.mydata_ingest(lease, k, '[]',
+         jsonb_build_array(jsonb_build_object('invoice_mark', '700000000000012', 'cancellation_mark', '700000000000091')),
+         '[]', 1, null, null, false);
+  if (select needs_attention from public.mydata_docs where mark = 700000000000012) is distinct from 'cancelled_linked' then
+    raise exception 'Σ3: ακύρωση δεμένου με χειροκίνητη δαπάνη χωρίς ειδοποίηση';
+  end if;
+  raise notice 'probe: Σ3: ακύρωση και επανέκδοση στην ίδια δαπάνη, «Θέλει έλεγχο» για το δεμένο';
+end $probe$;
+
+select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a8', true);
+set local role authenticated;
+do $probe$ declare r json; e uuid := (select prev_expense_id from public.mydata_docs where mark = 700000000000012); begin
+  r := public.mydata_cancel_ack((select id from public.mydata_docs where mark = 700000000000012), true);
+  if not (r->>'ok')::boolean or (r->>'removed')::int <> 0 then raise exception 'Σ3: το «Το είδα» απέτυχε ή έσβησε: %', r; end if;
+  if not exists (select 1 from public.expenses where id = e) then raise exception 'Σ3: σβήστηκε χειροκίνητη δαπάνη του χρήστη'; end if;
+end $probe$;
+reset role;
+
+-- ── 12στ. ΠΙΣΤΩΤΙΚΟ ΣΥΣΧΕΤΙΖΟΜΕΝΟ (Μ6 λογιστικού) ─────────────────────────────
+do $probe$
+declare
+  k uuid := (select id from public.mydata_consents where client_id = 'ad000000-0000-4000-8000-0000000000a8' and revoked_at is null);
+  lease uuid := current_setting('mydata.lease8')::uuid;
+  r json;
+begin
+  r := public.mydata_ingest(lease, k, jsonb_build_array(
+         pg_temp.md('700000000000030', '801000074', 1500, '2026-11-12',
+           '{"is_credit":true,"doc_type":"5.1","correlated_mark":"700000000000010","category":null}')),
+       '[]', '[]', 1, null, null, false);
+  if (select category from public.mydata_docs where mark = 700000000000030) is distinct from 'water'
+     or (select correlated_doc_id from public.mydata_docs where mark = 700000000000030)
+        is distinct from (select id from public.mydata_docs where mark = 700000000000010) then
+    raise exception 'Μ6: το πιστωτικό δεν δέθηκε με το αρχικό ή δεν πήρε την κατηγορία του';
+  end if;
+end $probe$;
+
+-- ── 12ζ. ΕΛΑΧΙΣΤΟΠΟΙΗΣΗ ΚΑΙ ΤΙ ΒΛΕΠΕΙ Ο ΛΟΓΙΣΤΗΣ (Κ2 νομικού) ────────────────
+do $probe$
+declare
+  k uuid := (select id from public.mydata_consents where client_id = 'ad000000-0000-4000-8000-0000000000a8' and revoked_at is null);
+  lease uuid := current_setting('mydata.lease8')::uuid;
+begin
+  perform public.mydata_ingest(lease, k, jsonb_build_array(
+    pg_temp.md('700000000000040', '801000086', 3500, '2026-11-15', '{"counterpart_name":"Ιατρείο Παραδείγματος"}'),
+    pg_temp.md('700000000000041', '801000098', 1200, '2026-11-16', '{"counterpart_name":"Φαρμακείο Παραδείγματος"}'),
+    pg_temp.md('700000000000042', '801000098', 1300, '2026-11-17', '{"counterpart_name":"Φαρμακείο Παραδείγματος"}')),
+    '[]', '[]', 3, null, null, false);
+end $probe$;
+select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a8', true);
+set local role authenticated;
+do $probe$ declare r json; begin
+  r := public.mydata_doc_dismiss((select id from public.mydata_docs where mark = 700000000000040));
+  if not (r->>'ok')::boolean then raise exception 'Κ2: «Δεν αφορά ακίνητο» απέτυχε'; end if;
+  r := public.mydata_ignore_provider('801000098');
+  if (r->>'dismissed')::int <> 2 then raise exception 'Κ2: «Πάντα αγνόησε» απέρριψε % αντί για 2', r->>'dismissed'; end if;
+  if exists (select 1 from public.mydata_docs where mark between 700000000000040 and 700000000000042
+              and (status <> 'dismissed' or counterpart_afm is not null or counterpart_name is not null or title is not null
+                   or issue_date is not null or gross_cents is not null or net_cents is not null or series is not null or aa is not null)) then
+    raise exception 'Κ2: η απόρριψη κράτησε εκδότη, ποσά ή ημερομηνία';
+  end if;
+  if (select count(*) from public.mydata_docs where mark between 700000000000040 and 700000000000042 and mark is not null) <> 3 then
+    raise exception 'Κ2: χάθηκε ο ΜΑΡΚ, άρα θα ξαναρχόταν';
+  end if;
+end $probe$;
+reset role;
+-- Ο ΜΑΡΚ μένει: το ίδιο παραστατικό δεν ξανάρχεται.
+do $probe$
+declare
+  k uuid := (select id from public.mydata_consents where client_id = 'ad000000-0000-4000-8000-0000000000a8' and revoked_at is null);
+  r json;
+begin
+  r := public.mydata_ingest(current_setting('mydata.lease8')::uuid, k, jsonb_build_array(
+    pg_temp.md('700000000000040', '801000086', 3500, '2026-11-15', '{"counterpart_name":"Ιατρείο Παραδείγματος"}')),
+    '[]', '[]', 1, null, null, false);
+  if (r->>'added')::int <> 0 or (select counterpart_name from public.mydata_docs where mark = 700000000000040) is not null then
+    raise exception 'Κ2: το απορριφθέν ξαναήρθε με τα στοιχεία του';
+  end if;
+end $probe$;
+
+-- Ο λογιστής: μόνο τα καταχωρημένα και τα δεμένα, ποτέ εκκρεμή ή απορριφθέντα.
+select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000c8', true);
+set local role authenticated;
+do $probe$ declare bad int; seen int; begin
+  select count(*) filter (where status not in ('filed', 'linked')), count(*) into bad, seen from public.mydata_docs;
+  if bad <> 0 then raise exception 'Κ2: ο λογιστής βλέπει % εκκρεμή ή απορριφθέντα', bad; end if;
+  if seen = 0 then raise exception 'ΣΚΗΝΙΚΟ: ο λογιστής δεν βλέπει ούτε τα καταχωρημένα'; end if;
+  if (select (e->>'pending')::int from json_array_elements(public.mydata_clients_status()) e
+       where e->>'ownerId' = 'ad000000-0000-4000-8000-0000000000a8') < 1 then
+    raise exception 'Κ2: ο λογιστής δεν βλέπει ούτε το πλήθος των εκκρεμών';
+  end if;
+  raise notice 'probe: Κ2: απόρριψη = μόνο ΜΑΡΚ· ο λογιστής βλέπει μόνο ό,τι καταχωρήθηκε';
+end $probe$;
+reset role;
+
+-- ── 12η. ΔΙΑΤΗΡΗΣΗ: ΕΚΚΡΕΜΗ 90 ΗΜΕΡΕΣ, ΑΝΑΚΛΗΜΕΝΕΣ ΑΔΕΙΕΣ 1825 (Σ3 νομικού) ──
+do $probe$
+declare
+  p8 uuid := 'ad000000-0000-4000-8000-0000000000a8';
+  k uuid := (select id from public.mydata_consents where client_id = 'ad000000-0000-4000-8000-0000000000a8' and revoked_at is null);
+  old_c uuid;
+begin
+  perform public.mydata_ingest(current_setting('mydata.lease8')::uuid, k, jsonb_build_array(
+    pg_temp.md('700000000000050', '801000110', 1000, '2026-08-01'),
+    pg_temp.md('700000000000051', '801000110', 1100, '2026-08-02')),
+    '[]', '[]', 2, null, null, false);
+  update public.mydata_docs set fetched_at = now() - interval '91 days' where mark = 700000000000050;
+  update public.mydata_docs set fetched_at = now() - interval '89 days' where mark = 700000000000051;
+  insert into public.mydata_consents (client_id, accountant_id, afm, window_from, revoked_at, revoke_reason, status)
+    values (p8, 'ad000000-0000-4000-8000-0000000000c9', '801000036', '2020-01-01', now() - interval '1826 days', 'client', 'pending')
+    returning id into old_c;
+  perform private.mydata_prune();
+  if exists (select 1 from public.mydata_docs where mark = 700000000000050) then raise exception 'Σ3: εκκρεμές 91 ημερών δεν σβήστηκε'; end if;
+  if (select status from public.mydata_docs where mark = 700000000000051) is distinct from 'pending' then raise exception 'Σ3: σβήστηκε εκκρεμές 89 ημερών'; end if;
+  if exists (select 1 from public.mydata_consents where id = old_c) then raise exception 'Σ3: ανακλημένη άδεια 1826 ημερών δεν σβήστηκε'; end if;
+  if not exists (select 1 from public.mydata_consents where client_id = p8 and revoked_at is null) then raise exception 'Σ3: το καθάρισμα πείραξε ενεργή άδεια'; end if;
+  raise notice 'probe: Σ3: εκκρεμή 90 ημέρες, ανακλημένες άδειες 1825';
+end $probe$;
+
+-- ── 12θ. ΑΛΛΑΓΗ ΛΟΓΙΣΤΗ: ΡΗΤΗ ΕΠΙΒΕΒΑΙΩΣΗ, ΟΙ ΔΑΠΑΝΕΣ ΜΕΝΟΥΝ (Σ6 νομικού) ────
+select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000c9', true);
+set local role authenticated;
+do $probe$ declare r json; begin
+  r := public.accountant_claim('mydata-probe-p8'); if not (r->>'ok')::boolean then raise exception 'ΣΚΗΝΙΚΟ: Λ9→Π8 %', r; end if;
+  r := public.mydata_confirm_afm('ad000000-0000-4000-8000-0000000000a8', '801000036');
+  if not (r->>'ok')::boolean then raise exception 'ΣΚΗΝΙΚΟ: ο Λ9 επιβεβαιώνει τον Π8: %', r; end if;
+end $probe$;
+reset role;
+select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a8', true);
+set local role authenticated;
+do $probe$
+declare
+  l9 uuid := 'ad000000-0000-4000-8000-0000000000c9';
+  y  int  := extract(year from (now() at time zone 'Europe/Athens'))::int;
+  h  text := 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab';
+  kept int := (select count(*) from public.expenses where user_id = auth.uid());
+  r json;
+begin
+  r := public.mydata_consent_grant(l9, y, '2026-11-24', h, true);
+  if (r->>'ok')::boolean or r->>'reason' <> 'switch_confirm' or (r->>'pending')::int < 1 then
+    raise exception 'Σ6: αλλαγή λογιστή χωρίς επιβεβαίωση, ή χωρίς πλήθος όσων σβήνουν: %', r;
+  end if;
+  r := public.mydata_consent_grant(l9, y, '2026-11-24', h, true, true);
+  if not (r->>'ok')::boolean then raise exception 'Σ6: η επιβεβαιωμένη αλλαγή απέτυχε: %', r; end if;
+  if (select count(*) from public.expenses where user_id = auth.uid()) <> kept then raise exception 'Σ6: η αλλαγή λογιστή έσβησε δαπάνες'; end if;
+  if (select accountant_id from public.mydata_consents where client_id = auth.uid() and revoked_at is null) <> l9 then raise exception 'Σ6: ο λογιστής δεν άλλαξε'; end if;
+  raise notice 'probe: Σ6: αλλαγή λογιστή μόνο με επιβεβαίωση· οι δαπάνες μένουν';
+end $probe$;
+reset role;
 
 rollback;

@@ -86,7 +86,7 @@ export interface IngestDoc {
   tier: 'auto' | 'review'
   /** slug της ταξινομίας, ή null. */
   category: string | null
-  /** Η ετικέτα και η ομάδα της κατηγορίας, μόνο για το `auto` (η δαπάνη γράφεται στη βάση). */
+  /** Η ετικέτα και η ομάδα της κατηγορίας του μητρώου (για το `auto` και για το ταίριασμα με χειροκίνητη δαπάνη). */
   category_label: string | null
   expense_group: string | null
   /** Το όνομα του παρόχου από το μητρώο, για το «Πάροχος» της δαπάνης. */
@@ -281,6 +281,9 @@ export async function runAccountant(d: EngineDeps, accountantId: string, kind: S
             // ΑΠΟΡΡΙΨΗ ΧΩΡΙΣ ΑΠΟΘΗΚΕΥΣΗ: ούτε όνομα ούτε ποσό φεύγουν προς τη βάση.
             if (v.tier === 'reject') { rejected++; continue }
             const cat = v.tier === 'auto' && v.kind ? KIND_CATEGORY[v.kind] : null
+            // Η ετικέτα πάει και στο «για έλεγχο»: η βάση ψάχνει χειροκίνητη δαπάνη
+            // της ίδιας κατηγορίας (θωράκιση 24/11/2026). Το `tier` κρίνει το αυτόματο.
+            const known = v.kind ? KIND_CATEGORY[v.kind] : null
             docs.push({
               mark: m.mark, counterpart_afm: m.counterpartAfm, counterpart_name: m.counterpartName,
               doc_type: m.docType, series: m.series, aa: m.aa, issue_date: m.issueDate, title: m.title,
@@ -288,7 +291,7 @@ export async function runAccountant(d: EngineDeps, accountantId: string, kind: S
               is_credit: m.credit, cancelled: m.cancelled, cancellation_mark: m.cancellationMark,
               correlated_mark: m.correlatedMark,
               tier: cat ? 'auto' : 'review', category: v.category,
-              category_label: cat?.label ?? null, expense_group: cat?.group ?? null,
+              category_label: known?.label ?? null, expense_group: known?.group ?? null,
               vendor: providerByAfm(m.counterpartAfm)?.name ?? null, reasons: v.reasons,
             })
           }

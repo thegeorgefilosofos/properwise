@@ -103,6 +103,43 @@ export interface NotProperty { afm: string; name: string; source: string; quote:
  */
 export const NOT_PROPERTY: readonly NotProperty[] = [];
 
+/**
+ * ΚΑΔ ΠΟΥ ΔΕΝ ΑΦΟΡΟΥΝ ΑΚΙΝΗΤΟ (θωράκιση 24/11/2026, Κ2 του νομικού ελέγχου).
+ * Πρόθεμα των ψηφίων του ΚΑΔ (86.21.10.00 → «8621»), με την περιγραφή της
+ * ταξινόμησης.
+ *
+ * ΠΗΓΗ: Eurostat, «NACE Rev. 2 – Statistical classification of economic
+ * activities in the European Community» (KS-RA-07-015, 2008), και η ελληνική
+ * της απόδοση ΣΤΑΚΟΔ-08 της ΕΛΣΤΑΤ, πάνω στην οποία χτίζονται οι ΚΑΔ της ΑΑΔΕ.
+ *
+ * ΑΝΕΝΕΡΓΗ ΣΗΜΕΡΑ. Το RequestDocs δεν φέρνει ΚΑΔ εκδότη· θα τον έδινε το
+ * RgWsPublic2, που είναι προαιρετικό (σχέδιο 23/11/2026). Ως τότε κανένα
+ * παραστατικό δεν απορρίπτεται από εδώ: όσα έρχονται μένουν μόνο στον
+ * ιδιοκτήτη όσο είναι εκκρεμή (ο λογιστής δεν τα βλέπει) και σβήνουν σε
+ * MYDATA_PENDING_DAYS ημέρες αν δεν κριθούν (lib/mydata/retention.ts).
+ */
+export interface NotPropertyKad { prefix: string; label: string; group: 'health' | 'personal'; source: string }
+
+const NACE = 'NACE Rev. 2 (Eurostat KS-RA-07-015) / ΣΤΑΚΟΔ-08 (ΕΛΣΤΑΤ)';
+
+export const NOT_PROPERTY_KAD: readonly NotPropertyKad[] = [
+  { prefix: '86', label: 'Δραστηριότητες ανθρώπινης υγείας', group: 'health', source: NACE },
+  { prefix: '87', label: 'Δραστηριότητες βοήθειας με παροχή καταλύματος', group: 'health', source: NACE },
+  { prefix: '4773', label: 'Λιανικό εμπόριο φαρμακευτικών προϊόντων σε εξειδικευμένα καταστήματα', group: 'health', source: NACE },
+  { prefix: '4774', label: 'Λιανικό εμπόριο ιατρικών και ορθοπεδικών ειδών σε εξειδικευμένα καταστήματα', group: 'health', source: NACE },
+  { prefix: '4711', label: 'Λιανικό εμπόριο σε μη εξειδικευμένα καταστήματα, κυρίως με τρόφιμα, ποτά ή καπνό', group: 'personal', source: NACE },
+  { prefix: '4771', label: 'Λιανικό εμπόριο ενδυμάτων σε εξειδικευμένα καταστήματα', group: 'personal', source: NACE },
+  { prefix: '4772', label: 'Λιανικό εμπόριο υποδημάτων και δερμάτινων ειδών σε εξειδικευμένα καταστήματα', group: 'personal', source: NACE },
+  { prefix: '56', label: 'Δραστηριότητες υπηρεσιών εστίασης', group: 'personal', source: NACE },
+];
+
+/** Ο ΚΑΔ ανήκει σε κατηγορία που δεν αφορά ακίνητο; Μόνο ψηφία μετρούν. */
+export function kadNotProperty(kad: string): NotPropertyKad | null {
+  const digits = String(kad ?? '').replace(/\D/g, '');
+  if (digits.length < 2) return null;
+  return NOT_PROPERTY_KAD.find(k => digits.startsWith(k.prefix)) ?? null;
+}
+
 /** Η κατηγορία της εφαρμογής ανά είδος, ίδια με την ταξινομία (providers.test.ts). */
 export interface KindCategory {
   slug: string;

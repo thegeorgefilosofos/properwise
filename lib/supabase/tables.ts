@@ -689,6 +689,7 @@ export interface ExpensesRow {
   supply: string | null;
   supplier_afm: string | null;
   dedup_hash: string | null;
+  paid_on: string | null;
 }
 
 export interface FeedbackCampaignWinnersRow {
@@ -1633,7 +1634,13 @@ export interface MydataConsentsRow {
   last_error_code: string | null;
   failures: number;
   next_retry_at: string | null;
+  paused_at: string | null;
+  quarantine_at: string | null;
+  parser_version: string | null;
   not_property: number | null;
+  consent_text_version: string | null;
+  consent_text_hash: string | null;
+  health_consent: boolean | null;
 }
 
 export interface MydataDocsRow {
@@ -1642,16 +1649,16 @@ export interface MydataDocsRow {
   client_id: string;
   client_afm: string;
   mark: number;
-  counterpart_afm: string;
+  counterpart_afm: string | null;
   counterpart_name: string | null;
-  doc_type: string;
-  series: string;
-  aa: string;
-  issue_date: string;
-  title: string;
-  net_cents: number;
-  vat_cents: number;
-  gross_cents: number;
+  doc_type: string | null;
+  series: string | null;
+  aa: string | null;
+  issue_date: string | null;
+  title: string | null;
+  net_cents: number | null;
+  vat_cents: number | null;
+  gross_cents: number | null;
   is_credit: boolean;
   status: string;
   cancellation_mark: number | null;
@@ -1663,6 +1670,9 @@ export interface MydataDocsRow {
   category: string | null;
   review_reasons: string[] | null;
   filed_by: string | null;
+  prev_expense_id: string | null;
+  correlated_mark: number | null;
+  correlated_doc_id: string | null;
 }
 
 export interface MydataIgnoredProvidersRow {

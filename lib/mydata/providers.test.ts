@@ -6,7 +6,7 @@
 // έβαζε ξένα παραστατικά ως δαπάνες ακινήτου· γι' αυτό ελέγχονται όλες οι
 // εγγραφές, όχι δείγμα. Η κατηγορία κάθε είδους πρέπει να είναι ΑΚΡΙΒΩΣ αυτή
 // της ταξινομίας (ετικέτα και ομάδα), αφού η βάση τη γράφει χωρίς την εφαρμογή.
-import { PROVIDERS, NOT_PROPERTY, KIND_CATEGORY, KINDS, providerByAfm, providerName } from './providers';
+import { PROVIDERS, NOT_PROPERTY, KIND_CATEGORY, KINDS, providerByAfm, providerName, kadNotProperty, NOT_PROPERTY_KAD } from './providers';
 
 // Οι τιμές E3_585_001 έως 016 του ExpensesClassificationTypeClassificationType στο
 // SimpleTypes-v2.0.2.xsd της ΑΑΔΕ, όπως τις απαριθμεί το σχήμα.
@@ -61,6 +61,19 @@ ok('όριο: 500€ σε λεπτά, όπως το άρθρο 23 ΚΦΕ', BANK_
 ok('όριο: η πηγή γράφει νόμο και ΠΟΛ', /4172\/2013/.test(BANK_PAYMENT_LIMIT_SOURCE.law) && /1216\/2014/.test(BANK_PAYMENT_LIMIT_SOURCE.circular));
 ok('όριο: χωρίς ανθρώπινο checkedAt ακόμη', BANK_PAYMENT_LIMIT_SOURCE.checkedAt === null);
 ok('συντελεστής ασυνήθιστου ποσού: 2', UNUSUAL_FACTOR === 2);
+
+// ── ΘΩΡΑΚΙΣΗ 24/11/2026: ΚΑΔ ΠΟΥ ΔΕΝ ΑΦΟΡΟΥΝ ΑΚΙΝΗΤΟ (ΥΓΕΙΑ, ΠΡΟΣΩΠΙΚΗ ΚΑΤΑΝΑΛΩΣΗ) ──
+// Πηγή των κωδικών: NACE Rev. 2 (Eurostat) / ΣΤΑΚΟΔ-08 (ΕΛΣΤΑΤ). Μετρά το πρόθεμα
+// των ψηφίων: 86.21.10.00 είναι «86», το 47.79 ΔΕΝ είναι 47.73.
+{
+  ok('ΚΑΔ: ιατρείο (86.21) είναι υγεία', kadNotProperty('86.21.10.00')?.group === 'health');
+  ok('ΚΑΔ: φαρμακείο (47.73) είναι υγεία', kadNotProperty('47.73.10.01')?.group === 'health');
+  ok('ΚΑΔ: σούπερ μάρκετ (47.11) είναι προσωπική κατανάλωση', kadNotProperty('47.11.10.00')?.group === 'personal');
+  ok('ΚΑΔ: υδραυλικές εργασίες (43.22) αφορούν ακίνητο', kadNotProperty('43.22.11.01') === null);
+  ok('ΚΑΔ: 47.79 δεν πιάνεται από το 47.7x της υγείας', kadNotProperty('47.79.10.00') === null);
+  ok('ΚΑΔ: κενό ή σκουπίδια: τίποτα', kadNotProperty('') === null && kadNotProperty('abc') === null);
+  ok('ΚΑΔ: κάθε γραμμή έχει πηγή και περιγραφή', NOT_PROPERTY_KAD.every(k => /^\d{2,4}$/.test(k.prefix) && k.label.length > 3 && k.source.length > 10));
+}
 
 console.log(`mydata providers: ${pass} ✓ · ${fail} ✗`);
 if (fail) process.exit(1);

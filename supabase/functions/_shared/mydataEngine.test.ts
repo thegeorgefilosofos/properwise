@@ -383,6 +383,8 @@ void (async () => {
         const d = m.ingests.flatMap(i => i.docs).find(x => x.mark === '400001000000101')
         ok('20: πάροχος χωρίς checkedAt: για έλεγχο ακόμη και με ιστορικό', d?.tier === 'review' && d.reasons.includes('provider_unchecked'))
         ok('20: ο ΜΑΡΚ του συσχετιζόμενου φτάνει στη βάση', d?.correlated_mark === '400001000000090')
+        // Η βάση ψάχνει χειροκίνητη δαπάνη και με την κατηγορία (θωράκιση, Σ2).
+        ok('20: και το «για έλεγχο» φέρνει την ετικέτα της κατηγορίας', d?.category_label === 'Ρεύμα')
       } finally { await real.close() }
     }
 
