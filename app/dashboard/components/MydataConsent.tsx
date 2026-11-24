@@ -135,8 +135,9 @@ export default function MydataConsent({ userId }: { userId: string }) {
       <ul style={{ ...TT.bodySm, margin: `0 0 ${T.sp.md}px`, paddingLeft: 20, display: 'grid', gap: 6, color: 'var(--text-secondary)' }}>
         {MYDATA_CONSENT_POINTS.map(t => <li key={t}>{t}</li>)}
       </ul>
-      <p style={{ ...TT.bodySm, margin: `0 0 ${T.sp.md}px` }}>
-        <a href={MYDATA_PRIVACY_HREF} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 2, fontWeight: 600 }}>Τι ακριβώς κρατάμε και για πόσο</a>
+      {/* Στόχος αφής 44, όπως το «Ιστορικό πρόσβασης» πιο κάτω. */}
+      <p style={{ ...TT.bodySm, margin: `0 0 ${T.sp.sm}px` }}>
+        <a href={MYDATA_PRIVACY_HREF} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 2, fontWeight: 600 }}>Τι ακριβώς κρατάμε και για πόσο</a>
       </p>
       {choices.length > 1 && (
         <div style={{ maxWidth: 360, marginBottom: T.sp.sm }}>
