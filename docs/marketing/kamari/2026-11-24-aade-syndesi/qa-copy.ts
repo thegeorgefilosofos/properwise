@@ -16,8 +16,8 @@ const plan = readFileSync(join(here, 'plan.md'), 'utf8');
 const visible: string[] = [];
 for (const m of film.matchAll(/\[CUT\[\d\], CUT\[\d\], '([^']+)'\]/g)) visible.push(m[1]);
 for (const m of film.matchAll(/cap: '([^']+)'/g)) visible.push(m[1]);
-for (const m of film.matchAll(/const (?:HOOK|TITLE|MSG) = \[([^\]]+)\]/g)) for (const x of m[1].matchAll(/'([^']+)'/g)) visible.push(x[1]);
-for (const m of film.matchAll(/const (?:TEASE|SUB|PLAN) = '([^']+)'/g)) visible.push(m[1]);
+for (const m of film.matchAll(/const (?:HOOK|TITLE|MSG|TYPE) = \[([^\]]+)\]/g)) for (const x of m[1].matchAll(/'([^']+)'/g)) visible.push(x[1]);
+for (const m of film.matchAll(/const (?:TEASE|SUB|PLAN|FOLLOW) = '([^']+)'/g)) visible.push(m[1]);
 for (const m of film.matchAll(/<div id="badge">([^<]+)<\/div>/g)) visible.push(m[1]);
 const PLAN = /const PLAN = '([^']+)'/.exec(film)![1];
 // Το πρότυπο της πρόσκλησης με το όνομα του πακέτου στη θέση της παρεμβολής.
@@ -36,10 +36,12 @@ for (const s of [...sections, ...li]) fails.push(...copyFails(s.text, s.where));
 for (const x of li.filter((y) => y.where.includes('Ανάρτηση'))) {
   const lines = x.text.split('\n').filter((l) => l.trim() && !l.trim().startsWith('#'));
   if (lines.length < 4 || lines.length > 7) fails.push(`${x.where}: ${lines.length} γραμμές (4 έως 7)`);
-  if (/\d/.test(x.text)) fails.push(`${x.where}: ψηφίο`);
+  // Ψηφίο μόνο σε όνομα εντύπου της ΑΑΔΕ (Ε1, Ε2, Ε9): είναι όνομα, όχι αριθμός.
+  if (/\d/.test(x.text.replace(/Ε[129](?!\d)/g, ''))) fails.push(`${x.where}: ψηφίο`);
   if (!lines[lines.length - 1].trim().endsWith(';')) fails.push(`${x.where}: δεν τελειώνει με ερώτηση`);
   const tags = x.text.match(/#\S+/g) ?? [];
-  if (tags.length < 3 || tags.length > 4) fails.push(`${x.where}: ${tags.length} hashtags`);
+  // v2: τα κείμενα του αξιολογητή είναι χωρίς hashtags· ως τέσσερα.
+  if (tags.length > 4) fails.push(`${x.where}: ${tags.length} hashtags`);
 }
 const first = li.find((y) => y.where.includes('Πρώτο σχόλιο'));
 if (!first || !first.text.includes('https://properwise.gr/?utm_source=linkedin&utm_medium=social&utm_campaign=aade')) fails.push('LinkedIn: πρώτο σχόλιο χωρίς τον σύνδεσμο');
@@ -49,6 +51,8 @@ const FORBIDDEN: [RegExp, string][] = [
   [/—/, 'μεγάλη παύλα'], [/δωρεάν/i, '«δωρεάν»'], [/βοηθ/i, '«βοηθός»'],
   [/επίσημ/i, '«επίσημη»'], [/συνεργ/i, '«συνεργασία»'], [/πλήρως αυτόματ/i, '«πλήρως αυτόματα»'],
   [/απευθείας/i, '«απευθείας»'], [/gov\.gr/i, 'gov.gr'],
+  // v2: τα μισθωτήρια δεν έχουν ακόμη οθόνη· δεν αναφέρονται πουθενά.
+  [/μισθωτήρι/i, '«μισθωτήρια»'],
   // Κανένας μήνας κυκλοφορίας (ο κώδικας δεν έχει ημερομηνία). Ο «Ιούνιος» του LinkedIn Β είναι η εποχή των δηλώσεων.
   [/Ιανουάρ|Φεβρουάρ|Μάρτ|Απρίλ|Μάι|Ιούλ|Αύγουστ|Σεπτέμβρ|Οκτώβρ|Νοέμβρ|Δεκέμβρ/, 'ημερομηνία κυκλοφορίας'],
 ];
@@ -60,6 +64,8 @@ const table = plan.slice(plan.indexOf('## Αριθμοί'), plan.indexOf('## Α�
 const all = [...visible, ...sections.map((s) => s.text.replace(/https?:\S+/g, '').replace(/`[^`]*`/g, ''))].join('\n');
 for (const tok of new Set(all.match(/[\dΑ-Ωα-ω]*\d[\d.,/€]*/g) ?? [])) {
   const t = tok.replace(/[.,]$/, '');
+  // Όνομα εντύπου της ΑΑΔΕ (Ε1, Ε2, Ε9): όνομα, όχι αριθμός· εξαιρείται ρητά.
+  if (/^Ε[129]$/.test(t)) continue;
   if (!table.includes(t)) fails.push(`ψηφίο χωρίς γραμμή στον πίνακα: «${t}»`);
 }
 

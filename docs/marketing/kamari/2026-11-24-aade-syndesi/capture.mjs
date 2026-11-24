@@ -24,9 +24,9 @@ const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH, arg
 const boxes = {};
 let ctx = null;
 
-async function open(scene) {
+async function open(scene, { width = 390, height = 844, dsf = BASE } = {}) {
   if (ctx) await ctx.close();
-  ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: BASE });
+  ctx = await b.newContext({ viewport: { width, height }, deviceScaleFactor: dsf });
   await ctx.clock.setFixedTime(NOW);
   const p = await ctx.newPage();
   await p.goto(pathToFileURL(join(root, '.perf-bench/mobile.html')).href + `?c=${scene}&n=6`, { waitUntil: 'networkidle' });
@@ -35,6 +35,7 @@ async function open(scene) {
   return p;
 }
 const box = (h) => h.evaluate((el) => { const r = el.getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }; });
+const fontOf = (h) => h.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
 const clipShot = (p, name, r) => p.screenshot({ path: join(out, name + '.png'), clip: { x: r.x, y: r.y, width: r.w, height: r.h } });
 // Το στοιχείο του κειμένου και ο πρώτος πρόγονός του που ικανοποιεί το κριτήριο.
 const find = (p, text, test) => p.evaluateHandle(([text, test]) => {
@@ -54,9 +55,13 @@ const setVis = async (p, hs, show) => {
   const p = await open('mydataConsent');
   const card = await box(await find(p, 'myDATA από τον λογιστή', 'r.width >= 350'));
   const line = await box(await find(p, 'Ο λογιστής σου μπορεί', 'true'));
+  // v2: ο προβολέας στη γραμμή του λογιστή (όχι στη φράση με το «αυτόματα»).
+  const accH = await find(p, 'Λογιστικό Γραφείο Υπόδειγμα', 'true');
+  const acc = await box(accH);
+  const fonts = { title: await fontOf(await find(p, 'myDATA από τον λογιστή', 'true')), acc: await fontOf(accH) };
   const reg = { x: 0, y: card.y, w: 390, h: card.h };
   await clipShot(p, 'consent', reg);
-  boxes.consent = { card, line, reg };
+  boxes.consent = { card, line, acc, reg, fonts };
 }
 
 // ── 2. Εισερχόμενα «Από το myDATA» ───────────────────────────────────────
@@ -70,7 +75,11 @@ const setVis = async (p, hs, show) => {
   const parts = [];
   for (let i = 0; i < n; i++) parts.push(await kids.evaluateHandle((a, i) => a[i], i));
   const partBoxes = await Promise.all(parts.map(box));
-  const issuer = await box(await find(p, 'Ηλεκτρική Ενέργεια', 'r.width >= 290'));
+  const issuerH = await find(p, 'Ηλεκτρική Ενέργεια', 'r.width >= 290');
+  const issuer = await box(issuerH);
+  // v2: το προτεινόμενο ακίνητο (το πεδίο «Ακίνητο») και τα μεγέθη γραμμάτων.
+  const propSel = await box(await find(p, 'Διαμέρισμα Παραδείγματος', 'r.width >= 280'));
+  const fonts = { issuer: await fontOf(await find(p, 'Ηλεκτρική Ενέργεια', 'true')), mark: await fontOf(await find(p, 'ΜΑΡΚ', 'true')) };
   // Ως το τέλος του πεδίου «Ακίνητο» (το τρίτο παιδί του παραστατικού, ή το πρώτο κάτω από τα 330 px).
   const end = partBoxes.find((r) => r.y + r.h > card.y + 260) ?? partBoxes[partBoxes.length - 1];
   const reg = { x: 0, y: card.y, w: 390, h: end.y + end.h + 12 - card.y };
@@ -80,7 +89,7 @@ const setVis = async (p, hs, show) => {
   await setVis(p, parts, false); await p.waitForTimeout(150);
   await clipShot(p, 'inbox-empty', reg);
   await setVis(p, parts, true);
-  boxes.inbox = { card, issuer, parts: shown, reg };
+  boxes.inbox = { card, issuer, propSel, parts: shown, reg, fonts };
 }
 
 // ── 3. «Εισαγωγή από το myAADE» με Ε9 τριών ακινήτων ─────────────────────
@@ -105,7 +114,82 @@ const setVis = async (p, hs, show) => {
   await setVis(p, [items[0]], false); await p.waitForTimeout(150);
   await clipShot(p, 'e9-top-empty', top);
   await setVis(p, [items[0]], true);
-  boxes.e9 = { head, found, items: itemBoxes, texts, btn, bar, top, bottom };
+  // v2: η λίστα των ακινήτων μεγάλη: τα δύο πρώτα ακίνητα, χωρίς και με τα ακίνητα (εμφανίζονται ένα ένα).
+  const list = { x: 0, y: itemBoxes[0].y - 8, w: 390, h: itemBoxes[1].y + itemBoxes[1].h + 8 - (itemBoxes[0].y - 8) };
+  await clipShot(p, 'e9-list', list);
+  await clipShot(p, 'e9-item-1', itemBoxes[1]);
+  await setVis(p, [items[0], items[1]], false); await p.waitForTimeout(150);
+  await clipShot(p, 'e9-list-empty', list);
+  await setVis(p, [items[0], items[1]], true);
+  const titleH = await items[0].evaluateHandle((el) => [...el.querySelectorAll('*')].find((e) => [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.includes('ΠΑΡΑΔΕΙΓΜΑΤΟΣ'))));
+  const title0 = await box(titleH);
+  const fonts = { title: await fontOf(titleH), btn: await fontOf(await find(p, 'Καταχώρηση', 'r.width >= 100')) };
+  boxes.e9 = { head, found, items: itemBoxes, texts, btn, bar, top, bottom, list, title0, fonts };
+}
+
+// ── 5. Laptop (v2 studio): οι ίδιες σκηνές σε οθόνη 1280 × 800, ολόκληρη η οθόνη ανά κατάσταση ──
+// Εισερχόμενα: άδεια λίστα, το πρώτο παραστατικό, όλα. Εισαγωγή από το myAADE: χωρίς ακίνητα, ένα, δύο, τρία.
+{
+  const L = { width: 1280, height: 800, dsf: 2 };
+  const full = { x: 0, y: 0, w: 1280, h: 800 };
+  let p = await open('mydataInbox', L);
+  const item = await find(p, 'Ηλεκτρική Ενέργεια', 'r.height > 150');
+  const list = await item.evaluateHandle((el) => [...el.parentElement.children]);
+  const nl = await list.evaluate((a) => a.length);
+  const rows = []; for (let i = 0; i < nl; i++) rows.push(await list.evaluateHandle((a, i) => a[i], i));
+  const rowBoxes = await Promise.all(rows.map(box));
+  const select = await box(await find(p, 'Διαμέρισμα Παραδείγματος', 'r.width >= 300'));
+  const issuer = await box(await find(p, 'Ηλεκτρική Ενέργεια', 'r.width >= 600'));
+  await clipShot(p, 'lap-inbox-3', full);
+  await setVis(p, rows.slice(1), false); await p.waitForTimeout(150);
+  await clipShot(p, 'lap-inbox-1', full);
+  await setVis(p, rows, false); await p.waitForTimeout(150);
+  await clipShot(p, 'lap-inbox-0', full);
+  await setVis(p, rows, true);
+  boxes.lapInbox = { rows: rowBoxes, select, issuer };
+  p = await open('bulkE9', L);
+  const lis = await p.evaluateHandle(() => [...document.querySelectorAll('ul > li')]);
+  const n2 = await lis.evaluate((a) => a.length);
+  const items = []; for (let i = 0; i < n2; i++) items.push(await lis.evaluateHandle((a, i) => a[i], i));
+  const itemBoxes = await Promise.all(items.map(box));
+  const found = await box(await find(p, 'Βρήκαμε', 'true'));
+  const btn = await box(await find(p, 'Καταχώρηση', 'r.width >= 100'));
+  for (let k = items.length; k >= 0; k--) {
+    await setVis(p, items, true); await setVis(p, items.slice(k), false); await p.waitForTimeout(150);
+    await clipShot(p, `lap-e9-${k}`, full);
+  }
+  await setVis(p, items, true);
+  boxes.lapE9 = { items: itemBoxes, found, btn };
+}
+
+// ── 6. Κινητό, ολόκληρη η οθόνη (v2 studio): για τις σκηνές με laptop και κινητό μαζί ──
+{
+  const P = { width: 390, height: 844, dsf: 3 };
+  const full = { x: 0, y: 0, w: 390, h: 844 };
+  let p = await open('mydataConsent', P);
+  await clipShot(p, 'ph-consent', full);
+  p = await open('mydataInbox', P);
+  const item = await find(p, 'Ηλεκτρική Ενέργεια', 'r.height > 200');
+  const kids = await item.evaluateHandle((el) => [...el.children]);
+  const n = await kids.evaluate((a) => a.length);
+  const parts = []; for (let i = 0; i < n; i++) parts.push(await kids.evaluateHandle((a, i) => a[i], i));
+  const list = await item.evaluateHandle((el) => [...el.parentElement.children].slice(1));
+  const nl = await list.evaluate((a) => a.length);
+  const rows = []; for (let i = 0; i < nl; i++) rows.push(await list.evaluateHandle((a, i) => a[i], i));
+  await clipShot(p, 'ph-inbox-3', full);
+  await setVis(p, [...parts.slice(1), ...rows], false); await p.waitForTimeout(150);
+  await clipShot(p, 'ph-inbox-0', full);
+  await setVis(p, [...parts, ...rows], true);
+  const sel = await box(await find(p, 'Διαμέρισμα Παραδείγματος', 'r.width >= 280'));
+  boxes.phInbox = { select: sel };
+  p = await open('bulkE9', P);
+  const lis = await p.evaluateHandle(() => [...document.querySelectorAll('ul > li')]);
+  const n2 = await lis.evaluate((a) => a.length);
+  const items = []; for (let i = 0; i < n2; i++) items.push(await lis.evaluateHandle((a, i) => a[i], i));
+  await clipShot(p, 'ph-e9-3', full);
+  await setVis(p, items, false); await p.waitForTimeout(150);
+  await clipShot(p, 'ph-e9-0', full);
+  await setVis(p, items, true);
 }
 
 // ── 4. Το «Κατέβασε» του φακέλου του λογιστή: οι λήψεις της ταινίας 2026-11-23-ena-meros (τρέξε πρώτα το capture.mjs εκείνης).

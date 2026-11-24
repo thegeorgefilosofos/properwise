@@ -37,7 +37,7 @@ const server = createServer((req, res) => {
   res.end(readFileSync(f));
 });
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
-const url = `http://127.0.0.1:${server.address().port}/film.html?f=${story ? '916' : fmt}${story ? '&s=' + story : ''}${nomark ? '&nomark=1' : ''}`;
+const url = `http://127.0.0.1:${server.address().port}/film.html?f=${story ? '916' : fmt}${story ? '&s=' + story : ''}${nomark ? '&nomark=1' : ''}${process.env.QA ? '&qa=1' : ''}`;
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH, args: ['--disable-dev-shm-usage'] });   // μεγάλες εικόνες: όχι στο μικρό /dev/shm
 async function openPage(dsf) {

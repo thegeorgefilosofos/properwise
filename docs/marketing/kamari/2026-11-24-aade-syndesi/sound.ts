@@ -3,7 +3,7 @@
 //
 //   npx tsx docs/marketing/kamari/2026-11-24-aade-syndesi/sound.ts <έξοδος.wav>
 //
-// Αγκίστρι χωρίς ρυθμό (ο πόνος), ήπιος ρυθμός από το «Κάτι έρχεται.», πλήρης από τις οθόνες,
+// v2: αγκίστρι με ένα χτύπημα ανά λέξη, ήπιος ρυθμός από το «Κάτι έρχεται.», πλήρης από τις οθόνες,
 // κλείσιμο με ένα χτύπημα και μετά μόνο πατάκι, πιο χαμηλά.
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -15,7 +15,7 @@ const html = readFileSync(join(here, 'film.html'), 'utf8');
 const json = /<script id="timeline" type="application\/json">([\s\S]*?)<\/script>/.exec(html);
 if (!json) throw new Error('Λείπει το χρονολόγιο από το film.html');
 const TL = JSON.parse(json[1]) as {
-  dur: number; bpm: number; cuts: number[]; full: number; inboxParts: number[]; e9Item: number; msg: number[];
+  dur: number; bpm: number; cuts: number[]; full: number; hook: number[]; inboxParts: number[]; phE9: number; lapInbox: number[]; type: number[];
   taps: number[]; dings: number[]; close: number; chords: [number, string[]][];
 };
 const out = process.argv[2];
@@ -43,8 +43,10 @@ m.boom(0, .22); m.clap(0, .07);
 m.boom(START, .2); m.clap(START, .06);
 m.boom(END, .16); m.clap(END, .05);
 for (const c of TL.cuts.slice(0, -1)) m.whoosh(c - .12, .3, .028, true);
-// Τα μέρη του παραστατικού, το ακίνητο του Ε9 και οι δύο γραμμές του μηνύματος.
-for (const list of [TL.inboxParts.slice(1), [TL.e9Item], TL.msg]) list.forEach((t, i) => {
+// v2: κάθε λέξη του αγκιστριού ένα χτύπημα (χωρίς ρυθμό ακόμη).
+TL.hook.forEach((t, i) => { const h = Math.max(0, t); m.kick(h, .55); m.click(h, 1800 + 200 * i, .12, i % 2 ? .2 : -.2); });
+// Τα μέρη του παραστατικού και το δεύτερο ακίνητο του Ε9.
+for (const list of [TL.lapInbox, TL.inboxParts.slice(1), [TL.phE9], TL.type]) list.forEach((t, i) => {
   const notes = chordAt(t); m.pluck(t, n(notes[i % notes.length]) + 12, .024, i % 2 ? .25 : -.25);
 });
 for (const t of TL.dings) { m.bell(t, n('B5'), .05, .1); m.bell(t + .09, n('E6'), .035, -.1); }
