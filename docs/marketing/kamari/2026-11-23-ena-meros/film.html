@@ -164,16 +164,24 @@ const CUT = TL.cuts;
 // Ζώνες ασφαλείας των stories: λεζάντα στο 335, περιεχόμενο ως το 1536, σημάδι στο 1556 έως 1592· τίποτα πάνω από 250 ή κάτω από 1600.
 const SN = fmt === '916' ? Number(new URLSearchParams(location.search).get('s')) || 0 : 0;
 const E = 0.001;
+// v18: κάθε story ως 6″, χωρίς νεκρό κράτημα. shots: αλλαγές πλάνων μόνο για το story (η ταινία δεν αλλάζει).
 const STORIES = {
-  1: { cap: 'Μία φωτογραφία συμπληρώνει τα στοιχεία.', keys: [[0, CUT[2]], [CUT[5] - CUT[2], CUT[5] - E], [CUT[5] - CUT[2] + 2.6, CUT[5] - E]] },
-  2: { cap: 'Το παραστατικό μπαίνει στον φάκελό του.', keys: [[0, CUT[5]], [CUT[7] - CUT[5], CUT[7] - E], [CUT[7] - CUT[5] + 3.0, CUT[7] - E]] },
-  3: { cap: 'Όλα τα ακίνητα, με μια ματιά.', keys: [[0, CUT[0]], [CUT[1] - CUT[0], CUT[1] - E], [CUT[1] - CUT[0] + 2.5, CUT[1] - E]] },
-  // Το κράτημα πριν από το σβήσιμο του περιγράμματος του προβολέα (0,15″ πριν από την κοπή της ταινίας).
-  4: { cap: 'Ο φόρος ανά ακίνητο, ενδεικτικά.', keys: [[0, CUT[7]], [CUT[8] - CUT[7] - 0.2, CUT[8] - 0.2], [CUT[8] - CUT[7] + 3.0, CUT[8] - 0.2]] },
-  5: { cap: 'Ο φάκελος του λογιστή, σε ένα zip.', cta: 'Ξεκίνα με το πρώτο σου ακίνητο.', capTo: TL.close,
-    keys: [[0, CUT[8]], [TL.dur - CUT[8], TL.dur - E], [TL.dur - CUT[8] + 2.0, TL.dur - E]] },
+  // Από τον λογαριασμό στην κάμερα· η κάμερα σε 2,3 ώστε το κλείστρο να τελειώνει πάνω από το «1/5».
+  1: { cap: 'Μία φωτογραφία συμπληρώνει τα στοιχεία.', shots: { cam: { s: 2.3 } },
+    keys: [[0, CUT[3]], [CUT[5] - 0.4 - CUT[3], CUT[5] - 0.4], [4.3, CUT[5] - 0.4]] },
+  // Πρώτα ο λογαριασμός με το ποσό του (0,7″), μετά «Καταχώρηση» και ο φάκελος· η γραμμή «Ρεύμα» μεγαλώνει 1,5× στο «2 αρχεία».
+  2: { cap: 'Το παραστατικό μπαίνει στον φάκελό του.', shots: { cam: { s: 2.3 } }, pulse: true,
+    keys: [[0, CUT[3] + 0.05], [0.7, CUT[3] + 0.2], [0.7001, CUT[5] + 0.05], [0.7 + TL.filed + 1.05 - CUT[5] - 0.05, TL.filed + 1.05], [3.8, TL.filed + 1.05]] },
+  3: { cap: 'Όλα τα ακίνητα, με μια ματιά.', keys: [[0, CUT[0]], [CUT[1] - CUT[0], CUT[1] - E], [CUT[1] - CUT[0] + 1.5, CUT[1] - E]] },
+  // Η κάρτα από λήψη 320 px (capture.mjs 6β), ως τον φόρο εισοδήματος: γράμματα 13 px × 3,18 = 41 px.
+  4: { cap: 'Ο φόρος ανά ακίνητο, ενδεικτικά.', keys: [[0, CUT[7]], [TL.tax.spot + 0.6 - CUT[7], TL.tax.spot + 0.6], [3.8, TL.tax.spot + 0.6]] },
+  // Το κλείσιμο 120 px ψηλότερα από της ταινίας.
+  5: { cap: 'Ο φάκελος του λογιστή, σε ένα zip.', cta: 'Ξεκίνα με το πρώτο σου ακίνητο.', capTo: TL.close, lift: 120,
+    keys: [[0, CUT[8]], [TL.dur - CUT[8], TL.dur - E], [6.0, TL.dur - E]] },
 };
 const ST = STORIES[SN] || null;
+const NOMARK = !!ST && new URLSearchParams(location.search).has('nomark');
+const LIFT = ST?.lift ?? 0;
 const filmT = (ts) => {
   const k = ST.keys;
   for (let i = 1; i < k.length; i++) if (ts <= k[i][0]) { const [a0, b0] = k[i - 1], [a1, b1] = k[i]; return b0 + (b1 - b0) * (ts - a0) / (a1 - a0); }
@@ -223,11 +231,14 @@ const SF = (L.C1 - L.C0) / 964;
 // Μόνο στα 390 px η «Έσοδα μετά τον φόρο εισοδήματος» χωρά σε μία γραμμή (capture.mjs, μέτρηση 330 έως 390).
 // Το τηλέφωνο στην κλίμακα των άλλων πλάνων (2,6· στο 4:5 × SF)· η κάρτα μέσα στην οθόνη ώστε 1 px λήψης = TAX.F px
 // κάδρου: κάρτα 358 × 2,64 = 945 px, ≥ 64 px από τις άκρες και με το σπρώξιμο 1,005 της κοπής· γράμματα 13 px → 34 px, 14 px → 37 px.
-const TAX = { s: 2.6, F: 2.64, push: 0.005, card: { x: 16, y: 449, w: 358 }, radius: 14, reg: [449, 236],
-  rows: [[498, 36], [534, 36], [569, 37], [606, 36], [642, 37]], rowX: 32, rowW: 326, spot: { x: 28, y: 604, w: 334, h: 40 } };
+const TAX = SN === 4
+  ? { s: 2.6, F: 3.18, push: 0.005, cw: 320, img: 'stmt320-empty', row: 'srow320-', card: { x: 12, y: 448, w: 296 }, radius: 14, reg: [448, 202],
+      rows: [[498, 36], [533, 36], [569, 37], [606, 36]], rowX: 28, rowW: 264, spot: { x: 24, y: 604, w: 272, h: 40 } }
+  : { s: 2.6, F: 2.64, push: 0.005, cw: 390, img: 'stmt-empty', row: 'srow-', card: { x: 16, y: 449, w: 358 }, radius: 14, reg: [449, 236],
+      rows: [[498, 36], [534, 36], [569, 37], [606, 36], [642, 37]], rowX: 32, rowW: 326, spot: { x: 28, y: 604, w: 334, h: 40 } };
 const TAX_SE = fmt === '45' ? TAX.s * SF : TAX.s;
 TAX.g = TAX.F / TAX_SE;
-TAX.at = (r) => ({ x: 195 + (r.x - 195) * TAX.g, y: TAX.y0 + (r.y - TAX.card.y) * TAX.g, w: r.w * TAX.g, h: r.h * TAX.g });
+TAX.at = (r) => ({ x: 195 + (r.x - TAX.cw / 2) * TAX.g, y: TAX.y0 + (r.y - TAX.card.y) * TAX.g, w: r.w * TAX.g, h: r.h * TAX.g });
 TAX.h = TAX.reg[1] * TAX.g;
 // Κέντρο στη ζώνη περιεχομένου (C0 έως C1)· το κάτω άκρο του τηλεφώνου 100 px κάτω από την κάρτα, ώστε να μη μένει άδεια οθόνη.
 TAX.sy = (L.C0 + L.C1) / 2;
@@ -262,8 +273,8 @@ const pfIms = Array.from({ length: 17 }, (_, i) => addImg($('S_pf'), `work/shots
 // v14: ο φόρος του ακινήτου, ΜΙΑ οθόνη: η κάρτα «Κατάσταση αποτελεσμάτων» με τις γραμμές της μία μία
 // (λήψεις της ίδιας οθόνης), από τα μεικτά ως τον φόρο εισοδήματος.
 // v16: πέντε γραμμές, ως τα «Έσοδα μετά τον φόρο εισοδήματος» (facts.ts: incomeStatement του p0).
-addImg($('S_stmt'), 'work/shots9/stmt-empty.png', TAX.at({ x: 0, y: TAX.reg[0], w: 390, h: TAX.reg[1] }), false);
-const srowIms = TAX.rows.map(([y, h], i) => addImg($('S_stmt'), `work/shots9/srow-${i}.png`, TAX.at({ x: TAX.rowX, y, w: TAX.rowW, h })));
+addImg($('S_stmt'), `work/shots9/${TAX.img}.png`, TAX.at({ x: 0, y: TAX.reg[0], w: TAX.cw, h: TAX.reg[1] }), false);
+const srowIms = TAX.rows.map(([y, h], i) => addImg($('S_stmt'), `work/shots9/${TAX.row}${i}.png`, TAX.at({ x: TAX.rowX, y, w: TAX.rowW, h })));
 region($('S_dead'), 'overview-empty', B.REG.overview);
 const prows = B.rows.map(([y, h], i) => addImg($('S_dead'), `work/shots9/prow-${i}.png`, { x: 17, y, w: 356, h }));
 region($('S_tiles'), 'scan-tiles', B.REG.tiles);
@@ -277,6 +288,16 @@ const fieldIms = [
 region($('S_save'), 'scan-full', B.REG.save);
 region($('S_docs'), 'docs', B.REG.docs);
 const docsAfter = region($('S_docs'), 'docs-after', B.REG.docs); docsAfter.style.opacity = '0';
+// Story 2 (v18): η γραμμή «Ρεύμα · 2 αρχεία» της ίδιας λήψης, μεγεθυμένη 1,5× τη στιγμή της αλλαγής.
+// PW0: το αριστερό μέρος της γραμμής (εικονίδιο, «Ρεύμα», «2 αρχεία · 180,90€»), ώστε στο 1,5× να πιάνει όλο το πλάτος της.
+const PB = { ...B.power }, PW0 = B.power.w / 1.5;
+const pulseEl = ST && ST.pulse ? (() => {
+  const w = document.createElement('div'), im = document.createElement('img'), r = B.power;
+    Object.assign(w.style, { position: 'absolute', overflow: 'hidden', display: 'none', transformOrigin: '0 50%', left: r.x * K + 'px', top: r.y * K + 'px', width: PW0 * K + 'px', height: r.h * K + 'px' });
+  im.src = 'work/shots9/docs-after.png';
+  Object.assign(im.style, { position: 'absolute', maxWidth: 'none', left: -r.x * K + 'px', top: (B.REG.docs[0] - r.y) * K + 'px', width: 390 * K + 'px', height: B.REG.docs[1] * K + 'px' });
+  w.appendChild(im); $('S_docs').appendChild(w); return w;
+})() : null;
 const acc = addImg($('S_acc'), 'work/shots9/acc.png', B.acc, false), accBusy = addImg($('S_acc'), 'work/shots9/acc-busy.png', B.acc);
 const TICKS = [[B.prov, 't1'], [B.afm, 't2'], [B.amount, 't3']];
 for (const [r, id] of TICKS) Object.assign($(id).style, { left: (r.x + r.w - 32) * K + 'px', top: (r.y + r.h / 2 - 11) * K + 'px', width: 22 * K + 'px', height: 22 * K + 'px' });
@@ -340,10 +361,11 @@ const SHOTS = [
   { id: 'S_docs', from: CUT[6], to: CUT[7], s: 2.6, s45: 2.35, ay: 365, sy: C0, top: 365, bottom: 750 },
   // v15: γράμματα των γραμμών 14 px εφαρμογής × 2,86 = 40 px και στις δύο μορφές· ο προβολέας μένει ≥ 64 px από τις άκρες.
   { id: 'S_stmt', from: CUT[7], to: CUT[8], s: TAX.s, push: TAX.push, ay: TAX.ay, sy: TAX.sy, top: TAX.y0, bottom: TAX.y0 + TAX.h,
-    side: 195 + (TAX.card.x - 195) * TAX.g, round: TAX.radius * TAX.g },
+    side: 195 + (TAX.card.x - TAX.cw / 2) * TAX.g, round: TAX.radius * TAX.g },
   { id: 'S_acc', from: CUT[8], to: CUT[9], s: 3.5, ay: 513, sy: (SAFE[0] + SAFE[1]) / 2, cx: 157, top: 453 },
   { id: 'S_zip', from: CUT[9], to: CUT[10], s: 2.6, ay: 844, sy: C1 - 22, top: 0 },
 ];
+if (ST && ST.shots) for (const [id, o] of Object.entries(ST.shots)) Object.assign(SHOTS.find((x) => x.id === id), o);
 const shotAt = (t) => SHOTS.find((x) => t >= x.from && t < x.to) || null;
 
 // ── ΚΕΙΜΕΝΑ ──────────────────────────────────────────────────────────────
@@ -369,22 +391,25 @@ const capEls = CAPS.map(([a, b, s]) => text('cap', s, centered(0, L.capW, L.capS
 // Κλείσιμο: σήμα, μήνυμα και διεύθυνση μαζί, σε ένα χτύπημα.
 const MSG = ['Κάθε ακίνητο.', 'Κάθε υποχρέωση.', 'Ένα μέρος.'];
 // Stories: το σημάδι σειράς και, στο τελευταίο, η πρόσκληση πάνω από το properwise.gr.
-if (ST) text('mark', `${SN}/5`, centered(1556, 400, 30), -1, TL.dur + 1);
-const ctaEl = ST && ST.cta ? text('msg', ST.cta, { ...centered(L.urlY, 1000, 50), color: 'var(--mkt-text-secondary)' }, TL.close, TL.dur + 1) : null;
-const closeEls = MSG.map((m, i) => text('msg', m, { ...centered(L.cMsgY + i * L.cMsgGap, 1060, L.cMsgSize), color: i === 2 ? 'var(--mkt-accent)' : '' }, TL.close, TL.dur + 1));
+if (ST && !NOMARK) text('mark', `${SN}/5`, centered(1556, 400, 30), -1, TL.dur + 1);
+const ctaEl = ST && ST.cta ? text('msg', ST.cta, { ...centered(L.urlY - LIFT, 1000, 50), color: 'var(--mkt-text-secondary)' }, TL.close, TL.dur + 1) : null;
+const closeEls = MSG.map((m, i) => text('msg', m, { ...centered(L.cMsgY - LIFT + i * L.cMsgGap, 1060, L.cMsgSize), color: i === 2 ? 'var(--mkt-accent)' : '' }, TL.close, TL.dur + 1));
 const badge = $('badge'), logo = $('logo'), url = $('url'), zone = $('zone'), band = $('band');
 Object.assign(badge.style, { fontSize: L.badgeSize + 'px', height: px(L.badgeSize * 1.7) + 'px', padding: '0 26px', top: L.badgeY + 'px' });
-Object.assign(logo.style, { width: L.logoW + 'px', left: (W - L.logoW) / 2 + 'px', top: L.logoY + 'px' });
-Object.assign(url.style, { fontSize: L.urlSize + 'px', width: '520px', left: (W - 520) / 2 + 'px', top: L.urlY + (ctaEl ? 120 : 0) + 'px', padding: '22px 0' });
+Object.assign(logo.style, { width: L.logoW + 'px', left: (W - L.logoW) / 2 + 'px', top: L.logoY - LIFT + 'px' });
+Object.assign(url.style, { fontSize: L.urlSize + 'px', width: '520px', left: (W - 520) / 2 + 'px', top: L.urlY + (ctaEl ? 120 : 0) - LIFT + 'px', padding: '22px 0' });
 Object.assign(zone.style, { top: 0, height: L.zoneEnd + 60 + 'px',
   background: `linear-gradient(180deg, var(--mkt-bg-base) 0px, var(--mkt-bg-base) ${L.zoneEnd}px, transparent ${L.zoneEnd + 60}px)` });
 Object.assign(band.style, { top: C1 + 'px', height: H - C1 + 'px',
   background: `linear-gradient(180deg, transparent 0px, color-mix(in srgb, var(--mkt-bg-base) 80%, transparent) ${(L.bandTo - C1) * 0.6}px, var(--mkt-bg-base) ${L.bandTo - C1}px)` });
+// Stories (v18): η εικόνα σβήνει από το 1500 ως το 1550, ώστε κάτω από εκεί (σημάδι «N/5», πεδίο απάντησης) να μη μένει τίποτα.
+if (ST) Object.assign(band.style, { top: '1500px', height: H - 1500 + 'px',
+  background: 'linear-gradient(180deg, transparent 0px, var(--mkt-bg-base) 50px)' });
 
 // Προβολέας ανά πλάνο: [από, ως, κουτί, σκιά]. Ο ΕΝΦΙΑ δεν φωτίζεται ποτέ: η σάρωση είναι λογαριασμός ρεύματος.
 const SPOTS = [
   [TL.pf.spot, TL.pf.tiles, B.pfNet, 0.65], [TL.pf.tiles, CUT[1], B.pfTiles, 0.65],
-  [CUT[6] + 0.1, CUT[7], B.power, 0.65],
+  [CUT[6] + 0.1, CUT[7], pulseEl ? PB : B.power, pulseEl ? 0.85 : 0.65],
   [TL.tax.spot, CUT[8], TAX.at(TAX.spot), 0.65],
   [CUT[8], CUT[9], B.afmBlock, 1.0],
 ];
@@ -435,6 +460,18 @@ window.render = function render(t) {
   S($('flash')).opacity = fl.toFixed(3);
   // 4. Ο φάκελος «Ρεύμα»: 1 → 2 αρχεία τη στιγμή που φτάνει το παραστατικό (δύο λήψεις της εφαρμογής).
   docsAfter.style.opacity = lin(t, TL.filed, 0.06).toFixed(3);
+  if (pulseEl) {
+    const u = ease(lin(t, TL.filed, 0.25)), sc = 1 + 0.5 * u, r = B.power;
+    pulseEl.style.display = t >= TL.filed && sh && sh.id === 'S_docs' ? 'block' : 'none';
+    pulseEl.style.transform = `scale(${sc.toFixed(4)})`;
+    // Οι δύο γειτονικές γραμμές σβήνουν ολόκληρες κάτω από μια λωρίδα στο χρώμα της κάρτας (--mkt-bg-surface),
+    // ώστε η μεγεθυμένη γραμμή να μην ακουμπά κείμενο: ως το άκρο της γειτονικής γραμμής, (r.h − r.h × 0,25) / 1,5 = r.h / 2 πριν από το 1,5×.
+    const hal = (r.h / 2) * K, col = `color-mix(in srgb, var(--mkt-bg-surface) ${Math.round(u * 100)}%, transparent)`;
+    pulseEl.style.boxShadow = `0 ${-hal}px 0 0 ${col}, 0 ${hal}px 0 0 ${col}`;
+    // Το περίγραμμα του προβολέα ακριβώς στο άκρο της μεγεθυμένης γραμμής (ο προβολέας προσθέτει 4 px)· οι γειτονικές γραμμές σβήνουν πιο πολύ.
+    Object.assign(PB, { y: r.y + r.h / 2 - (r.h * sc) / 2 + 4, h: r.h * sc - 8, x: r.x + 4, w: r.w - 8 });
+    sig.push(sc.toFixed(4));
+  }
   // 5. «Κατέβασε» → «Ετοιμάζεται».
   const busy = t >= TL.taps[3] + 0.06;
   acc.style.opacity = busy ? '0' : '1'; accBusy.style.opacity = busy ? '1' : '0';

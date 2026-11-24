@@ -233,6 +233,29 @@ p = await open('?c=accounting&n=6', BASE);
   boxes.tax = { card, radius, rows: rowBoxes, rowTexts, reg, fontPx };
 }
 
+// ── 6β. Λογιστική για το story 4 (v18): η ίδια κάρτα σε οθόνη 320 px, ως τον φόρο εισοδήματος ──
+// Στα 320 px οι τέσσερις πρώτες γραμμές μένουν σε μία γραμμή η καθεμιά και η κάρτα (296 px) χωρά μεγαλύτερη στο κάδρο.
+p = await open('?c=accounting&n=6', BASE, { width: 320 });
+{
+  const h = p.getByText('Κατάσταση αποτελεσμάτων', { exact: true }).first();
+  await h.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  await p.waitForTimeout(400);
+  const cardH = await h.evaluateHandle((el) => el.closest('.po-fig-card'));
+  const card = await boxOf(cardH);
+  const radius = await cardH.evaluate((el) => parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0);
+  const LABELS = ['Μεικτά έσοδα', 'Τεκμαρτή έκπτωση 5,00%', 'Φορολογητέο εισόδημα', 'Φόρος εισοδήματος'];
+  const rows = await Promise.all(LABELS.map((l) => cardH.evaluateHandle((c, l) => [...c.querySelectorAll('span')].find((e) => e.textContent.trim() === l).parentElement, l)));
+  const rowBoxes = await Promise.all(rows.map(boxOf));
+  const rowTexts = await Promise.all(rows.map((r) => r.evaluate((el) => el.innerText.replace(/\s+/g, ' '))));
+  const fontPx = await Promise.all(rows.map((r) => r.evaluate((el) => Math.min(...[...el.querySelectorAll('span')].map((e) => parseFloat(getComputedStyle(e).fontSize))))));
+  const reg = { x: 0, y: card.y, w: 320, h: rowBoxes[3].y + rowBoxes[3].h + 8 - card.y };
+  for (const [k, r] of rowBoxes.entries()) await clipShot(p, `srow320-${k}`, r);
+  await setVis(rows, 0); await p.waitForTimeout(150);
+  await clipShot(p, 'stmt320-empty', reg);
+  await setVis(rows, 4);
+  boxes.tax320 = { card, radius, rows: rowBoxes, rowTexts, reg, fontPx };
+}
+
 writeFileSync(join(out, 'boxes.json'), JSON.stringify(boxes, null, 1));
 await ctx.close();
 await b.close();

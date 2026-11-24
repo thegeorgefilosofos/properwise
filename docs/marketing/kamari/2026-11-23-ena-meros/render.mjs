@@ -21,7 +21,8 @@ const root = resolve(here, '../../../..');
 const [mode, fmt = '916', out, a4, a5] = process.argv.slice(2);
 const W = 1080, H = fmt === '45' ? 1350 : 1920;
 // v17: «s1» έως «s5» αποδίδουν τα stories (9:16, film.html?s=N).
-const story = /^s[1-5]$/.test(fmt) ? fmt.slice(1) : null;
+// «s1x» έως «s5x»: το ίδιο story χωρίς το σημάδι «N/5», για τη μέτρηση ότι τίποτα δεν το ακουμπά (v18).
+const story = /^s[1-5]x?$/.test(fmt) ? fmt.slice(1, 2) : null, nomark = /x$/.test(fmt);
 
 // Ο διακομιστής: public/ ως ρίζα (για τα /fonts), το app/globals.css ως /globals.css, ο φάκελος της ταινίας στο /.
 const TYPES = { '.svg': 'image/svg+xml', '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.woff2': 'font/woff2', '.png': 'image/png', '.js': 'text/javascript' };
@@ -36,7 +37,7 @@ const server = createServer((req, res) => {
   res.end(readFileSync(f));
 });
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
-const url = `http://127.0.0.1:${server.address().port}/film.html?f=${story ? '916' : fmt}${story ? '&s=' + story : ''}`;
+const url = `http://127.0.0.1:${server.address().port}/film.html?f=${story ? '916' : fmt}${story ? '&s=' + story : ''}${nomark ? '&nomark=1' : ''}`;
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH, args: ['--disable-dev-shm-usage'] });   // μεγάλες εικόνες: όχι στο μικρό /dev/shm
 async function openPage(dsf) {
