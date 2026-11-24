@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<title>Σύνδεση με την ΑΑΔΕ</title>
+<!-- Χρώματα και Inter από το app/globals.css (render.mjs: /globals.css, /fonts και /brand από το public/).
+     Η ίδια μηχανή με την ταινία 2026-11-23-ena-meros (τηλέφωνο, κοπές, προβολέας, πάτημα), με δικές της σκηνές. -->
+<link rel="stylesheet" href="/globals.css">
+<style>
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+  html, body { margin: 0; padding: 0; overflow: hidden; background: var(--mkt-bg-base); }
+  #stage { position: absolute; left: 0; top: 0; overflow: hidden; font-family: 'Inter', sans-serif; color: var(--mkt-text-primary);
+    font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; background: var(--mkt-bg-base); }
+  .glow { position: absolute; border-radius: 50%;
+    background: radial-gradient(circle, color-mix(in srgb, var(--mkt-accent) 14%, transparent), transparent 66%); }
+  #rig { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  #body { position: absolute; inset: 0; background: var(--mkt-bg-elevated); border: 2px solid var(--mkt-border-strong);
+    box-shadow: 0 60px 140px color-mix(in srgb, var(--mkt-bg-base) 90%, transparent); }
+  .btn { position: absolute; background: var(--mkt-bg-elevated); border: 1.5px solid var(--mkt-border-strong); border-radius: 4px; }
+  #screen { position: absolute; overflow: hidden; background: var(--mkt-bg-base); }
+  #app { position: absolute; left: 0; overflow: hidden; background: var(--mkt-bg-base); }
+  .shot { position: absolute; left: 0; top: 0; overflow: hidden; display: none; background: var(--mkt-bg-base); }
+  .shot img { position: absolute; left: 0; top: 0; max-width: none; }
+  #glass { position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(118deg, color-mix(in srgb, var(--mkt-text-primary) 5%, transparent) 0%, transparent 30%); }
+  /* Προβολέας: σκιά στο υπόλοιπο, λεπτό περίγραμμα στο στοιχείο. Καμία θόλωση. */
+  #spot { position: absolute; border: 2px solid var(--mkt-accent); border-radius: 10px; }
+  #touch { position: absolute; border-radius: 50%; background: color-mix(in srgb, var(--mkt-text-primary) 38%, transparent);
+    border: 2px solid color-mix(in srgb, var(--mkt-text-primary) 75%, transparent); }
+  #touchRing { position: absolute; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--mkt-text-primary) 60%, transparent); }
+  #zone, #band { position: absolute; left: 0; right: 0; }
+  .txt { position: absolute; text-align: center; white-space: normal; text-wrap: balance; }
+  .msg { font-weight: 760; letter-spacing: -0.025em; line-height: 1.04; }
+  .sub { font-weight: 600; letter-spacing: 0.01em; color: var(--mkt-text-secondary); }
+  .cap { font-weight: 740; line-height: 1.08; letter-spacing: -0.02em; }
+  .mark { font-weight: 650; letter-spacing: 0.12em; color: var(--mkt-text-secondary); }
+  #badge { position: absolute; border-radius: 999px; white-space: nowrap; display: flex; align-items: center; box-sizing: border-box;
+    color: var(--mkt-text-secondary); background: var(--mkt-bg-surface); border: 1.5px solid var(--mkt-border-default); font-weight: 600; }
+  .logo { position: absolute; transform-origin: 50% 50%; }
+  #url { position: absolute; border: 2px solid var(--mkt-accent); border-radius: 999px; color: var(--mkt-accent); font-weight: 650; text-align: center; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="glow" id="g1"></div><div class="glow" id="g2"></div>
+  <div id="rig">
+    <div id="body"></div>
+    <div class="btn" id="b1"></div><div class="btn" id="b2"></div><div class="btn" id="b3"></div><div class="btn" id="b4"></div>
+    <div id="screen">
+      <div id="app">
+        <div class="shot" id="S_cons"></div>
+        <div class="shot" id="S_inbox"></div>
+        <div class="shot" id="S_issuer"></div>
+        <div class="shot" id="S_e9a"></div>
+        <div class="shot" id="S_e9b"></div>
+        <div class="shot" id="S_acc"></div>
+        <div id="spot"></div>
+        <div id="touchRing"></div><div id="touch"></div>
+      </div>
+      <div id="glass"></div>
+    </div>
+  </div>
+  <div id="zone"></div>
+  <div id="band"></div>
+  <div id="texts"></div>
+  <div id="badge">Δεδομένα επίδειξης</div>
+  <img class="logo" id="logoT" src="/brand/properwise-logotypo-lefko.svg" alt="PROPERWISE">
+  <img class="logo" id="logoC" src="/brand/properwise-logotypo-lefko.svg" alt="PROPERWISE">
+  <div id="url">properwise.gr</div>
+</div>
+<!-- ΤΟ ΧΡΟΝΟΛΟΓΙΟ, ΜΙΑ ΠΗΓΗ: η ταινία και ο ήχος (sound.ts). Χρόνοι σε δευτερόλεπτα.
+     cuts: τέλος αγκιστριού, «Κάτι έρχεται.», τίτλος, μετά οι αρχές των πλάνων S_inbox, S_issuer, S_e9a, S_e9b, S_acc,
+     το μήνυμα «Λιγότερα clicks. Μεγαλύτερη ακρίβεια.» και το κλείσιμο. -->
+<script id="timeline" type="application/json">
+{
+  "fps": 30, "dur": 31.0, "bpm": 120,
+  "cuts": [3.0, 4.6, 7.8, 10.0, 12.8, 15.4, 17.6, 19.4, 23.0, 26.4],
+  "full": 7.8,
+  "hook": [0.0, 0.0, 0.0, 1.2],
+  "consSpot": 8.5,
+  "inboxParts": [10.0, 10.35, 10.7, 11.05],
+  "issuerSpot": 13.1,
+  "e9Item": 15.9,
+  "msg": [23.0, 23.6],
+  "taps": [18.4, 20.4],
+  "dings": [11.05, 18.6, 21.4],
+  "close": 26.4,
+  "chords": [[0, ["A2", "E3", "A3", "C4", "E4"]], [3.0, ["F2", "C3", "F3", "A3", "C4"]], [4.6, ["C3", "G3", "C4", "E4", "G4"]], [7.8, ["D2", "A2", "D3", "F3", "A3"]], [12.8, ["F2", "C3", "F3", "A3", "C4"]], [15.4, ["C3", "G3", "C4", "E4", "G4"]], [19.4, ["G2", "D3", "G3", "B3", "D4"]], [23.0, ["F2", "C3", "F3", "A3", "E4"]], [26.4, ["A2", "E3", "A3", "C4", "E4"]]]
+}
+</script>
+<script>
+(() => {
+const TL = JSON.parse(document.getElementById('timeline').textContent);
+const Q = new URLSearchParams(location.search);
+const fmt = Q.get('f') === '45' ? '45' : '916';
+const W = 1080, H = fmt === '45' ? 1350 : 1920;
+const px = Math.round, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const $ = (id) => document.getElementById(id);
+const ease = (u) => (u <= 0 ? 0 : u >= 1 ? 1 : u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
+const lin = (t, a, d) => clamp((t - a) / d, 0, 1);
+const CUT = TL.cuts;
+
+// ── STORIES (teaser): ?f=916&s=1 έως 3. Κάθε story είναι κομμάτι της ίδιας ταινίας, με τη δική του λεζάντα,
+// το σημάδι «N/3» και, στο τελευταίο, το κλείσιμο. keys: [χρόνος story, χρόνος ταινίας], γραμμικά ανάμεσα.
+const SN = fmt === '916' ? Number(Q.get('s')) || 0 : 0;
+const E = 0.001;
+const STORIES = {
+  // Ο πόνος και «Κάτι έρχεται.» (κείμενο μόνο).
+  1: { keys: [[0, 0], [CUT[1] - E, CUT[1] - E], [5.4, CUT[1] - E]] },
+  // Τα παραστατικά από το myDATA και ο εκδότης.
+  2: { cap: 'Έρχεται: τα παραστατικά από το myDATA.', capTo: CUT[5], keys: [[0, CUT[3]], [CUT[5] - CUT[3], CUT[5] - 0.2], [5.8, CUT[5] - 0.2]] },
+  // Το Ε9 από το myAADE και το κλείσιμο.
+  3: { cap: 'Έρχεται: το Ε9 από το myAADE.', capTo: CUT[7],
+    keys: [[0, CUT[5] + 0.2], [CUT[7] - CUT[5] - 0.2, CUT[7] - E], [CUT[7] - CUT[5] - 0.2 + E, TL.close], [6.0, TL.close + 6.0 - (CUT[7] - CUT[5] - 0.2)]] },
+};
+const ST = STORIES[SN] || null;
+const NOMARK = !!ST && Q.has('nomark');
+const filmT = (ts) => {
+  const k = ST.keys;
+  for (let i = 1; i < k.length; i++) if (ts <= k[i][0]) { const [a0, b0] = k[i - 1], [a1, b1] = k[i]; return b0 + (b1 - b0) * (ts - a0) / (a1 - a0); }
+  return k[k.length - 1][1];
+};
+
+// ── ΔΙΑΤΑΞΗ (ίδια με την ταινία 2026-11-23-ena-meros) ─────────────────────
+const L = fmt === '916'
+  ? { zoneEnd: 512, C0: 572, C1: 1536, bandTo: 1880, capMid: 335, capSize: 66, capW: 980, badgeY: 446, badgeSize: 32,
+      bigSize: 104, midY: 960, logoW: 640, logoY: 720, urlY: 1190, urlSize: 46 }
+  : { zoneEnd: 300, C0: 340, C1: 1250, bandTo: 1350, capMid: 160, capSize: 54, capW: 980, badgeY: 238, badgeSize: 28,
+      bigSize: 92, midY: 675, logoW: 560, logoY: 430, urlY: 840, urlSize: 42 };
+const SAFE = fmt === '916' ? [250, 1536] : [100, 1250];
+const SF = (L.C1 - L.C0) / 964;
+const C0 = L.C0, C1 = L.C1, MID = (C0 + C1) / 2;
+const K = 2, SB = 47, APPW = 390, APPH = 844;
+const SW = APPW * K, SH = (SB + APPH) * K, BEZ = 13, PW = SW + 2 * BEZ, PH = SH + 2 * BEZ, RAD = 54 * K, PRAD = RAD + BEZ;
+const stage = $('stage');
+stage.style.width = W + 'px'; stage.style.height = H + 'px';
+Object.assign($('rig').style, { width: PW + 'px', height: PH + 'px' });
+Object.assign($('body').style, { borderRadius: PRAD + 'px' });
+Object.assign($('screen').style, { left: BEZ + 'px', top: BEZ + 'px', width: SW + 'px', height: SH + 'px', borderRadius: RAD + 'px' });
+const btn = (id, side, y, h) => Object.assign($(id).style, { left: (side < 0 ? -4 : PW - 1) + 'px', top: y * K + 'px', width: '5px', height: h * K + 'px' });
+btn('b1', -1, 120, 30); btn('b2', -1, 175, 58); btn('b3', -1, 245, 58); btn('b4', 1, 200, 92);
+Object.assign($('app').style, { top: SB * K + 'px', width: SW + 'px', height: APPH * K + 'px' });
+for (const l of document.querySelectorAll('.shot')) Object.assign(l.style, { width: SW + 'px', height: APPH * K + 'px' });
+const place = (el, r) => Object.assign(el.style, { left: r.x * K + 'px', top: r.y * K + 'px', width: r.w * K + 'px', height: r.h * K + 'px' });
+const addImg = (parent, src, r, hidden = true) => { const im = document.createElement('img'); im.src = src; place(im, r); if (hidden) im.style.opacity = '0'; parent.appendChild(im); return im; };
+
+// ── ΟΙ ΛΗΨΕΙΣ (work/shots9/boxes.json του capture.mjs, px εφαρμογής) ──────
+const B = {
+  consent: { x: 0, y: 119, w: 390, h: 250 }, consLine: { x: 33, y: 160, w: 324, h: 36 },
+  inbox: { x: 0, y: 119, w: 390, h: 371 },
+  inboxParts: [{ x: 48, y: 210, w: 294, h: 20 }, { x: 48, y: 240, w: 294, h: 36 }, { x: 48, y: 286, w: 294, h: 36 }, { x: 48, y: 332, w: 294, h: 146 }],
+  issuer: { x: 48, y: 210, w: 294, h: 20 }, item: { x: 33, y: 197 },
+  e9top: { x: 0, y: 85, w: 390, h: 460 }, e9item: { x: 25, y: 357, w: 340, h: 178 }, found: { x: 25, y: 170, w: 340, h: 21 },
+  e9bottom: { x: 0, y: 534, w: 390, h: 310 }, e9btn: { x: 25, y: 794, w: 159, h: 36 },
+  // Το «Κατέβασε» του φακέλου του λογιστή: λήψη της ταινίας 2026-11-23-ena-meros (ίδιο ακίνητο, ίδιος πάγκος).
+  acc: { x: 20, y: 453, w: 280, h: 120 }, afmBlock: { x: 30, y: 458, w: 254, h: 110 }, download: { x: 38, y: 523, w: 119, h: 36 },
+};
+const ACC = 'work/shots9/';
+addImg($('S_cons'), 'work/shots9/consent.png', B.consent, false);
+addImg($('S_inbox'), 'work/shots9/inbox-empty.png', B.inbox, false);
+const partIms = B.inboxParts.map((r, i) => addImg($('S_inbox'), `work/shots9/inbox-part-${i}.png`, r));
+addImg($('S_issuer'), 'work/shots9/inbox.png', B.inbox, false);
+addImg($('S_e9a'), 'work/shots9/e9-top-empty.png', B.e9top, false);
+const e9Item = addImg($('S_e9a'), 'work/shots9/e9-item-0.png', B.e9item);
+addImg($('S_e9b'), 'work/shots9/e9-bottom.png', B.e9bottom, false);
+const acc = addImg($('S_acc'), ACC + 'acc.png', B.acc, false), accBusy = addImg($('S_acc'), ACC + 'acc-busy.png', B.acc);
+
+// Πλάνα: τηλέφωνο σε s px κάδρου ανά px (στο 4:5 × SF), άγκυρα ay της εφαρμογής στο y κάδρου sy, κόψιμο top/bottom.
+// Κάθε κοπή με μικρό πλησίασμα 1,025 → 1 σε 0,3″. Περιθώριο ≥ 64 px: οι κάρτες (x 16 έως 374) × 2,6 → 75 px.
+const SHOTS = [
+  { id: 'S_cons', from: CUT[2], to: CUT[3], s: 2.6, ay: 244, sy: MID, top: 119, bottom: 369 },
+  { id: 'S_inbox', from: CUT[3], to: CUT[4], s: 2.55, ay: 300, sy: MID, top: 119, bottom: 482 },
+  // Κοντινό στο παραστατικό (κουτί x 33 έως 357): 2,9 → 70 px από τις άκρες.
+  { id: 'S_issuer', from: CUT[4], to: CUT[5], s: 2.9, ay: 262, sy: MID, top: 197, bottom: 328, side: 33, round: 12 },
+  { id: 'S_e9a', from: CUT[5], to: CUT[6], s: 2.5, ay: 352, sy: MID, top: 160, bottom: 545 },
+  { id: 'S_e9b', from: CUT[6], to: CUT[7], s: 2.5, ay: 844, sy: C1 - 21, top: 534 },
+  { id: 'S_acc', from: CUT[7], to: CUT[8], s: 3.5, ay: 513, sy: MID, cx: 157, top: 453 },
+];
+const shotAt = (t) => SHOTS.find((x) => t >= x.from && t < x.to) || null;
+
+// ── ΚΕΙΜΕΝΑ ──────────────────────────────────────────────────────────────
+const texts = $('texts'), T = [];
+function text(cls, s, style, tin, tout) {
+  const el = document.createElement('div'); el.className = 'txt ' + cls; el.textContent = s;
+  Object.assign(el.style, style); texts.appendChild(el); T.push({ el, tin, tout }); return el;
+}
+const centered = (top, w, size) => ({ left: px((W - w) / 2) + 'px', top: top + 'px', width: w + 'px', fontSize: size + 'px' });
+// Αγκίστρι (0 έως 3″): ο πόνος, ολόκληρος από το καρέ 0.
+const HOOK = ['Ε9. ΕΝΦΙΑ. Μισθωτήρια.', 'Κωδικοί και πάρα πολλά clicks.'];
+// Πλάτος 940: ≥ 64 px από τις άκρες και με το πλησίασμα 3%.
+const hookEls = HOOK.map((w, i) => text('msg', w, { ...centered(L.midY - L.bigSize * (i ? -0.2 : 1.25), 940, i ? L.bigSize * 0.62 : L.bigSize), color: i ? 'var(--mkt-text-secondary)' : '' }, 0, CUT[0]));
+// Αποκάλυψη.
+const TEASE = 'Κάτι έρχεται.';
+const teaseEl = text('msg', TEASE, { ...centered(L.midY - L.bigSize * 0.55, 1000, L.bigSize * 1.15), color: 'var(--mkt-accent)' }, CUT[0], CUT[1]);
+const TITLE = ['Το PROPERWISE συνδέεται με την ΑΑΔΕ.'];
+const SUB = 'myDATA · Ε9 · ΕΝΦΙΑ · μισθωτήρια';
+const titleEl = text('msg', TITLE[0], centered(L.midY - L.bigSize * 0.9, 980, L.bigSize * 0.86), CUT[1], CUT[2]);
+const subEl = text('sub', SUB, centered(L.midY + L.bigSize * 1.1, 1000, L.bigSize * 0.42), CUT[1], CUT[2]);
+// Λεζάντες ανά πλάνο, στο ίδιο καρέ με την κοπή.
+const CAPS = ST ? (ST.cap ? [[0, ST.capTo, ST.cap]] : []) : [
+  [CUT[2], CUT[3], 'Από το myDATA, μέσω του λογιστή σου.'],
+  [CUT[3], CUT[4], 'Τα παραστατικά έρχονται μόνα τους.'],
+  [CUT[4], CUT[5], 'Ο εκδότης αναγνωρίζεται.'],
+  [CUT[5], CUT[7], 'Το Ε9 από το myAADE, σε λίγα πατήματα.'],
+  [CUT[7], CUT[8], 'Ο φάκελος του λογιστή, έτοιμος.'],
+];
+const capEls = CAPS.map(([a, b, s]) => text('cap', s, centered(0, L.capW, L.capSize), a, b));
+// Το μήνυμα.
+const MSG = ['Λιγότερα clicks.', 'Μεγαλύτερη ακρίβεια.'];
+const msgEls = MSG.map((m, i) => text('msg', m, { ...centered(L.midY - L.bigSize * (i ? -0.15 : 1.15), 1000, L.bigSize), color: i ? 'var(--mkt-accent)' : '' }, TL.msg[i], CUT[9]));
+// Κλείσιμο: σήμα, πρόσκληση, διεύθυνση. Το όνομα του πακέτου είναι το PLANS.owner.name του lib/billing/plans.ts.
+const PLAN = 'Ιδιοκτήτης+';
+const CTA = `Έρχεται στο ${PLAN}.`;
+const ctaEl = text('msg', CTA, { ...centered(L.logoY + 170, 1000, L.bigSize * 0.8) }, TL.close, TL.dur + 1);
+if (ST && !NOMARK) text('mark', `${SN}/3`, centered(1556, 400, 30), -1, TL.dur + 1);
+const badge = $('badge'), logoT = $('logoT'), logoC = $('logoC'), url = $('url'), zone = $('zone'), band = $('band');
+Object.assign(badge.style, { fontSize: L.badgeSize + 'px', height: px(L.badgeSize * 1.7) + 'px', padding: '0 26px', top: L.badgeY + 'px' });
+Object.assign(logoT.style, { width: L.logoW * 0.7 + 'px', left: (W - L.logoW * 0.7) / 2 + 'px', top: L.midY - L.bigSize * 2.5 + 'px' });
+Object.assign(logoC.style, { width: L.logoW + 'px', left: (W - L.logoW) / 2 + 'px', top: L.logoY + 'px' });
+Object.assign(url.style, { fontSize: L.urlSize + 'px', width: '520px', left: (W - 520) / 2 + 'px', top: L.urlY + 'px', padding: '22px 0' });
+Object.assign(zone.style, { top: 0, height: L.zoneEnd + 60 + 'px',
+  background: `linear-gradient(180deg, var(--mkt-bg-base) 0px, var(--mkt-bg-base) ${L.zoneEnd}px, transparent ${L.zoneEnd + 60}px)` });
+Object.assign(band.style, { top: C1 + 'px', height: H - C1 + 'px',
+  background: `linear-gradient(180deg, transparent 0px, color-mix(in srgb, var(--mkt-bg-base) 80%, transparent) ${(L.bandTo - C1) * 0.6}px, var(--mkt-bg-base) ${L.bandTo - C1}px)` });
+// Stories: η εικόνα σβήνει από το 1500 ως το 1550· από κάτω μόνο το σημάδι (πεδίο απάντησης του Instagram).
+if (ST) Object.assign(band.style, { top: '1500px', height: H - 1500 + 'px', background: 'linear-gradient(180deg, transparent 0px, var(--mkt-bg-base) 50px)' });
+
+// Προβολέας ανά πλάνο: [από, ως, κουτί, σκιά].
+const SPOTS = [
+  [TL.consSpot, CUT[3], B.consLine, 0.65],
+  [TL.issuerSpot, CUT[5], { x: B.issuer.x - 4, y: B.issuer.y - 3, w: B.issuer.w + 8, h: B.issuer.h + 6 }, 0.65],
+  [CUT[7], CUT[8], B.afmBlock, 1.0],
+];
+// Πατήματα: [χρόνος, σημείο εφαρμογής].
+const TAPS = [
+  [TL.taps[0], [B.e9btn.x + 80, B.e9btn.y + 18]],
+  [TL.taps[1], [B.download.x + 60, B.download.y + 18]],
+];
+
+// ── render(t) ────────────────────────────────────────────────────────────
+const S = (el) => el.style;
+const BEZK = BEZ;
+function renderFilm(t) {
+  const sig = [];
+  Object.assign(S($('g1')), { width: '1300px', height: '1300px', left: px(-260 + 180 * Math.sin(t / 4.2)) + 'px', top: px(H * 0.2 + 120 * Math.cos(t / 5.3)) + 'px' });
+  Object.assign(S($('g2')), { width: '1100px', height: '1100px', left: px(420 + 160 * Math.cos(t / 3.7)) + 'px', top: px(H * 0.55 + 110 * Math.sin(t / 4.9)) + 'px' });
+  const sh = shotAt(t), on = !!sh;
+  S($('rig')).display = on ? 'block' : 'none';
+  for (const x of SHOTS) S($(x.id)).display = sh && sh.id === x.id ? 'block' : 'none';
+  if (sh) {
+    const push = 1 + 0.025 * (1 - ease(lin(t, sh.from, 0.3)));
+    const Z = (fmt === '45' ? sh.s * SF : sh.s) * push / K, fx = BEZK + (sh.cx ?? 195) * K, fy = BEZK + (SB + sh.ay) * K;
+    const tr = `translate(${(W / 2 - fx * Z).toFixed(2)}px, ${(sh.sy - fy * Z).toFixed(2)}px) scale(${Z.toFixed(5)})`;
+    S($('rig')).transform = tr; sig.push(sh.id, tr);
+    $(sh.id).style.clipPath = `inset(${sh.top * K}px ${(sh.side ?? 0) * K}px ${sh.bottom ? (APPH - sh.bottom) * K : 0}px ${(sh.side ?? 0) * K}px${sh.round ? ` round ${sh.round * K}px` : ''})`;
+  }
+  // Τα μέρη του παραστατικού εμφανίζονται ένα ένα· το πρώτο μαζί με την κάρτα.
+  partIms.forEach((im, i) => { im.style.opacity = i === 0 ? '1' : lin(t, TL.inboxParts[i], 0.15).toFixed(3); });
+  e9Item.style.opacity = lin(t, TL.e9Item, 0.15).toFixed(3);
+  const busy = t >= TL.taps[1] + 0.06;
+  acc.style.opacity = busy ? '0' : '1'; accBusy.style.opacity = busy ? '1' : '0';
+  // Προβολέας.
+  let sp = null, line = 0, dimOn = 0, dim = 0;
+  for (const [a, b, r, d] of SPOTS) if (t >= a && t < b) {
+    const atCut = CUT.includes(a);
+    sp = r; dim = d;
+    const fin = atCut ? 1 : lin(t, a, 0.18);
+    dimOn = fin; line = fin;
+  }
+  const spot = $('spot');
+  Object.assign(S(spot), { display: sp && dimOn > 0 ? 'block' : 'none' });
+  if (sp) {
+    const g = 4;
+    Object.assign(S(spot), { left: (sp.x - g) * K + 'px', top: (sp.y - g) * K + 'px', width: (sp.w + 2 * g) * K + 'px', height: (sp.h + 2 * g) * K + 'px',
+      borderColor: `color-mix(in srgb, var(--mkt-accent) ${Math.round(line * 100)}%, transparent)`,
+      boxShadow: `0 0 0 3000px color-mix(in srgb, var(--mkt-bg-base) ${Math.round(dim * dimOn * 100)}%, transparent)` });
+  }
+  sig.push(line.toFixed(3), dimOn.toFixed(3));
+  // Δάχτυλο, μόνο μέσα στο πλάνο του πατήματος.
+  let fxy = null, press = 0, ring = -1;
+  for (const [b, p] of TAPS) {
+    const d = t - b;
+    if (d > -0.18 && d < 0.12) { fxy = p; press = d < 0 ? clamp((d + 0.18) / 0.12, 0, 1) : clamp(1 - d / 0.12, 0, 1); }
+    if (d >= 0 && d < 0.45) { ring = d / 0.45; fxy = fxy || p; }
+  }
+  if (!sh) fxy = null;
+  const tr = $('touch'), rg = $('touchRing');
+  if (fxy && press > 0.01) {
+    const r = 22 * K * (1.12 - 0.12 * press);
+    Object.assign(tr.style, { display: 'block', left: (fxy[0] * K - r).toFixed(1) + 'px', top: (fxy[1] * K - r).toFixed(1) + 'px', width: 2 * r + 'px', height: 2 * r + 'px', opacity: (0.95 * press).toFixed(3) });
+    sig.push(press.toFixed(3));
+  } else tr.style.display = 'none';
+  if (fxy && ring >= 0) {
+    const r = 22 * K * (1 + 1.1 * ease(ring));
+    Object.assign(rg.style, { display: 'block', left: (fxy[0] * K - r).toFixed(1) + 'px', top: (fxy[1] * K - r).toFixed(1) + 'px', width: 2 * r + 'px', height: 2 * r + 'px', opacity: (0.8 * (1 - ring)).toFixed(3) });
+    sig.push(ring.toFixed(3));
+  } else rg.style.display = 'none';
+
+  for (const e of T) { const o = t >= e.tin && t < e.tout ? 1 : 0; e.el.style.display = o ? 'block' : 'none'; sig.push(o); }
+  for (const el of capEls) if (el.style.display === 'block') el.style.top = px(L.capMid - el.offsetHeight / 2) + 'px';
+  // Αγκίστρι: αργό πλησίασμα 3%. Τα μεγάλα κείμενα: μικρό κάθισμα 1,04 → 1 σε 0,25″ στην αρχή τους.
+  const hz = 1 + 0.03 * lin(t, 0, CUT[0]);
+  hookEls.forEach((el) => { el.style.transform = `scale(${hz.toFixed(4)})`; });
+  const settle = (a) => 1 + 0.04 * (1 - ease(lin(t, a, 0.25)));
+  teaseEl.style.transform = `scale(${settle(CUT[0]).toFixed(4)})`;
+  for (const el of [titleEl, subEl]) el.style.transform = `scale(${settle(CUT[1]).toFixed(4)})`;
+  msgEls.forEach((el, i) => { el.style.transform = `scale(${settle(TL.msg[i]).toFixed(4)})`; });
+  const ck = settle(TL.close), cOn = t >= TL.close;
+  for (const el of [logoC, url]) { S(el).display = cOn ? 'block' : 'none'; S(el).transform = `scale(${ck.toFixed(4)})`; }
+  ctaEl.style.transform = `scale(${ck.toFixed(4)})`;
+  const tOn = t >= CUT[1] && t < CUT[2];
+  S(logoT).display = tOn ? 'block' : 'none'; S(logoT).transform = `scale(${settle(CUT[1]).toFixed(4)})`;
+  sig.push(hz.toFixed(4), ck.toFixed(4));
+  S(zone).display = on ? 'block' : 'none'; S(band).display = on ? 'block' : 'none';
+  S(badge).display = on ? 'flex' : 'none';
+  S(badge).left = px((W - badge.offsetWidth) / 2) + 'px';
+  return sig.join('|');
+}
+window.render = ST ? (ts) => renderFilm(filmT(ts)) : renderFilm;
+window.ready = async () => {
+  await Promise.all([...document.images].map((im) => im.decode()));
+  await document.fonts.load('700 50px Inter', 'ΑΒΓαβγ€0123'); await document.fonts.ready;
+  if (fmt === '45') for (const el of capEls) {
+    el.style.display = 'block';
+    if (el.offsetHeight < L.capSize * 1.5) el.style.fontSize = (L.capSize * 0.95).toFixed(2) + 'px';
+    el.style.display = 'none';
+  }
+  // Τα μεγάλα κείμενα σε στοίβες, κεντραρισμένες κάθετα στο κέντρο της ζώνης (μετρημένα ύψη, όχι υποθέσεις).
+  const stack = (els, cy, gaps) => {
+    const hs = els.map((el) => { const d = el.style.display; el.style.display = 'block'; const h = el.offsetHeight; el.style.display = d; return h; });
+    let y = cy - (hs.reduce((a, b) => a + b, 0) + gaps.reduce((a, b) => a + b, 0)) / 2;
+    els.forEach((el, i) => { el.style.top = px(y) + 'px'; y += hs[i] + (gaps[i] ?? 0); });
+  };
+  stack(hookEls, L.midY, [36]);
+  stack([logoT, titleEl, subEl], L.midY, [56, 40]);
+  stack(msgEls, L.midY, [12]);
+  stack([logoC, ctaEl, url], L.midY, [64, 72]);
+  stack([teaseEl], L.midY, []);
+  window.render(0); await document.fonts.ready;
+  return true;
+};
+window.TL = ST ? { ...TL, dur: ST.keys[ST.keys.length - 1][0] } : TL;
+})();
+</script>
+</body>
+</html>
