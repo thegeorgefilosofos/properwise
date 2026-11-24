@@ -125,24 +125,25 @@
      v9: χωρίς μετρητή πατημάτων. Κάθε αλλαγή πλάνου είναι καθαρή κοπή της κάμερας.
      v12: δύο νέες στιγμές, Χαρτοφυλάκιο (2,2 έως 6,3″) και φόρος της Λογιστικής (16,0 έως 19,8″).
      v13: ο φόρος είναι του ακινήτου· το Χαρτοφυλάκιο κόβεται πριν από την Πληρότητα.
+     v15: η κάρτα του φόρου σε κλίμακα 2,86, η πρώτη γραμμή μαζί με την κάρτα, κράτημα 1,3″ μετά τον προβολέα.
      v14: η σκηνή του φόρου είναι ΜΙΑ οθόνη, μόνο η κάρτα «Κατάσταση αποτελεσμάτων», από τα μεικτά ως τον φόρο εισοδήματος. -->
 <script id="timeline" type="application/json">
 {
-  "fps": 30, "dur": 25.2, "bpm": 120,
-  "cuts": [2.2, 6.3, 8.5, 9.4, 10.5, 12.7, 13.9, 16.0, 19.8, 20.9, 23.2],
+  "fps": 30, "dur": 24.5, "bpm": 120,
+  "cuts": [2.2, 6.3, 8.5, 9.4, 10.5, 12.7, 13.9, 16.0, 19.1, 20.2, 22.5],
   "full": 10.5,
   "pf": { "count": [2.4, 3.6], "spot": 3.7, "tiles": 4.6 },
-  "tax": { "rows": [16.3, 16.75, 17.2, 17.65], "spot": 18.1 },
+  "tax": { "rows": [16.0, 16.45, 16.9, 17.35], "spot": 17.8 },
   "rowsOver": [6.15, 6.65, 6.85, 7.05],
-  "taps": [9.05, 10.1, 13.4, 20.4],
+  "taps": [9.05, 10.1, 13.4, 19.7],
   "fields": [10.7, 10.85, 11.0, 11.15, 11.3],
   "ticks": [10.7, 10.85, 11.15],
-  "dings": [3.65, 11.5, 14.5, 17.65, 21.8],
+  "dings": [3.65, 11.5, 14.5, 17.35, 21.1],
   "filed": 14.5,
-  "packUp": 20.9,
-  "rowsPack": [21.3, 21.45, 21.6, 21.75],
-  "close": 23.2,
-  "chords": [[0, ["A2", "E3", "A3", "C4", "E4"]], [2.2, ["F2", "C3", "F3", "A3", "C4"]], [6.3, ["D2", "A2", "D3", "F3", "A3"]], [10.5, ["C3", "G3", "C4", "E4", "G4"]], [13.9, ["G2", "D3", "G3", "B3", "D4"]], [16.0, ["D2", "A2", "D3", "F3", "A3"]], [19.8, ["A2", "E3", "A3", "C4", "E4"]], [23.2, ["F2", "C3", "F3", "A3", "E4"]]]
+  "packUp": 20.2,
+  "rowsPack": [20.6, 20.75, 20.9, 21.05],
+  "close": 22.5,
+  "chords": [[0, ["A2", "E3", "A3", "C4", "E4"]], [2.2, ["F2", "C3", "F3", "A3", "C4"]], [6.3, ["D2", "A2", "D3", "F3", "A3"]], [10.5, ["C3", "G3", "C4", "E4", "G4"]], [13.9, ["G2", "D3", "G3", "B3", "D4"]], [16.0, ["D2", "A2", "D3", "F3", "A3"]], [19.1, ["A2", "E3", "A3", "C4", "E4"]], [22.5, ["F2", "C3", "F3", "A3", "E4"]]]
 }
 </script>
 <script>
@@ -164,7 +165,7 @@ const B = {
   download: { x: 38, y: 523, w: 119, h: 36 }, acc: { x: 20, y: 453, w: 280, h: 120 }, afmBlock: { x: 30, y: 458, w: 254, h: 110 },
   pfNet: { x: 31, y: 278, w: 166, h: 39 }, pfTiles: { x: 33, y: 320, w: 324, h: 82 }, pfCrop: { x: 33, y: 278, w: 300, h: 39 },
   // v13: οι γραμμές της Κατάστασης αποτελεσμάτων και η φράση «το μερίδιο αυτού του ακινήτου» (work/shots9/boxes.json · tax).
-  srows: [[498, 36], [534, 36], [569, 37], [606, 36]], taxRow: { x: 28, y: 604, w: 334, h: 40 },
+  srows: [[498, 36], [534, 36], [569, 37], [606, 36]], taxRow: { x: 29, y: 601, w: 332, h: 46, g: 0 },
   REG: { portfolio: [100, 420], stmt: [449, 201], overview: [250, 594], tiles: [80, 764], form: [220, 440], save: [420, 424], docs: [350, 494] },
 };
 // Τα περιεχόμενα του zip: PACK_FILES του lib/accounting/meetingPack.ts, με τη σειρά του packEntries.
@@ -300,8 +301,8 @@ const SHOTS = [
   { id: 'S_form', from: CUT[4], to: CUT[5], s: 2.6, s45: 2.38, ay: 236, sy: C0, top: 236, bottom: 614 },
   { id: 'S_save', from: CUT[5], to: CUT[6], s: 2.28, ay: 844, sy: C1 - 21, top: 462 },
   { id: 'S_docs', from: CUT[6], to: CUT[7], s: 2.6, s45: 2.35, ay: 365, sy: C0, top: 365, bottom: 750 },
-  // Γράμματα των γραμμών 14 px εφαρμογής × 2,58 = 36 px και στις δύο μορφές.
-  { id: 'S_stmt', from: CUT[7], to: CUT[8], s: 2.58, s45: 2.58, ay: 549.5, sy: (SAFE[0] + SAFE[1]) / 2, top: 449, bottom: 650 },
+  // v15: γράμματα των γραμμών 14 px εφαρμογής × 2,86 = 40 px και στις δύο μορφές· ο προβολέας μένει ≥ 64 px από τις άκρες.
+  { id: 'S_stmt', from: CUT[7], to: CUT[8], s: 2.86, s45: 2.86, push: 0.01, ay: 549.5, sy: (SAFE[0] + SAFE[1]) / 2, top: 449, bottom: 650, side: 16, round: 16 },
   { id: 'S_acc', from: CUT[8], to: CUT[9], s: 3.5, ay: 513, sy: (SAFE[0] + SAFE[1]) / 2, cx: 157, top: 453 },
   { id: 'S_zip', from: CUT[9], to: CUT[10], s: 2.6, ay: 844, sy: C1 - 22, top: 0 },
 ];
@@ -364,16 +365,18 @@ window.render = function render(t) {
   S($('rig')).display = on ? 'block' : 'none';
   for (const x of SHOTS) S($(x.id)).display = sh && sh.id === x.id ? 'block' : 'none';
   if (sh) {
-    const push = 1 + 0.025 * (1 - ease(lin(t, sh.from, 0.3)));
+    const push = 1 + (sh.push ?? 0.025) * (1 - ease(lin(t, sh.from, 0.3)));
     const Z = (fmt === '45' && sh.s45 ? sh.s45 : sh.s * SF) * push / K, fx = BEZ + (sh.cx ?? 195) * K, fy = BEZ + (SB + sh.ay) * K;
     const tr = `translate(${(W / 2 - fx * Z).toFixed(2)}px, ${(sh.sy - fy * Z).toFixed(2)}px) scale(${Z.toFixed(5)})`;
     S($('rig')).transform = tr; sig.push(sh.id, tr);
-    $(sh.id).style.clipPath = `inset(${sh.top * K}px 0 ${sh.bottom ? (APPH - sh.bottom) * K : 0}px 0)`;
+    // v15: η κάρτα του φόρου κλείνει με στρογγυλές γωνίες και στο κάτω άκρο (side/round του πλάνου).
+    $(sh.id).style.clipPath = `inset(${sh.top * K}px ${(sh.side ?? 0) * K}px ${sh.bottom ? (APPH - sh.bottom) * K : 0}px ${(sh.side ?? 0) * K}px${sh.round ? ` round ${sh.round * K}px` : ''})`;
   }
   // 0. Οι μετρητές του Χαρτοφυλακίου και του φόρου: η κατάσταση i του ίδιου στοιχείου (καμπύλη ease-out στη λήψη).
   const pfI = Math.min(16, Math.floor(lin(t, TL.pf.count[0], TL.pf.count[1] - TL.pf.count[0]) * 16 + 1e-6));
   pfIms.forEach((im, i) => { im.style.opacity = i === pfI ? '1' : '0'; });
-  srowIms.forEach((im, i) => { im.style.opacity = lin(t, TL.tax.rows[i], 0.15).toFixed(3); });
+  // v15: η πρώτη γραμμή μπαίνει μαζί με την κάρτα.
+  srowIms.forEach((im, i) => { im.style.opacity = i === 0 ? '1' : lin(t, TL.tax.rows[i], 0.15).toFixed(3); });
   sig.push(pfI);
   // 1. Οι προθεσμίες εμφανίζονται μόνες τους, γραμμή γραμμή.
   prows.forEach((im, i) => { im.style.opacity = lin(t, TL.rowsOver[i], 0.15).toFixed(3); });
@@ -414,7 +417,7 @@ window.render = function render(t) {
   Object.assign(S(spot), { display: sp && dimOn > 0 ? 'block' : 'none', opacity: '1' });
   if (sp) {
     const pulse = sp === B.power ? Math.sin(Math.PI * lin(t, TL.filed, 0.35)) : 0;
-    const g = 4 + 3 * pulse;
+    const g = (sp.g ?? 4) + 3 * pulse;
     Object.assign(S(spot), { left: (sp.x - g) * K + 'px', top: (sp.y - g) * K + 'px', width: (sp.w + 2 * g) * K + 'px', height: (sp.h + 2 * g) * K + 'px',
       borderColor: `color-mix(in srgb, var(--mkt-accent) ${Math.round(line * 100)}%, transparent)`,
       boxShadow: `0 0 0 3000px color-mix(in srgb, var(--mkt-bg-base) ${Math.round(dim * dimOn * 100)}%, transparent)` });
