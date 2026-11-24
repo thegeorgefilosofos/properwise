@@ -23,6 +23,8 @@ const W = 1080, H = fmt === '45' ? 1350 : 1920;
 // «s1» έως «s3» αποδίδουν τα stories teaser (9:16, film.html?s=N).
 // «s1x» έως «s3x»: το ίδιο story χωρίς το σημάδι «N/5», για τη μέτρηση ότι τίποτα δεν το ακουμπά (v18).
 const story = /^s[1-3]x?$/.test(fmt) ? fmt.slice(1, 2) : null, nomark = /x$/.test(fmt);
+// «cover»: το εξώφυλλο-αφίσα 9:16 (v3, film.html?cover=1): ο τίτλος και από κάτω το κινητό με την κάρτα του ΜΑΡΚ.
+const cover = fmt === 'cover';
 
 // Ο διακομιστής: public/ ως ρίζα (για τα /fonts), το app/globals.css ως /globals.css, ο φάκελος της ταινίας στο /.
 const TYPES = { '.svg': 'image/svg+xml', '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.woff2': 'font/woff2', '.png': 'image/png', '.js': 'text/javascript' };
@@ -37,7 +39,7 @@ const server = createServer((req, res) => {
   res.end(readFileSync(f));
 });
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
-const url = `http://127.0.0.1:${server.address().port}/film.html?f=${story ? '916' : fmt}${story ? '&s=' + story : ''}${nomark ? '&nomark=1' : ''}${process.env.QA ? '&qa=1' : ''}`;
+const url = `http://127.0.0.1:${server.address().port}/film.html?f=${story || cover ? '916' : fmt}${cover ? '&cover=1' : ''}${story ? '&s=' + story : ''}${nomark ? '&nomark=1' : ''}${process.env.QA ? '&qa=1' : ''}`;
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH, args: ['--disable-dev-shm-usage'] });   // μεγάλες εικόνες: όχι στο μικρό /dev/shm
 async function openPage(dsf) {

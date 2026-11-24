@@ -14,9 +14,11 @@ const copy = readFileSync(join(here, 'share-copy.md'), 'utf8');
 const plan = readFileSync(join(here, 'plan.md'), 'utf8');
 
 const visible: string[] = [];
-for (const m of film.matchAll(/\[CUT\[\d\], CUT\[\d\], '([^']+)'\]/g)) visible.push(m[1]);
-for (const m of film.matchAll(/cap: '([^']+)'/g)) visible.push(m[1]);
-for (const m of film.matchAll(/const (?:HOOK|TITLE|MSG|TYPE) = \[([^\]]+)\]/g)) for (const x of m[1].matchAll(/'([^']+)'/g)) visible.push(x[1]);
+// v3: οι λεζάντες έχουν γραμμένη αλλαγή γραμμής (\\n)· ελέγχονται ως μία πρόταση.
+const nl = (x: string) => x.replace(/\\n/g, ' ');
+for (const m of film.matchAll(/\[CUT\[\d\], CUT\[\d\], '([^']+)'\]/g)) visible.push(nl(m[1]));
+for (const m of film.matchAll(/cap: '([^']+)'/g)) visible.push(nl(m[1]));
+for (const m of film.matchAll(/const (?:HOOK|TITLE|MSG) = \[([^\]]+)\]/g)) for (const x of m[1].matchAll(/'([^']+)'/g)) visible.push(x[1]);
 for (const m of film.matchAll(/const (?:TEASE|SUB|PLAN|FOLLOW) = '([^']+)'/g)) visible.push(m[1]);
 for (const m of film.matchAll(/<div id="badge">([^<]+)<\/div>/g)) visible.push(m[1]);
 const PLAN = /const PLAN = '([^']+)'/.exec(film)![1];
