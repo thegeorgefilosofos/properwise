@@ -23,6 +23,8 @@ for (const m of film.matchAll(/const ZIP = '([^']+)'/g)) visible.push(m[1]);
 for (const m of film.matchAll(/\['(?:doc|sheet|folder)', '([^']+)', '([^']*)'\]/g)) { visible.push(m[1]); if (m[2]) visible.push(m[2]); }
 // Το χαρτί της κάμερας (v9): κάθε συμβολοσειρά του BILL.
 { const bill = /const BILL = \{([\s\S]*?)\n\};/.exec(film); if (bill) for (const x of bill[1].matchAll(/'([^']+)'/g)) visible.push(x[1]); }
+// v17: οι λεζάντες και η πρόσκληση των stories.
+for (const m of film.matchAll(/(?:cap|cta): '([^']+)'/g)) visible.push(m[1]);
 for (const m of film.matchAll(/const (?:MSG|HOOK) = \[([^\]]+)\]/g)) for (const x of m[1].matchAll(/'([^']+)'/g)) visible.push(x[1]);
 
 const sections = copy.split(/^## /m).slice(1).map((s) => ({ where: s.split('\n')[0], text: s.slice(s.indexOf('\n') + 1).trim() }));

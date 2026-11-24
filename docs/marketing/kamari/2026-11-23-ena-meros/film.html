@@ -65,6 +65,7 @@
   #zone, #band { position: absolute; left: 0; right: 0; }
   .txt { position: absolute; text-align: center; white-space: normal; text-wrap: balance; }
   .msg { font-weight: 760; letter-spacing: -0.025em; line-height: 1.02; }
+  .mark { font-weight: 650; letter-spacing: 0.12em; color: var(--mkt-text-secondary); }
   .cap { font-weight: 740; line-height: 1.08; letter-spacing: -0.02em; }
   #badge { position: absolute; border-radius: 999px; white-space: nowrap; display: flex; align-items: center; box-sizing: border-box;
     color: var(--mkt-text-secondary); background: var(--mkt-bg-surface); border: 1.5px solid var(--mkt-border-default); font-weight: 600; }
@@ -125,6 +126,7 @@
      v9: χωρίς μετρητή πατημάτων. Κάθε αλλαγή πλάνου είναι καθαρή κοπή της κάμερας.
      v12: δύο νέες στιγμές, Χαρτοφυλάκιο (2,2 έως 6,3″) και φόρος της Λογιστικής (16,0 έως 19,8″).
      v13: ο φόρος είναι του ακινήτου· το Χαρτοφυλάκιο κόβεται πριν από την Πληρότητα.
+     v17: η κάρτα του φόρου από λήψη 390 px (η πέμπτη γραμμή σε μία γραμμή), στο κέντρο της ζώνης, το τηλέφωνο κλείνει 100 px κάτω από την κάρτα· stories με ?s=1 έως 5.
      v16: το τηλέφωνο στην κλίμακα των άλλων πλάνων· μόνο η κάρτα μεγαλώνει μέσα στην οθόνη (λήψη 320 px), πέμπτη γραμμή «Έσοδα μετά τον φόρο εισοδήματος».
      v15: η κάρτα του φόρου σε κλίμακα 2,86, η πρώτη γραμμή μαζί με την κάρτα, κράτημα 1,3″ μετά τον προβολέα.
      v14: η σκηνή του φόρου είναι ΜΙΑ οθόνη, μόνο η κάρτα «Κατάσταση αποτελεσμάτων», από τα μεικτά ως τον φόρο εισοδήματος. -->
@@ -157,6 +159,26 @@ const $ = (id) => document.getElementById(id);
 const ease = (u) => (u <= 0 ? 0 : u >= 1 ? 1 : u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
 const lin = (t, a, d) => clamp((t - a) / d, 0, 1);
 const CUT = TL.cuts;
+// ── STORIES (v17): ?f=916&s=1 έως 5. Κάθε story είναι κομμάτι της ΙΔΙΑΣ ταινίας (ίδιες λήψεις, ίδιοι κανόνες),
+// με μία λεζάντα, το σημάδι σειράς «N/5» και κράτημα στο τέλος. keys: [χρόνος story, χρόνος ταινίας], γραμμικά ανάμεσα.
+// Ζώνες ασφαλείας των stories: λεζάντα στο 335, περιεχόμενο ως το 1536, σημάδι στο 1556 έως 1592· τίποτα πάνω από 250 ή κάτω από 1600.
+const SN = fmt === '916' ? Number(new URLSearchParams(location.search).get('s')) || 0 : 0;
+const E = 0.001;
+const STORIES = {
+  1: { cap: 'Μία φωτογραφία συμπληρώνει τα στοιχεία.', keys: [[0, CUT[2]], [CUT[5] - CUT[2], CUT[5] - E], [CUT[5] - CUT[2] + 2.6, CUT[5] - E]] },
+  2: { cap: 'Το παραστατικό μπαίνει στον φάκελό του.', keys: [[0, CUT[5]], [CUT[7] - CUT[5], CUT[7] - E], [CUT[7] - CUT[5] + 3.0, CUT[7] - E]] },
+  3: { cap: 'Όλα τα ακίνητα, με μια ματιά.', keys: [[0, CUT[0]], [CUT[1] - CUT[0], CUT[1] - E], [CUT[1] - CUT[0] + 2.5, CUT[1] - E]] },
+  // Το κράτημα πριν από το σβήσιμο του περιγράμματος του προβολέα (0,15″ πριν από την κοπή της ταινίας).
+  4: { cap: 'Ο φόρος ανά ακίνητο, ενδεικτικά.', keys: [[0, CUT[7]], [CUT[8] - CUT[7] - 0.2, CUT[8] - 0.2], [CUT[8] - CUT[7] + 3.0, CUT[8] - 0.2]] },
+  5: { cap: 'Ο φάκελος του λογιστή, σε ένα zip.', cta: 'Ξεκίνα με το πρώτο σου ακίνητο.', capTo: TL.close,
+    keys: [[0, CUT[8]], [TL.dur - CUT[8], TL.dur - E], [TL.dur - CUT[8] + 2.0, TL.dur - E]] },
+};
+const ST = STORIES[SN] || null;
+const filmT = (ts) => {
+  const k = ST.keys;
+  for (let i = 1; i < k.length; i++) if (ts <= k[i][0]) { const [a0, b0] = k[i - 1], [a1, b1] = k[i]; return b0 + (b1 - b0) * (ts - a0) / (a1 - a0); }
+  return k[k.length - 1][1];
+};
 // Τα κουτιά της εφαρμογής (px εφαρμογής, από το work/shots9/boxes.json).
 const B = {
   rows: [[307, 67], [373, 109], [483, 87], [570, 87]], photo: { x: 25, y: 255, w: 340, h: 112 },
@@ -197,18 +219,20 @@ const L = fmt === '916'
 const SAFE = fmt === '916' ? [250, 1536] : [100, 1250];
 // Στο 4:5 η ζώνη περιεχομένου είναι 910 px αντί για 964: κάθε κλίμακα × 0,944, ή το s45 του πλάνου όπου χρειάζεται λιγότερο.
 const SF = (L.C1 - L.C0) / 964;
-// v16: η κάρτα «Κατάσταση αποτελεσμάτων» από λήψη σε οθόνη 320 px (work/shots9/boxes.json · tax, px της οθόνης 320).
-// Το τηλέφωνο μένει στην κλίμακα των άλλων πλάνων (2,6· στο 4:5 × SF)· μόνο το περιεχόμενο της κάρτας
-// μεγαλώνει μέσα στην οθόνη, ώστε 1 px της λήψης = TAX.F px κάδρου: γράμματα 13 px × 3,18 = 41 px,
-// κάρτα 296 × 3,18 = 941 px, άρα ≥ 64 px από τις άκρες ακόμη και με το σπρώξιμο 1,005 της κοπής.
-const TAX = { s: 2.6, F: 3.18, push: 0.005, y0: 400, card: { x: 12, y: 448, w: 296 }, radius: 14, reg: [448, 257],
-  rows: [[498, 36], [533, 36], [569, 37], [606, 36], [641, 58]], rowX: 28, rowW: 264, spot: { x: 24, y: 604, w: 272, h: 40 } };
-TAX.g = TAX.F / (fmt === '45' ? TAX.s * SF : TAX.s);
-// Από px της οθόνης 320 σε px εφαρμογής του τηλεφώνου 390 (κέντρο στο 160 → 195).
-TAX.at = (r) => ({ x: 195 + (r.x - 160) * TAX.g, y: TAX.y0 + (r.y - TAX.card.y) * TAX.g, w: r.w * TAX.g, h: r.h * TAX.g });
+// v17: η κάρτα «Κατάσταση αποτελεσμάτων» από λήψη σε οθόνη 390 px, όπως οι άλλες λήψεις (work/shots9/boxes.json · tax).
+// Μόνο στα 390 px η «Έσοδα μετά τον φόρο εισοδήματος» χωρά σε μία γραμμή (capture.mjs, μέτρηση 330 έως 390).
+// Το τηλέφωνο στην κλίμακα των άλλων πλάνων (2,6· στο 4:5 × SF)· η κάρτα μέσα στην οθόνη ώστε 1 px λήψης = TAX.F px
+// κάδρου: κάρτα 358 × 2,64 = 945 px, ≥ 64 px από τις άκρες και με το σπρώξιμο 1,005 της κοπής· γράμματα 13 px → 34 px, 14 px → 37 px.
+const TAX = { s: 2.6, F: 2.64, push: 0.005, card: { x: 16, y: 449, w: 358 }, radius: 14, reg: [449, 236],
+  rows: [[498, 36], [534, 36], [569, 37], [606, 36], [642, 37]], rowX: 32, rowW: 326, spot: { x: 28, y: 604, w: 334, h: 40 } };
+const TAX_SE = fmt === '45' ? TAX.s * SF : TAX.s;
+TAX.g = TAX.F / TAX_SE;
+TAX.at = (r) => ({ x: 195 + (r.x - 195) * TAX.g, y: TAX.y0 + (r.y - TAX.card.y) * TAX.g, w: r.w * TAX.g, h: r.h * TAX.g });
 TAX.h = TAX.reg[1] * TAX.g;
-// Κέντρο στη ζώνη ασφαλείας· όσο χρειάζεται πιο κάτω ώστε η κάρτα να αρχίζει 24 px κάτω από το C0 (λεζάντα, «Δεδομένα επίδειξης»).
-TAX.sy = Math.max((SAFE[0] + SAFE[1]) / 2, L.C0 + 24 + TAX.h * TAX.F / TAX.g / 2);
+// Κέντρο στη ζώνη περιεχομένου (C0 έως C1)· το κάτω άκρο του τηλεφώνου 100 px κάτω από την κάρτα, ώστε να μη μένει άδεια οθόνη.
+TAX.sy = (L.C0 + L.C1) / 2;
+TAX.ay = 844 - (TAX.reg[1] * TAX.F / 2 + 100) / TAX_SE;
+TAX.y0 = TAX.ay - TAX.h / 2;
 const C0 = L.C0, C1 = L.C1;
 // Η συσκευή σχεδιάζεται σε K px ανά px εφαρμογής· κάθε πλάνο τη μεγεθύνει σε s px κάδρου ανά px (Z = s/K).
 const K = 2, SB = 47, APPW = 390, APPH = 844;
@@ -238,7 +262,7 @@ const pfIms = Array.from({ length: 17 }, (_, i) => addImg($('S_pf'), `work/shots
 // v14: ο φόρος του ακινήτου, ΜΙΑ οθόνη: η κάρτα «Κατάσταση αποτελεσμάτων» με τις γραμμές της μία μία
 // (λήψεις της ίδιας οθόνης), από τα μεικτά ως τον φόρο εισοδήματος.
 // v16: πέντε γραμμές, ως τα «Έσοδα μετά τον φόρο εισοδήματος» (facts.ts: incomeStatement του p0).
-addImg($('S_stmt'), 'work/shots9/stmt-empty.png', TAX.at({ x: 0, y: TAX.reg[0], w: 320, h: TAX.reg[1] }), false);
+addImg($('S_stmt'), 'work/shots9/stmt-empty.png', TAX.at({ x: 0, y: TAX.reg[0], w: 390, h: TAX.reg[1] }), false);
 const srowIms = TAX.rows.map(([y, h], i) => addImg($('S_stmt'), `work/shots9/srow-${i}.png`, TAX.at({ x: TAX.rowX, y, w: TAX.rowW, h })));
 region($('S_dead'), 'overview-empty', B.REG.overview);
 const prows = B.rows.map(([y, h], i) => addImg($('S_dead'), `work/shots9/prow-${i}.png`, { x: 17, y, w: 356, h }));
@@ -315,8 +339,8 @@ const SHOTS = [
   { id: 'S_save', from: CUT[5], to: CUT[6], s: 2.28, ay: 844, sy: C1 - 21, top: 462 },
   { id: 'S_docs', from: CUT[6], to: CUT[7], s: 2.6, s45: 2.35, ay: 365, sy: C0, top: 365, bottom: 750 },
   // v15: γράμματα των γραμμών 14 px εφαρμογής × 2,86 = 40 px και στις δύο μορφές· ο προβολέας μένει ≥ 64 px από τις άκρες.
-  { id: 'S_stmt', from: CUT[7], to: CUT[8], s: TAX.s, push: TAX.push, ay: TAX.y0 + TAX.h / 2, sy: TAX.sy, top: TAX.y0, bottom: TAX.y0 + TAX.h,
-    side: 195 + (TAX.card.x - 160) * TAX.g, round: TAX.radius * TAX.g },
+  { id: 'S_stmt', from: CUT[7], to: CUT[8], s: TAX.s, push: TAX.push, ay: TAX.ay, sy: TAX.sy, top: TAX.y0, bottom: TAX.y0 + TAX.h,
+    side: 195 + (TAX.card.x - 195) * TAX.g, round: TAX.radius * TAX.g },
   { id: 'S_acc', from: CUT[8], to: CUT[9], s: 3.5, ay: 513, sy: (SAFE[0] + SAFE[1]) / 2, cx: 157, top: 453 },
   { id: 'S_zip', from: CUT[9], to: CUT[10], s: 2.6, ay: 844, sy: C1 - 22, top: 0 },
 ];
@@ -333,7 +357,7 @@ const centered = (top, w, size) => ({ left: px((W - w) / 2) + 'px', top: top + '
 const HOOK = ['Μία φωτογραφία.', 'Όλα στη θέση τους.'];
 const hookEls = HOOK.map((w, i) => text('msg', w, { ...centered(L.hookY[i] - L.hookSize / 2, 1060, L.hookSize), color: i === 1 ? 'var(--mkt-accent)' : '' }, 0, CUT[0]));
 // Λεζάντες: αλλάζουν στην κοπή, στο ίδιο καρέ (κανένα κενό, καμία επικάλυψη).
-const CAPS = [
+const CAPS = ST ? [[0, ST.capTo ?? TL.dur + 1, ST.cap]] : [
   [CUT[0], CUT[1], 'Όλα τα ακίνητα, με μια ματιά.'],
   [CUT[1], CUT[2], 'Οι προθεσμίες έρχονται μόνες τους.'],
   [CUT[2], CUT[6], 'Μία φωτογραφία συμπληρώνει τα στοιχεία.'],
@@ -344,11 +368,14 @@ const CAPS = [
 const capEls = CAPS.map(([a, b, s]) => text('cap', s, centered(0, L.capW, L.capSize), a, b));
 // Κλείσιμο: σήμα, μήνυμα και διεύθυνση μαζί, σε ένα χτύπημα.
 const MSG = ['Κάθε ακίνητο.', 'Κάθε υποχρέωση.', 'Ένα μέρος.'];
+// Stories: το σημάδι σειράς και, στο τελευταίο, η πρόσκληση πάνω από το properwise.gr.
+if (ST) text('mark', `${SN}/5`, centered(1556, 400, 30), -1, TL.dur + 1);
+const ctaEl = ST && ST.cta ? text('msg', ST.cta, { ...centered(L.urlY, 1000, 50), color: 'var(--mkt-text-secondary)' }, TL.close, TL.dur + 1) : null;
 const closeEls = MSG.map((m, i) => text('msg', m, { ...centered(L.cMsgY + i * L.cMsgGap, 1060, L.cMsgSize), color: i === 2 ? 'var(--mkt-accent)' : '' }, TL.close, TL.dur + 1));
 const badge = $('badge'), logo = $('logo'), url = $('url'), zone = $('zone'), band = $('band');
 Object.assign(badge.style, { fontSize: L.badgeSize + 'px', height: px(L.badgeSize * 1.7) + 'px', padding: '0 26px', top: L.badgeY + 'px' });
 Object.assign(logo.style, { width: L.logoW + 'px', left: (W - L.logoW) / 2 + 'px', top: L.logoY + 'px' });
-Object.assign(url.style, { fontSize: L.urlSize + 'px', width: '520px', left: (W - 520) / 2 + 'px', top: L.urlY + 'px', padding: '22px 0' });
+Object.assign(url.style, { fontSize: L.urlSize + 'px', width: '520px', left: (W - 520) / 2 + 'px', top: L.urlY + (ctaEl ? 120 : 0) + 'px', padding: '22px 0' });
 Object.assign(zone.style, { top: 0, height: L.zoneEnd + 60 + 'px',
   background: `linear-gradient(180deg, var(--mkt-bg-base) 0px, var(--mkt-bg-base) ${L.zoneEnd}px, transparent ${L.zoneEnd + 60}px)` });
 Object.assign(band.style, { top: C1 + 'px', height: H - C1 + 'px',
@@ -467,7 +494,7 @@ window.render = function render(t) {
   const ck = 1 + 0.04 * (1 - ease(lin(t, TL.close, 0.25)));
   const cOn = t >= TL.close;
   for (const el of [logo, url]) { S(el).display = cOn ? 'block' : 'none'; S(el).transform = `scale(${ck.toFixed(4)})`; }
-  closeEls.forEach((el) => { el.style.transform = `scale(${ck.toFixed(4)})`; });
+  [...closeEls, ...(ctaEl ? [ctaEl] : [])].forEach((el) => { el.style.transform = `scale(${ck.toFixed(4)})`; });
   sig.push(hz.toFixed(4), ck.toFixed(4));
   S(zone).display = on ? 'block' : 'none'; S(band).display = on ? 'block' : 'none';
   S(badge).display = on ? 'flex' : 'none';
@@ -489,7 +516,8 @@ window.ready = async () => {
   window.render(0); await document.fonts.ready;
   return true;
 };
-window.TL = TL;
+if (ST) { const inner = window.render; window.render = (ts) => inner(filmT(ts)); }
+window.TL = ST ? { ...TL, dur: ST.keys[ST.keys.length - 1][0] } : TL;
 })();
 </script>
 </body>

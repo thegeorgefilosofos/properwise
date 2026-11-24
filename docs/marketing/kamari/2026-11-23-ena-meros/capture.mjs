@@ -203,12 +203,12 @@ p = await open('?c=accounting&n=6', MACRO);
 }
 
 
-// ── 6. Λογιστική (v16): ΜΙΑ οθόνη, η κάρτα «Κατάσταση αποτελεσμάτων» του ακινήτου ──
+// ── 6. Λογιστική (v17): ΜΙΑ οθόνη, η κάρτα «Κατάσταση αποτελεσμάτων» του ακινήτου ──
 // Το taxProvision (lib/accounting/statement.ts) παίρνει το IncomeStatement ενός ακινήτου· ο φόρος εισοδήματος
 // είναι το μερίδιο του ακινήτου στον προοδευτικό φόρο όλων των ενοικίων (useAccounting.ts: consolidation, myTaxShare).
-// v16: οθόνη πλάτους 320 px (μικρό κινητό). Η κάρτα είναι 288 px, ώστε στα 40 px γραμμάτων να μένει
-// ≥ 64 px από τις άκρες του κάδρου· η μεγάλη ετικέτα της πέμπτης γραμμής σπάει σε δύο γραμμές, όπως στην εφαρμογή.
-p = await open('?c=accounting&n=6', BASE, { width: 320 });
+// v17: οθόνη 390 px, όπως όλες οι άλλες λήψεις. Μετρήθηκε ανά 5 px από 330 ως 390: μόνο στα 390 η
+// «Έσοδα μετά τον φόρο εισοδήματος» χωρά σε μία γραμμή (κάρτα 358 px· στα 385 px η γραμμή έχει ύψος 58 px, δύο γραμμές).
+p = await open('?c=accounting&n=6', BASE);
 {
   const h = p.getByText('Κατάσταση αποτελεσμάτων', { exact: true }).first();
   await h.evaluate((el) => el.scrollIntoView({ block: 'center' }));
@@ -224,7 +224,7 @@ p = await open('?c=accounting&n=6', BASE, { width: 320 });
   // Μέγεθος γραμμάτων ανά γραμμή: το μικρότερο από ετικέτα και ποσό (span).
   const fontPx = await Promise.all(rows.map((r) => r.evaluate((el) => Math.min(...[...el.querySelectorAll('span')].map((e) => parseFloat(getComputedStyle(e).fontSize))))));
   // Από την κορυφή της κάρτας ως λίγο κάτω από τη γραμμή «Έσοδα μετά τον φόρο εισοδήματος».
-  const reg = { x: 0, y: card.y, w: 320, h: rowBoxes[4].y + rowBoxes[4].h + 6 - card.y };
+  const reg = { x: 0, y: card.y, w: 390, h: rowBoxes[4].y + rowBoxes[4].h + 6 - card.y };
   await clipShot(p, 'stmt', reg);
   for (const [k, r] of rowBoxes.entries()) await clipShot(p, `srow-${k}`, r);
   await setVis(rows, 0); await p.waitForTimeout(150);
