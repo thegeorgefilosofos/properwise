@@ -100,7 +100,7 @@ export const FEATURE_MIN_PLAN: Record<Feature, PlanId> = {
   // σημειώνει ενοίκια πληρωμένα και προτείνει δαπάνες, δηλαδή τα ίδια που
   // γράφει με το χέρι ο ιδιώτης. Γι' αυτό η οθόνη τη ρωτά μόνο για το πακέτο
   // (accounting/planActions.ts) και όχι για τον τρόπο. Η βάση λέει το ίδιο
-  // (20261124100000) και το planGateSql.test.ts ελέγχει ότι δεν αποκλίνουν.
+  // (20261124193000) και το planGateSql.test.ts ελέγχει ότι δεν αποκλίνουν.
   bank_import:        'owner',
   clients:            'agency',
   portfolio:          'agency',
