@@ -13,7 +13,7 @@
 //
 // Οι διάρκειες έρχονται από το retention.ts, που ελέγχεται απέναντι στη βάση.
 // ═══════════════════════════════════════════════════════════════════════════
-import { MYDATA_PENDING_DAYS, MYDATA_DECIDED_DAYS, MYDATA_LOG_MONTHS } from './retention';
+import { MYDATA_PENDING_DAYS, MYDATA_DECIDED_DAYS, MYDATA_LOG_MONTHS, MYDATA_REVOKED_DAYS } from './retention';
 
 export const MYDATA_CONSENT_VERSION = '2026-11-24';
 
@@ -26,7 +26,7 @@ export const MYDATA_CONSENT_POINTS: readonly string[] = [
   'Ο λογιστής σου βλέπει όσα καταχωρείς ως δαπάνες, όσο ισχύει η άδεια. Όσα περιμένουν απόφαση ή απορρίπτεις τα βλέπεις μόνο εσύ.',
   'Λογαριασμοί γνωστών παρόχων που έχουμε επιβεβαιώσει μπορεί να καταχωρούνται αυτόματα, αφού καταχωρήσεις έναν του ίδιου παρόχου για το ίδιο ακίνητο και μόνο όταν έχεις ένα ακίνητο. Τους βλέπεις στα Εισερχόμενα και τους αναιρείς με ένα πάτημα.',
   `Όσα δεν κρίνεις σβήνουν σε ${MYDATA_PENDING_DAYS} ημέρες. Όταν απορρίπτεις ένα παραστατικό, κρατάμε μόνο τον αριθμό ΜΑΡΚ για ${MYDATA_DECIDED_DAYS} ημέρες, για να μην ξανάρθει. Το ιστορικό πρόσβασης κρατιέται ${MYDATA_LOG_MONTHS} μήνες.`,
-  'Ανακαλείς όποτε θέλεις εδώ, με ένα πάτημα. Με την ανάκληση σβήνουν όσα παραστατικά δεν καταχώρησες. Οι δαπάνες σου μένουν.',
+  `Ανακαλείς όποτε θέλεις εδώ, με ένα πάτημα. Με την ανάκληση σβήνουν όσα παραστατικά δεν καταχώρησες. Οι δαπάνες σου μένουν. Την απόδειξη της άδειας την κρατάμε ${Math.round(MYDATA_REVOKED_DAYS / 365)} έτη από την ανάκληση.`,
 ];
 
 /** Το ρητό πλαίσιο για πιθανά δεδομένα υγείας (ΓΚΠΔ 9§2(α)). Χωρίς τικ, όχι «Επιτρέπω». */
@@ -35,9 +35,8 @@ export const MYDATA_HEALTH_CONSENT = 'Συναινώ ρητά να επεξερ�
 /** Ο σύνδεσμος «Τι ακριβώς κρατάμε και για πόσο». */
 export const MYDATA_PRIVACY_HREF = '/privacy#mydata';
 
-/** Το κείμενο όπως αποτυπώνεται: τίτλος, προτάσεις και πλαίσιο, ένα ανά γραμμή. */
-export const mydataConsentCanonical = (): string =>
-  [MYDATA_CONSENT_VERSION, MYDATA_CONSENT_TITLE, ...MYDATA_CONSENT_POINTS, MYDATA_HEALTH_CONSENT, MYDATA_PRIVACY_HREF].join('\n');
-
-/** SHA-256 του `mydataConsentCanonical()`, σε δεκαεξαδική μορφή. */
-export const MYDATA_CONSENT_HASH = 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab';
+/**
+ * SHA-256, σε δεκαεξαδική μορφή, του κειμένου όπως αποτυπώνεται: έκδοση,
+ * τίτλος, προτάσεις, πλαίσιο υγείας και σύνδεσμος, ένα ανά γραμμή (\n).
+ */
+export const MYDATA_CONSENT_HASH = '0ae5ce6725e8c46752fd7004ba21dea8dd0340d139fcf1f1e8a71a9be858cba5';

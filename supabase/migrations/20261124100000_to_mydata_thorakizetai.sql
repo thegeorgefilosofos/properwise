@@ -136,8 +136,8 @@ $$;
 revoke all on function private.mydata_aal2() from public, anon;
 grant execute on function private.mydata_aal2() to authenticated;
 
--- Ο λογιστής βλέπει ένα παραστατικό μόνο με δεύτερο βήμα, όσο ισχύει η άδεια
--- και η σύνδεση, και ΜΟΝΟ όταν έχει καταχωρηθεί.
+-- Ο λογιστής βλέπει ένα παραστατικό μόνο με δεύτερο βήμα και όσο ισχύουν η
+-- άδεια και η σύνδεση. Και ΜΟΝΟ όταν έχει καταχωρηθεί.
 create or replace function private.mydata_accountant_sees(p_consent uuid)
 returns boolean
 language sql stable
@@ -290,7 +290,7 @@ immutable
 set search_path = ''
 as $$
   select (p_version, p_hash) in (
-    ('2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab'));
+    ('2026-11-24', '0ae5ce6725e8c46752fd7004ba21dea8dd0340d139fcf1f1e8a71a9be858cba5'));
 $$;
 revoke all on function private.mydata_consent_text_ok(text, text) from public, anon, authenticated;
 

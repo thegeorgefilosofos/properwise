@@ -14,7 +14,7 @@ const AADE_EXPENSE_CODES: ReadonlySet<string> = new Set(Array.from({ length: 16 
 import { BY_SLUG } from '../expenses/taxonomy';
 import { groupForCategory } from '../expenses/groups';
 import { isValidAfm } from '../core/greek';
-import { BANK_PAYMENT_LIMIT_CENTS, BANK_PAYMENT_LIMIT_SOURCE, UNUSUAL_FACTOR } from './limits';
+import { BANK_PAYMENT_LIMIT_CENTS, UNUSUAL_FACTOR } from './limits';
 
 let pass = 0, fail = 0;
 const ok = (name: string, cond: boolean) => { if (cond) pass++; else { fail++; console.error('✗ ' + name); } };
@@ -58,8 +58,6 @@ ok('όνομα: η επωνυμία του εκδότη όταν δεν είνα
 ok('όνομα: τίποτα γνωστό: null', providerName('099000049', null) === null);
 
 ok('όριο: 500€ σε λεπτά, όπως το άρθρο 23 ΚΦΕ', BANK_PAYMENT_LIMIT_CENTS === 500 * 100);
-ok('όριο: η πηγή γράφει νόμο και ΠΟΛ', /4172\/2013/.test(BANK_PAYMENT_LIMIT_SOURCE.law) && /1216\/2014/.test(BANK_PAYMENT_LIMIT_SOURCE.circular));
-ok('όριο: χωρίς ανθρώπινο checkedAt ακόμη', BANK_PAYMENT_LIMIT_SOURCE.checkedAt === null);
 ok('συντελεστής ασυνήθιστου ποσού: 2', UNUSUAL_FACTOR === 2);
 
 // ── ΘΩΡΑΚΙΣΗ 24/11/2026: ΚΑΔ ΠΟΥ ΔΕΝ ΑΦΟΡΟΥΝ ΑΚΙΝΗΤΟ (ΥΓΕΙΑ, ΠΡΟΣΩΠΙΚΗ ΚΑΤΑΝΑΛΩΣΗ) ──

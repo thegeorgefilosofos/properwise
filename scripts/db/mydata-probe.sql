@@ -88,12 +88,12 @@ declare
   y  int  := extract(year from (now() at time zone 'Europe/Athens'))::int;
   r  json;
 begin
-  r := public.mydata_consent_grant(l2, y, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
+  r := public.mydata_consent_grant(l2, y, '2026-11-24', '0ae5ce6725e8c46752fd7004ba21dea8dd0340d139fcf1f1e8a71a9be858cba5', true);
   if (r->>'ok')::boolean or r->>'reason' <> 'not_linked' then raise exception 'ΑΝΟΙΧΤΗ ΠΟΡΤΑ: άδεια σε λογιστή που δεν συνδέθηκε: %', r; end if;
-  r := public.mydata_consent_grant(l1, y - 5, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
+  r := public.mydata_consent_grant(l1, y - 5, '2026-11-24', '0ae5ce6725e8c46752fd7004ba21dea8dd0340d139fcf1f1e8a71a9be858cba5', true);
   if (r->>'ok')::boolean or r->>'reason' <> 'bad_period' then raise exception 'ΠΕΡΙΟΔΟΣ: δέχτηκε έτος % (%)', y - 5, r; end if;
   -- B1: χωρίς ΑΦΜ επιβεβαιωμένο από τον λογιστή δεν δίνεται άδεια.
-  r := public.mydata_consent_grant(l1, y - 1, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
+  r := public.mydata_consent_grant(l1, y - 1, '2026-11-24', '0ae5ce6725e8c46752fd7004ba21dea8dd0340d139fcf1f1e8a71a9be858cba5', true);
   if (r->>'ok')::boolean or r->>'reason' <> 'afm_unconfirmed' then raise exception 'B1: άδεια με ΑΦΜ που ο λογιστής δεν επιβεβαίωσε: %', r; end if;
 end $probe$;
 reset role;
@@ -127,7 +127,7 @@ declare
   y  int  := extract(year from (now() at time zone 'Europe/Athens'))::int;
   r  json;
 begin
-  r := public.mydata_consent_grant(l1, y - 1, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
+  r := public.mydata_consent_grant(l1, y - 1, '2026-11-24', '0ae5ce6725e8c46752fd7004ba21dea8dd0340d139fcf1f1e8a71a9be858cba5', true);
   if not (r->>'ok')::boolean then raise exception 'ΡΟΗ: η άδεια του Π1 απέτυχε: %', r; end if;
   if (select afm from public.mydata_consents where client_id = auth.uid()) <> '099000013' then
     raise exception 'ΡΟΗ: το ΑΦΜ δεν καθαρίστηκε από κενά';
@@ -135,7 +135,7 @@ begin
   if (select window_from from public.mydata_consents where client_id = auth.uid()) <> make_date(y - 1, 1, 1) then
     raise exception 'ΠΕΡΙΟΔΟΣ: λάθος αρχή παραθύρου';
   end if;
-  r := public.mydata_consent_grant(l1, y - 1, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
+  r := public.mydata_consent_grant(l1, y - 1, '2026-11-24', '0ae5ce6725e8c46752fd7004ba21dea8dd0340d139fcf1f1e8a71a9be858cba5', true);
   if not (r->>'existing')::boolean then raise exception 'ΡΟΗ: δεύτερο «Επιτρέπω» έγραψε δεύτερη γραμμή'; end if;
   raise notice 'probe: άδεια μόνο σε συνδεδεμένο λογιστή, για τρέχον ή προηγούμενο έτος';
 end $probe$;
@@ -144,7 +144,7 @@ reset role;
 select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a3', true);
 set local role authenticated;
 do $probe$ declare r json; begin
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', extract(year from now())::int, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', extract(year from now())::int, '2026-11-24', '0ae5ce6725e8c46752fd7004ba21dea8dd0340d139fcf1f1e8a71a9be858cba5', true);
   if (r->>'ok')::boolean or r->>'reason' <> 'no_afm' then raise exception 'ΑΦΜ: άδεια με ΑΦΜ που δεν περνά τον έλεγχο: %', r; end if;
   raise notice 'probe: χωρίς έγκυρο ΑΦΜ δεν δίνεται άδεια';
 end $probe$;
@@ -153,7 +153,7 @@ reset role;
 select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a2', true);
 set local role authenticated;
 do $probe$ declare r json; begin
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c2', extract(year from (now() at time zone 'Europe/Athens'))::int, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c2', extract(year from (now() at time zone 'Europe/Athens'))::int, '2026-11-24', '0ae5ce6725e8c46752fd7004ba21dea8dd0340d139fcf1f1e8a71a9be858cba5', true);
   if not (r->>'ok')::boolean then raise exception 'ΡΟΗ: η άδεια του Π2 απέτυχε: %', r; end if;
   -- Κανείς δεν γράφει απευθείας.
   begin
@@ -172,7 +172,7 @@ select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a3', true);
 set local role authenticated;
 do $probe$ declare r json; y int := extract(year from (now() at time zone 'Europe/Athens'))::int; begin
   update public.billing_profiles set afm = '099000049' where user_id = auth.uid();
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', y, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', y, '2026-11-24', '0ae5ce6725e8c46752fd7004ba21dea8dd0340d139fcf1f1e8a71a9be858cba5', true);
   if (r->>'ok')::boolean or r->>'reason' <> 'afm_unconfirmed' then raise exception 'B1: ο Π3 πήρε άδεια με ξένο ΑΦΜ χωρίς επιβεβαίωση: %', r; end if;
 end $probe$;
 reset role;
@@ -186,10 +186,10 @@ reset role;
 select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a3', true);
 set local role authenticated;
 do $probe$ declare r json; y int := extract(year from (now() at time zone 'Europe/Athens'))::int; begin
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', y, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', y, '2026-11-24', '0ae5ce6725e8c46752fd7004ba21dea8dd0340d139fcf1f1e8a71a9be858cba5', true);
   if (r->>'ok')::boolean or r->>'reason' <> 'afm_mismatch' then raise exception 'B1: ο Π3 πήρε άδεια με ΑΦΜ άλλο από αυτό που επιβεβαίωσε ο λογιστής: %', r; end if;
   update public.billing_profiles set afm = '099000025' where user_id = auth.uid();
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', y, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', y, '2026-11-24', '0ae5ce6725e8c46752fd7004ba21dea8dd0340d139fcf1f1e8a71a9be858cba5', true);
   if (r->>'ok')::boolean then raise exception 'B1: ο Π3 πήρε άδεια με το ΑΦΜ του Π2: %', r; end if;
 end $probe$;
 reset role;
@@ -204,7 +204,7 @@ reset role;
 select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a3', true);
 set local role authenticated;
 do $probe$ declare r json; y int := extract(year from (now() at time zone 'Europe/Athens'))::int; begin
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', y, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', y, '2026-11-24', '0ae5ce6725e8c46752fd7004ba21dea8dd0340d139fcf1f1e8a71a9be858cba5', true);
   if (r->>'ok')::boolean or r->>'reason' <> 'afm_taken' then raise exception 'B1: δεύτερη ενεργή άδεια στο ίδιο ΑΦΜ: %', r; end if;
   update public.billing_profiles set afm = '123456789' where user_id = auth.uid();
 end $probe$;
@@ -236,7 +236,7 @@ do $probe$ declare r json; y int := extract(year from (now() at time zone 'Europ
     raise exception 'B1: η ανάκληση δεν έγραψε «afm_changed»';
   end if;
   update public.billing_profiles set afm = '099 000 013' where user_id = auth.uid();
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', y - 1, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', y - 1, '2026-11-24', '0ae5ce6725e8c46752fd7004ba21dea8dd0340d139fcf1f1e8a71a9be858cba5', true);
   if not (r->>'ok')::boolean then raise exception 'B1: η άδεια με το σωστό ΑΦΜ δεν ξαναδόθηκε: %', r; end if;
   raise notice 'probe: B1: αλλαγή ΑΦΜ στο προφίλ ανακαλεί την άδεια αμέσως';
 end $probe$;
@@ -887,14 +887,14 @@ reset role;
 select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a1', true);
 set local role authenticated;
 do $probe$ declare r json; y int := extract(year from (now() at time zone 'Europe/Athens'))::int; begin
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', y, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', y, '2026-11-24', '0ae5ce6725e8c46752fd7004ba21dea8dd0340d139fcf1f1e8a71a9be858cba5', true);
   -- Σ6: χωρίς ρητή επιβεβαίωση ο προηγούμενος λογιστής δεν ανακαλείται.
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c2', y, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c2', y, '2026-11-24', '0ae5ce6725e8c46752fd7004ba21dea8dd0340d139fcf1f1e8a71a9be858cba5', true);
   if (r->>'ok')::boolean or r->>'reason' <> 'switch_confirm' then raise exception 'Σ6: αλλαγή λογιστή χωρίς επιβεβαίωση: %', r; end if;
   if (select accountant_id from public.mydata_consents where client_id = auth.uid() and revoked_at is null) <> 'ad000000-0000-4000-8000-0000000000c1' then
     raise exception 'Σ6: η άρνηση άλλαξε τον λογιστή';
   end if;
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c2', y, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true, true);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c2', y, '2026-11-24', '0ae5ce6725e8c46752fd7004ba21dea8dd0340d139fcf1f1e8a71a9be858cba5', true, true);
   if not (r->>'ok')::boolean then raise exception 'ΑΛΛΑΓΗ: η άδεια στον Λ2 απέτυχε: %', r; end if;
   if (select count(*) from public.mydata_consents where client_id = auth.uid() and revoked_at is null) <> 1 then raise exception 'ΑΛΛΑΓΗ: δύο ενεργοί συγχρονιστές'; end if;
   if (select accountant_id from public.mydata_consents where client_id = auth.uid() and revoked_at is null) <> 'ad000000-0000-4000-8000-0000000000c2' then raise exception 'ΑΛΛΑΓΗ: έμεινε ο Λ1'; end if;
@@ -930,7 +930,7 @@ select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a1', true);
 set local role authenticated;
 do $probe$ declare r json; begin
   update public.accountant_clients set active = true where owner_id = auth.uid() and accountant_id = 'ad000000-0000-4000-8000-0000000000c1';
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', extract(year from (now() at time zone 'Europe/Athens'))::int, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c1', extract(year from (now() at time zone 'Europe/Athens'))::int, '2026-11-24', '0ae5ce6725e8c46752fd7004ba21dea8dd0340d139fcf1f1e8a71a9be858cba5', true);
   if not (r->>'ok')::boolean then raise exception 'ΣΚΗΝΙΚΟ: ξανά άδεια στον Λ1: %', r; end if;
 end $probe$;
 reset role;
@@ -970,7 +970,7 @@ end $probe$;
 select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a5', true);
 set local role authenticated;
 do $probe$ declare r json; begin
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c3', extract(year from (now() at time zone 'Europe/Athens'))::int, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c3', extract(year from (now() at time zone 'Europe/Athens'))::int, '2026-11-24', '0ae5ce6725e8c46752fd7004ba21dea8dd0340d139fcf1f1e8a71a9be858cba5', true);
   if (r->>'ok')::boolean or r->>'reason' <> 'not_linked' then raise exception 'M5: άδεια σε μέλος γραφείου χωρίς δική του γραμμή: %', r; end if;
   raise notice 'probe: M5: άδεια μόνο σε λογιστή με δική του γραμμή σύνδεσης';
 end $probe$;
@@ -990,7 +990,7 @@ reset role;
 select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a5', true);
 set local role authenticated;
 do $probe$ declare r json; begin
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c3', extract(year from (now() at time zone 'Europe/Athens'))::int, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c3', extract(year from (now() at time zone 'Europe/Athens'))::int, '2026-11-24', '0ae5ce6725e8c46752fd7004ba21dea8dd0340d139fcf1f1e8a71a9be858cba5', true);
   if not (r->>'ok')::boolean then raise exception 'ΣΚΗΝΙΚΟ: άδεια του Π5 στον Λ3: %', r; end if;
 end $probe$;
 reset role;
@@ -1009,7 +1009,7 @@ end $probe$;
 select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a5', true);
 set local role authenticated;
 do $probe$ declare r json; begin
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c3', extract(year from (now() at time zone 'Europe/Athens'))::int, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c3', extract(year from (now() at time zone 'Europe/Athens'))::int, '2026-11-24', '0ae5ce6725e8c46752fd7004ba21dea8dd0340d139fcf1f1e8a71a9be858cba5', true);
   if not (r->>'ok')::boolean then raise exception 'ΣΚΗΝΙΚΟ: ξανά άδεια του Π5 στον Λ3: %', r; end if;
 end $probe$;
 reset role;
@@ -1125,14 +1125,14 @@ reset role;
 select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a7', true);
 set local role authenticated;
 do $probe$ declare r json; begin
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c4', extract(year from (now() at time zone 'Europe/Athens'))::int, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c4', extract(year from (now() at time zone 'Europe/Athens'))::int, '2026-11-24', '0ae5ce6725e8c46752fd7004ba21dea8dd0340d139fcf1f1e8a71a9be858cba5', true);
   if not (r->>'ok')::boolean then raise exception 'ΣΚΗΝΙΚΟ: άδεια Π7: %', r; end if;
 end $probe$;
 reset role;
 select set_config('probe.uid', 'ad000000-0000-4000-8000-0000000000a6', true);
 set local role authenticated;
 do $probe$ declare r json; begin
-  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c4', extract(year from (now() at time zone 'Europe/Athens'))::int, '2026-11-24', 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab', true);
+  r := public.mydata_consent_grant('ad000000-0000-4000-8000-0000000000c4', extract(year from (now() at time zone 'Europe/Athens'))::int, '2026-11-24', '0ae5ce6725e8c46752fd7004ba21dea8dd0340d139fcf1f1e8a71a9be858cba5', true);
   if not (r->>'ok')::boolean then raise exception 'ΣΚΗΝΙΚΟ: άδεια Π6: %', r; end if;
 end $probe$;
 reset role;
@@ -1283,7 +1283,7 @@ set local role authenticated;
 do $probe$ declare n int; begin
   select count(*) into n from public.mydata_connections;
   if n <> 1 then raise exception 'Σ1: με δεύτερο βήμα ο Λ9 δεν βλέπει τη σύνδεσή του (%)', n; end if;
-  raise notice 'probe: Σ1: κάθε ενέργεια myDATA του λογιστή θέλει δεύτερο βήμα, και χωρίς γραφείο';
+  raise notice 'probe: Σ1: κάθε ενέργεια myDATA του λογιστή θέλει δεύτερο βήμα ακόμη και χωρίς γραφείο';
 end $probe$;
 reset role;
 
@@ -1304,7 +1304,7 @@ do $probe$
 declare
   l8 uuid := 'ad000000-0000-4000-8000-0000000000c8';
   y  int  := extract(year from (now() at time zone 'Europe/Athens'))::int;
-  h  text := 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab';
+  h  text := '0ae5ce6725e8c46752fd7004ba21dea8dd0340d139fcf1f1e8a71a9be858cba5';
   r  json;
 begin
   r := public.mydata_consent_grant(l8, y, '2026-11-24', repeat('0', 64), true);
@@ -1588,7 +1588,7 @@ do $probe$
 declare
   l9 uuid := 'ad000000-0000-4000-8000-0000000000c9';
   y  int  := extract(year from (now() at time zone 'Europe/Athens'))::int;
-  h  text := 'a3b599d95e82ca8cc40004d190900d1e25158dca00eb83224f64a7ef4d1519ab';
+  h  text := '0ae5ce6725e8c46752fd7004ba21dea8dd0340d139fcf1f1e8a71a9be858cba5';
   kept int := (select count(*) from public.expenses where user_id = auth.uid());
   r json;
 begin

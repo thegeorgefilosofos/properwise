@@ -25,7 +25,7 @@
 //
 // Χωρίς δίκτυο, χωρίς βάση, χωρίς ρολόι: τρέχει ίδια σε Deno και σε Node.
 // ═══════════════════════════════════════════════════════════════════════════
-import { providerByAfm, cleanAfm, KIND_CATEGORY, NOT_PROPERTY, type ProviderKind, type Provider } from '../../../lib/mydata/providers.ts'
+import { providerByAfm, cleanAfm, kadNotProperty, KIND_CATEGORY, NOT_PROPERTY, type ProviderKind, type Provider } from '../../../lib/mydata/providers.ts'
 import { BANK_PAYMENT_LIMIT_CENTS, UNUSUAL_FACTOR } from '../../../lib/mydata/limits.ts'
 
 export type Tier = 'auto' | 'review' | 'reject'
@@ -51,6 +51,12 @@ export interface ClassifyDoc {
   credit: boolean
   /** Τα σύνολα της ΑΑΔΕ κλείνουν μεταξύ τους (mydata.ts, `amountsClose`). */
   amountsClose: boolean
+  /**
+   * Ο ΚΑΔ του εκδότη, όταν υπάρξει (RgWsPublic2, προαιρετικό). ΚΑΔ υγείας ή
+   * προσωπικής κατανάλωσης (lib/mydata/providers.ts, NOT_PROPERTY_KAD) σημαίνει
+   * απόρριψη χωρίς αποθήκευση. Σήμερα δεν έρχεται ποτέ.
+   */
+  issuerKad?: string | null
 }
 
 /** Τα επιβεβαιωμένα παραστατικά του ίδιου παρόχου για τον ίδιο πελάτη (όχι πιστωτικά). */
@@ -82,6 +88,7 @@ const SLUG = /^[a-z_]{1,32}$/
 export function classifyDoc(d: ClassifyDoc, history?: ProviderHistory | null, rules: ClassifyRules = {}): Verdict {
   const afm = cleanAfm(d.counterpartAfm)
   if ((rules.notProperty ?? DEFAULT_NOT_PROPERTY).has(afm)) return { tier: 'reject', kind: null, category: null, reasons: [] }
+  if (d.issuerKad && kadNotProperty(d.issuerKad)) return { tier: 'reject', kind: null, category: null, reasons: [] }
 
   const provider = (rules.registry ?? providerByAfm)(afm)
   const kind = provider?.kind ?? null

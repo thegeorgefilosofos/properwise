@@ -8,25 +8,27 @@ import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import {
   MYDATA_CONSENT_VERSION, MYDATA_CONSENT_HASH, MYDATA_CONSENT_POINTS, MYDATA_HEALTH_CONSENT, MYDATA_CONSENT_TITLE,
-  MYDATA_PRIVACY_HREF, mydataConsentCanonical,
+  MYDATA_PRIVACY_HREF,
 } from './consentText';
-import { MYDATA_PENDING_DAYS, MYDATA_DECIDED_DAYS } from './retention';
+import { MYDATA_PENDING_DAYS, MYDATA_DECIDED_DAYS, MYDATA_REVOKED_DAYS } from './retention';
 
 let pass = 0, fail = 0;
 const ok = (name: string, cond: boolean) => { if (cond) pass++; else { fail++; console.error('✗ ' + name); } };
 
-const sha = createHash('sha256').update(mydataConsentCanonical(), 'utf8').digest('hex');
+// Η μορφή που αποτυπώνεται, όπως τη γράφει το consentText.ts.
+const canonical = [MYDATA_CONSENT_VERSION, MYDATA_CONSENT_TITLE, ...MYDATA_CONSENT_POINTS, MYDATA_HEALTH_CONSENT, MYDATA_PRIVACY_HREF].join('\n');
+const sha = createHash('sha256').update(canonical, 'utf8').digest('hex');
 ok('το αποτύπωμα είναι SHA-256 του κειμένου', sha === MYDATA_CONSENT_HASH);
 ok('η έκδοση είναι ημερομηνία yyyy-mm-dd', /^\d{4}-\d{2}-\d{2}$/.test(MYDATA_CONSENT_VERSION));
 
 const all = [MYDATA_CONSENT_TITLE, ...MYDATA_CONSENT_POINTS, MYDATA_HEALTH_CONSENT].join(' ');
 // Το ελάχιστο περιεχόμενο (EDPB 05/2020 §64, άρθρο 13).
 ok('λέει ποιος επεξεργάζεται', /επεξεργάζεται το PROPERWISE/.test(all));
-ok('λέει ότι έρχονται όλα, και τα προσωπικά', /όλα τα παραστατικά εξόδων/.test(all) && /προσωπικά/.test(all));
+ok('λέει ότι έρχονται όλα μαζί με τα προσωπικά', /όλα τα παραστατικά εξόδων/.test(all) && /προσωπικά/.test(all));
 ok('λέει ότι μπορεί να αφορούν υγεία', /υγεία/.test(all));
 ok('λέει τι βλέπει ο λογιστής', /λογιστής σου βλέπει/.test(all));
 ok('λέει ότι κάποια καταχωρούνται αυτόματα και αναιρούνται', /αυτόματα/.test(all) && /αναιρείς/.test(all));
-ok('λέει τους χρόνους από τις σταθερές', all.includes(`${MYDATA_PENDING_DAYS} ημέρες`) && all.includes(`${MYDATA_DECIDED_DAYS} ημέρες`));
+ok('λέει τους χρόνους από τις σταθερές', all.includes(`${MYDATA_PENDING_DAYS} ημέρες`) && all.includes(`${MYDATA_DECIDED_DAYS} ημέρες`) && all.includes(`${Math.round(MYDATA_REVOKED_DAYS / 365)} έτη`));
 ok('λέει πώς ανακαλείς', /Ανακαλείς/.test(all));
 ok('συνδέεται με την Πολιτική', MYDATA_PRIVACY_HREF === '/privacy#mydata');
 ok('ρητή συγκατάθεση για υγεία', /ρητά/.test(MYDATA_HEALTH_CONSENT) && /υγείας/.test(MYDATA_HEALTH_CONSENT));

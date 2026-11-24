@@ -109,8 +109,8 @@ export const NOT_PROPERTY: readonly NotProperty[] = [];
  * ταξινόμησης.
  *
  * ΠΗΓΗ: Eurostat, «NACE Rev. 2 – Statistical classification of economic
- * activities in the European Community» (KS-RA-07-015, 2008), και η ελληνική
- * της απόδοση ΣΤΑΚΟΔ-08 της ΕΛΣΤΑΤ, πάνω στην οποία χτίζονται οι ΚΑΔ της ΑΑΔΕ.
+ * activities in the European Community» (KS-RA-07-015, 2008). Η ελληνική της
+ * απόδοση είναι η ΣΤΑΚΟΔ-08 της ΕΛΣΤΑΤ, πάνω στην οποία χτίζονται οι ΚΑΔ της ΑΑΔΕ.
  *
  * ΑΝΕΝΕΡΓΗ ΣΗΜΕΡΑ. Το RequestDocs δεν φέρνει ΚΑΔ εκδότη· θα τον έδινε το
  * RgWsPublic2, που είναι προαιρετικό (σχέδιο 23/11/2026). Ως τότε κανένα

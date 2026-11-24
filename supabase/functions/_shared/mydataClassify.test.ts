@@ -157,5 +157,14 @@ ok('0: το όριο είναι σε λεπτά, θετικό', Number.isInteger
   ok('11: πιστωτικό πάνω από το όριο: όχι over_limit', !credit.reasons.includes('over_limit') && credit.reasons.includes('credit'))
 }
 
+// ── 12. ΚΑΔ ΥΓΕΙΑΣ Ή ΠΡΟΣΩΠΙΚΗΣ ΚΑΤΑΝΑΛΩΣΗΣ: ΑΠΟΡΡΙΨΗ ΧΩΡΙΣ ΑΠΟΘΗΚΕΥΣΗ ──────────
+// Ενεργό μόνο όταν υπάρξει ΚΑΔ εκδότη (RgWsPublic2). Χωρίς ΚΑΔ τίποτα δεν αλλάζει.
+{
+  ok('12: ιατρείο (ΚΑΔ 86.21): απόρριψη', cd(doc({ counterpartAfm: UNKNOWN_AFM, issuerKad: '86.21.10.00' }), null).tier === 'reject')
+  ok('12: φαρμακείο (ΚΑΔ 47.73): απόρριψη', cd(doc({ counterpartAfm: UNKNOWN_AFM, issuerKad: '47.73.10.01' }), null).tier === 'reject')
+  ok('12: υδραυλικός (ΚΑΔ 43.22): για έλεγχο', cd(doc({ counterpartAfm: UNKNOWN_AFM, issuerKad: '43.22.11.01' }), null).tier === 'review')
+  ok('12: χωρίς ΚΑΔ: για έλεγχο όπως πριν', cd(doc({ counterpartAfm: UNKNOWN_AFM }), null).tier === 'review')
+}
+
 console.log(`mydata classify: ${pass} ✓ · ${fail} ✗`)
 if (fail) process.exit(1)
