@@ -860,7 +860,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                 ημέρα είναι η πιο φωτεινή. Η ένταση ισχύει και στα δύο. */}
             <SecHdr label="Ημερολόγιο τιμών" info={<InfoHint label="Πώς διαβάζεται">{PRICE_CAL_NOTE}</InfoHint>}
               right={<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                {pastCount > 0 && <Btn variant="secondary" onClick={() => setShowPast(v => !v)}>{showPast ? 'Κρύψε προηγούμενους μήνες' : `Δείξε προηγούμενους μήνες (${pastCount})`}</Btn>}
+                {pastCount > 0 && <Btn variant="secondary" size="lg" onClick={() => setShowPast(v => !v)}>{showPast ? 'Κρύψε προηγούμενους μήνες' : `Δείξε προηγούμενους μήνες (${pastCount})`}</Btn>}
                 <Segmented label="Έτος" value={String(pyear)} onChange={v => setPyear(Number(v))}
                         options={[nowYear, nowYear + 1].map(y => ({ value: String(y), label: String(y) }))} />
               </div>} />
