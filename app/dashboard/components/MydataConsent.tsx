@@ -172,7 +172,7 @@ export default function MydataConsent({ userId, allowed = false }: { userId: str
       <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer', minHeight: 44, marginTop: T.sp.md }}>
         <input type="checkbox" checked={health} onChange={e => setHealth(e.target.checked)}
           style={{ width: 18, height: 18, marginTop: 2, accentColor: 'var(--accent)', flexShrink: 0 }} />
-        <span style={{ ...TT.bodySm, color: 'var(--text-primary)' }}>{MYDATA_HEALTH_CONSENT}</span>
+        <span style={{ ...TT.bodySm, lineHeight: 1.6, color: 'var(--text-primary)' }}>{MYDATA_HEALTH_CONSENT}</span>
       </label>
       <div className="act-row" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: T.sp.md }}>
         <Btn variant="primary" onClick={() => void allow()} disabled={busy || !health || !chosen}>{busy ? 'Επιτρέπω…' : 'Επιτρέπω'}</Btn>
