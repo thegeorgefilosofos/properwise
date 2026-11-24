@@ -30,7 +30,7 @@ export const PLAN_COPY_EN: Record<PlanId, PlanCopy> = {
   },
   owner: {
     name: 'Owner+', tagline: `${upTo(PLANS.owner.maxProperties)}, one view`,
-    features: [upTo(PLANS.owner.maxProperties), 'Yield comparison by property', 'Early access to new features'],
+    features: [upTo(PLANS.owner.maxProperties), 'Yield comparison by property', 'Bank transactions from CSV', 'Early access to new features'],
   },
   agency: {
     name: 'Professional', tagline: 'Team, roles and accountability',
@@ -39,7 +39,7 @@ export const PLAN_COPY_EN: Record<PlanId, PlanCopy> = {
       'Clients and portfolio',
       'Team with roles, no limit',
       'Reports under your brand',
-      'Accounting journal, bank',
+      'Accounting journal',
       'IRR, NPV and DSCR analysis',
     ],
   },

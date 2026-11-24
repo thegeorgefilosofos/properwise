@@ -358,3 +358,28 @@ export function matchTransactions(txns: BankTxn[], expectedRents: ExpectedRent[]
   }
   return { rentMatches, expenseSuggestions, unmatched }
 }
+
+// ── Τι μπαίνει με ένα πάτημα και τι μένει για απόφαση ─────────────────────────
+// Η `matchTransactions` βαθμολογεί ήδη κάθε αντιστοίχιση: «high» όταν το ποσό
+// είναι ίσο ΚΑΙ η ημερομηνία απέχει έως πέντε ημέρες από την προθεσμία. Μόνο
+// αυτά καταχωρούνται μαζί, με το «Καταχώρηση όλων (N)» και αναίρεση. Ίδιο ποσό
+// σε άλλη εβδομάδα («medium») μπορεί να είναι μεταφορά από τρίτο: το αποφασίζει
+// ο χρήστης, όπως και κάθε χρέωση και κάθε πίστωση που δεν ταίριαξε πουθενά.
+// Ο τρόπος (ιδιώτης ή επαγγελματίας) δεν μπαίνει εδώ: η απόφαση του ιδιοκτήτη
+// 24/11/2026 άνοιξε την εισαγωγή στο «Ιδιοκτήτης+» χωρίς διπλογραφία.
+export interface ImportPlan {
+  sure: RentMatch[]
+  decide: RentMatch[]
+  expenses: ExpenseSuggestion[]
+  unmatched: BankTxn[]
+}
+
+export function planImport(txns: BankTxn[], expectedRents: ExpectedRent[], windowDays = 20): ImportPlan {
+  const res = matchTransactions(txns, expectedRents, windowDays)
+  return {
+    sure: res.rentMatches.filter(m => m.confidence === 'high'),
+    decide: res.rentMatches.filter(m => m.confidence !== 'high'),
+    expenses: res.expenseSuggestions,
+    unmatched: res.unmatched,
+  }
+}

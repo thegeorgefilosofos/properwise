@@ -64,7 +64,8 @@ import {
   rentalBracketsForYear,
 } from '@/lib/billing/greekTax'
 import { useReportBranding } from '@/lib/reportBranding'
-import { hasFeature, planAtLeast, FEATURE_MIN_PLAN } from '@/lib/billing/entitlements'
+import { hasFeature, FEATURE_MIN_PLAN } from '@/lib/billing/entitlements'
+import { planActions } from './planActions'
 import type { VatDeduction } from '@/lib/tax/myData'
 import { PLANS, type PlanId } from '@/lib/billing/plans'
 import { toMovement } from '../accountantTypes'
@@ -251,7 +252,9 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   // κάρτα του πακέτου. Το `doubleEntry` μένει δίπλα του γιατί απαντά άλλο
   // ερώτημα — όχι «το πληρώνει;» αλλά «το έχει;»: ισοζύγιο χωρίς διπλογραφικά
   // βιβλία δεν υπάρχει, σε κανένα πλάνο.
-  const canJournal = hasFeature({ plan }, 'accounting_journal')
+  // Τα τέσσερα ερωτήματα του πακέτου ζουν στο planActions.ts, με τεστ.
+  const actions = planActions(plan)
+  const canJournal = actions.journal
   // Το όνομα του πακέτου διαβάζεται από το μητρώο, ποτέ γραμμένο στο χέρι:
   // αλλιώς την ημέρα που το ημερολόγιο άρθρων αλλάξει σκαλί, η οθόνη θα
   // συνέχιζε να στέλνει τον χρήστη σε λάθος πακέτο.
@@ -263,21 +266,18 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   // ΚΑΘΕΝΑ ΡΩΤΑΕΙ ΓΙΑ ΤΟΝ ΕΑΥΤΟ ΤΟΥ. Και τα τρία κρέμονταν από ένα κλειδί, το
   // `bank_import`. Σήμερα δεν φαίνεται γιατί όλα ξεκλειδώνουν στο ίδιο σκαλί —
   // την ημέρα όμως που η εισαγωγή κινήσεων κατέβει ένα πακέτο, θα κατέβαινε
-  // μαζί της και η σύνθεση αναφοράς, χωρίς να το ζητήσει κανείς.
+  // μαζί της και η σύνθεση αναφοράς, χωρίς να το ζητήσει κανείς. Η ημέρα ήρθε
+  // στις 24/11/2026 (απόφαση ιδιοκτήτη: κινήσεις τράπεζας από «Ιδιοκτήτης+»)
+  // και κατέβηκε μόνο η εισαγωγή.
   // Η ΠΥΛΗ ΛΟΓΙΣΤΗ ΕΙΝΑΙ Η ΕΞΑΓΩΓΗ Ε2 ΜΕ ΑΛΛΗ ΠΟΡΤΑ, άρα ΙΔΙΟ χαρακτηριστικό.
   // Δεύτερο όνομα εδώ θα σήμαινε δύο κατώφλια για ένα παραδοτέο, που θα
   // απέκλιναν στην πρώτη αλλαγή τιμολόγησης. Η πραγματική κλειδαριά ζει στη
   // βάση (get_accountant_data, 20260819120000)· εδώ είναι η ΕΞΗΓΗΣΗ, ώστε ο
   // ιδιοκτήτης να μη μοιράσει σύνδεσμο που δεν θα ανοίξει.
   const canAccountantPortal = hasFeature({ plan }, 'e2_export')
-  const canBankImport = hasFeature({ plan }, 'bank_import')
-  // Η σύνθεση αναφοράς κατεβάζει τη σύγκριση ΟΛΟΚΛΗΡΟΥ του χαρτοφυλακίου: είναι
-  // η ίδια δυνατότητα με την καρτέλα «Χαρτοφυλάκιο», από άλλη πόρτα.
-  const canPortfolioReport = hasFeature({ plan }, 'portfolio')
-  // Η κατανομή σε συνιδιοκτήτες δεν πωλείται χωριστά και δεν έχει δική της
-  // εγγραφή στο μητρώο δυνατοτήτων. Έρχεται ολόκληρη με το «Επαγγελματίας» και
-  // το γράφουμε έτσι αντί να τη δανειστούμε από ξένο κλειδί.
-  const canOwnerSplit = planAtLeast(plan, 'agency')
+  const canBankImport = actions.bankImport
+  const canPortfolioReport = actions.portfolioReport
+  const canOwnerSplit = actions.ownerSplit
   // Τα προχωρημένα εργαλεία ξεκινούν κλειστά για ΟΛΟΥΣ. Ο επαγγελματίας τα
   // βρίσκει με ένα κλικ· ο ιδιώτης δεν χρειάζεται να τα προσπεράσει κάθε φορά.
   const [advancedOpen,setAdvancedOpen] = useState(false)
