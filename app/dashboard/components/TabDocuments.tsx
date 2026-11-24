@@ -875,7 +875,6 @@ export default function TabDocuments({
           ακριβώς αυτό: τα χαρτιά, οι άνθρωποι και τα πράγματά του. */}
       {!embedded && (
         <PageTitle title={navLabel('documents')}
-          sub="Τα χαρτιά, οι επαφές και ο εξοπλισμός του ακινήτου"
           right={headerActions}/>
       )}
 
@@ -1327,7 +1326,7 @@ function FileRow({ i, a }: { i: Item; a: FileActions }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <span className="po-elide" title={i.title} style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', maxWidth: 360 }}>{shownName(i)}</span>
-          <OriginTag i={i}/>
+          <OriginTag i={i} hide={a.showFolder ? FOLDER_LABEL[i.folder] : undefined}/>
           {a.showFolder && <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent)', fontWeight: 600 }}>{FOLDER_LABEL[i.folder]}</span>}
         </div>
         <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 2 }}>
@@ -1375,8 +1374,12 @@ function FileRow({ i, a }: { i: Item; a: FileActions }) {
    γιατί πρέπει να λένε ό,τι ακριβώς λέει και το μενού· μπαίνουν λοιπόν σε
    εισαγωγικά, όπως ήδη γίνεται στους Πελάτες και στον Βοηθό. Έτσι το όνομα
    μένει αυτούσιο και η πρόταση στέκει. */
-function OriginTag({ i }: { i: Item }) {
-  const label = ORIGIN_LABEL[i.source];
+// Η ΠΗΓΗ ΜΙΑ ΦΟΡΑ (αξιολόγηση σχεδίασης 3). Στη λίστα με φακέλους το chip
+// «από «Λογαριασμοί»» καθόταν ακριβώς πριν από τον φάκελο «Λογαριασμοί»: η ίδια
+// λέξη δύο φορές. Οταν το λέει ήδη ο φάκελος (`hide`), το chip δεν μπαίνει.
+function OriginTag({ i, hide }: { i: Item; hide?: string }) {
+  const origin = ORIGIN_LABEL[i.source];
+  const label = origin && origin !== hide ? origin : undefined;
   if (!i.provider && !label) return null;
   // ΤΟ CHIP ΔΕΝ ΣΥΜΠΙΕΖΕΤΑΙ, ΑΛΛΑΖΕΙ ΓΡΑΜΜΗ (29/10/2026). Ως απλό στοιχείο
   // γραμμής που τυλίγεται, το chip μίκραινε για να χωρέσει δίπλα στο ποσό και

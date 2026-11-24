@@ -175,8 +175,8 @@ export const OVERVIEW_EN = {
     pricing: ['See your suggested price', 'Dynamic nightly price and the tax picture of short-term renting'],
     inv: ['Start the inventory', 'Equipment, warranties and depreciation'],
   } as Record<string, readonly [string, string]>,
-  /** «Στείλε στον λογιστή σου» (accountantSend.ts): η κάρτα της Επισκόπησης και οι Ρυθμίσεις. */
-  accountantSend: 'Send to your accountant',
+  /** «Σύνδεσμος για τον λογιστή» (accountantSend.ts): η κάρτα της Επισκόπησης και οι Ρυθμίσεις. */
+  accountantSend: 'Link for your accountant',
   /** Η ενημέρωση για τους Όρους (PolicyNotice.tsx). Το κείμενο των αλλαγών μένει ελληνικό, όπως οι ίδιοι οι Όροι. */
   policyNotice: {
     aria: 'What changed in the terms',

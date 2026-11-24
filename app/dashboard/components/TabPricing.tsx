@@ -35,6 +35,7 @@ import * as billStore from '@/lib/data/bills';
 import * as expenses from '@/lib/data/expenses'
 import * as calendar from '@/lib/data/calendar'
 import { AadePill } from '@/components/AadeLink';
+import { InfoHint } from './InfoHint';
 import { T, PageTitle, KPIGrid, InfoBanner, Btn, Segmented, SecHdr, EmptyState, Skeleton, SkeletonKPIs, fe, feWhole, fd, fp, fn, pressable, formGrid, fieldRow, Bar, ABSENT_SHORT } from '@/components/Theme';
 import { navLabel } from '@/lib/nav/labels';
 import { isTabPurchasable } from '@/lib/billing/entitlements';
@@ -109,6 +110,9 @@ const todayIso = () => athensToday();
 // Η βάση του φόρου και η τεκμαρτή έκπτωση, από τη σταθερά που τις υπολογίζει.
 const DEDUCTION_PCT = fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100);
 const TAX_BASE_PCT = fpRate((1 - PRESUMPTIVE_DEDUCTION_RATE) * 100);
+/** Το ⓘ του ημερολογίου τιμών: ήταν πλαίσιο πάνω από τους δείκτες και υπότιτλος
+ *  κάτω από τον τίτλο, δύο προτάσεις για το ίδιο (αξιολόγηση σχεδίασης 3). */
+const PRICE_CAL_NOTE = 'Προτάσεις που δεν αλλάζουν τα κανάλια. Όσο πιο έντονο το χρώμα, τόσο υψηλότερη η τιμή. Πάτησε μια ημέρα για να δεις από πού βγαίνει.';
 const addDaysIso = (d: string, n: number) => { const t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); };
 
 // ΓΙΑΤΙ ΕΞΩ ΑΠΟ ΤΟ COMPONENT. Γραμμένο μέσα στο σώμα του TabPricing, το
@@ -202,6 +206,11 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
   // ανάγνωση δεν πέτυχε (τότε δεν ξέρουμε αν ο φόρος ενοποιείται).
   const [comps, setComps] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(compsKey) || '[]'); } catch { return []; } });
   const [compsOpen, setCompsOpen] = useState(false);
+  // `null` = ο άνθρωπος δεν το άγγιξε ακόμη: ανοιχτό μόνο όσο δεν υπάρχει τιμή.
+  const [settingsOpen, setSettingsOpen] = useState<boolean | null>(null);
+  // Κλειστές μόλις φορτώσει αποθηκευμένη τιμή, ανοιχτές χωρίς τιμή. Το πρώτο
+  // ψηφίο σε πεδίο τις κρατά ανοιχτές (`mark`), ώστε να μην κλείσουν στο γράψιμο.
+  const settingsShown = settingsOpen ?? (!loading && base <= 0);
 
   // ── Φόρτωση διαμονών + αποθηκευμένων ρυθμίσεων ─────────────────────────────
   const loadStays = useCallback(async () => {
@@ -594,7 +603,8 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
     });
   };
 
-  const mark = (fn: (v: number) => void) => (v: number) => { setTouched(true); fn(v); };
+  // Οποιος γράφει σε πεδίο κρατά τις ρυθμίσεις ανοιχτές, ακόμη κι όταν η τιμή πάψει να είναι μηδέν.
+  const mark = (fn: (v: number) => void) => (v: number) => { setTouched(true); setSettingsOpen(o => o ?? true); fn(v); };
 
 
   // ── Η γραμμή που κανείς δεν επινοεί ────────────────────────────────────────
@@ -666,14 +676,17 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
   // ημέρας, άλλη μία. Δεν είναι πληροφορία που αλλάζει ανά γραμμή: το ότι το
   // τέλος ανήκει στο κράτος και ότι η προμήθεια είναι δαπάνη ισχύει για όλη την
   // καρτέλα. Λέγεται μία φορά, εκεί που πρωτοεμφανίζεται η ανάλυση.
-  const priceAnatomy = (
-    <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.65, fontFamily: T.font.sans }}>
-      Το τέλος ανθεκτικότητας εισπράττεται για το κράτος και δεν είναι έσοδό σου.{' '}
-      {feeRate != null && feeRate > 0
-        ? `Η προμήθεια (${fp(feeRate * 100)}, από τις δικές σου καταγεγραμμένες διαμονές) είναι δαπάνη και δεν μειώνει το δηλωτέο έσοδο.`
-        : 'Η προμήθεια της πλατφόρμας δεν φαίνεται σε καμία καταγεγραμμένη διαμονή, οπότε δεν μπαίνει στον υπολογισμό.'}
-    </div>
-  );
+  // ΠΙΣΩ ΑΠΟ ⓘ (αξιολόγηση σχεδίασης 3): ήταν υποσημείωση κάτω από τα κενά.
+  const priceAnatomy = 'Το τέλος ανθεκτικότητας εισπράττεται για το κράτος και δεν είναι έσοδό σου. '
+    + (feeRate != null && feeRate > 0
+      ? `Η προμήθεια (${fp(feeRate * 100)}, από τις δικές σου καταγεγραμμένες διαμονές) είναι δαπάνη και δεν μειώνει το δηλωτέο έσοδο.`
+      : 'Η προμήθεια της πλατφόρμας δεν φαίνεται σε καμία καταγεγραμμένη διαμονή, οπότε δεν μπαίνει στον υπολογισμό.');
+  // Η βάση του φόρου της χρονιάς, πίσω από το ⓘ του «Τι μένει σε εσένα». Ηταν
+  // υποσημείωση κάτω από τη στήλη, με τα ποσοστά από τον κώδικα όπως και τώρα.
+  const taxBasisNote = (tax.onGross
+    ? `Ο φόρος υπολογίζεται στο ${TAX_BASE_PCT} των ακαθάριστων (τεκμαρτή έκπτωση ${DEDUCTION_PCT}) με την κλίμακα ενοικίων, όχι στο υπόλοιπο μετά τα έξοδα.`
+    : 'Ο φόρος υπολογίζεται στα καθαρά κέρδη, μετά τα έξοδα.')
+    + ` Δεν περιλαμβάνονται ο ΕΝΦΙΑ και οι δόσεις δανείου: τα αφαιρεί η Κατάσταση αποτελεσμάτων στη ${navLabel('accounting')}.`;
 
   return (
     <div style={{ fontFamily: T.font.sans, color: 'var(--text-primary)' }}>
@@ -691,7 +704,6 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
           Ο τίτλος «Βραχυχρόνια μίσθωση» ήταν ίδιος με το chip κατάστασης της
           μπάρας. Η καρτέλα λέγεται «Τιμές», από την ίδια πηγή με το μενού. */}
       <PageTitle title={navLabel('pricing')} titleHint="Προτεινόμενη τιμή ανά νύχτα από τα δικά σου δεδομένα και την ελληνική εποχικότητα. Οι τιμές είναι προτάσεις, τις εφαρμόζεις εσύ στα κανάλια."
-        sub="Τι να ζητήσεις ανά νύχτα, ποιες μέρες μένουν κενές και τι σου μένει στο χέρι μετά από έξοδα, τέλη και φόρο."
         right={rows.length > 0 ? (
           // ΤΟ ΔΕΥΤΕΡΕΥΟΝ ΔΕΝ ΕΙΝΑΙ ΤΟ ΠΡΩΤΟ ΧΕΙΡΙΣΤΗΡΙΟ ΤΗΣ ΣΕΛΙΔΑΣ (αξιολόγηση
           // σχεδίασης 3). Η «Εξαγωγή Excel» καθόταν κάτω από τον τίτλο πριν από
@@ -699,85 +711,91 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
           <ActionMenu iconOnly label="Περισσότερα" items={[{ key: 'xlsx', label: 'Εξαγωγή σε Excel', onClick: exportXlsx }]} />
         ) : undefined} />
 
-      {/* Ήταν τέσσερις γραμμές πριν φανεί το πρώτο πεδίο και τρεις από αυτές
-          εξηγούσαν τι ΔΕΝ κάνει η οθόνη. Το ουσιώδες χωρά σε μία: οι τιμές είναι
-          προτάσεις, όχι αυτόματη αλλαγή. Το «από πού βγαίνει» το λέει η ίδια η
-          ημέρα όταν την πατήσεις, ονομαστικά και με την πηγή της. */}
-      {/* Ρυθμίσεις (τυποποιημένα πεδία, αποθηκεύονται αυτόματα) */}
-      <div {...fieldRow(150, 14, { margin: '18px 0 6px' })}>
-        <NumberInput label="Βασική τιμή ανά νύχτα" value={base ? String(base) : ''} onChange={v => mark(setBase)(Number(v) || 0)} suffix="€" />
-        <NumberInput label="Κατώτατο όριο" value={min ? String(min) : ''} onChange={v => mark(setMin)(Number(v) || 0)} suffix="€" />
-        <NumberInput label="Ανώτατο όριο" value={max ? String(max) : ''} onChange={v => mark(setMax)(Number(v) || 0)} suffix="€" />
-        {/* Το 18 δεν το έγραψε ο χρήστης: είναι η αφετηρία της μηχανής και το
-            πεδίο το παρουσίαζε σαν δική του καταχώρηση. Λέγεται ρητά. */}
-        <NumberInput label="Προσαύξηση σαββατοκύριακου" labelInfo="Πόσο ακριβότερη είναι η Παρασκευή και το Σάββατο από τις καθημερινές. Ξεκινά από την αφετηρία της εφαρμογής· άλλαξέ την και οι προτάσεις προσαρμόζονται." value={String(wknd)} onChange={v => mark(setWknd)(Number(v) || 0)} suffix="%" />
-        {/* «1 ΝΥΧΤΕΣ» ΔΕΝ ΕΙΝΑΙ ΕΛΛΗΝΙΚΑ. Η μονάδα ήταν καρφωμένη στον πληθυντικό
-            και η προεπιλογή του πεδίου είναι ένα, δηλαδή η πιο συχνή τιμή του
-            έγραφε λάθος. Η μονάδα ακολουθεί τον αριθμό, όπως κάθε άλλη
-            μονάδα της εφαρμογής. */}
-        <NumberInput label="Ελάχιστη διαμονή" value={String(minStay)} onChange={v => mark(setMinStay)(Math.max(1, Number(v) || 1))} suffix={minStay === 1 ? 'νύχτα' : 'νύχτες'} />
-      </div>
-      {/* ΤΟ ΕΤΟΣ ΔΕΝ ΕΙΝΑΙ ΠΕΔΙΟ ΤΙΜΗΣ. Καθόταν έκτη στήλη μέσα στη σειρά, με
-          ύψος πεδίου και ίδιο βάρος με τη «Βασική τιμή ανά νύχτα» — και επειδή
-          έπιανε στήλη, τα πέντε πραγματικά πεδία στρίμωχναν και η «Προσαύξηση
-          σαββατοκύριακου» έσπαγε σε δύο γραμμές. Είναι επιλογή προβολής του
-          ημερολογίου από κάτω: μικρότερο, πιο διακριτικό, στη θέση του. */}
-      {/* ΤΟ ΕΝΙΑΙΟ `Segmented` (αξιολόγηση σχεδίασης 3). Ηταν δική του ράγα χαπιού
-          με πρόθεμα «Έτος», πέμπτο σχήμα για τον ίδιο επιλογέα. Το όνομα το
-          κρατά η ομάδα για τον αναγνώστη οθόνης· στο μάτι το λέει ο αριθμός. */}
-      <div style={{ margin: '4px 0 14px' }}>
-        <Segmented label="Έτος" value={String(pyear)} onChange={v => setPyear(Number(v))}
-          options={[nowYear, nowYear + 1].map(y => ({ value: String(y), label: String(y) }))} />
-      </div>
-      <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: 16, minHeight: 16 }}>
-        {adr > 0 && <>Μέση πραγματική τιμή (ADR): <strong style={{ color: 'var(--text-secondary)', fontFamily: T.font.num }}>{fe(adr)}</strong>/νύχτα από {stays.length} διαμονές. </>}
-        {saveNote && <span style={{ color: 'var(--text-secondary)' }}>{saveNote}</span>}
-        {/* Η άρνηση λέγεται ΕΚΕΙ που ο χρήστης περιμένει το «αποθηκεύτηκε». Σιωπηλή
-            αποθήκευση που δεν γίνεται είναι χειρότερη από αποτυχία που φαίνεται. */}
-        {unread && <span style={{ color: 'var(--warning)' }}>Οι αποθηκευμένες τιμές δεν διαβάστηκαν, οπότε η αυτόματη αποθήκευση είναι κλειστή για να μη σβηστούν. Ανανέωσε τη σελίδα.</span>}
-      </div>
-
-      {/* Βαθμονόμηση βάσης από τον ανταγωνισμό (προαιρετικό, τοπικό) */}
-      {(() => {
-        const compNums = comps.map(c => parseFloat(c)).filter(n => !isNaN(n) && n > 0).sort((a, b) => a - b);
-        const median = compNums.length ? (compNums.length % 2 ? compNums[(compNums.length - 1) / 2] : Math.round((compNums[compNums.length / 2 - 1] + compNums[compNums.length / 2]) / 2)) : 0;
-        const compBase = median ? Math.max(5, Math.round((median * 0.9) / 5) * 5) : 0;
-        const setComp = (i: number, v: string) => setComps(prev => { const n = [...prev]; n[i] = v; return n; });
-        return (
-          <div className="card" style={{ marginBottom: T.sp.lg }}>
-            <div className="po-disclosure" {...pressable(() => setCompsOpen(o => !o))}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)' }}>Βαθμονόμηση από τον ανταγωνισμό</div>
-                <div className="po-subline" style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Βάλε τις τιμές ανά νύχτα παρόμοιων ακινήτων της περιοχής για να δεις μια προτεινόμενη βάση.</div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                {median > 0 && <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--accent)', fontFamily: T.font.num }}>διάμεση {fe(median)}</span>}
-                <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: compsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="m6 9 6 6 6-6" /></svg>
-              </div>
-            </div>
-            {compsOpen && (
-              <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
-                <div style={{ ...formGrid(130, 190), gap: 10, marginBottom: 12 }}>
-                  {[0, 1, 2, 3].map(i => (
-                    <NumberInput key={i} label={`Ανταγωνιστής ${i + 1}`} value={comps[i] || ''} onChange={v => setComp(i, v)} suffix="€" placeholder="" />
-                  ))}
-                </div>
-                {compBase > 0 ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: '12px 14px' }}>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>
-                      Προτεινόμενη βάση <strong style={{ color: 'var(--text-primary)', fontFamily: T.font.num }}>{fe(compBase)}</strong>/νύχτα
-                      <span style={{ color: 'var(--text-tertiary)' }}> (διάμεση − 10%, αφού η βάση αφορά καθημερινή εκτός αιχμής· η εποχή/ΣΚ προστίθενται από πάνω)</span>
-                    </div>
-                    <Btn variant="secondary" onClick={() => { mark(setBase)(compBase); const g = suggestGuardrails(compBase); mark(setMin)(g.min); mark(setMax)(g.max); }}>Χρησιμοποίησε αυτή τη βάση</Btn>
-                  </div>
-                ) : (
-                  <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>Πρόσθεσε 1 έως 4 τιμές ανταγωνιστών (π.χ. από Airbnb/Booking για παρόμοια ακίνητα) για να δεις προτεινόμενη βάση. Αποθηκεύεται τοπικά στη συσκευή σου.</div>
-                )}
+      {/* ═══ ΟΙ ΡΥΘΜΙΣΕΙΣ ΤΙΜΗΣ ΔΙΠΛΩΜΕΝΕΣ, Η ΑΠΑΝΤΗΣΗ ΠΡΩΤΗ (αξιολόγηση σχεδίασης 3) ═══
+          Πέντε πεδία, επιλογή έτους, βαθμονόμηση, πλαίσιο, δείκτες και ανάλυση
+          καθαρού κάθονταν πάνω από τις «Κενές νύχτες», που είναι ο λόγος που
+          ανοίγει κανείς την καρτέλα: στα 390 η πρώτη κενή περίοδος έβγαινε μετά
+          από τρεις οθόνες. Τώρα οι ρυθμίσεις είναι μία γραμμή με τη βασική τιμή
+          και τα όρια, κλειστή όταν υπάρχει αποθηκευμένη τιμή. Χωρίς τιμή είναι
+          ανοιχτή, γιατί τότε τα πεδία ΕΙΝΑΙ η πρώτη κίνηση. */}
+      <div className="card" style={{ marginBottom: T.sp.lg }}>
+        <div className="po-disclosure" {...pressable(() => setSettingsOpen(!settingsShown))} aria-expanded={settingsShown}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)' }}>Ρυθμίσεις τιμών</div>
+            {!settingsShown && base > 0 && (
+              <div className="po-subline" style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+                {fe(base)} ανά νύχτα · {fe(min)} έως {fe(max)}
               </div>
             )}
           </div>
-        );
-      })()}
+          <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transform: settingsShown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="m6 9 6 6 6-6" /></svg>
+        </div>
+        {settingsShown && (
+          <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
+          <div {...fieldRow(150, 14, { margin: '18px 0 6px' })}>
+            <NumberInput label="Βασική τιμή ανά νύχτα" value={base ? String(base) : ''} onChange={v => mark(setBase)(Number(v) || 0)} suffix="€" />
+            <NumberInput label="Κατώτατο όριο" value={min ? String(min) : ''} onChange={v => mark(setMin)(Number(v) || 0)} suffix="€" />
+            <NumberInput label="Ανώτατο όριο" value={max ? String(max) : ''} onChange={v => mark(setMax)(Number(v) || 0)} suffix="€" />
+            {/* Το 18 δεν το έγραψε ο χρήστης: είναι η αφετηρία της μηχανής και το
+                πεδίο το παρουσίαζε σαν δική του καταχώρηση. Λέγεται ρητά. */}
+            <NumberInput label="Προσαύξηση σαββατοκύριακου" labelInfo="Πόσο ακριβότερη είναι η Παρασκευή και το Σάββατο από τις καθημερινές. Ξεκινά από την αφετηρία της εφαρμογής· άλλαξέ την και οι προτάσεις προσαρμόζονται." value={String(wknd)} onChange={v => mark(setWknd)(Number(v) || 0)} suffix="%" />
+            {/* «1 ΝΥΧΤΕΣ» ΔΕΝ ΕΙΝΑΙ ΕΛΛΗΝΙΚΑ. Η μονάδα ήταν καρφωμένη στον πληθυντικό
+                και η προεπιλογή του πεδίου είναι ένα, δηλαδή η πιο συχνή τιμή του
+                έγραφε λάθος. Η μονάδα ακολουθεί τον αριθμό, όπως κάθε άλλη
+                μονάδα της εφαρμογής. */}
+            <NumberInput label="Ελάχιστη διαμονή" value={String(minStay)} onChange={v => mark(setMinStay)(Math.max(1, Number(v) || 1))} suffix={minStay === 1 ? 'νύχτα' : 'νύχτες'} />
+          </div>
+          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: 16, minHeight: 16 }}>
+            {adr > 0 && <>Μέση πραγματική τιμή (ADR): <strong style={{ color: 'var(--text-secondary)', fontFamily: T.font.num }}>{fe(adr)}</strong>/νύχτα από {stays.length} διαμονές. </>}
+            {saveNote && <span style={{ color: 'var(--text-secondary)' }}>{saveNote}</span>}
+          </div>
+          {/* Βαθμονόμηση βάσης από τον ανταγωνισμό (προαιρετικό, τοπικό) */}
+          {(() => {
+            const compNums = comps.map(c => parseFloat(c)).filter(n => !isNaN(n) && n > 0).sort((a, b) => a - b);
+            const median = compNums.length ? (compNums.length % 2 ? compNums[(compNums.length - 1) / 2] : Math.round((compNums[compNums.length / 2 - 1] + compNums[compNums.length / 2]) / 2)) : 0;
+            const compBase = median ? Math.max(5, Math.round((median * 0.9) / 5) * 5) : 0;
+            const setComp = (i: number, v: string) => setComps(prev => { const n = [...prev]; n[i] = v; return n; });
+            return (
+              <div style={{ marginTop: 8 }}>
+                <div className="po-disclosure" {...pressable(() => setCompsOpen(o => !o))}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)' }}>Βαθμονόμηση από τον ανταγωνισμό</div>
+                    <div className="po-subline" style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Βάλε τις τιμές ανά νύχτα παρόμοιων ακινήτων της περιοχής για να δεις μια προτεινόμενη βάση.</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                    {median > 0 && <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--accent)', fontFamily: T.font.num }}>διάμεση {fe(median)}</span>}
+                    <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: compsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="m6 9 6 6 6-6" /></svg>
+                  </div>
+                </div>
+                {compsOpen && (
+                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
+                    <div style={{ ...formGrid(130, 190), gap: 10, marginBottom: 12 }}>
+                      {[0, 1, 2, 3].map(i => (
+                        <NumberInput key={i} label={`Ανταγωνιστής ${i + 1}`} value={comps[i] || ''} onChange={v => setComp(i, v)} suffix="€" placeholder="" />
+                      ))}
+                    </div>
+                    {compBase > 0 ? (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: '12px 14px' }}>
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>
+                          Προτεινόμενη βάση <strong style={{ color: 'var(--text-primary)', fontFamily: T.font.num }}>{fe(compBase)}</strong>/νύχτα
+                          <span style={{ color: 'var(--text-tertiary)' }}> (διάμεση − 10%, αφού η βάση αφορά καθημερινή εκτός αιχμής· η εποχή/ΣΚ προστίθενται από πάνω)</span>
+                        </div>
+                        <Btn variant="secondary" onClick={() => { mark(setBase)(compBase); const g = suggestGuardrails(compBase); mark(setMin)(g.min); mark(setMax)(g.max); }}>Χρησιμοποίησε αυτή τη βάση</Btn>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>Πρόσθεσε 1 έως 4 τιμές ανταγωνιστών (π.χ. από Airbnb/Booking για παρόμοια ακίνητα) για να δεις προτεινόμενη βάση. Αποθηκεύεται τοπικά στη συσκευή σου.</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+          </div>
+        )}
+      </div>
+      {/* Η άρνηση λέγεται ΠΑΝΤΑ ακόμη και με κλειστές ρυθμίσεις: σιωπηλή αποθήκευση που
+          δεν γίνεται είναι χειρότερη από αποτυχία που φαίνεται. */}
+      {unread && <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--warning)', marginBottom: 16 }}>Οι αποθηκευμένες τιμές δεν διαβάστηκαν, οπότε η αυτόματη αποθήκευση είναι κλειστή για να μη σβηστούν. Ανανέωσε τη σελίδα.</div>}
 
       {loading ? (
         // Σκελετός αντί για «Φόρτωση…»: το σχήμα του αποτελέσματος είναι γνωστό
@@ -798,101 +816,11 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
         />
       ) : (
         <>
-          {/* Η ΟΔΗΓΙΑ ΜΠΑΙΝΕΙ ΟΠΟΥ ΥΠΑΡΧΕΙ ΤΟ ΗΜΕΡΟΛΟΓΙΟ. Ήταν πάνω από όλα, οπότε
-              ο χρήστης χωρίς βασική τιμή διάβαζε «Πάτησε μια ημέρα» ενώ καμία
-              ημέρα δεν φαινόταν στην οθόνη του. */}
-          <InfoBanner tone="info">
-            Οι τιμές είναι <strong>προτάσεις</strong>, όχι αυτόματη αλλαγή στα κανάλια. Πάτησε μια ημέρα για να δεις από πού προκύπτει η δική της.
-          </InfoBanner>
-
-          <KPIGrid items={kpis} />
-
-          {/* ═══════════════════════════════════════════════════════════════════
-              ΑΠΟ ΤΑ ΕΚΑΤΟ ΕΥΡΩ ΤΟΥ ΕΠΙΣΚΕΠΤΗ, ΠΟΣΑ ΜΕΝΟΥΝ ΣΕ ΕΜΕΝΑ
-              ─────────────────────────────────────────────────────────────────
-              Η δυναμική τιμή από πάνω λέει τι να ζητήσεις. Αυτό εδώ λέει τι σου
-              μένει αφού ζητηθεί — και ήταν το μόνο που έλειπε, γιατί ζούσε
-              μοιρασμένο σε δύο άλλες οθόνες: τα έσοδα στην Επισκόπηση, ο φόρος
-              με τα τέλη στη Λογιστική. Ο ιδιοκτήτης έκανε την αφαίρεση στο μυαλό
-              του, ανάμεσα σε τρεις καρτέλες.
-
-              ΔΕΝ ΕΙΝΑΙ ΤΟ ΙΔΙΟ ΜΕ ΤΗ ΛΟΓΙΣΤΙΚΗ. Εκεί το «καθαρό» απαντά σε
-              φορολογικό ερώτημα και αφαιρεί μόνο φόρο και τέλη. Εδώ απαντά σε
-              ταμειακό και αφαιρεί ΚΑΙ τα έξοδα. Δύο σωστά νούμερα, δύο
-              διαφορετικές ερωτήσεις, δύο διαφορετικές λέξεις. */}
-          {taxSummary.stayCount > 0 && (
-            <div className="card" style={{ marginTop: 20 }}>
-              <SecHdr label={`Τι μένει σε εσένα, ${nowYear}`}
-                sub={`Από ${fn(taxSummary.totalNights)} διανυκτερεύσεις σε ${taxSummary.stayCount === 1 ? 'μία διαμονή' : `${fn(taxSummary.stayCount)} διαμονές`}`}
-                // Το ποσοστό είχε μόνο tooltip· στο κινητό ήταν ένας γυμνός αριθμός.
-                right={cashflow.keptPct != null
-                  ? <span title="Ποσοστό των ακαθαρίστων που καταλήγει σε εσένα" style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
-                      μένει το <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)' }}>{fp(cashflow.keptPct)}</span>
-                    </span>
-                  : undefined} />
-
-              {/* ΑΠΑΡΑΙΤΗΤΟ ΣΤΟΝ ΦΑΚΕΛΟ, ΥΠΟΣΗΜΕΙΩΣΗ ΕΔΩ. Οι διαμονές χωρίς Δήλωση
-                  Βραχυχρόνιας Διαμονής λέγονταν στο τέλος μιας φορολογικής
-                  σημείωσης με ψιλά γράμματα, ενώ ο φάκελος του λογιστή τις
-                  σημειώνει ως απαραίτητες. Είναι εκκρεμότητα με ενέργεια, άρα
-                  στέκεται πάνω από τα ποσά. */}
-              {taxSummary.undeclaredCount > 0 && (
-                <div style={{ marginTop: 14 }}>
-                  <InfoBanner tone="warning">
-                    {taxSummary.undeclaredCount === 1 ? 'Μία διαμονή δεν έχει' : `${fn(taxSummary.undeclaredCount)} διαμονές δεν έχουν`} Δήλωση Βραχυχρόνιας Διαμονής. Υποβάλλεται μία ανά διαμονή στο myAADE{guestsReachable ? <>· στους {navLabel('clients')} φαίνονται σημειωμένες.</> : '.'}
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-                      {onNavigate && guestsReachable && <Btn variant="secondary" onClick={() => onNavigate('clients')}>Δες ποιες</Btn>}
-                      <AadePill action="str-declaration" label="Άνοιξε στο myAADE" />
-                    </span>
-                  </InfoBanner>
-                </div>
-              )}
-
-              {/* Για τον έλεγχο «ίδιος αριθμός σε κάθε οθόνη»: ο φόρος και τα
-                  ακαθάριστα του έτους, όπως γράφονται στη στήλη από κάτω. */}
-              {rentTax != null && profileType !== 'professional' && <span hidden data-fact="tax-year" data-fact-value={fe(tax.amount)} />}
-              <span hidden data-fact="income-year" data-fact-value={fe(taxSummary.grossRevenue)} />
-              <MoneySteps scale="lead" steps={cashflow.steps.map(st => ({
-                ...st,
-                // Η βάση της χρονιάς στην ετικέτα: όλες οι διαμονές του έτους μαζί με τις
-                // κλεισμένες που δεν έχουν έρθει ακόμη. Ο ίδιος ορισμός με το «Έσοδα
-                // έτους» της Επισκόπησης και τον φόρο (lib/facts/income, κανόνας 3).
-                ...(st.key === 'gross' ? { label: `Ακαθάριστα ${nowYear}, με τις κλεισμένες κρατήσεις` } : null),
-                ...(st.key === 'tax' ? { label: tax.label, note: tax.note ?? `Υπολογίζεται στο ${TAX_BASE_PCT} των ακαθάριστων (τεκμαρτή έκπτωση ${DEDUCTION_PCT}), όχι στο υπόλοιπο μετά τα έξοδα.` } : null),
-                negative: st.kind === 'total' && cashflow.net < 0,
-              }))} />
-
-              {/* Η αναλογία με μια ματιά: πόσο από τη μπάρα μένει δικό σου. */}
-              {cashflow.keptPct != null && cashflow.net > 0 && (
-                <Bar pct={cashflow.keptPct} track="var(--bg-overlay)" label="Μερίδιο που σου μένει" style={{ marginTop: 14 }} />
-              )}
-
-              {/* ΟΠΟΥ ΤΟ ΝΟΥΜΕΡΟ ΕΙΝΑΙ ΕΚΤΙΜΗΣΗ, ΤΟ ΛΕΜΕ ΔΙΠΛΑ ΤΟΥ. Διαμονές με
-                  απροσδιόριστη βάση ποσού κάνουν τα ακαθάριστα εκτίμηση· διαμονές
-                  χωρίς Δήλωση Βραχυχρόνιας είναι εκκρεμότητα, όχι λογιστικό λάθος. */}
-              <div style={{ marginTop: 14, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.65 }}>
-                {tax.onGross
-                  ? `Ο φόρος υπολογίζεται στο ${TAX_BASE_PCT} των ακαθάριστων (τεκμαρτή έκπτωση ${DEDUCTION_PCT}) με την κλίμακα ενοικίων, όχι στο υπόλοιπο μετά τα έξοδα.`
-                  : 'Ο φόρος υπολογίζεται στα καθαρά κέρδη, μετά τα έξοδα.'} Δεν περιλαμβάνονται ο ΕΝΦΙΑ και οι δόσεις δανείου: τα αφαιρεί η Κατάσταση αποτελεσμάτων στη {navLabel('accounting')}.
-                {taxSummary.unresolvedCount > 0 && ` ${taxSummary.unresolvedCount === 1 ? 'Μία διαμονή' : `${fn(taxSummary.unresolvedCount)} διαμονές`} χωρίς ανάλυση ποσού σε ακαθάριστο, προμήθεια και τέλος: τα ακαθάριστα είναι εκτίμηση ώσπου να συμπληρώσεις την ανάλυση.`}
-              </div>
-            </div>
-          )}
-
-          {/* Η μετρημένη πληρότητα, με την απόδειξή της. Καμία προβολή εσόδων:
-              πολλαπλασιάζοντας τις δικές μας προτάσεις με τη δική μας εκτίμηση
-              πληρότητας, θα παρήγαμε «κέρδος» που δεν μπορεί να βγει αρνητικό. */}
-          {measuredOcc == null && occNights > 0 && (
-            <div style={{ marginTop: 14, fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.6 }}>
-              Έχεις {fn(occNights)} καταγεγραμμένες νύχτες σε αυτό το ακίνητο. Η πληρότητα εμφανίζεται όταν συγκεντρωθούν {MIN_NIGHTS_FOR_OCCUPANCY}+ πραγματικές νύχτες σε μια εποχή. Κάτω από αυτό ο αριθμός θα ήταν εικασία με ετικέτα μέτρησης.
-            </div>
-          )}
-
           {/* Κενές νύχτες για κράτηση. «Πλήρωση» δίπλα στο «Δηλωτέο ακαθάριστο»
               διαβαζόταν ως «πληρωμή». */}
           {gaps.length > 0 && (
             <div style={{ marginTop: 24 }}>
-              <SecHdr label="Κενές νύχτες για κράτηση" sub="Διαστήματα χωρίς κράτηση, με προτεινόμενη τιμή και άμεσες ενέργειες" />
+              <SecHdr label="Κενές νύχτες για κράτηση" info={<InfoHint label="Τι μένει από την τιμή">{priceAnatomy}</InfoHint>} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {gaps.slice(0, 8).map((g, i) => (
                   <div key={i} className="po-fig-card" tabIndex={0} style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-raised)', borderRadius: T.radius.card, padding: 16, boxShadow: 'var(--highlight-inset), var(--elev-1)' }}>
@@ -923,7 +851,6 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                   </div>
                 ))}
               </div>
-              {priceAnatomy}
             </div>
           )}
 
@@ -931,8 +858,12 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
           <div style={{ marginTop: 24 }}>
             {/* «Σκούρη» ίσχυε μόνο στο φωτεινό θέμα· στο σκοτεινό η ακριβότερη
                 ημέρα είναι η πιο φωτεινή. Η ένταση ισχύει και στα δύο. */}
-            <SecHdr label="Ημερολόγιο τιμών" sub="Όσο πιο έντονο το χρώμα, τόσο υψηλότερη η προτεινόμενη τιμή. Πάτησε μια ημέρα για ανάλυση."
-              right={pastCount > 0 ? <Btn variant="secondary" onClick={() => setShowPast(v => !v)}>{showPast ? 'Κρύψε προηγούμενους μήνες' : `Δείξε προηγούμενους μήνες (${pastCount})`}</Btn> : undefined} />
+            <SecHdr label="Ημερολόγιο τιμών" info={<InfoHint label="Πώς διαβάζεται">{PRICE_CAL_NOTE}</InfoHint>}
+              right={<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                {pastCount > 0 && <Btn variant="secondary" size="lg" onClick={() => setShowPast(v => !v)}>{showPast ? 'Κρύψε προηγούμενους μήνες' : `Δείξε προηγούμενους μήνες (${pastCount})`}</Btn>}
+                <Segmented label="Έτος" value={String(pyear)} onChange={v => setPyear(Number(v))}
+                        options={[nowYear, nowYear + 1].map(y => ({ value: String(y), label: String(y) }))} />
+              </div>} />
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}>
               {visibleMonths.map(([key, days]) => {
                 const [yy, mm] = key.split('-').map(Number);
@@ -1120,9 +1051,97 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                 </div>
               </div>
               {priceLine(sel.date, sel.price)}
-              {gaps.length === 0 && priceAnatomy}
+              {gaps.length === 0 && <div style={{ marginTop: 10, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.65, fontFamily: T.font.sans }}>{priceAnatomy}</div>}
             </div>
           )}
+
+          {/* ΟΙ ΔΕΙΚΤΕΣ ΚΑΙ ΤΟ ΚΑΘΑΡΟ ΜΕΤΑ ΤΗΝ ΑΠΑΝΤΗΣΗ (αξιολόγηση σχεδίασης 3). Πρώτα
+              τι κάνεις τώρα (κενές νύχτες, τιμή της ημέρας), μετά πώς πάει η χρονιά. */}
+          <div style={{ marginTop: 24 }}>
+          <KPIGrid items={kpis} />
+
+          {/* ═══════════════════════════════════════════════════════════════════
+              ΑΠΟ ΤΑ ΕΚΑΤΟ ΕΥΡΩ ΤΟΥ ΕΠΙΣΚΕΠΤΗ, ΠΟΣΑ ΜΕΝΟΥΝ ΣΕ ΕΜΕΝΑ
+              ─────────────────────────────────────────────────────────────────
+              Η δυναμική τιμή από πάνω λέει τι να ζητήσεις. Αυτό εδώ λέει τι σου
+              μένει αφού ζητηθεί — και ήταν το μόνο που έλειπε, γιατί ζούσε
+              μοιρασμένο σε δύο άλλες οθόνες: τα έσοδα στην Επισκόπηση, ο φόρος
+              με τα τέλη στη Λογιστική. Ο ιδιοκτήτης έκανε την αφαίρεση στο μυαλό
+              του, ανάμεσα σε τρεις καρτέλες.
+
+              ΔΕΝ ΕΙΝΑΙ ΤΟ ΙΔΙΟ ΜΕ ΤΗ ΛΟΓΙΣΤΙΚΗ. Εκεί το «καθαρό» απαντά σε
+              φορολογικό ερώτημα και αφαιρεί μόνο φόρο και τέλη. Εδώ απαντά σε
+              ταμειακό και αφαιρεί ΚΑΙ τα έξοδα. Δύο σωστά νούμερα, δύο
+              διαφορετικές ερωτήσεις, δύο διαφορετικές λέξεις. */}
+          {taxSummary.stayCount > 0 && (
+            <div className="card" style={{ marginTop: 20 }}>
+              <SecHdr label={`Τι μένει σε εσένα, ${nowYear}`}
+                info={<InfoHint label="Πώς βγαίνει ο φόρος">{taxBasisNote}</InfoHint>}
+                sub={`Από ${fn(taxSummary.totalNights)} διανυκτερεύσεις σε ${taxSummary.stayCount === 1 ? 'μία διαμονή' : `${fn(taxSummary.stayCount)} διαμονές`}`}
+                // Το ποσοστό είχε μόνο tooltip· στο κινητό ήταν ένας γυμνός αριθμός.
+                right={cashflow.keptPct != null
+                  ? <span title="Ποσοστό των ακαθαρίστων που καταλήγει σε εσένα" style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
+                      μένει το <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)' }}>{fp(cashflow.keptPct)}</span>
+                    </span>
+                  : undefined} />
+
+              {/* ΑΠΑΡΑΙΤΗΤΟ ΣΤΟΝ ΦΑΚΕΛΟ, ΥΠΟΣΗΜΕΙΩΣΗ ΕΔΩ. Οι διαμονές χωρίς Δήλωση
+                  Βραχυχρόνιας Διαμονής λέγονταν στο τέλος μιας φορολογικής
+                  σημείωσης με ψιλά γράμματα, ενώ ο φάκελος του λογιστή τις
+                  σημειώνει ως απαραίτητες. Είναι εκκρεμότητα με ενέργεια, άρα
+                  στέκεται πάνω από τα ποσά. */}
+              {taxSummary.undeclaredCount > 0 && (
+                <div style={{ marginTop: 14 }}>
+                  <InfoBanner tone="warning">
+                    {taxSummary.undeclaredCount === 1 ? 'Μία διαμονή δεν έχει' : `${fn(taxSummary.undeclaredCount)} διαμονές δεν έχουν`} Δήλωση Βραχυχρόνιας Διαμονής. Υποβάλλεται μία ανά διαμονή στο myAADE{guestsReachable ? <>· στους {navLabel('clients')} φαίνονται σημειωμένες.</> : '.'}
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                      {onNavigate && guestsReachable && <Btn variant="secondary" onClick={() => onNavigate('clients')}>Δες ποιες</Btn>}
+                      <AadePill action="str-declaration" label="Άνοιξε στο myAADE" />
+                    </span>
+                  </InfoBanner>
+                </div>
+              )}
+
+              {/* Για τον έλεγχο «ίδιος αριθμός σε κάθε οθόνη»: ο φόρος και τα
+                  ακαθάριστα του έτους, όπως γράφονται στη στήλη από κάτω. */}
+              {rentTax != null && profileType !== 'professional' && <span hidden data-fact="tax-year" data-fact-value={fe(tax.amount)} />}
+              <span hidden data-fact="income-year" data-fact-value={fe(taxSummary.grossRevenue)} />
+              <MoneySteps scale="lead" steps={cashflow.steps.map(st => ({
+                ...st,
+                // Η βάση της χρονιάς στην ετικέτα: όλες οι διαμονές του έτους μαζί με τις
+                // κλεισμένες που δεν έχουν έρθει ακόμη. Ο ίδιος ορισμός με το «Έσοδα
+                // έτους» της Επισκόπησης και τον φόρο (lib/facts/income, κανόνας 3).
+                ...(st.key === 'gross' ? { label: `Ακαθάριστα ${nowYear}, με τις κλεισμένες κρατήσεις` } : null),
+                ...(st.key === 'tax' ? { label: tax.label, note: tax.note ?? `Υπολογίζεται στο ${TAX_BASE_PCT} των ακαθάριστων (τεκμαρτή έκπτωση ${DEDUCTION_PCT}), όχι στο υπόλοιπο μετά τα έξοδα.` } : null),
+                negative: st.kind === 'total' && cashflow.net < 0,
+              }))} />
+
+              {/* Η αναλογία με μια ματιά: πόσο από τη μπάρα μένει δικό σου. */}
+              {cashflow.keptPct != null && cashflow.net > 0 && (
+                <Bar pct={cashflow.keptPct} track="var(--bg-overlay)" label="Μερίδιο που σου μένει" style={{ marginTop: 14 }} />
+              )}
+
+              {/* Η ΕΚΤΙΜΗΣΗ ΜΕΝΕΙ ΟΡΑΤΗ. Η βάση του φόρου και τι δεν περιλαμβάνεται
+                  ζουν στο ⓘ της κεφαλίδας (αξιολόγηση σχεδίασης 3)· ότι τα
+                  ακαθάριστα είναι εκτίμηση αλλάζει τι κάνεις, οπότε λέγεται εδώ. */}
+              {taxSummary.unresolvedCount > 0 && (
+                <div style={{ marginTop: 14, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.65 }}>
+                  {taxSummary.unresolvedCount === 1 ? 'Μία διαμονή' : `${fn(taxSummary.unresolvedCount)} διαμονές`} χωρίς ανάλυση ποσού σε ακαθάριστο, προμήθεια και τέλος: τα ακαθάριστα είναι εκτίμηση ώσπου να συμπληρώσεις την ανάλυση.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Η μετρημένη πληρότητα, με την απόδειξή της. Καμία προβολή εσόδων:
+              πολλαπλασιάζοντας τις δικές μας προτάσεις με τη δική μας εκτίμηση
+              πληρότητας, θα παρήγαμε «κέρδος» που δεν μπορεί να βγει αρνητικό. */}
+          {measuredOcc == null && occNights > 0 && (
+            <div style={{ marginTop: 14, fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.6 }}>
+              Έχεις {fn(occNights)} καταγεγραμμένες νύχτες σε αυτό το ακίνητο. Η πληρότητα εμφανίζεται όταν συγκεντρωθούν {MIN_NIGHTS_FOR_OCCUPANCY}+ πραγματικές νύχτες σε μια εποχή. Κάτω από αυτό ο αριθμός θα ήταν εικασία με ετικέτα μέτρησης.
+            </div>
+          )}
+
+          </div>
         </>
       )}
 

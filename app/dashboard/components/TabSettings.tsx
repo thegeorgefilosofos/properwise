@@ -20,7 +20,7 @@ import * as billing from '@/lib/data/billing';
 import { nameDaysLeft, nameLockedError, NAME_LOCKED_TEXT } from './nameLock';
 import NotificationSettings from './NotificationSettings';
 import { CustomSelect, Toggle } from './UIComponents';
-import { T, TT, Card, SecHdr, Btn, LinkBtn, PageTitle, fdLong, fn, settingsField, ABSENT, pageShell, Bar } from '@/components/Theme';
+import { T, TT, Card, SecHdr, Btn, LinkBtn, PageTitle, fdLong, fn, settingsField, ABSENT, pageShell } from '@/components/Theme';
 import { SetList, SetRow, SaveNote, useAutosave } from './SettingsKit';
 import { AppPreferences, DEFAULT_PREFERENCES } from './useAppPreferences';
 import { downloadTableXlsx } from './exportCsv';
@@ -38,7 +38,7 @@ import OrgTeam from './OrgTeam';
 import { exportAllData, FILES_NOT_IN_EXPORT } from '@/lib/dataExport';
 import * as accountantLink from '@/lib/data/accountantLink';
 import { confirmDialog } from '@/components/confirmBus';
-import { PLANS, PLAN_ORDER, normalizePlan, type PlanId } from '@/lib/billing/plans';
+import { PLANS, normalizePlan, type PlanId } from '@/lib/billing/plans';
 import { hasVerifiedFactor } from '@/lib/auth/mfa';
 
 import { PLAN_COLUMNS, planFieldsFromRow, type PlanProfileRow } from '@/lib/billing/planRefresh';
@@ -735,7 +735,6 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
   const billingWords = useBillingWords();
   const propLimit = propertyLimit(ent);
   const propLimitLabel = propLimit === Infinity ? 'απεριόριστα' : String(propLimit);
-  const usagePct = propLimit === Infinity || !propertyCount ? 0 : Math.min(100, Math.round((propertyCount / propLimit) * 100));
   const atLimit = propLimit !== Infinity && (propertyCount ?? 0) >= propLimit;
   const nearLimit = propLimit !== Infinity && !atLimit && propLimit > 1 && (propertyCount ?? 0) >= propLimit - 1;
   const planMeta = PLANS[effPlan];
@@ -784,8 +783,8 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
   // στεκόταν κάτω από το «Πακέτο Επαγγελματίας» της ίδιας ενότητας και ο
   // χρήστης δεν ήξερε ποιο από τα δύο διαλέγει. Οι κάρτες λένε για ποιον είναι.
   const PROFILE_OPTS: { v: ProfileType; title: string; sub: string }[] = [
-    { v: 'individual', title: 'Για τα δικά μου ακίνητα', sub: 'Λίγα ακίνητα, με όσα χρειάζονται η δήλωση και ο λογιστής.' },
-    { v: 'professional', title: 'Για πελάτες ή χαρτοφυλάκιο', sub: 'Πολλά ακίνητα, με χαρτοφυλάκιο, σύγκριση και ομάδα.' },
+    { v: 'individual', title: 'Για τα δικά μου ακίνητα', sub: 'Λίγα ακίνητα' },
+    { v: 'professional', title: 'Για πελάτες ή χαρτοφυλάκιο', sub: 'Πολλά ακίνητα και ομάδα' },
   ];
 
   return (
@@ -796,13 +795,13 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
           σειρά: Προφίλ, Συνδρομή, Ειδοποιήσεις, Ασφάλεια, Δεδομένα. Ο ίδιος
           κατάλογος δύο φορές, σε απόσταση σαράντα εικονοστοιχείων. Ο υπότιτλος
           λέει τώρα τι ΕΙΝΑΙ η σελίδα· τι περιέχει το λένε οι κεφαλίδες της. */}
-      <PageTitle title={E ? E.title : 'Λογαριασμός'} sub={E ? E.sub : 'Ό,τι αφορά εσένα και τα δεδομένα σου'} />
+      <PageTitle title={E ? E.title : 'Λογαριασμός'} />
 
       {/* ── 1. ΠΡΟΦΙΛ ─────────────────────────────────────────────────── */}
       <ProfileCard userId={userId} email={accountEmail} />
 
       {/* ── 2. ΣΥΝΔΡΟΜΗ (hero) ────────────────────────────────────────── */}
-      <Card className="acc-section" style={{ animationDelay: '70ms', background: 'var(--surface-hero)', boxShadow: 'var(--highlight-inset), var(--elev-2)' }}>
+      <Card className="acc-section" style={{ animationDelay: '70ms' }}>
         {/* ΤΡΕΙΣ ΛΕΞΕΙΣ ΓΙΑ ΔΥΟ ΠΡΑΓΜΑΤΑ, ΣΤΗΝ ΙΔΙΑ ΚΑΡΤΑ. Το μετάλλιο έγραφε
             «ΙΔΙΟΤΗΤΑ · Επαγγελματίας» — που είναι ο ΤΡΟΠΟΣ ΧΡΗΣΗΣ, όχι το πακέτο
             — ακριβώς δίπλα στο «Πακέτο Επαγγελματίας», που είναι το πακέτο. Δύο
@@ -813,82 +812,29 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
             το «Πακέτο Επαγγελματίας» και δεν καταλάβαινε ποιο ισχύει.
             Και το μετάλλιο έφυγε κι αυτό: το πακέτο γράφεται με το όνομά του
             τρεις γραμμές πιο κάτω, οπότε το σήμα ήταν τέταρτη επανάληψη. */}
-        <SecHdr label="Συνδρομή" />
-
-        {/* Τρέχον πλάνο */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-          <div style={{ minWidth: 0 }}>
-            {/* ΤΟ ΠΑΚΕΤΟ ΕΙΝΑΙ Ο ΤΙΤΛΟΣ ΤΗΣ ΚΑΡΤΑΣ, ΟΧΙ ΕΝΑ ΣΗΜΑΤΑΚΙ (17/11/2026).
-                Ηταν χάπι 12 με τελεία, μικρότερο από το κουμπί δίπλα του. Τώρα
-                εικονίδιο στο απαλό accent, όνομα και από κάτω η περιγραφή. */}
-            <div className="set-plan">
-              <span className="set-item-ico" aria-hidden="true"><BadgeCheck size={16} /></span>
-              <span style={{ minWidth: 0 }}>
-                <span className="set-plan-name">Πακέτο {planMeta.name}</span>
-                <span className="set-plan-tag">{planMeta.tagline}</span>
-              </span>
-            </div>
+        {/* ═══ Η ΣΥΝΔΡΟΜΗ ΜΙΑ ΓΡΑΜΜΗ (αξιολόγηση σχεδίασης 3) ═══════════════════
+            Η κάρτα έδειχνε όλη τη σκάλα των πακέτων με τα όρια ακινήτων και
+            μπάρα χρήσης, ενώ η σελίδα της Συνδρομής δείχνει ξανά τα πακέτα. Στο
+            Stripe οι ρυθμίσεις λένε «Plan: Pro · Manage». Εδώ: το πακέτο, πόσα
+            ακίνητα από πόσα και η διαχείριση ένα πάτημα δεξιά. Το όριο που
+            πλησιάζει μένει ορατό, γιατί αλλάζει τι κάνεις. */}
+        <div className="set-plan-line" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div className="set-plan" style={{ minWidth: 0 }}>
+            <span className="set-item-ico" aria-hidden="true"><BadgeCheck size={16} /></span>
+            <span style={{ minWidth: 0 }}>
+              <span className="set-plan-name">{planMeta.name}</span>
+              {propertyCount != null && (
+                <span className="set-plan-tag" style={{ fontVariantNumeric: 'tabular-nums', color: atLimit ? 'var(--warning-on-container)' : undefined }}>
+                  {propertyCount} από {propLimitLabel} {propLimit === 1 ? 'ακίνητο' : 'ακίνητα'}{atLimit ? ' · στο όριο' : nearLimit ? ' · ένα ακόμη και φτάνεις το όριο' : ''}
+                </span>
+              )}
+            </span>
           </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {/* ΔΕΥΤΕΡΕΥΟΝ (αξιολόγηση σχεδίασης 3). Ηταν το μόνο γεμάτο κουμπί της
-                σελίδας, πάνω από τις ρυθμίσεις που ανοίγει κανείς συχνότερα. Οι
-                Ρυθμίσεις δεν έχουν μία κύρια κίνηση, οπότε δεν έχουν γεμάτο κουμπί. */}
-            <Btn variant="secondary" onClick={() => showManage ? setShowManage(false) : openManage()}>
-              {showManage ? 'Κλείσιμο' : 'Διαχείριση συνδρομής'}
-            </Btn>
-          </div>
+          {/* ΔΕΥΤΕΡΕΥΟΝ: οι Ρυθμίσεις δεν έχουν μία κύρια κίνηση. */}
+          <Btn variant="secondary" onClick={() => showManage ? setShowManage(false) : openManage()}>
+            {showManage ? 'Κλείσιμο' : 'Διαχείριση'}
+          </Btn>
         </div>
-
-        {/* ═══ ΤΑ ΤΕΣΣΕΡΑ ΠΑΚΕΤΑ, ΟΡΑΤΑ ΜΕΣΑ ΣΤΗΝ ΕΦΑΡΜΟΓΗ ══════════════════
-            ΠΕΝΤΕ ΣΚΑΛΙΑ, ΟΧΙ ΤΕΣΣΕΡΑ: ο «Ιδιοκτήτης» είναι πια δωρεάν πακέτο και όχι
-            κατάσταση «χωρίς συνδρομή», άρα ο δωρεάν χρήστης βλέπει πού στέκεται.
-            Η οθόνη έλεγε μόνο ΠΟΙΟ πακέτο έχεις. Τα ονόματα των άλλων τριών
-            ζούσαν στην αρχική σελίδα και σε ένα παράθυρο που άνοιγε με κουμπί:
-            ο συνδρομητής δεν είχε τρόπο να δει τη σκάλα ολόκληρη, ούτε πού
-            βρίσκεται πάνω της. Τέσσερα ονόματα, μία σειρά, το δικό σου
-            σημαδεμένο. Χωρίς τιμές και χωρίς πίεση — η σύγκριση ανοίγει με το
-            «Διαχείριση συνδρομής» για όποιον τη θέλει. */}
-        <div className="plan-ladder" style={{ marginTop: 16, gap: 6 }}>
-          {PLAN_ORDER.map(id => {
-            const on = id === effPlan;
-            // ΜΟΝΟ ΤΟ ΔΙΚΟ ΣΟΥ ΚΕΛΙ ΕΧΕΙ ΠΛΑΙΣΙΟ. Τέσσερα κουτιά με περίγραμμα
-            // δίπλα στο «Διαχείριση συνδρομής» διαβάζονταν ως κουμπιά που δεν
-            // πατιούνται. Η σκάλα είναι ένδειξη θέσης· τα υπόλοιπα είναι ετικέτες.
-            // Το διάφανο περίγραμμα κρατά ίδιο το ύψος και των τεσσάρων.
-            return (
-              <div key={id} className="plan-ladder-cell" style={{
-                padding: '9px 6px', borderRadius: T.radius.inner,
-                border: `1px solid ${on ? 'var(--accent-border)' : 'transparent'}`,
-                background: on ? 'var(--accent-dim)' : 'transparent',
-              }}>
-                <div style={{ fontSize: 12, fontWeight: on ? 700 : 500, color: on ? 'var(--accent)' : 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.3 }}>{PLANS[id].name}</div>
-                <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
-                  {PLANS[id].maxProperties === Infinity ? 'απεριόριστα' : `${PLANS[id].maxProperties} ${PLANS[id].maxProperties === 1 ? 'ακίνητο' : 'ακίνητα'}`}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Μετρητής ακινήτων: προ-πουλά ήρεμα το όριο, χωρίς τοίχο-έκπληξη */}
-        {propertyCount != null && (
-          <div style={{ marginTop: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
-              <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>Ακίνητα</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.sans, fontVariantNumeric: 'tabular-nums' }}>{propertyCount} από {propLimitLabel}</span>
-            </div>
-            {propLimit !== Infinity && (
-              <Bar pct={usagePct} tone={atLimit ? 'var(--warning)' : 'var(--accent)'} track="var(--bg-elevated)" label="Ακίνητα σε χρήση" />
-            )}
-            {(atLimit || nearLimit) && (
-              <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 8, lineHeight: 1.5 }}>
-                {atLimit
-                  ? 'Έφτασες το όριο του πακέτου σου. Για περισσότερα ακίνητα χρειάζεται μεγαλύτερο πακέτο.'
-                  : 'Ένα ακόμη ακίνητο και φτάνεις το όριο του πακέτου σου.'}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* ── Η ΤΟΠΙΚΗ ΔΟΚΙΜΗ, ΔΗΛΑΔΗ ΑΥΤΗ ΧΩΡΙΣ ΚΑΡΤΑ ──────────────────────
             ΤΟ ΠΛΑΙΣΙΟ ΔΕΝ ΕΜΦΑΝΙΖΕΤΑΙ ΠΟΤΕ ΣΕ ΟΠΟΙΟΝ ΕΧΕΙ ΔΩΣΕΙ ΚΑΡΤΑ και
@@ -936,10 +882,12 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
 
         {/* Τρόπος χρήσης: Ιδιώτης / Επαγγελματίας */}
         <div style={divider}>
-          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans, marginBottom: 4 }}>Τρόπος χρήσης</div>
-          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginBottom: 14, lineHeight: 1.5 }}>
-            Αλλάζει όποτε θέλεις.{partner ? ' Είσαι ενεργός συνεργάτης PROPERWISE.' : ''}
-          </div>
+          {/* «Αλλάζει όποτε θέλεις» έφυγε (αξιολόγηση σχεδίασης 3): δύο κάρτες
+              επιλογής το λένε μόνες τους. */}
+          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans, marginBottom: partner ? 4 : 14 }}>Τρόπος χρήσης</div>
+          {partner && (
+            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginBottom: 14, lineHeight: 1.5 }}>Είσαι ενεργός συνεργάτης PROPERWISE.</div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: 12 }}>
             {PROFILE_OPTS.map(o => {
               const on = chosenType === o.v;

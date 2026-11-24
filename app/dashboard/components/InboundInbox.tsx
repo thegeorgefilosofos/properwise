@@ -32,6 +32,8 @@ import { hintAction, hintFor, type Hint } from '@/lib/expenses/hints';
 import * as hintStore from '@/lib/data/categoryHints';
 import { notify, notifyError } from '@/components/Toast';
 import { athensToday } from '@/lib/core/time';
+import { Paperclip } from 'lucide-react';
+import { bulkReady, bulkLabel, billMonth } from '@/lib/inbound/bulk';
 
 interface Props {
   propertyId: string;
@@ -120,15 +122,15 @@ export default function InboundInbox({ propertyId, userId, propertyName, propert
   const patch = (id: string, part: Partial<Draft>) =>
     setDrafts(d => ({ ...d, [id]: { ...d[id], ...part } }));
 
-  const file = async (r: inbound.MessageRow) => {
+  /** Μία καταχώρηση, χωρίς μηνύματα: τα λέει όποιος την καλεί. */
+  const fileOne = async (r: inbound.MessageRow): Promise<inbound.FileResult | null> => {
     const draft = drafts[r.id];
     const amount = parseFloat((draft?.amount || '').replace(',', '.'));
-    if (!Number.isFinite(amount) || amount <= 0 || !draft?.date) return;
+    if (!Number.isFinite(amount) || amount <= 0 || !draft?.date) return null;
     // Η ΚΑΤΗΓΟΡΙΑ ΤΗΣ ΟΘΟΝΗΣ ΕΙΝΑΙ Η ΚΑΤΗΓΟΡΙΑ ΠΟΥ ΓΡΑΦΕΤΑΙ. Πριν, ό,τι κι αν
     // έδειχνε η γραμμή, καταχωρούνταν η πρόταση της βάσης.
     const cat = draft.slug ? BY_SLUG[draft.slug] : null;
     const label = cat ? cat.label : (r.category || 'Άλλο');
-    setBusy(r.id);
     const res = await inbound.fileAsExpense(supabase, r.id, {
       propertyId: draft.propertyId || propertyId, userId,
       description: expenseTitle(r.vendor, r.subject || '', label),
@@ -145,7 +147,14 @@ export default function InboundInbox({ propertyId, userId, propertyName, propert
       if (action && 'forget' in action) await hintStore.forget(supabase, userId, action.key);
       else if (action) await hintStore.learn(supabase, userId, action.key, action.category);
     }
+    return res;
+  };
+
+  const file = async (r: inbound.MessageRow) => {
+    setBusy(r.id);
+    const res = await fileOne(r);
     setBusy(null);
+    if (!res) return;
     if (!res.expenseId) { notifyError('Η δαπάνη δεν καταχωρήθηκε'); return; }
     // Η ΔΑΠΑΝΗ ΥΠΑΡΧΕΙ ΚΑΙ ΤΟ ΛΕΜΕ, ακόμη κι όταν το σημάδι δεν γράφτηκε. Η
     // εναλλακτική —«κάτι πήγε στραβά»— θα έκανε τον ιδιοκτήτη να την ξαναγράψει.
@@ -153,6 +162,42 @@ export default function InboundInbox({ propertyId, userId, propertyName, propert
     setRows(list => list.filter(x => x.id !== r.id));
     onFiled?.();
   };
+
+  // ═══ «ΚΑΤΑΧΩΡΗΣΗ ΟΛΩΝ», ΜΕ ΑΝΑΙΡΕΣΗ (αξιολόγηση σχεδίασης 3) ═══════════════
+  // Μία μία, με τη σειρά της ουράς, ώστε μια αποτυχία στη μέση να αφήνει ό,τι
+  // γράφτηκε γραμμένο και ό,τι δεν γράφτηκε στη λίστα. Η αναίρεση γυρίζει
+  // ακριβώς όσες καταχωρήθηκαν τώρα, όχι παλαιότερες.
+  const ready = bulkReady(rows, drafts);
+  const fileAll = async () => {
+    setBusy('all');
+    const done: { messageId: string; expenseId: string }[] = [];
+    let failedCount = 0;
+    for (const r of ready) {
+      const res = await fileOne(r);
+      if (res?.expenseId) done.push({ messageId: r.id, expenseId: res.expenseId });
+      else failedCount++;
+    }
+    setBusy(null);
+    const ids = new Set(done.map(d => d.messageId));
+    setRows(list => list.filter(x => !ids.has(x.id)));
+    if (done.length) onFiled?.();
+    if (failedCount) notifyError(failedCount === 1 ? 'Ένας λογαριασμός δεν καταχωρήθηκε. Έμεινε στη λίστα.' : `${failedCount} λογαριασμοί δεν καταχωρήθηκαν. Έμειναν στη λίστα.`);
+    if (!done.length) return;
+    notify(done.length === 1 ? 'Καταχωρήθηκε ένας λογαριασμός' : `Καταχωρήθηκαν ${done.length} λογαριασμοί`, {
+      duration: UNDO_MS,
+      action: {
+        label: 'Αναίρεση',
+        onClick: () => {
+          void Promise.all(done.map(d => inbound.unfile(supabase, d.messageId, d.expenseId))).then(results => {
+            if (results.some(x => x.error)) notifyError('Δεν αναιρέθηκαν όλες οι καταχωρήσεις.');
+            setReloadNonce(n => n + 1);
+            onFiled?.();
+          });
+        },
+      },
+    });
+  };
+  const allLabel = bulkLabel(ready.length);
 
   const drop = async (id: string) => {
     setBusy(id);
@@ -187,10 +232,11 @@ export default function InboundInbox({ propertyId, userId, propertyName, propert
       {/* Στο τηλέφωνο το θέμα κρύβεται στην κλειστή γραμμή: αποστολέας,
           ημερομηνία και ποσό ξεχωρίζουν πέντε ίδια θέματα, το θέμα όχι. */}
       <style>{`@media (max-width: 480px) { .inbound-row > .inbound-what { display: none; } .inbound-row > .inbound-prop { flex: 1 1 0; } }`}</style>
+      {/* ΧΩΡΙΣ ΥΠΟΤΙΤΛΟ (αξιολόγηση σχεδίασης 3). «Η καταχώρηση γράφεται στο
+          ακίνητο …» ήταν πρόταση πριν από το πρώτο πεδίο για κάτι που η σελίδα
+          ήδη λέει. Με πολλά ακίνητα το λέει η γραμμή και το πεδίο «Ακίνητο». */}
       <SecHdr label="Ήρθαν με email"
-        sub={many
-          ? 'Κάθε γραμμή λέει σε ποιο ακίνητο γράφεται· το αλλάζεις στη φόρμα.'
-          : propertyName ? `Η καταχώρηση γράφεται στο ακίνητο «${propertyName}»` : 'Η καταχώρηση γράφεται στο ακίνητο που βλέπεις'} />
+        right={allLabel ? <Btn variant="secondary" onClick={() => { void fileAll(); }} disabled={busy !== null}>{busy === 'all' ? 'Καταχώρηση…' : allLabel}</Btn> : undefined} />
       <div style={{ display: 'grid', gap: 10 }}>
         {rows.map(r => {
           const draft = drafts[r.id] || { amount: '', date: '', slug: '', propertyId };
@@ -199,6 +245,7 @@ export default function InboundInbox({ propertyId, userId, propertyName, propert
           const known = r.amount !== null;
           const learned = hintFor(hints, r.vendor) === r.category;
           const stamp = r.due_date || r.issue_date;
+          const month = billMonth(r.subject);
           // Η ΕΤΙΚΕΤΑ ΚΟΥΒΑΛΑΕΙ ΤΗΝ ΠΡΟΕΛΕΥΣΗ. «Ημερομηνία λήξης» και
           // «Ημερομηνία έκδοσης» δεν είναι το ίδιο πράγμα για τα βιβλία και
           // πριν η διάκριση ζούσε σε ξεχωριστή γραμμή κειμένου.
@@ -240,15 +287,17 @@ export default function InboundInbox({ propertyId, userId, propertyName, propert
               )}
               {/* ΠΕΝΤΕ ΙΔΙΑ ΘΕΜΑΤΑ ΞΕΧΩΡΙΖΟΥΝ ΑΠΟ ΤΗΝ ΗΜΕΡΟΜΗΝΙΑ. Πέντε «ΔΕΗ
                   Λογαριασμός ρεύματος…» διέφεραν μόνο στο ποσό. */}
-              {stamp && (
+              {/* ΚΑΙ ΤΟ ΙΔΙΟ ΤΟ 10/09 ΣΕ ΠΕΝΤΕ ΓΡΑΜΜΕΣ (αξιολόγηση σχεδίασης 3): ο μήνας
+                  του λογαριασμού («Ιαν 2026») όπου το θέμα τον λέει, αλλιώς η ημέρα. */}
+              {(month || stamp) && (
                 <span style={{ ...TT.bodySm, textWrap: undefined, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', flex: '0 0 auto', marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>
-                  {dayMonth(stamp)}
+                  {month || dayMonth(stamp!)}
                 </span>
               )}
               {/* Το ποσό που ΔΕΝ διαβάστηκε το λέει με λέξεις, όχι με παύλα: η
                   παύλα διαβάζεται ως μηδέν. */}
               <span className="inbound-sum" style={{ ...TT.bodySm, textWrap: undefined, fontWeight: 600,
-                color: known ? 'var(--text-primary)' : 'var(--text-tertiary)', marginLeft: stamp ? undefined : 'auto' }}>
+                color: known ? 'var(--text-primary)' : 'var(--text-tertiary)', marginLeft: month || stamp ? undefined : 'auto' }}>
                 {known ? fe(readAmount!) : 'χωρίς ποσό'}
               </span>
             </button>
@@ -269,8 +318,18 @@ export default function InboundInbox({ propertyId, userId, propertyName, propert
               border: '1px solid var(--border-subtle)',
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                <span style={{ ...TT.body, fontWeight: 600, color: 'var(--text-primary)' }}>
+                <span style={{ ...TT.body, fontWeight: 600, color: 'var(--text-primary)', display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                   {r.vendor || r.from_address || 'Άγνωστος αποστολέας'}
+                  {/* ΤΟ ΣΥΝΗΜΜΕΝΟ ΕΙΝΑΙ ΣΥΝΔΕΤΗΡΑΣ, ΟΧΙ ΠΡΟΤΑΣΗ (αξιολόγηση σχεδίασης 3).
+                      Δεν αποθηκεύεται (μόνο το πλήθος του), οπότε δεν ανοίγει: το
+                      πού βρίσκεται το λέει η ετικέτα του. */}
+                  {r.attachments > 0 && (
+                    <span role="img" aria-label={r.attachments === 1 ? 'Ένα συνημμένο στο αρχικό μήνυμα' : `${r.attachments} συνημμένα στο αρχικό μήνυμα`}
+                      title={r.attachments === 1 ? 'Ένα συνημμένο στο αρχικό μήνυμα' : `${r.attachments} συνημμένα στο αρχικό μήνυμα`}
+                      style={{ display: 'inline-flex', color: 'var(--text-tertiary)' }}>
+                      <Paperclip size={14} aria-hidden="true" />
+                    </span>
+                  )}
                 </span>
               </div>
 
@@ -286,15 +345,8 @@ export default function InboundInbox({ propertyId, userId, propertyName, propert
                   Γραμμένη και στις δύο θέσεις, το ίδιο νούμερο λεγόταν δύο
                   φορές· η ετικέτα λέει ΤΙ διάβασε το μήνυμα («λήξης» ή
                   «έκδοσης») και το πεδίο ΤΙ θα γραφτεί. */}
-              {/* Το συνημμένο ΔΕΝ αποθηκεύεται (μόνο το πλήθος του), οπότε δεν
-                  ανοίγει από εδώ· η φράση λέει πού βρίσκεται. */}
-              {(!stamp || r.attachments > 0) && (
-                <div style={{ ...TT.bodySm, color: 'var(--text-tertiary)' }}>
-                  {[
-                    stamp ? '' : 'Χωρίς ημερομηνία στο μήνυμα',
-                    r.attachments > 0 ? (r.attachments === 1 ? 'Ένα συνημμένο, στο αρχικό email' : `${r.attachments} συνημμένα, στο αρχικό email`) : '',
-                  ].filter(Boolean).join(' · ')}
-                </div>
+              {!stamp && (
+                <div style={{ ...TT.bodySm, color: 'var(--text-tertiary)' }}>Χωρίς ημερομηνία στο μήνυμα</div>
               )}
 
               <div {...fieldRow(180)}>

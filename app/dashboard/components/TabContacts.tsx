@@ -38,7 +38,7 @@ import {
 } from './contacts/modals'
 import { contactRouteGrid, ContactActionTile, ContactDossier } from './contacts/ContactDossier'
 import {
-  ContactCard, CONTACT_ACTIONS_W, CONTACT_ROW_MIN, CompactRow, GroupDivider, AlphaRail,
+  ContactRow, ContactList, CONTACT_ACTIONS_W, CONTACT_ROW_MIN, CompactRow, GroupDivider, AlphaRail,
 } from './contacts/ContactCard'
 import { Dictation } from '@/components/dictation/MicButton'
 
@@ -83,13 +83,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
   const [dossierRefresh, setDossierRefresh] = useState(0)   // ανανεώνει τις πληρωμές στο dossier μετά από νέα δαπάνη
 
   // ─── Εμβέλεια επαφής (μόνο επαγγελματικό προφίλ) ──────────────────────────────
-  const propName = (id?: string | null) => properties.find(p => p.id === id)?.name || ''
   const scopeIsPortfolio = (c: Contact) => c._extra?.scope === 'portfolio'
-  const scopeLabelFor = (c: Contact): string | null => {
-    if (!isPro) return null
-    if (scopeIsPortfolio(c)) return 'Όλο το χαρτοφυλάκιο'
-    return propName(c._extra?.scope_property_id || propertyId) || 'Αυτό το ακίνητο'
-  }
   const fetchContacts = useCallback(async () => {
     // Φέρνουμε ΟΛΕΣ τις επαφές του χρήστη και δείχνουμε: αυτές του τρέχοντος ακινήτου
     // ΣΥΝ όσες έχουν οριστεί «όλο το χαρτοφυλάκιο» (ώστε οι επαγγελματικές επαφές
@@ -433,7 +427,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
         </div>;
       return embedded
         ? <SecHdr label="Επαφές του ακινήτου" sub="Πάροχοι, τεχνικοί, τράπεζες, ασφαλιστές" right={actions}/>
-        : <PageTitle title="Επαφές" sub="Συνεργάτες, πάροχοι και υπηρεσίες του ακινήτου" right={actions}/>;
+        : <PageTitle title="Επαφές" right={actions}/>;
       })()}
 
       {/* ══ ΤΙ ΧΡΕΙΑΖΕΤΑΙ ΠΡΟΣΟΧΗ ══════════════════════════════════════════
@@ -550,7 +544,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
         )}
         {showTool('view', contacts.length) && (
         <Segmented label="Προβολή" value={viewMode} onChange={setViewMode}
-          options={[{ value: 'cards', label: 'Κάρτες' }, { value: 'compact', label: 'Λίστα' }]} />
+          options={[{ value: 'cards', label: 'Λίστα' }, { value: 'compact', label: 'Πίνακας' }]} />
         )}
       </div>
       )}
@@ -662,21 +656,21 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
           </div>
         </div>
       ) : letter || sortMode === 'alpha' ? (
-        <div data-list style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 310px), 1fr))', gap: 14 }}>
+        <ContactList>
           {processed.map(c => (
-            <ContactCard key={c.id} contact={c} onOpen={() => setDetailId(c.id)} onEdit={() => openEdit(c)} onDelete={() => askDelete(c)} onQuickExpense={() => setQuickExpense(c)} onQuickCalendar={() => setQuickCalendar(c)} onShowHistory={() => setHistoryContact(c)} onShowQR={() => setQrContact(c)} selected={selected.has(c.id)} onSelect={() => toggleSelect(c.id)} bulkMode={bulkMode} branding={branding} scopeLabel={scopeLabelFor(c)} scopePortfolio={scopeIsPortfolio(c)} />
+            <ContactRow key={c.id} contact={c} onOpen={() => setDetailId(c.id)} selected={selected.has(c.id)} onSelect={() => toggleSelect(c.id)} bulkMode={bulkMode} scopePortfolio={isPro && scopeIsPortfolio(c)} />
           ))}
-        </div>
+        </ContactList>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           {GROUPS.filter(g => groupedFiltered[g.id]?.length).map(g => (
             <div key={g.id}>
               <GroupDivider group={g} />
-              <div data-list style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 310px), 1fr))', gap: 14 }}>
+              <ContactList>
                 {groupedFiltered[g.id].map(c => (
-                  <ContactCard key={c.id} contact={c} onOpen={() => setDetailId(c.id)} onEdit={() => openEdit(c)} onDelete={() => askDelete(c)} onQuickExpense={() => setQuickExpense(c)} onQuickCalendar={() => setQuickCalendar(c)} onShowHistory={() => setHistoryContact(c)} onShowQR={() => setQrContact(c)} selected={selected.has(c.id)} onSelect={() => toggleSelect(c.id)} bulkMode={bulkMode} branding={branding} scopeLabel={scopeLabelFor(c)} scopePortfolio={scopeIsPortfolio(c)} />
+                  <ContactRow key={c.id} contact={c} onOpen={() => setDetailId(c.id)} selected={selected.has(c.id)} onSelect={() => toggleSelect(c.id)} bulkMode={bulkMode} scopePortfolio={isPro && scopeIsPortfolio(c)} />
                 ))}
-              </div>
+              </ContactList>
             </div>
           ))}
         </div>

@@ -702,12 +702,14 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
         {/* Το όνομα του πακέτου μόνο όταν δεν το λέει ο επιλογέας από πάνω: ήταν
             τρίτη φορά στην ίδια κάρτα (αξιολόγηση σχεδίασης 3). */}
         {!running && <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>{plan.name}</div>}
-        <div style={{ fontFamily: T.font.num, fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', lineHeight: 1.1, marginTop: 4 }}>{fe(price)}</div>
+        {/* ΚΑΙ Η ΤΙΜΗ ΜΙΑ ΦΟΡΑ (αξιολόγηση σχεδίασης 3). Με τον επιλογέα από πάνω
+            η τιμή κάθε πακέτου γράφεται ήδη στη γραμμή του· εδώ μένει η μονάδα. */}
+        {!running && <div style={{ fontFamily: T.font.num, fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', lineHeight: 1.1, marginTop: 4 }}>{fe(price)}</div>}
         <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, marginTop: 2 }}>
           {/* ΜΕ ΦΠΑ ΜΟΝΟ ΟΠΟΥ ΙΣΧΥΕΙ. Οι τιμές του τιμοκαταλόγου είναι για
               καταναλωτή στην Ελλάδα, με ΦΠΑ (σελίδα «Πακέτα»)· για άλλη χώρα ο
               ΦΠΑ κρίνεται αλλιώς και το ποσό το λέει το ταμείο. */}
-          τον μήνα{determineVat(d).treatment === 'domestic' ? ', με ΦΠΑ' : ''}{cycle === 'annual' ? `, με ετήσια χρέωση ${fe(plan.priceAnnual)}` : ''}
+          {running ? 'Ανά μήνα' : 'τον μήνα'}{determineVat(d).treatment === 'domestic' ? ', με ΦΠΑ' : ''}{cycle === 'annual' ? `, με ετήσια χρέωση ${fe(plan.priceAnnual)}` : ''}
         </div>
       </div>
 

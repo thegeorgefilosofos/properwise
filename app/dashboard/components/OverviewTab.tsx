@@ -32,8 +32,9 @@ import { mergeLedger } from '@/lib/expenses/ledger'
 import { contractOverview } from '@/lib/contracts/overview'
 import { useAppPreferences } from './useAppPreferences'
 import {
-  T, TT, Btn, LinkBtn, SkeletonKPIs, Skeleton, EmptyState, SecHdr, InfoBanner, fp, feOr, fd, type KPIItem,
+  T, Btn, LinkBtn, SkeletonKPIs, Skeleton, EmptyState, SecHdr, InfoBanner, fp, feOr, fd, type KPIItem,
 } from '@/components/Theme'
+import { InfoHint } from './InfoHint'
 import { FileText, Wallet, Receipt, Landmark, TrendingUp, Building2, Percent, Banknote, Coins } from 'lucide-react'
 
 /** Το εικονίδιο κάθε ποσού της χρονιάς, από την ετικέτα του. */
@@ -72,7 +73,9 @@ import AssistantStrip from './AssistantStrip'
 import ForecastCard from './ForecastCard'
 import { forecast12, type IncomeTaxStatement } from '@/lib/home/forecast12'
 import { cashPosition } from '@/lib/home/cash'
-import { buildAgenda, attachAmounts, withCondition, type SetupLike as SetupStep } from '@/lib/home/agenda'
+import { buildAgenda, attachAmounts, withCondition, type AgendaItem, type SetupLike as SetupStep } from '@/lib/home/agenda'
+import { markDone, doneLabel } from '@/lib/home/markDone'
+import { notify, notifyError } from '@/components/Toast'
 import {
   readFailures, moneyIncomplete, failedSentence, trustedStep, trustedInsight, trustedObligation,
   LEASE_DECL_AREA, TAX_DEADLINES_AREA,
@@ -132,6 +135,9 @@ function stepFitsProperty(key: string, prop: Property): boolean {
   if (key === 'pricing') return isShortTerm(prop);
   return true;
 }
+
+/** Πόσο μένει η αναίρεση στην οθόνη: όσο και στα Εισερχόμενα και στον Προϋπολογισμό. */
+const UNDO_MS = 6000;
 
 export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, profileType = 'individual', legalForm = 'individual', startSlot, agendaExclude }: { prop: Property;
   /**
@@ -897,6 +903,27 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // Πέντε στην αρχική. Η πλήρης λίστα ζει στις «Εκκρεμότητες» — και η οθόνη το λέει.
   // Το ποσό της δόσης ΕΝΦΙΑ από τις ίδιες γραμμές με την κάρτα των 12 μηνών.
   const agenda = attachAmounts(agendaAll.slice(0, 5), forecast.months.flatMap(m => m.lines));
+  // ═══ «ΠΛΗΡΩΘΗΚΕ» ΑΠΟ ΤΗ ΓΡΑΜΜΗ, ΜΕ ΑΝΑΙΡΕΣΗ (αξιολόγηση σχεδίασης 3) ═════════
+  // Η γραμμή φεύγει αμέσως (το κλειστό μπαίνει στο `closedTax`, από όπου
+  // διαβάζουν οι υποχρεώσεις) και η εγγραφή στο Ημερολόγιο ακολουθεί. Αν η
+  // εγγραφή αποτύχει, η γραμμή γυρίζει και το λέμε· η αναίρεση κάνει το ίδιο
+  // ανάποδα. Το Ημερολόγιο και η Επισκόπηση κλείνουν την ίδια πηγή, οπότε δεν
+  // διαφωνούν ποτέ για το τι εκκρεμεί.
+  const reopen = (key: string) => setClosedTax(prev => { const n = new Set(prev); n.delete(key); return n; });
+  const markAgendaDone = async (it: AgendaItem) => {
+    const label = doneLabel(it.key);
+    if (!label) return;
+    setClosedTax(prev => new Set(prev).add(it.key));
+    const r = await markDone(supabase, { propertyId: prop.id, userId }, { source: it.key, title: it.title, date: it.due });
+    if (r.error) { reopen(it.key); notifyError(`Δεν σημειώθηκε: ${it.title}. Δοκίμασε ξανά.`); return; }
+    const undo = r.undo;
+    notify(`${label}: ${it.title}`, {
+      duration: UNDO_MS,
+      action: undo ? { label: 'Αναίρεση', onClick: () => {
+        void undo().then(u => { if (u.error) notifyError('Η αναίρεση δεν έγινε. Δοκίμασε ξανά.'); else reopen(it.key); });
+      } } : undefined,
+    });
+  };
   // Η ΝΟΑ ΤΗΣ ΕΠΙΣΚΟΠΗΣΗΣ ΡΩΤΑ ΓΙΑ ΟΣΑ ΕΧΕΙ Η ΟΘΟΝΗ (feedback χρήστη #1): την
   // επόμενη προθεσμία της λίστας και σύγκριση μόνο όταν υπάρχουν ακίνητα που συγκρίνονται.
   const stripCtx: OpenerContext | null = assistantCtx && {
@@ -1097,7 +1124,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       {/* ΧΩΡΙΣ ΤΗΝ ΠΡΟΤΑΣΗ «ΒΑΛΕ ΤΙΣ ΠΡΟΘΕΣΜΙΕΣ ΣΤΟ ΚΙΝΗΤΟ» (αξιολόγηση 2, Μ12). Ήταν η
           ίδια κάρτα με δύο κουμπιά εδώ και στο Ημερολόγιο. Μένει εκεί, όπου ανήκει·
           κάθε γραμμή της λίστας οδηγεί ήδη στο Ημερολόγιο. */}
-      <AgendaPanel items={agenda} total={agendaAll.length} onNavigate={onNavigate} incomplete={failedReads.length > 0} />
+      <AgendaPanel items={agenda} total={agendaAll.length} onNavigate={onNavigate} incomplete={failedReads.length > 0} onDone={markAgendaDone} />
 
       {/* Με μισά ποσά η Νόα θα έλεγε «βλέπω» για όσα δεν διάβασε. */}
       {!moneyGap && <AssistantStrip ctx={stripCtx} />}
@@ -1338,6 +1365,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           // ακίνητο δεν μοιράζεται τίποτα: είναι όλος ο φόρος του. Η ετικέτα
           // λέει το καθένα στη θέση του και η πλήρης εξήγηση μένει στο ⓘ.
           { label: portfolioTax.count>1 ? 'Μερίδιο φόρου' : 'Φόρος ενοικίου', value:fmtEur(estTax), fact: 'tax-year',
+            // «ΠΩΣ ΒΓΑΙΝΕΙ Ο ΦΟΡΟΣ» ΣΤΟ ⓘ ΤΟΥ ΠΛΑΚΙΔΙΟΥ (αξιολόγηση σχεδίασης 3). Ηταν
+            // παράγραφος κάτω από τα ποσά· ανήκει στη γραμμή που εξηγεί.
+            hint: income && taxNote ? taxNote : undefined,
             // Η ΒΑΣΗ ΜΕ ΟΝΟΜΑ (18/11/2026): η Λογιστική δείχνει τον φόρο των
             // καταχωρημένων ενοικίων· εδώ είναι όλη η χρονιά και το λέει.
             sub: rentTaxBasisLabel(rentTax.income.basis, year),
@@ -1464,7 +1494,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
                         <div key={k.label} className="tn-sum-row" title={k.title} {...factAttrs(k)}>
                           {hidden(k)}
                           <span className="tn-sum-ico">{yearIcon(k.label, 15)}</span>
-                          <span className="tn-sum-name">{k.label}</span>
+                          <span className="tn-sum-name"><span>{k.label}{k.hint && <InfoHint label={k.label}>{k.hint}</InfoHint>}</span></span>
                           <span className="tn-sum-val">{k.value}</span>
                           {k.sub && <small className="ov-year-note">{k.sub}</small>}
                         </div>
@@ -1474,12 +1504,6 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
                 </section>
               );
             })()}
-            {/* Ο ΦΟΡΟΣ ΤΟΥ ΧΑΡΤΟΦΥΛΑΚΙΟΥ ΜΕΝΕΙ ΣΗΜΕΙΩΣΗ, ΚΑΤΩ ΑΠΟ ΤΑ ΠΛΕΓΜΑΤΑ. Είναι
-                εξήγηση του «Μερίδιο φόρου», όχι μέγεθος: διαβάζεται αφού δεις τα
-                νούμερα, όχι ανάμεσά τους. */}
-            {income && taxNote && (
-              <p style={{...TT.caption,margin:'0 0 16px'}}><strong style={{color:'var(--text-primary)',fontWeight:600}}>Πώς βγαίνει ο φόρος.</strong> {taxNote}</p>
-            )}
           </>
         );
       })()}

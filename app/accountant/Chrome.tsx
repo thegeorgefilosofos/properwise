@@ -192,8 +192,12 @@ function AccountMenu({ firmOnly, firmLink }: { firmOnly?: boolean; firmLink?: st
  * ΠΑΝΤΑ κάτω από το meta, αριστερά (στα 768 τα τέσσερα κουμπιά δεν χωρούσαν
  * δεξιά και το τέταρτο έπεφτε μόνο του σε δεύτερη σειρά).
  */
-export function PortalTitle({ over, title, meta, right }: {
-  over: string; title: string; meta?: ReactNode; right?: ReactNode;
+export function PortalTitle({ over, title, info, meta, right }: {
+  /** Η γραμμή πάνω από τον τίτλο. Λείπει όταν θα ξανάλεγε ό,τι λέει η σελίδα. */
+  over?: string; title: string;
+  /** Το ⓘ δίπλα στον τίτλο, για εξήγηση που διαβάζεται μία φορά. */
+  info?: ReactNode;
+  meta?: ReactNode; right?: ReactNode;
 }) {
   return (
     <div style={{ margin: `${T.sp.section}px 0 ${T.sp.xxl}px` }}>
@@ -211,13 +215,15 @@ export function PortalTitle({ over, title, meta, right }: {
 .pb-acts{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:${T.sp.sm}px;max-width:min(560px,60vw)}
 @media (max-width:960px){.pb-head{grid-template-columns:minmax(0,1fr)}.pb-acts{justify-content:flex-start;max-width:none}}
 @media (max-width:560px){.pb-acts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.pb-acts>*{white-space:nowrap}.pb-acts>:last-child:nth-child(odd){grid-column:1/-1}.pb-acts:has(>.po-more){display:flex}.pb-acts:has(>.po-more)>*{flex:1 1 0}.pb-acts>.po-more{flex:0 0 auto}}`}</style>
-      <p style={{ ...TT.label, color: 'var(--text-tertiary)', margin: 0 }}>
-        {over}
-      </p>
+      {over && (
+        <p style={{ ...TT.label, color: 'var(--text-tertiary)', margin: 0 }}>
+          {over}
+        </p>
+      )}
       <div className="pb-head">
         <div style={{ minWidth: 0 }}>
           <h1 style={{ ...TT.displaySm, margin: 0 }}>
-            {title}
+            {title}{info}
           </h1>
           {meta && (
             <p style={{ ...TT.bodySm, color: 'var(--text-tertiary)', margin: `${T.sp.sm}px 0 0`, fontVariantNumeric: 'tabular-nums' }}>

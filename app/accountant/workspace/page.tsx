@@ -37,6 +37,10 @@ import FirmView from './FirmView';
 import SecondStep from './SecondStep';
 import RequestSheet, { type AskTarget } from './RequestSheet';
 import { PortalBar, PortalTitle, portalWrap } from '../Chrome';
+import { InfoHint } from '@/app/dashboard/components/InfoHint';
+
+/** Ποιους βλέπει ο λογιστής. Πίσω από το ⓘ του τίτλου «Οι πελάτες σου». */
+const WHO_YOU_SEE = 'Βλέπεις μόνο τους πελάτες που έχουν εξουσιοδοτήσει το γραφείο. Η πρόσβαση λήγει αμέσως με την ανάκλησή της από τον πελάτη ή με την αποχώρησή σου από το γραφείο.';
 import { Users, Filter } from 'lucide-react';
 import { claim, clients, clientData, request, withdrawRequest, dropClient, gapsOf, readinessOf, aadeStateOf, aadeStateLabel, joinRequests, type ClientCounts } from '@/lib/data/accountant';
 import { fileBytes } from '@/lib/data/e2Prefilled';
@@ -580,16 +584,22 @@ export default function AccountantWorkspace() {
         {/* Η ΣΥΝΟΨΗ ΛΕΕΙ ΤΙ ΑΞΙΖΕΙ ΝΑ ΚΟΙΤΑΞΕΙΣ ΠΡΩΤΑ. Ο τίτλος έλεγε μόνο πόσοι
             είναι: με ογδόντα πελάτες, ο αριθμός «80» δεν οδηγεί σε καμία κίνηση,
             ενώ το «3 δεν κλείνουν» οδηγεί κατευθείαν στις τρεις πρώτες κάρτες. */}
-        <PortalTitle over={`${rows?.length ?? 0} ${(rows?.length ?? 0) === 1 ? 'πελάτης' : 'πελάτες'}`}
+        {/* ΚΑΘΕ ΑΡΙΘΜΟΣ ΜΙΑ ΦΟΡΑ (αξιολόγηση σχεδίασης 3). Το πλήθος ήταν
+            eyebrow πάνω από τον τίτλο και η χρήση γραμμή κάτω από αυτόν, ενώ
+            τη λέει ήδη ο επιλογέας της μπάρας. Μένει μία γραμμή: πόσοι, πόσοι
+            περιμένουν, πόσοι είναι έτοιμοι. Ο κανόνας της πρόσβασης, που
+            καθόταν ενότητα στο τέλος της σελίδας, πάει στο ⓘ του τίτλου. */}
+        <PortalTitle
           title="Οι πελάτες σου"
+          info={<InfoHint label="Ποιους βλέπεις">{WHO_YOU_SEE}</InfoHint>}
           meta={
-            /* ΔΥΟ ΓΡΑΜΜΕΣ ΑΠΟ ΠΡΟΘΕΣΗ, ΟΧΙ ΑΠΟ ΤΥΧΗ. Σε μία γραμμή, δίπλα σε τέσσερα
-               κουμπιά, το meta έσπαγε όπου τύχαινε και το «·» έμενε μόνο του στο
-               τέλος της σειράς. Η χρήση πάνω, η εικόνα της λίστας από κάτω. */
+            /* ΜΙΑ ΓΡΑΜΜΗ ΣΕ ΔΙΚΟ ΤΗΣ ΜΠΛΟΚ. Σε μία γραμμή δίπλα στα κουμπιά
+               το meta έσπαγε όπου τύχαινε και το «·» έμενε μόνο του στο
+               τέλος της σειράς. */
             <>
-              <span style={{ display: 'block' }}>Χρήση 01/01/{year} έως 31/12/{year}</span>
               {ordered.length > 0 && (
                 <span style={{ display: 'block' }}>
+                  {`${rows?.length ?? 0} · `}
                   <strong style={{ color: stuck > 0 ? 'var(--text-primary)' : 'inherit' }}>
                     {stuck === 0 ? 'Κανένας με εκκρεμότητες' : stuck === 1 ? '1\u00a0με\u00a0εκκρεμότητες' : `${stuck}\u00a0με\u00a0εκκρεμότητες`}
                   </strong>{` · ${done === 1 ? '1\u00a0έτοιμος' : `${done}\u00a0έτοιμοι`}`}
@@ -1045,15 +1055,6 @@ export default function AccountantWorkspace() {
         />
       )}
 
-      {/* Ο ΚΑΝΟΝΑΣ ΤΗΣ ΠΡΟΣΒΑΣΗΣ, ΣΤΟ ΠΛΑΤΟΣ ΤΗΣ ΣΕΛΙΔΑΣ. Με όριο 65 χαρακτήρων
-          έσπαγε στη μέση της φράσης και άφηνε κενό δεξιά, ενώ όλα τα μπλοκ από
-          πάνω πιάνουν όλο το πλάτος (απόφαση ιδιοκτήτη, 09/11/2026). */}
-      <div style={{ margin: `${T.sp.section}px 0 0` }}>
-        <p style={{ ...TT.label, color: 'var(--text-tertiary)', margin: 0 }}>Ποιους βλέπεις</p>
-      <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-secondary)', margin: `${T.sp.xs}px 0 0`, lineHeight: 1.6, fontFamily: T.font.sans }}>
-          Βλέπεις μόνο τους πελάτες που έχουν εξουσιοδοτήσει το γραφείο. Η πρόσβαση λήγει αμέσως με την ανάκλησή της από τον πελάτη ή με την αποχώρησή σου από το γραφείο.
-        </p>
-      </div>
       </main>
     </div>
   );

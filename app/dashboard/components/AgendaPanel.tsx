@@ -43,6 +43,7 @@ import { T, fe } from '@/components/Theme';
 import { ListChecks } from 'lucide-react';
 import { itemDue, overdueCount, ENFIA_IMPORT_TAB, type AgendaItem, type DueParts } from '@/lib/home/agenda';
 import { openMyaadeImport } from './myaadeOpen';
+import { doneLabel } from '@/lib/home/markDone';
 import { useAppEn } from '@/lib/i18n/appEn';
 import { navLabel } from '@/lib/nav/labels';
 
@@ -52,7 +53,7 @@ import { navLabel } from '@/lib/nav/labels';
  *  (lib/nav/labels.ts), ώστε η λίστα και η καρτέλα όπου οδηγεί να μη χωρίσουν ποτέ. */
 const AGENDA_LABEL = navLabel('checklist');
 
-export default function AgendaPanel({ items, total, onNavigate, incomplete = false }: {
+export default function AgendaPanel({ items, total, onNavigate, incomplete = false, onDone }: {
   items: AgendaItem[];
   /** Πόσα υπάρχουν συνολικά — η λίστα δείχνει τα πρώτα. */
   total: number;
@@ -62,6 +63,11 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
    * «δεν ξέρουμε». Ως τις 08/10/2026 η αποτυχία έγραφε «Δεν εκκρεμεί τίποτα».
    */
   incomplete?: boolean;
+  /**
+   * «Πληρώθηκε» ή «Έγινε» από τη γραμμή, για όσες κλείνουν από εκεί (`doneLabel`).
+   * Χωρίς αυτό η λίστα μένει όπως ήταν: η αναίρεση και η εγγραφή ζουν στον καλούντα.
+   */
+  onDone?: (it: AgendaItem) => void;
 }) {
   // Τα αγγλικά της λίστας και τα ονόματα των καρτελών, ή `null` στα ελληνικά.
   const E = useAppEn('overview');
@@ -120,6 +126,7 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
             // καλύπτει, με το όνομα της γραμμής) και δεξιά μένει ένα ήσυχο
             // βέλος. Κουμπί μένει μόνο όπου η ενέργεια είναι άλλη.
             const toCalendar = it.action?.tab === 'calendar';
+            const done = onDone ? doneLabel(it.key) : null;
             return (
               <li key={it.key} className={`agenda-row${d.overdue ? ' is-late' : ''}${toCalendar ? ' agenda-row--link' : ''}`}>
                 {toCalendar && (
@@ -145,19 +152,12 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
 
                 <div className="agenda-body">
                   <span className="agenda-item-title">{it.title}</span>
-                  {/* Η ΕΞΗΓΗΣΗ ΦΑΙΝΕΤΑΙ — ΑΛΛΑ ΜΟΝΟ ΟΠΟΥ ΑΛΛΑΖΕΙ ΤΙ ΚΑΝΕΙΣ.
-                      Ήταν πίσω από κλικ, που σε οθόνη αφής δεν ανακοινώνεται καν.
-                      Το να ανοίξουν όμως ΟΛΕΣ πρόσθετε 250 εικονοστοιχεία στην
-                      πρώτη οθόνη: για προθεσμία 204 ημερών ο τίτλος και ο
-                      αριθμός τα λένε όλα. Μένει όπου επείγει (εκπρόθεσμο) ή όπου
-                      δεν υπάρχει ημερομηνία — εκεί η σημείωση ΕΙΝΑΙ η οδηγία. */}
-                  {it.note && (d.overdue || d.value == null) ? (
-                    <span className="agenda-note">{it.note}</span>
-                  ) : it.condition && (
-                    // Η ΠΡΟΫΠΟΘΕΣΗ ΤΟΥ ΗΜΕΡΟΛΟΓΙΟΥ (κριτική σχεδίασης r7): η δόση φόρου
-                    // εισοδήματος δεν αφορά όλους και η γραμμή δεν το κρύβει.
-                    <span className="agenda-note">{it.condition}</span>
-                  )}
+                  {/* ΜΙΑ ΓΡΑΜΜΗ ΑΝΑ ΕΚΚΡΕΜΟΤΗΤΑ, ΧΩΡΙΣ ΣΗΜΕΙΩΣΗ (αξιολόγηση σχεδίασης 3).
+                      Η σημείωση φαινόταν στο εκπρόθεσμο και στο χωρίς ημερομηνία,
+                      η προϋπόθεση της δόσης φόρου σε όλα: μία γραμμή στις πέντε
+                      έβγαινε τριπλάσια σε ύψος. Ο τίτλος, ο χρόνος και το ποσό
+                      λένε τι επείγει· η εξήγηση μένει στο γεγονός του Ημερολογίου
+                      και στην καρτέλα όπου οδηγεί η γραμμή. */}
                 </div>
 
                 {/* ΠΟΣΟ ΚΑΙ ΕΝΕΡΓΕΙΑ ΣΤΗΝ ΙΔΙΑ ΘΕΣΗ ΣΕ ΚΑΘΕ ΓΡΑΜΜΗ. Η δόση ΕΝΦΙΑ
@@ -166,6 +166,13 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
                 {/* ΙΔΙΑ ΑΝΑΤΟΜΙΑ ΣΕ ΚΑΘΕ ΓΡΑΜΜΗ (αξιολόγηση 2, Μ11): ποσό αν υπάρχει,
                     βέλος αν η γραμμή ανοίγει. Η δόση ΕΝΦΙΑ με ποσό έχανε το βέλος
                     της, ενώ πατιόταν όπως οι υπόλοιπες. */}
+                {/* ΕΝΑ ΠΑΤΗΜΑ ΓΙΑ ΤΗΝ ΠΙΟ ΣΥΧΝΗ ΚΙΝΗΣΗ (αξιολόγηση σχεδίασης 3). «Πλήρωσα
+                    τη δόση» ήθελε τρία: γραμμή, εύρεση στο Ημερολόγιο, «Ολοκλήρωση».
+                    Το κουμπί κάθεται πάνω από το κάλυμμα της γραμμής, οπότε το
+                    υπόλοιπο της γραμμής ανοίγει ακόμη το Ημερολόγιο. */}
+                {done && (
+                  <button type="button" className="agenda-done" aria-label={`${done}: ${it.title}`} onClick={() => onDone!(it)}>{done}</button>
+                )}
                 {(it.amount || it.action) && (
                   <div className="agenda-side">
                     {it.amount && (
@@ -303,10 +310,6 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
           font-family: ${T.font.sans}; font-size: 14px; font-weight: 600;
           line-height: 1.4; color: var(--text-primary);
         }
-        .agenda-note {
-          font-family: ${T.font.sans}; font-size: 12px; line-height: 1.55;
-          color: var(--text-tertiary); text-wrap: pretty;
-        }
         .agenda-side {
           align-self: center; display: flex; flex-direction: column; align-items: flex-end;
           gap: 4px; min-width: 0;
@@ -331,6 +334,23 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
         }
         .agenda-go:hover { border-color: var(--accent); color: var(--accent); }
         .agenda-go:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        /* Ήσυχο κουμπί με περίγραμμα, όπως το «πήγαινε»: η γραμμή έχει ήδη τον
+           τόνο της στο ποσό. Πάνω από το κάλυμμα (z-index), ώστε να πατιέται. */
+        .agenda-done {
+          position: relative; z-index: 2; align-self: center; flex-shrink: 0;
+          height: 30px; padding: 0 12px; border-radius: 100px;
+          border: 1px solid var(--border-default); background: var(--bg-elevated);
+          color: var(--text-secondary); font-family: ${T.font.sans}; font-size: 12px; font-weight: 700;
+          white-space: nowrap; cursor: pointer;
+        }
+        .agenda-done:hover { border-color: var(--accent); color: var(--accent); }
+        .agenda-done:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        .agenda-row:has(.agenda-done) { grid-template-columns: 72px minmax(0, 1fr) auto auto; }
+        .agenda--undated .agenda-row:has(.agenda-done) { grid-template-columns: minmax(0, 1fr) auto auto; }
+        /* ΤΑ ΚΟΥΜΠΙΑ ΣΤΟΙΧΙΖΟΝΤΑΙ ΚΑΘΕΤΑ. Κάθε γραμμή είναι δικό της πλέγμα και το
+           ποσό υπάρχει μόνο σε μερικές: χωρίς σταθερό πλάτος η στήλη του ποσού
+           έσπρωχνε το κουμπί κλεισίματος σε άλλο σημείο σε κάθε γραμμή. */
+        .agenda-row:has(.agenda-done) .agenda-side { min-width: 112px; justify-content: flex-end; }
         /* Η γραμμή-σύνδεσμος: το κουμπί την καλύπτει ολόκληρη, το βέλος δεξιά. */
         .agenda-cover {
           position: absolute; inset: 0; z-index: 1; width: 100%; padding: 0;
@@ -379,7 +399,7 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
           .agenda-head { flex-direction: column; align-items: flex-start; }
           .agenda-row {
             grid-template-columns: minmax(0, 1fr) auto;
-            grid-template-areas: "when when" "title amt" "note note" "go go";
+            grid-template-areas: "when when" "title amt" "go go";
             column-gap: 12px; row-gap: 0;
           }
           .agenda--undated .agenda-row { grid-template-columns: minmax(0, 1fr) auto; }
@@ -390,8 +410,10 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
           }
           .agenda-item-title { grid-area: title; }
           .agenda-amt { grid-area: amt; align-self: start; }
-          .agenda-note { grid-area: note; margin-top: 4px; }
           .agenda-go { grid-area: go; justify-self: start; margin-top: 10px; }
+          .agenda-done { grid-area: go; justify-self: start; margin-top: 10px; }
+          .agenda-row:has(.agenda-done) { grid-template-columns: minmax(0, 1fr) auto; }
+          .agenda-row:has(.agenda-done) .agenda-side { min-width: 0; }
           /* Ποσό και βέλος μαζί, στη δεξιά άκρη της σειράς του τίτλου. */
           .agenda-row--link .agenda-side {
             display: flex; grid-area: amt; flex-direction: row; align-items: center; gap: 8px; align-self: start;

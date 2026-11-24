@@ -32,10 +32,10 @@ import { T, Btn, IconBtn, ChipToggle, Segmented, LinkBtn, Skeleton, EmptyState, 
 import type { XlsxSheet, XlsxCol } from './exportXlsx';
 import { downloadXlsx } from './sheets';
 import {
-  AlertTriangle, Plus, X, ChevronLeft, ChevronRight,
+  Plus, X, ChevronLeft, ChevronRight,
   FileText,
-  Shield, Filter, Download,
-  ChevronDown, RotateCcw,
+  Filter, Download,
+  RotateCcw,
   RefreshCw,
   Printer, CheckSquare, CalendarDays, ArrowRight,
   MoreHorizontal, CalendarPlus, Search,
@@ -61,8 +61,8 @@ import { toggleIn } from '@/lib/core/toggleSet'
 import {
   type EventCategory, type EventStatus, type ViewMode, type CalEvent,
   type FormState, CATEGORIES, STATUSES, canonicalCategory,
-  EMPTY_FORM, fmt, fmtShort,
-  athensNow, daysUntil, isOverdue, isPastNotice, pastStateOf, isThisWeek, isThisMonth, isExpiring, EXPIRING_WINDOW_DAYS, todayStr, addDaysStr,
+  EMPTY_FORM,
+  athensNow, daysUntil, isOverdue, isPastNotice, pastStateOf, isThisWeek, isThisMonth, isExpiring, todayStr, addDaysStr,
 } from './calendar/model'
 import { EventCard, Section } from './calendar/EventCard'
 import { usePointerDrag, DaySheet, MonthView } from './calendar/MonthView'
@@ -70,6 +70,7 @@ import { AutoPullPanel } from './calendar/AutoPullPanel'
 import { EventModal, ScopeModal } from './calendar/EventModal'
 import { SubscribeModal } from './calendar/SubscribeModal'
 import { CalendarQuickAdd } from './calendar/CalendarQuickAdd'
+import { alertLine, dayTapOpensForm } from './calendar/alerts'
 import { dueTextStart, incomeInstalmentsAfter } from '@/lib/facts/deadlines'
 import { belowGrid } from '@/lib/calendar/belowGrid'
 import { grDate } from '@/lib/core/format'
@@ -105,7 +106,6 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
   const [dateFrom,setDateFrom]=useState('')
   const [dateTo,setDateTo]=useState('')
   const [showFilters,setShowFilters]=useState(false)
-  const [showOverdue,setShowOverdue]=useState(false)
   const [showAutoPull,setShowAutoPull]=useState(false)
   const [searchQ,setSearchQ]=useState('')
   const [searchOpen,setSearchOpen]=useState(false)
@@ -233,6 +233,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
   const thisWeek=filtered.filter(isThisWeek)
   const thisMonth=filtered.filter(isThisMonth)
   const expiring=filtered.filter(isExpiring)
+  const calAlert=alertLine(overdue.length, expiring.length)
   const later=filtered.filter(e=>{const d=daysUntil(e.event_date);return e.status==='pending'&&d>29})
   const done=filtered.filter(e=>e.status==='paid'||e.status==='cancelled')
   // Το εύρος της προβολής: ο μήνας, με επέκταση των επαναλαμβανόμενων ώστε να
@@ -510,83 +511,28 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
           ψάχνει κανείς στο ημερολόγιο: μία λέξη με τον αριθμό των ανοιχτών,
           στη θέση της ενέργειας του τίτλου. Σύνδεσμος και όχι κουμπί: κάθεται
           ως λέξη, χωρίς κουτί. */}
-      <PageTitle title={navLabel('calendar')} sub="Προθεσμίες, πληρωμές και ραντεβού"
+      <PageTitle title={navLabel('calendar')}
         right={onOpenTasks ? (
           <LinkBtn onClick={onOpenTasks}>
             Εκκρεμότητες{openTasks > 0 && <span style={{ fontFamily: T.font.num, fontVariantNumeric:'tabular-nums', color:'var(--text-tertiary)', fontWeight:500, marginLeft:6 }}>{openTasks}</span>}
           </LinkBtn>
         ) : undefined} />
 
-      {/* Εκπρόθεσμα — ΜΙΑ γραμμή, ίδια γλώσσα με το μπάνερ των λήξεων.
-          Η γραμμή KPI έφυγε: επαναλάμβανε τα ίδια τρία νούμερα μέσα σε 40px (το
-          μπάνερ λήξεων έλεγε τον ίδιο αριθμό, η ράγα «Επόμενα» τα ίδια γεγονότα)
-          και το «Εκκρεμή ποσά» της ήταν το ΤΡΙΤΟ διαφορετικό νούμερο με την ίδια
-          ετικέτα. Έμεινε μία εμβέλεια, δηλωμένη στην οθόνη: του μήνα. */}
-      {/* ═══ ΤΟ ΙΔΙΟ ΤΕΣΣΕΡΑ, ΤΡΕΙΣ ΦΟΡΕΣ ═══════════════════════════════════
-          Ήταν ΔΥΟ ζώνες: μια γραμμή «4 εκπρόθεσμα · Εμφάνιση» και από κάτω μια
-          κάρτα που ΞΑΝΑΕΓΡΑΦΕ «ΕΚΠΡΟΘΕΣΜΑ · 4» ως δική της επικεφαλίδα, με δικό
-          της κουμπί κλεισίματος δίπλα στο βέλος που μόλις είχε πατηθεί. Δύο
-          επικεφαλίδες, δύο μετρητές, δύο τρόποι να κλείσει το ίδιο πράγμα.
-
-          Και ΤΡΙΤΗ φορά στην «Ατζέντα»: εκεί η λίστα έχει ήδη δική της ενότητα
-          «Εκπρόθεσμα» με τα ίδια τέσσερα, αναλυτικά. Οι δύο ζώνες αποδίδονταν
-          από πάνω ούτως ή άλλως, οπότε ο χρήστης έβλεπε τα τέσσερα εκπρόθεσμα
-          τρεις φορές στην ίδια οθόνη.
-
-          Τώρα: μία κάρτα, η επικεφαλίδα της είναι το κουμπί και μόνο στην όψη
-          «Μήνας» — γιατί μόνο εκεί λείπει. */}
-      {viewMode==='month'&&overdue.length>0&&(
-        <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderLeft:'3px solid var(--negative)', borderRadius:T.radius.card, overflow:'hidden' }}>
-          <button onClick={()=>setShowOverdue(o=>!o)} aria-expanded={showOverdue} className="acc-toggle acc-row"
-            style={{ '--acc-pad': '12px 16px', '--acc-gap': '12px', borderBottom: showOverdue ? '1px solid var(--border-subtle)' : 'none' }}>
-            <AlertTriangle size={14} color="var(--negative)"/>
-            <p style={{ fontSize:14, color:'var(--text-secondary)', fontFamily: T.font.sans, letterSpacing:'0.1px', margin:0, flex:1 }}>
-              {overdue.length===1?'1 ληξιπρόθεσμο':`${overdue.length} ληξιπρόθεσμα`} · <span style={{ color:'var(--text-primary)' }}>{showOverdue?'Απόκρυψη':'Εμφάνιση'}</span>
-            </p>
-            <ChevronDown size={15} style={{ color:'var(--text-tertiary)', transform:showOverdue?'rotate(180deg)':'none', transition:'transform 0.15s' }}/>
-          </button>
-          {showOverdue&&(
-            <div>
-              {[...overdue].sort((a,b)=>a.event_date.localeCompare(b.event_date)).map((e,i,arr)=>{ const late=Math.abs(daysUntil(e.event_date)); const cat=CATEGORIES[e.category]; return (
-                <button className="po-hov-fill" key={e.id} onClick={()=>openEdit(e)} style={{ display:'flex', alignItems:'center', gap:12, width:'100%', textAlign:'left', padding:'11px 16px', border:'none', borderBottom:i<arr.length-1?'1px solid var(--border-subtle)':'none', cursor:'pointer', transition:'background 0.12s' }} >
-                  <span style={{ width:7, height:7, borderRadius:3, background:cat.color, flexShrink:0 }}/>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <p style={{ fontSize:14, fontFamily: T.font.sans, color:'var(--text-primary)', margin:0, letterSpacing:'0.1px' }}>{e.title}</p>
-                    <p style={{ fontSize: 'var(--fs-note)', fontFamily: T.font.sans, color:'var(--text-tertiary)', margin:'2px 0 0' }}>{fmt(e.event_date)}{e.event_time?` · ${e.event_time}`:''}</p>
-                  </div>
-                  {/* ΠΟΣΟ ΚΑΙ ΑΠΟΣΤΑΣΗ ΣΕ ΜΙΑ ΣΤΗΛΗ (05.10.2026). Δίπλα δίπλα, με την
-                      ενιαία διατύπωση «Πριν από 36 ημέρες», στα 320 έσφιγγαν τη στήλη
-                      του τίτλου κάτω από το πλάτος της ημερομηνίας και αυτή έπεφτε
-                      πάνω στο ποσό. */}
-                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:2, flexShrink:0, textAlign:'right' }}>
-                    {e.amount!=null&&<span style={{ fontSize: 'var(--fs-base)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', color:'var(--text-secondary)' }}>{fe(e.amount)}</span>}
-                    <span style={{ fontSize:12, fontFamily: T.font.sans, color:'var(--text-tertiary)' }}>{dueTextStart(-late)}</span>
-                  </div>
-                </button>
-              )})}
-            </div>
-          )}
-        </div>
+      {/* ═══ ΜΙΑ ΓΡΑΜΜΗ ΜΕ ΤΑ ΠΛΗΘΗ, ΟΧΙ ΔΥΟ ΠΛΑΙΣΙΑ ΚΑΙ ΜΙΑ ΚΑΡΤΑ (αξιολόγηση σχεδίασης 3) ═══
+          Πάνω από το πλέγμα κάθονταν το πλαίσιο των ληξιπρόθεσμων, το πλαίσιο
+          των λήξεων συμβολαίων με τα ονόματά τους και η κάρτα συγχρονισμού με
+          δύο κουμπιά: στα 390 η πρώτη σειρά ημερών φαινόταν στο 80% της
+          πρώτης οθόνης. Τώρα μία γραμμή («10 ληξιπρόθεσμα · 1 λήγει») που
+          ανοίγει την Ατζέντα, όπου τα ίδια είναι γραμμένα ένα ένα. Ο
+          συγχρονισμός πάει κάτω από το πλέγμα και στο «⋯». */}
+      {viewMode==='month'&&calAlert&&(
+        <button type="button" className="cal-alerts" onClick={()=>setViewMode('agenda')}
+          style={{ display:'flex', alignItems:'center', gap:8, minHeight:T.h.lg, padding:0, border:0, background:'transparent', color:'var(--text-secondary)', fontFamily:T.font.sans, fontSize:14, textAlign:'left', cursor:'pointer', alignSelf:'flex-start' }}>
+          <span aria-hidden="true" style={{ width:8, height:8, borderRadius:'50%', flexShrink:0, background: overdue.length>0 ? 'var(--negative)' : 'var(--warning)' }}/>
+          <span style={{ fontVariantNumeric:'tabular-nums' }}>{calAlert}</span>
+          <ChevronRight size={15} aria-hidden="true" style={{ color:'var(--text-tertiary)', flexShrink:0 }}/>
+        </button>
       )}
-
-      {/* Smart Alerts — μόνο η λήξη συμβολαίων· τα εκπρόθεσμα ανοίγουν από το KPI (χωρίς διπλό κόκκινο) */}
-      {expiring.length>0&&(
-        // ΙΔΙΟ ΣΧΗΜΑ ΜΕ ΤΗΝ ΚΑΡΤΑ ΤΩΝ ΛΗΞΙΠΡΟΘΕΣΜΩΝ ΑΠΟ ΠΑΝΩ. Ηταν ακτίνα 10
-        // κάτω από κάρτα με ακτίνα κάρτας, γέμισμα 10 κάτω από 12 και το
-        // εικονίδιο κεντραριζόταν στο ύψος ΔΥΟ σειρών κειμένου στο τηλέφωνο,
-        // οπότε έπεφτε ανάμεσά τους σαν τελεία. Τώρα κάθεται στην πρώτη σειρά.
-        <div style={{ display:'flex', alignItems:'flex-start', gap: 12, background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderLeft:'3px solid var(--warning)', borderRadius:T.radius.card, padding:'12px 16px' }}>
-          <Shield size={14} color="var(--warning)" aria-hidden="true" style={{ flexShrink:0, marginTop:2 }}/>
-          <p style={{ fontSize:14, lineHeight:1.45, color:'var(--text-secondary)', fontFamily: T.font.sans, letterSpacing:'0.1px', margin:0 }}>
-            {expiring.length} συμβόλαι{expiring.length===1?'ο λήγει':'α λήγουν'} εντός {EXPIRING_WINDOW_DAYS} ημερών · <span style={{ color:'var(--text-primary)' }}>{expiring.map(e=>`${e.title} (${fmtShort(e.event_date)})`).join(', ')}</span>
-          </p>
-        </div>
-      )}
-
-      {/* Η ΣΥΝΔΡΟΜΗ ΣΤΟ ΚΙΝΗΤΟ, ΟΡΑΤΗ. Ηταν μόνο στο «⋯» και στον Λογαριασμό· οι
-          φορολογικές προθεσμίες μπαίνουν πλέον εδώ μόνες τους και το επόμενο
-          βήμα είναι να φτάσουν στο κινητό. Φεύγει μόλις συνδεθεί ημερολόγιο. */}
-      <CalendarQuickAdd userId={userId} framed />
 
       {/* Toolbar — καθαρή, ένα πρωτεύον κουμπί· τα δευτερεύοντα σε ένα ήσυχο μενού */}
       {/* Στο τηλέφωνο η γραμμή γίνεται τρεις ζυγισμένες σειρές: οι δύο όψεις σε
@@ -823,7 +769,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
       {!loading&&viewMode==='month'&&(
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
           {/* ΤΟ ΔΕΥΤΕΡΟ ΠΑΤΗΜΑ ΣΤΗΝ ΙΔΙΑ ΗΜΕΡΑ ΓΥΡΙΖΕΙ ΣΤΟΝ ΜΗΝΑ, όπως και το «Όλος ο μήνας». */}
-          <MonthView events={monthEvents} currentDate={currentDate} selectedDate={selectedDate} onDayClick={d=>{setSelectedDate(d);setCurrentDate(new Date(d+'T00:00:00'));setPickedDay(p=>p===d?null:d)}} onDayOpen={d=>{setSelectedDate(d);setSheetDate(d)}} onEventClick={openEdit} drag={drag} stays={stays}/>
+          <MonthView events={monthEvents} currentDate={currentDate} selectedDate={selectedDate} onDayClick={d=>{ if(!bulkMode&&dayTapOpensForm(monthEvents.filter(e=>e.event_date===d&&!(e.source||'').startsWith('booking:')).length)){ setSelectedDate(d); openNew(d); return } setSelectedDate(d);setCurrentDate(new Date(d+'T00:00:00'));setPickedDay(p=>p===d?null:d)}} onDayOpen={d=>{setSelectedDate(d);setSheetDate(d)}} onEventClick={openEdit} drag={drag} stays={stays}/>
           {(()=>{
             const pad=(n:number)=>String(n).padStart(2,'0')
             const list=belowGrid(monthEvents, pickedDay, `${currentDate.getFullYear()}-${pad(currentDate.getMonth()+1)}`)
@@ -856,6 +802,10 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
               σωστά χωρισμένες και εκεί χρειάζονται, γιατί εκεί δεν υπάρχει πλέγμα. */}
         </div>
       )}
+
+      {/* Η ΣΥΝΔΡΟΜΗ ΣΤΟ ΚΙΝΗΤΟ ΚΑΤΩ ΑΠΟ ΤΟ ΠΛΕΓΜΑ. Φεύγει μόνη της μόλις
+          συνδεθεί ημερολόγιο· ως τότε δεν σπρώχνει πια τον μήνα κάτω. */}
+      {!loading&&viewMode==='month'&&<CalendarQuickAdd userId={userId} framed />}
 
       {!loading&&viewMode==='agenda'&&(
         <div style={{ display:'flex', flexDirection:'column', gap:20 }}>

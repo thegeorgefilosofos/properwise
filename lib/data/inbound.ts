@@ -191,3 +191,22 @@ export async function fileAsExpense(db: Db, messageId: string, input: FileInput)
     .update({ status: 'filed', expense_id: data.id }).eq('id', messageId);
   return { expenseId: data.id, error: (markError as DbError) ?? null, orphaned: !!markError };
 }
+
+/**
+ * Η καταχώρηση αναιρείται (αξιολόγηση σχεδίασης 3): το εισερχόμενο γυρίζει
+ * στην ουρά και η δαπάνη που έγινε από αυτό σβήνεται.
+ *
+ * Η ΣΕΙΡΑ ΕΙΝΑΙ ΑΝΑΠΟΔΗ ΑΠΟ ΤΗΝ ΚΑΤΑΧΩΡΗΣΗ ΚΑΙ ΚΛΕΙΝΕΙ ΚΑΘΕ ΜΙΣΗ ΚΑΤΑΣΤΑΣΗ.
+ * Πρώτα το σημάδι, μετά η δαπάνη. Αν η δαπάνη δεν σβηστεί, το σημάδι ξαναμπαίνει:
+ * εισερχόμενο ανοιχτό δίπλα σε ζωντανή δαπάνη θα καταχωρούνταν δεύτερη φορά.
+ */
+export async function unfile(db: Db, messageId: string, expenseId: string): Promise<{ error: DbError | null }> {
+  const { error } = await db.from(TABLE).update({ status: 'pending', expense_id: null }).eq('id', messageId);
+  if (error) return { error: error as DbError };
+  const { error: delError } = await expenses.remove(db, expenseId);
+  if (delError) {
+    await db.from(TABLE).update({ status: 'filed', expense_id: expenseId }).eq('id', messageId);
+    return { error: delError };
+  }
+  return { error: null };
+}
