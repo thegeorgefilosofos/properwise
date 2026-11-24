@@ -521,6 +521,19 @@ export async function bySource(
     scoped(db, propertyId, columns).eq('source', source).maybeSingle());
 }
 
+/**
+ * Το γεγονός μιας πηγής, με το σφάλμα ορατό. Το `bySource` γυρίζει `null` και
+ * για «δεν υπάρχει» και για «δεν διαβάστηκε»· όποιος γράφει με βάση την
+ * απάντηση (lib/home/markDone.ts) πρέπει να ξέρει ποιο από τα δύο ισχύει.
+ */
+export async function stateBySourceWithError(
+  db: Db, propertyId: string, source: string,
+): Promise<{ row: { id: string; status: string | null } | null; error: DbError | null }> {
+  const { rows, error } = await read<{ id: string; status: string | null }>(
+    scoped(db, propertyId, 'id,status').eq('source', source));
+  return { row: rows[0] ?? null, error };
+}
+
 /** Σβήνει ό,τι έγραψε μια πηγή, χωρίς να γράψει τίποτα στη θέση του. */
 export function clearSource(db: Db, scope: Scope, match: EventMatch): Promise<Outcome> {
   return replaceSource(db, scope, match, []);
