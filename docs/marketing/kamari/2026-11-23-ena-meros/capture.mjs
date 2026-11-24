@@ -47,9 +47,9 @@ const SCANNED = {
   size_bytes: 18_000, created_at: '2026-11-23T07:41:00Z', supplier: 'Πάροχος Ενέργειας Α.Ε.', amount: 84.5, provider_afm: '090000045',
 };
 
-async function open(q, dsf, { after = false } = {}) {
+async function open(q, dsf, { after = false, width = 390 } = {}) {
   if (ctx) await ctx.close();
-  ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: dsf });
+  ctx = await b.newContext({ viewport: { width, height: 844 }, deviceScaleFactor: dsf });
   await ctx.clock.setFixedTime(NOW);
   await ctx.addInitScript(({ after, scanned, read }) => {
     // Η σκηνή scanReview αντικαθιστά το window.fetch για να απαντήσει στην ανάγνωση· εδώ η απάντηση
@@ -203,30 +203,34 @@ p = await open('?c=accounting&n=6', MACRO);
 }
 
 
-// ── 6. Λογιστική (v14): ΜΙΑ οθόνη, η κάρτα «Κατάσταση αποτελεσμάτων» του ακινήτου ──
+// ── 6. Λογιστική (v16): ΜΙΑ οθόνη, η κάρτα «Κατάσταση αποτελεσμάτων» του ακινήτου ──
 // Το taxProvision (lib/accounting/statement.ts) παίρνει το IncomeStatement ενός ακινήτου· ο φόρος εισοδήματος
 // είναι το μερίδιο του ακινήτου στον προοδευτικό φόρο όλων των ενοικίων (useAccounting.ts: consolidation, myTaxShare).
-// Η κάρτα στο κέντρο της οθόνης, ώστε να μην την καλύπτει η κολλημένη κεφαλίδα.
-p = await open('?c=accounting&n=6', BASE);
+// v16: οθόνη πλάτους 320 px (μικρό κινητό). Η κάρτα είναι 288 px, ώστε στα 40 px γραμμάτων να μένει
+// ≥ 64 px από τις άκρες του κάδρου· η μεγάλη ετικέτα της πέμπτης γραμμής σπάει σε δύο γραμμές, όπως στην εφαρμογή.
+p = await open('?c=accounting&n=6', BASE, { width: 320 });
 {
   const h = p.getByText('Κατάσταση αποτελεσμάτων', { exact: true }).first();
   await h.evaluate((el) => el.scrollIntoView({ block: 'center' }));
   await p.waitForTimeout(400);
-  const card = await boxOf(await h.evaluateHandle((el) => { while (el.getBoundingClientRect().width < 340) el = el.parentElement; return el; }));
-  const LABELS = ['Μεικτά έσοδα', 'Τεκμαρτή έκπτωση 5,00%', 'Φορολογητέο εισόδημα', 'Φόρος εισοδήματος'];
-  const rows = await Promise.all(LABELS.map((l) => p.getByText(l, { exact: true }).first().evaluateHandle((el) => {
-    let best = el; for (let e = el; e && e.getBoundingClientRect().height < 50; e = e.parentElement) if (e.getBoundingClientRect().width >= 300) best = e; return best; })));
+  const cardH = await h.evaluateHandle((el) => el.closest('.po-fig-card'));
+  const card = await boxOf(cardH);
+  const radius = await cardH.evaluate((el) => parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0);
+  const LABELS = ['Μεικτά έσοδα', 'Τεκμαρτή έκπτωση 5,00%', 'Φορολογητέο εισόδημα', 'Φόρος εισοδήματος', 'Έσοδα μετά τον φόρο εισοδήματος'];
+  // Η γραμμή: ο γονιός της ετικέτας (span ετικέτας + span ποσού).
+  const rows = await Promise.all(LABELS.map((l) => cardH.evaluateHandle((c, l) => [...c.querySelectorAll('span')].find((e) => e.textContent.trim() === l).parentElement, l)));
   const rowBoxes = await Promise.all(rows.map(boxOf));
   const rowTexts = await Promise.all(rows.map((r) => r.evaluate((el) => el.innerText.replace(/\s+/g, ' '))));
-  const fontPx = await rows[3].evaluate((el) => Math.max(...[...el.querySelectorAll('*')].map((e) => parseFloat(getComputedStyle(e).fontSize) || 0), parseFloat(getComputedStyle(el).fontSize)));
-  // Από την κορυφή της κάρτας ως λίγο κάτω από τη γραμμή του φόρου εισοδήματος.
-  const reg = { x: 0, y: card.y, w: 390, h: rowBoxes[3].y + rowBoxes[3].h + 8 - card.y };
+  // Μέγεθος γραμμάτων ανά γραμμή: το μικρότερο από ετικέτα και ποσό (span).
+  const fontPx = await Promise.all(rows.map((r) => r.evaluate((el) => Math.min(...[...el.querySelectorAll('span')].map((e) => parseFloat(getComputedStyle(e).fontSize))))));
+  // Από την κορυφή της κάρτας ως λίγο κάτω από τη γραμμή «Έσοδα μετά τον φόρο εισοδήματος».
+  const reg = { x: 0, y: card.y, w: 320, h: rowBoxes[4].y + rowBoxes[4].h + 6 - card.y };
   await clipShot(p, 'stmt', reg);
   for (const [k, r] of rowBoxes.entries()) await clipShot(p, `srow-${k}`, r);
   await setVis(rows, 0); await p.waitForTimeout(150);
   await clipShot(p, 'stmt-empty', reg);
-  await setVis(rows, 4);
-  boxes.tax = { card, rows: rowBoxes, rowTexts, reg, fontPx };
+  await setVis(rows, 5);
+  boxes.tax = { card, radius, rows: rowBoxes, rowTexts, reg, fontPx };
 }
 
 writeFileSync(join(out, 'boxes.json'), JSON.stringify(boxes, null, 1));
