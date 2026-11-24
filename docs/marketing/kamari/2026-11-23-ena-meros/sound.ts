@@ -16,7 +16,7 @@ const html = readFileSync(join(here, 'film.html'), 'utf8');
 const json = /<script id="timeline" type="application\/json">([\s\S]*?)<\/script>/.exec(html);
 if (!json) throw new Error('Λείπει το χρονολόγιο από το film.html');
 const TL = JSON.parse(json[1]) as {
-  dur: number; bpm: number; cuts: number[]; full: number; rowsOver: number[]; taps: number[]; fields: number[]; ticks: number[];
+  dur: number; bpm: number; cuts: number[]; full: number; tax: { rows: number[] }; rowsOver: number[]; taps: number[]; fields: number[]; ticks: number[];
   dings: number[]; filed: number; packUp: number; rowsPack: number[]; close: number; chords: [number, string[]][];
 };
 const out = process.argv[2];
@@ -46,7 +46,7 @@ m.boom(0, .22); m.clap(0, .07);
 m.boom(END, .16); m.clap(END, .05);
 for (const c of TL.cuts.slice(0, -1)) m.whoosh(c - .12, .3, .028, true);
 // Οι γραμμές που εμφανίζονται μόνες τους.
-for (const list of [TL.rowsOver.map((t) => Math.max(t, START)), TL.rowsPack]) list.forEach((t, i) => {
+for (const list of [TL.rowsOver.map((t) => Math.max(t, START)), TL.rowsPack, TL.tax.rows]) list.forEach((t, i) => {
   const notes = chordAt(t); m.pluck(t, n(notes[i % notes.length]) + 12, .024, i % 2 ? .25 : -.25);
 });
 // Τα πεδία που εμφανίζονται: ένα λεπτό κλικ το καθένα.

@@ -203,33 +203,44 @@ p = await open('?c=accounting&n=6', MACRO);
 }
 
 
-// ── 6. Λογιστική (v12): «Φόροι και τέλη 2026», όπως τα βγάζει η εφαρμογή ──
+// ── 6. Λογιστική (v13): ο φόρος ΤΟΥ ΑΚΙΝΗΤΟΥ, με τη βάση του ──
+// Το taxProvision (lib/accounting/statement.ts) παίρνει το IncomeStatement ενός ακινήτου· ο φόρος εισοδήματος
+// είναι το μερίδιο του ακινήτου στον προοδευτικό φόρο όλων των ενοικίων (useAccounting.ts: consolidation, myTaxShare).
+// Η ταινία δείχνει την κεφαλίδα με το όνομα του ακινήτου, την «Κατάσταση αποτελεσμάτων» του και το «Πώς βγαίνει ο φόρος».
 p = await open('?c=accounting&n=6', BASE);
 {
-  const h = p.getByText('Φόροι και τέλη 2026', { exact: true }).first();
-  await h.evaluate((el) => el.scrollIntoView({ block: 'center' }));
-  await p.waitForTimeout(400);
-  const card = await h.evaluateHandle((el) => { while (el.getBoundingClientRect().width < 340) el = el.parentElement; return el; });
-  const c = await boxOf(card);
-  const y = Math.max(0, c.y - 30), hh = Math.min(844 - y, c.h + 60);
-  // Το ποσό της κάρτας: το πρώτο στοιχείο-φύλλο της κάρτας με μορφή ποσού.
-  const amtH = await card.evaluateHandle((el) => [...el.querySelectorAll('*')].find((e) => !e.children.length && /^\d{1,3}(\.\d{3})*,\d{2}€$/.test(e.textContent.trim())));
-  const para = await card.evaluateHandle((el) => [...el.querySelectorAll('*')].find((e) => /^Από όσα/.test(e.textContent.trim())));
-  const finalTxt = await amtH.evaluate((e) => e.textContent.trim());
-  const a = await boxOf(amtH), pr = await boxOf(para);
-  boxes.tax = { card: c, amount: a, para: pr, final: finalTxt, text: await card.evaluate((el) => el.innerText), region: { y, h: hh } };
-  await clipShot(p, 'tax', { x: 0, y, w: 390, h: hh });
-  // Ο μετρητής του ποσού, όπως στο Χαρτοφυλάκιο.
-  const value = Number(finalTxt.replace(/[.€]/g, '').replace(',', '.'));
-  const crop = { x: a.x - 4, y: a.y - 4, w: 220, h: a.h + 8 };
-  boxes.tax.crop = crop; boxes.tax.value = value;
-  const N = 12;
-  for (let i = 0; i <= N; i++) {
-    const v = value * (1 - Math.pow(1 - i / N, 3));
-    await amtH.evaluate((el, t) => { el.textContent = t; }, v.toLocaleString('el-GR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '€');
-    await clipShot(p, `tx-${String(i).padStart(2, '0')}`, crop);
-  }
-  if ((await amtH.evaluate((e) => e.textContent.trim())) !== finalTxt) throw new Error('ο μετρητής του φόρου δεν τελείωσε στην τιμή της εφαρμογής');
+  const scrollTo = async (label) => {
+    const h = p.getByText(label, { exact: true }).first();
+    await h.evaluate((el) => el.scrollIntoView({ block: 'start' }));
+    await p.waitForTimeout(400);
+    return h;
+  };
+  const cardOf = (h) => h.evaluateHandle((el) => { while (el.getBoundingClientRect().width < 340) el = el.parentElement; return el; });
+  // α. Η Κατάσταση αποτελεσμάτων: γραμμές που εμφανίζονται μία μία (ίδια λήψη, οι γραμμές κρυμμένες).
+  const sh = await scrollTo('Κατάσταση αποτελεσμάτων');
+  const stmtCard = await boxOf(await cardOf(sh));
+  const LABELS = ['Μεικτά έσοδα', 'Τεκμαρτή έκπτωση 5,00%', 'Φορολογητέο εισόδημα', 'Φόρος εισοδήματος', 'Έσοδα μετά τον φόρο εισοδήματος'];
+  const rows = await Promise.all(LABELS.map((l) => p.getByText(l, { exact: true }).first().evaluateHandle((el) => {
+    let best = el; for (let e = el; e && e.getBoundingClientRect().height < 50; e = e.parentElement) if (e.getBoundingClientRect().width >= 300) best = e; return best; })));
+  const rowBoxes = await Promise.all(rows.map(boxOf));
+  const rowTexts = await Promise.all(rows.map((h) => h.evaluate((el) => el.innerText.replace(/\s+/g, ' '))));
+  const stmtReg = { x: 0, y: 0, w: 390, h: rowBoxes[4].y + rowBoxes[4].h + 6 };
+  await clipShot(p, 'stmt', stmtReg);
+  for (const [i, r] of rowBoxes.entries()) await clipShot(p, `srow-${i}`, r);
+  await setVis(rows, 0); await p.waitForTimeout(150);
+  await clipShot(p, 'stmt-empty', stmtReg);
+  await setVis(rows, 5);
+  // β. «Πώς βγαίνει ο φόρος»: η φράση της εφαρμογής «το μερίδιο αυτού του ακινήτου» (με έντονα στην εφαρμογή).
+  const hh = await scrollTo('Πώς βγαίνει ο φόρος');
+  const howCard = await boxOf(await cardOf(hh));
+  const bold = p.getByText('το μερίδιο αυτού του ακινήτου', { exact: true }).first();
+  const bb = await rect(bold);
+  const para = await boxOf(await bold.evaluateHandle((el) => el.parentElement));
+  const lh = await bold.evaluate((el) => parseFloat(getComputedStyle(el.parentElement).lineHeight) || 22);
+  const howReg = { x: 0, y: 0, w: 390, h: Math.min(844, howCard.y + howCard.h + 4) };
+  await clipShot(p, 'how', howReg);
+  boxes.tax = { stmtCard, rows: rowBoxes, rowTexts, stmtReg, howCard, bold: bb, para, lineHeight: lh, howReg,
+    header: await p.evaluate(() => document.body.innerText.match(/Διαμέρισμα[^\n]*/)?.[0] ?? '') };
 }
 
 writeFileSync(join(out, 'boxes.json'), JSON.stringify(boxes, null, 1));
